@@ -38,6 +38,14 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://forjd:forjd_local_dev@localhost:5432/forjd
+      # SupabaseAuthProvider and SupabaseStorageProvider build a client in their
+      # constructor, so the DI graph fails to compile without these even when a test
+      # overrides AUTH_PROVIDER — StorageProvider has no override yet and Nest still
+      # instantiates every provider in the module tree. createClient makes no network
+      # call at construction and e2e never invokes the client, so a well-formed but
+      # fake value is correct here, not a workaround for a real credential.
+      SUPABASE_URL: https://ci-placeholder.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
 
     steps:
       - uses: actions/checkout@v4
