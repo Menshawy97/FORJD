@@ -59,6 +59,10 @@ jobs:
 
       - run: pnpm --filter @forjd/api lint
 
+      # The Postgres service container starts empty. users.repository.spec.ts and the
+      # e2e suite both need the real schema, not just a reachable server.
+      - run: pnpm --filter @forjd/api db:migrate
+
       - run: pnpm --filter @forjd/api test
 
       - run: pnpm --filter @forjd/api test:e2e
