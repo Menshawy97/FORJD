@@ -9,9 +9,87 @@ the quick-reference for "what phase are we in and what's next."
 
 ## Current status (last updated 2026-08-19)
 
-**We are inside Phase 0.** Read this section first when resuming — it says
-exactly what's done, what's blocked on a manual step, and what to do next.
-Don't re-derive this from scratch; verify it's still accurate and continue.
+**We are inside Phase 1.** Phase 0 is complete except Spike B, which is open but
+does not gate Phase 1 (see "Spike status" below). Read this section first when
+resuming — it says exactly what's done, what's blocked on a manual step, and what
+to do next. Don't re-derive this from scratch; verify it's still accurate and
+continue.
+
+### Phase 1 progress
+
+Executing the 14-slice plan. **Nine of fourteen slices are done and verified —
+1 through 10, except 11.** What remains is the mobile auth UI (11) and the three
+deployment-shaped slices (12, 13, 14), which need the staging/prod Supabase
+projects, a Railway account, and the physical Android device.
+
+Half of the phase's definition of done is already mechanically true: exactly one
+file imports the Supabase SDK for auth, one for storage, and nothing else —
+verified by grep in CI rather than by discipline.
+
+**Current test surface:** 12 API unit tests, 7 API e2e tests, 4 Flutter tests, all
+passing. Lint, format, and the architecture-conformance check are green, and the
+debug APK builds.
+
+| Slice | Status | Detail |
+|---|---|---|
+| 1 — NestJS scaffold | ✅ Done | `apps/api` on NestJS 11, global `/api/v1` prefix, pino logging, Sentry inert without `SENTRY_DSN`. `GET /api/v1/health` verified 200; unprefixed `/health` returns 404. |
+| 2 — Drizzle + Postgres | ✅ Done | `drizzle.config.ts`, `DatabaseModule` exposing `DRIZZLE`/`PG_POOL` tokens, pool closed on shutdown. Health endpoint reports `{status:'ok',database:'up'}` against the docker-compose Postgres. `db:generate`/`db:migrate`/`db:studio` wired. |
+| 3 — Provider interfaces + ADR-008 | ✅ Done | `AuthProvider` and `StorageProvider` interfaces written; **ADR-008 created and now Accepted** — it did not exist before, ADR-003 only carried a placeholder. `domain-model.md`, `integrations.md`, ADR-003 updated to point at it. |
+| 4 — Auth & profile slice | ✅ Done | `users`/`profiles`/`audit_logs` migrations; `@forjd/domain` + `@forjd/contracts` packages (Zod-backed wire contracts); `SupabaseAuthProvider`; `AuthService`/`AuthController` (`register`/`login`/`refresh`/`logout`); `JwtAuthGuard`; `UsersRepository`/`Service`/`Controller` (`GET /users/me`, `PATCH /users/me/profile`). **Verified live against Supabase** — registration created the user, mapped `supabase_user_id`, auto-created the profile, and wrote the audit row. |
+| 5 — StorageProvider impl | ✅ Done | `SupabaseStorageProvider` + `StorageModule`, bound but deliberately unconsumed until Phase 5. The `inbody` bucket exists and responds. |
+| 6 — Remaining migrations | ✅ Done | `goals`, `preferences`, `feature_flags` as migration `0001`. Schema only — no endpoints, since Phase 1's scope is profile view/edit. |
+| 7 — CI lint/test | ✅ Done | `.github/workflows/ci.yml` with `api` (Postgres service container) and `mobile` jobs. Not yet exercised on GitHub — no push made. |
+| 8 — CI conformance grep | ✅ Done | `scripts/ci/check-architecture-conformance.sh`. **Verified non-vacuous**: catches a planted Supabase import outside the provider dirs, allows the same import inside them. |
+| 9 — Flutter shell | ✅ Done | `flutter create` scaffold + go_router routes, Riverpod, Dio client, theme. Analyzer clean, tests pass. |
+| 10 — Drift scaffold | ✅ Done | `AppDatabase` with a `CachedProfiles` table. Timestamps stored as **ISO-8601 text**, not Unix seconds — the default returns local time and silently shifts any instant that crossed a timezone. See `apps/mobile/build.yaml`. |
+| 11 — Mobile auth UI | ⬜ Next | Unblocked — Slice 4's endpoints and DTOs exist. Login/register screens, Riverpod `AuthController`, Dio 401→refresh→retry interceptor, tokens in `flutter_secure_storage`. |
+| 12 — Build flavors | ⬜ Blocked | Needs all three Supabase projects. |
+| 13 — Staging deploy | ⬜ Blocked | Host decided: **Railway** (ADR-009). Needs the staging Supabase project and a Railway account. |
+| 14 — Device DoD walk | ⬜ Not started | Needs 12/13 plus the physical Android device. |
+
+Phase 1's definition of done is unchanged: register → login → refresh → logout →
+view/edit profile against the deployed staging API from the physical device, with
+no file outside `apps/api/src/auth/providers/` importing the Supabase SDK.
+
+### Deferred deliberately from the Phase 1 review
+
+Two review findings were judged as tradeoffs rather than defects, and are tracked here
+rather than silently dropped.
+
+**Token verification is uncached.** `JwtAuthGuard` calls Supabase on every authenticated
+request, which adds latency and makes Supabase Auth availability a dependency of every
+call. The obvious fix — caching verification results — trades away revocation latency: a
+logged-out or compromised token stays valid until the cache entry expires. That is a real
+security cost, not a free win, so it should be a deliberate decision with a chosen TTL and
+not a reflex optimisation. Revisit when measured latency justifies it.
+
+**RLS is enabled on no table.** Acceptable today because nothing except the API holds a
+Postgres credential — the mobile app has no Supabase client, and the CI conformance check
+structurally prevents one appearing. It stops being acceptable the moment either the
+storage adapter hands clients signed URLs (Phase 5) or any client gets a direct Supabase
+key. **Gating rule: enable RLS before any client receives a Supabase credential.**
+
+One more, unfixable here: `drizzle-kit` pulls a transitive `esbuild` advisory. Dev
+dependency only, never shipped, and resolvable when drizzle-kit updates.
+
+### Two findings from the live Supabase environment
+
+**Email confirmation is on in `forjd-dev`** (`mailer_autoconfirm: false`). Registration
+therefore creates the account but issues no session, and the subsequent login fails with
+"Email not confirmed" until the emailed link is clicked. This is correct production
+behaviour and the API models it honestly — `signUp` returns a nullable session rather
+than pretending one exists. But it makes the dev loop awkward: every test account needs a
+real inbox. Consider turning "Confirm email" off in the **dev project only**
+(Authentication → Providers → Email). Staging and prod are separate projects, so dev
+convenience costs production nothing.
+
+**The direct Postgres connection is unreachable from this machine.**
+`db.<ref>.supabase.co` resolves only to IPv6, and this network has no IPv6 route — the
+router hands out ULA (`fd8c:…`) addresses with no upstream. Use the **Session pooler**
+string (`postgres.<ref>@aws-0-<region>.pooler.supabase.com:5432`), which is IPv4. Session
+mode, not transaction mode: drizzle-kit migrations need prepared statements. This blocks
+nothing today because migrations run against local Postgres first by design (ADR-002); it
+matters when the hosted database is first migrated in slice 13.
 
 ### Repo
 
@@ -54,7 +132,18 @@ git identity + initial commit) are **done**. What remains:
    ```powershell
    $env:ANTHROPIC_API_KEY = "sk-ant-..."
    ```
-3. ⬜ **Hand-label Spike B ground truth.** This one is not automatable *in
+3. ✅ **`forjd-dev` Supabase project — done.** Email/password auth enabled, `inbody`
+   bucket created, credentials in the gitignored `apps/api/.env`. Verified working:
+   auth and storage endpoints respond, and a real registration round-tripped.
+   ⬜ **Still needed: `forjd-staging` and `forjd-prod`**, for slice 12 (build flavors),
+   so a debug build physically cannot reach production data.
+4. ⬜ **Create the Railway account and project.** The host is decided (ADR-009);
+   what remains is the account itself, which needs a card and is therefore yours
+   to do. Only slice 13 depends on it, so there is no rush — but the Phase 1
+   definition of done requires a *deployed* staging API, so it does gate the phase
+   closing. Verify current pricing while you are there; ADR-009 records that it
+   was not checked.
+5. ⬜ **Hand-label Spike B ground truth.** This one is not automatable *in
    principle*, not just in practice: if the same model that extracts the values
    also writes the answer key, the accuracy number measures self-consistency
    rather than correctness — and it fails silently, looking like a clean result.
@@ -78,25 +167,26 @@ git identity + initial commit) are **done**. What remains:
 
 ### Next action once resumed
 
-**Finish Spike B first — it is the only Phase 0 spike that is started but
-unfinished, and Phase 5 is designed around its answer.** Set the API key, run
+**Build slice 11, the mobile auth and profile screens.** It is the last slice with no
+external dependency: the API endpoints, the `@forjd/contracts` DTOs, the Flutter shell,
+and the Drift store all exist. After it, everything left is deployment-shaped —
+slices 12 → 13 → 14 — needing the staging and prod Supabase projects, a Railway
+account, and the phone plugged in.
+
+Spike B remains open and is worth finishing — Phase 5 is designed around its
+answer — but it does not block anything in Phase 1. Set `ANTHROPIC_API_KEY`, run
 `pnpm extract`, hand-label truth, run `pnpm score`, then fill in ADR-006's
 Consequences table and flip its Status to Accepted (or, if confidence turns out
 not to correlate with real errors, record that the confidence gate is decorative
 and needs redesigning — that is a legitimate and valuable spike outcome, not a
 failure).
 
-After that, Phase 1 is unblocked: NestJS + Flutter shells and the
-`AuthProvider`/`StorageProvider` adapters — see `docs/architecture/system.md`
-and ADR-003. Local Postgres/Redis are already running, so nothing else gates it
-except the physical Android device for on-device verification.
-
 ## Timeline (~38 weeks to Android beta, dual-platform public launch)
 
 | Phase | Weeks | Focus | Status |
 |---|---|---|---|
-| 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | **In progress** |
-| 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | Not started |
+| 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
+| 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **In progress** |
 | 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | Not started |
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
 | Dogfood gate | 16-17 | Real training with the app | Not started |

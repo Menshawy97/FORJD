@@ -2,5 +2,11 @@ packages:
   - "apps/api"
   - "packages/*"
 
+# drizzle-kit ships its CLI as an esbuild bundle and needs esbuild's postinstall to
+# place the platform binary. pnpm blocks build scripts by default; this allows that
+# one package rather than disabling the protection wholesale.
+allowBuilds:
+  esbuild: true
+
 # apps/mobile is a Flutter package and is deliberately NOT a pnpm workspace member.
 # It is managed by `flutter pub get` / pubspec.yaml.

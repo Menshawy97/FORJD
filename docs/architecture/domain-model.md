@@ -6,7 +6,7 @@ before touching that domain's schema or adapters.
 ## Core entities by domain
 
 **Auth & users** — `users` (own UUID PK, `supabase_user_id` as one mapped
-external identifier per ADR pending in Phase 1), `profiles`, `goals`,
+external identifier per ADR-008), `profiles`, `goals`,
 `preferences`. See `system.md` ("Portability").
 
 **Exercise content** — `exercises`, `exercise_variants`, `muscle_groups`,

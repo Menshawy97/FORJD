@@ -51,7 +51,13 @@ apps/mobile/ios/Flutter/flutter_export_environment.sh
 apps/mobile/ios/Runner/GeneratedPluginRegistrant.*
 
 # --- Claude Code local settings (per-machine, not shared) ---
-.claude/settings.local.json
+# Local Claude Code tooling (settings, plugin bundle, agents, rules, MCP servers).
+# Installed per-machine, not FORJD source. Un-ignore individually anything worth sharing —
+# .mcp.json in particular is safe to commit if the team should share MCP configuration.
+.claude/
+.agents/
+skills-lock.json
+.mcp.json
 
 # --- IDE ---
 .idea/
