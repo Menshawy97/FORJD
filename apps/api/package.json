@@ -21,6 +21,7 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/throttler": "^6.5.0",
     "@sentry/nestjs": "^10.70.0",
     "@supabase/supabase-js": "^2.112.3",
     "drizzle-orm": "^0.45.2",

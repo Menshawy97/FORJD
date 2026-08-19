@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -23,6 +23,7 @@ interface SupabaseSessionShape {
  */
 @Injectable()
 export class SupabaseAuthProvider implements AuthProvider {
+  private readonly logger = new Logger(SupabaseAuthProvider.name);
   private readonly client: SupabaseClient;
 
   constructor(config: ConfigService) {
@@ -37,7 +38,7 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { data, error } = await this.client.auth.signUp(credentials);
 
     if (error || !data.user) {
-      throw new UnauthorizedException(error?.message ?? 'Registration failed');
+      this.reject('signUp', error?.message);
     }
 
     return {
@@ -50,7 +51,7 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { data, error } = await this.client.auth.signInWithPassword(credentials);
 
     if (error || !data.user || !data.session) {
-      throw new UnauthorizedException(error?.message ?? 'Invalid credentials');
+      this.reject('signIn', error?.message);
     }
 
     return { identity: this.toIdentity(data.user), session: this.toSession(data.session) };
@@ -60,7 +61,7 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { data, error } = await this.client.auth.refreshSession({ refresh_token: refreshToken });
 
     if (error || !data.session) {
-      throw new UnauthorizedException(error?.message ?? 'Could not refresh session');
+      this.reject('refreshSession', error?.message);
     }
 
     return this.toSession(data.session);
@@ -71,7 +72,7 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { error } = await this.client.auth.admin.signOut(accessToken);
 
     if (error) {
-      throw new UnauthorizedException(error.message);
+      this.reject('signOut', error.message);
     }
   }
 
@@ -79,10 +80,24 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { data, error } = await this.client.auth.getUser(accessToken);
 
     if (error || !data.user) {
-      throw new UnauthorizedException(error?.message ?? 'Invalid access token');
+      this.reject('verifyAccessToken', error?.message);
     }
 
     return this.toIdentity(data.user);
+  }
+
+  /**
+   * GoTrue distinguishes "User already registered" from a clean signup, and "Invalid login
+   * credentials" from "Email not confirmed". Forwarding those strings lets a caller probe
+   * which addresses hold accounts — on a product where the account is attached to health
+   * data. The detail stays in the server log; the caller gets a constant message.
+   */
+  private reject(context: string, detail: string | undefined): never {
+    this.logger.warn(`${context} failed: ${detail ?? 'no detail from provider'}`);
+
+    throw new UnauthorizedException(
+      context === 'signUp' ? 'Registration failed' : 'Invalid credentials',
+    );
   }
 
   private toIdentity(user: SupabaseUser): AuthIdentity {

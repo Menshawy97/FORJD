@@ -51,6 +51,27 @@ Phase 1's definition of done is unchanged: register → login → refresh → lo
 view/edit profile against the deployed staging API from the physical device, with
 no file outside `apps/api/src/auth/providers/` importing the Supabase SDK.
 
+### Deferred deliberately from the Phase 1 review
+
+Two review findings were judged as tradeoffs rather than defects, and are tracked here
+rather than silently dropped.
+
+**Token verification is uncached.** `JwtAuthGuard` calls Supabase on every authenticated
+request, which adds latency and makes Supabase Auth availability a dependency of every
+call. The obvious fix — caching verification results — trades away revocation latency: a
+logged-out or compromised token stays valid until the cache entry expires. That is a real
+security cost, not a free win, so it should be a deliberate decision with a chosen TTL and
+not a reflex optimisation. Revisit when measured latency justifies it.
+
+**RLS is enabled on no table.** Acceptable today because nothing except the API holds a
+Postgres credential — the mobile app has no Supabase client, and the CI conformance check
+structurally prevents one appearing. It stops being acceptable the moment either the
+storage adapter hands clients signed URLs (Phase 5) or any client gets a direct Supabase
+key. **Gating rule: enable RLS before any client receives a Supabase credential.**
+
+One more, unfixable here: `drizzle-kit` pulls a transitive `esbuild` advisory. Dev
+dependency only, never shipped, and resolvable when drizzle-kit updates.
+
 ### Two findings from the live Supabase environment
 
 **Email confirmation is on in `forjd-dev`** (`mailer_autoconfirm: false`). Registration

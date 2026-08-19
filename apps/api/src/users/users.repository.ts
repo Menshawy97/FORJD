@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { Profile, Sex, UnitSystem, User } from '@forjd/domain';
 import { eq } from 'drizzle-orm';
 
@@ -6,6 +6,11 @@ import { Database, DRIZZLE } from '../database/database.module';
 import { auditLogs } from '../database/schema/audit-logs.schema';
 import { profiles, ProfileRow } from '../database/schema/profiles.schema';
 import { users, UserRow } from '../database/schema/users.schema';
+
+/** Postgres unique_violation. */
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
+}
 
 export interface ProfilePatch {
   displayName?: string | null;
@@ -38,7 +43,14 @@ export class UsersRepository {
 
   /**
    * Links an external identity to an internal user, creating both the user and an empty
-   * profile on first sight. Idempotent: a repeated login must not create a second user.
+   * profile on first sight. Idempotent for a repeated login by the same identity.
+   *
+   * The conflict target is deliberately `supabase_user_id`, not `email`. Keying on email
+   * would mean a *different* auth identity presenting a known address silently takes over
+   * the existing row — and every profile, goal and preference cascading from its id. That
+   * becomes reachable as soon as account deletion frees an address for re-registration
+   * (see docs/architecture/security.md), so an address already bound to another identity
+   * is rejected rather than merged.
    */
   async upsertFromIdentity(externalId: string, email: string): Promise<User> {
     const existing = await this.findByExternalId(externalId);
@@ -46,11 +58,33 @@ export class UsersRepository {
       return existing;
     }
 
-    const [row] = await this.db
-      .insert(users)
-      .values({ supabaseUserId: externalId, email })
-      .onConflictDoUpdate({ target: users.email, set: { supabaseUserId: externalId } })
-      .returning();
+    const [claimedByAnother] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (claimedByAnother && claimedByAnother.supabaseUserId !== externalId) {
+      throw new ConflictException('That email address belongs to a different account');
+    }
+
+    let row: UserRow | undefined;
+
+    try {
+      [row] = await this.db
+        .insert(users)
+        .values({ supabaseUserId: externalId, email })
+        .onConflictDoUpdate({ target: users.supabaseUserId, set: { email } })
+        .returning();
+    } catch (error: unknown) {
+      // A concurrent insert for a different identity can still win the email uniqueness
+      // race between the check above and this statement. Fail loudly, never merge.
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('That email address belongs to a different account');
+      }
+
+      throw error;
+    }
 
     if (!row) {
       throw new Error('Failed to persist user');

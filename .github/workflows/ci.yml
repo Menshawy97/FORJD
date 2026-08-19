@@ -53,9 +53,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Recursive, so @forjd/domain and @forjd/contracts compile before the API that
+      # consumes their emitted types. Filtering to the API alone leaves them unbuilt.
+      - run: pnpm -r build
+
       - run: pnpm --filter @forjd/api lint
 
-      - run: pnpm --filter @forjd/api build
+      - run: pnpm --filter @forjd/api test
 
       - run: pnpm --filter @forjd/api test:e2e
 

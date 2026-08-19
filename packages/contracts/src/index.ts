@@ -63,17 +63,37 @@ export const meResponseSchema = z.object({
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
+/**
+ * A shape check alone lets 2026-13-40 through Zod and fail later as a Postgres cast error,
+ * surfacing as a 500 instead of a validation message. Round-tripping through Date rejects
+ * impossible dates at the boundary where the caller can act on it.
+ */
+const isoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
+  }, 'Not a real calendar date');
+
+/**
+ * Restricted to http(s). z.string().url() accepts anything URL can parse, including
+ * javascript: and data:, which would become a stored payload the moment a client renders
+ * the avatar.
+ */
+const httpUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => /^https?:\/\//i.test(value), 'Must be an http(s) URL');
+
 export const updateProfileRequestSchema = z
   .object({
     displayName: z.string().min(1).max(80).nullable(),
-    dateOfBirth: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')
-      .nullable(),
+    dateOfBirth: isoDateSchema.nullable(),
     sex: sexSchema.nullable(),
     heightCm: z.number().positive().max(300).nullable(),
     unitSystem: unitSystemSchema,
-    avatarUrl: z.string().url().nullable(),
+    avatarUrl: httpUrlSchema.nullable(),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, {
