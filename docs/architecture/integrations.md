@@ -78,6 +78,8 @@ shape as `ExternalConnection.provider`. `StorageProvider` wraps InBody
 uploads and other media (Supabase Storage is S3-compatible, so a future
 swap to S3/R2 is a one-file adapter change).
 
+Method signatures and the rule about where implementations may live are in ADR-008.
+
 ## ExerciseSourceAdapter
 
 The same pattern again, applied to exercise content ingestion (Phase 2) —

@@ -37,7 +37,7 @@ Full detail in `docs/architecture/integrations.md`.
   — not a template claim, a structural guarantee enforced by the interface
   and the CI import check (`CLAUDE.md`, "Enforced, not just stated").
 - The same adapter shape is deliberately reused for `ExerciseSourceAdapter`
-  (Phase 2) and `AuthProvider`/`StorageProvider` (ADR pending, Phase 1) —
+  (Phase 2) and `AuthProvider`/`StorageProvider` (ADR-008, Phase 1) —
   one pattern, applied everywhere an external system meets the domain model.
 - Contract tests (fixture provider response → adapter → canonical model) are
   what make this real rather than aspirational — see `CLAUDE.md` rule 8.
