@@ -18,15 +18,10 @@ Don't re-derive this from scratch; verify it's still accurate and continue.
 - Skeleton created at `C:\Users\Mostafa Ashraf\Desktop\FORJD`: `CLAUDE.md`,
   all 7 ADRs, `docs/product/*`, `docs/architecture/*`, root config
   (`.gitignore`, `pnpm-workspace.yaml`, `docker-compose.yml`, `README.md`).
-- **22 files staged, zero commits made.** `git init` was run but the local
-  git identity (`user.name` / `user.email`) was never set on this machine —
-  the user opted to set it themselves rather than have it set for them.
-  **Before anything else, check `git log` — if it's still empty, run:**
-  ```bash
-  git config user.email "you@example.com"
-  git config user.name "Your Name"
-  git commit -m "Initialize FORJD repo: architecture rules, ADRs, and planning docs"
-  ```
+- ✅ **Committed and pushed** to https://github.com/Menshawy97/FORJD.
+  Local git identity is set per-repo (`--local`) to Mostafa Menshawy /
+  mostafa.menshawy97@gmail.com. All commits are authored under that identity —
+  keep it that way; do not add other co-authorship trailers.
 - No application code yet (`apps/api`, `apps/mobile` are empty placeholder
   directories, correctly untracked by git since they're empty).
 
@@ -42,41 +37,59 @@ Don't re-derive this from scratch; verify it's still accurate and continue.
 | Android Studio | ✅ Done | App installed via winget. SDK GUI wizard was skipped — provisioned headlessly instead (see below) |
 | Android SDK | ✅ Done | At `C:\Android\Sdk` (moved from the default `%LOCALAPPDATA%` path because it contained a space in the Windows username, which breaks NDK tooling). platform-tools, `platforms;android-34`, `platforms;android-36`, `build-tools;36.0.0`, all licenses accepted. `flutter config --android-sdk` points at it. |
 | `flutter doctor` | ✅ Clean | Android toolchain green. Only remaining flag is "Visual Studio not installed" — **ignore this**, it's for Windows desktop apps, not a FORJD target platform. |
-| Docker Desktop | ⚠️ Installed, not usable yet | App installed via winget, but WSL2 (its dependency) is not enabled — enabling it requires admin elevation this session doesn't have. **Blocked on a manual step, see below.** |
-| Physical Android device | ⚠️ Not connected | Needs to be plugged in via USB with debugging enabled; `flutter devices` will pick it up. |
+| Docker Desktop | ✅ Done | WSL2 enabled via the elevated setup script + reboot. `docker-compose up -d` brings up `forjd-postgres` (5432) and `forjd-redis` (6379), both reporting healthy. |
+| Physical Android device | ⚠️ Not connected | Needs to be plugged in via USB with debugging enabled; `flutter devices` will pick it up. Still only Windows/Chrome/Edge are listed. |
 
-### Manual steps only the user can do (all genuine hard stops — need a UAC click, a reboot, or physical hardware)
+### Manual steps only the user can do (genuine hard stops — need a UAC click, physical hardware, a credential, or human judgement)
 
-1. **Run `scripts/setup-windows-dev.ps1` from an elevated PowerShell** (right-click →
-   Run as Administrator). It enables Developer Mode, NTFS long paths, WSL2 +
-   Virtual Machine Platform (needed for Docker Desktop), and Defender
-   exclusions for the repo and SDK folders.
-2. **Reboot** — required for WSL2 and Developer Mode to take effect.
-3. **Launch Docker Desktop once manually** after rebooting, to accept its
-   license and finish first-run setup.
-4. **Set git identity and make the initial commit** (see Repo section above).
-5. **Plug in the physical Android device**, confirm with `flutter devices`.
+Steps 1-4 of the original list (elevated setup script, reboot, Docker first-run,
+git identity + initial commit) are **done**. What remains:
 
-None of the above blocks Phase 1 application-code work except Docker
-(needed for local Postgres/Redis) and the initial commit (should happen
-before more code piles up uncommitted).
+1. ⬜ **Plug in the physical Android device**, confirm with `flutter devices`.
+   Needed from week 1 — Health Connect is a system component and gym testing
+   needs real hardware, not an emulator.
+2. ⬜ **Set `ANTHROPIC_API_KEY` to run Spike B.** No credential exists on this
+   machine (no env var, no `~/.config/anthropic` profile, no `ant` CLI), and an
+   agent must never be handed the key — set it yourself in your own shell:
+   ```powershell
+   $env:ANTHROPIC_API_KEY = "sk-ant-..."
+   ```
+3. ⬜ **Hand-label Spike B ground truth.** This one is not automatable *in
+   principle*, not just in practice: if the same model that extracts the values
+   also writes the answer key, the accuracy number measures self-consistency
+   rather than correctness — and it fails silently, looking like a clean result.
+   Read each sheet yourself. See `scripts/spikes/README.md`.
 
-### Phase 0 items not yet started (not toolchain — calendar/business, only the user can act)
+### Spike status
+
+| Spike | Status | Detail |
+|---|---|---|
+| A — exercise dataset | ✅ **Decided.** ADR-005 Accepted | `free-exercise-db` chosen (~870 exercises, Unlicense/public domain, zero attribution or share-alike obligations). `wger` rejected for now — its data is CC-BY-SA and the share-alike implications for a closed-source paid app are an **open legal question**; fold that into the lawyer conversation before ever ingesting wger content. `exercisedb.io` ($299+, richest taxonomy) deferred as a future paid upgrade. |
+| B — InBody vision | 🟡 **OPEN — tooling built, blocked on the two manual steps above** | Harness complete and smoke-tested at `scripts/spikes/`: `inbody-vision.ts` (Claude vision → structured JSON with per-field confidence) and `score-inbody.ts` (per-field accuracy, confidence calibration, high-confidence-error count). ~20 photos are staged in the gitignored `scripts/spikes/inbody-samples/photos/`. **Nothing has been measured yet** — ADR-006 stays Proposed until it has. |
+| C — iOS pipeline | ⬜ Not started | Gated on Apple Developer *organization* approval. Explicitly not a Phase 0 blocker; track as an open checkpoint through Phase 1. |
+
+### Phase 0 items not yet started (calendar/business — only the user can act)
 
 - Business entity registration, D-U-N-S number
 - Google Play Console + Apple Developer *organization* accounts
-- Legal engagement for privacy policy / ToS
-- Spike A (exercise dataset evaluation), Spike B (InBody photos + Claude
-  vision test), Spike C (iOS pipeline via Codemagic — gated on Apple org
-  approval, so naturally later than A/B)
+- Legal engagement for privacy policy / ToS — **add the wger CC-BY-SA share-alike
+  question to this engagement** (see ADR-005), alongside health data categories,
+  InBody images, third-party AI processing, and location/leaderboard consent
 
 ### Next action once resumed
 
-If the manual steps above are done: proceed to Phase 1 (NestJS + Flutter
-shells, `AuthProvider`/`StorageProvider` adapters — see `docs/architecture/system.md`
-and ADR-003). If they aren't done yet, either wait on the user or continue
-with anything in Phase 0 that doesn't depend on them (e.g. Spike A doesn't
-need Docker or a reboot).
+**Finish Spike B first — it is the only Phase 0 spike that is started but
+unfinished, and Phase 5 is designed around its answer.** Set the API key, run
+`pnpm extract`, hand-label truth, run `pnpm score`, then fill in ADR-006's
+Consequences table and flip its Status to Accepted (or, if confidence turns out
+not to correlate with real errors, record that the confidence gate is decorative
+and needs redesigning — that is a legitimate and valuable spike outcome, not a
+failure).
+
+After that, Phase 1 is unblocked: NestJS + Flutter shells and the
+`AuthProvider`/`StorageProvider` adapters — see `docs/architecture/system.md`
+and ADR-003. Local Postgres/Redis are already running, so nothing else gates it
+except the physical Android device for on-device verification.
 
 ## Timeline (~38 weeks to Android beta, dual-platform public launch)
 
