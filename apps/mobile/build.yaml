@@ -1,0 +1,10 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Store timestamps as ISO-8601 text rather than Unix seconds. The default loses
+          # the UTC offset and hands back local time, which silently shifts any instant
+          # that crossed a timezone — unacceptable for longitudinal health and training
+          # data. Decided at schema version 1, while nothing is stored yet.
+          store_date_time_values_as_text: true
