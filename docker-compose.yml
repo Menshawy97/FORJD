@@ -1,0 +1,45 @@
+# Local development dependencies only.
+#
+# Production uses Supabase Postgres (reached through AuthProvider / StorageProvider —
+# see CLAUDE.md rules 11-14). This file exists so the API can be developed and tested
+# offline, and so migrations can be verified against a plain Postgres before they ever
+# touch Supabase. That portability is the point (ADR-002).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forjd-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forjd
+      POSTGRES_PASSWORD: forjd_local_dev
+      POSTGRES_DB: forjd
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forjd -d forjd"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: forjd-redis
+    restart: unless-stopped
+    # Redis is unused until Phase 5 (BullMQ, InBody processing). Running it from day
+    # one costs nothing and avoids a "why won't the queue connect" evening later.
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  redis-data:

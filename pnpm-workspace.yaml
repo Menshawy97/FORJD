@@ -1,0 +1,6 @@
+packages:
+  - "apps/api"
+  - "packages/*"
+
+# apps/mobile is a Flutter package and is deliberately NOT a pnpm workspace member.
+# It is managed by `flutter pub get` / pubspec.yaml.

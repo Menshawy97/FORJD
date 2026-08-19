@@ -1,0 +1,75 @@
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.key
+*.keystore
+*.jks
+app-store-connect-key*.json
+google-services.json
+GoogleService-Info.plist
+
+# --- Node ---
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.pnpm-store/
+npm-debug.log*
+pnpm-debug.log*
+
+# --- Flutter / Dart ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/generated_plugin_registrant.dart
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Flutter build outputs
+apps/mobile/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/key.properties
+apps/mobile/android/app/debug/
+apps/mobile/android/app/profile/
+apps/mobile/android/app/release/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/ios/Flutter/Flutter.framework
+apps/mobile/ios/Flutter/Flutter.podspec
+apps/mobile/ios/Flutter/Generated.xcconfig
+apps/mobile/ios/Flutter/flutter_export_environment.sh
+apps/mobile/ios/Runner/GeneratedPluginRegistrant.*
+
+# --- Claude Code local settings (per-machine, not shared) ---
+.claude/settings.local.json
+
+# --- IDE ---
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.iml
+*.swp
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Local data ---
+/postgres-data/
+/redis-data/
+
+# InBody spike inputs: real report photos are personal health data.
+# Only anonymized, committed golden fixtures belong in the repo (see docs/decisions/ADR-006).
+scripts/spikes/inbody-samples/
