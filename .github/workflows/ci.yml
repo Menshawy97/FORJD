@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    name: Architecture conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci/check-architecture-conformance.sh
+
+  api:
+    name: API lint, build, test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: forjd
+          POSTGRES_PASSWORD: forjd_local_dev
+          POSTGRES_DB: forjd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forjd -d forjd"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://forjd:forjd_local_dev@localhost:5432/forjd
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @forjd/api lint
+
+      - run: pnpm --filter @forjd/api build
+
+      - run: pnpm --filter @forjd/api test:e2e
+
+  mobile:
+    name: Mobile analyze, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # *.g.dart is gitignored, so generated sources must be rebuilt before analysis.
+      - run: dart run build_runner build
+
+      - run: dart format --set-exit-if-changed lib test
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+      - run: flutter build apk --debug
