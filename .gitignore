@@ -73,3 +73,8 @@ desktop.ini
 # InBody spike inputs: real report photos are personal health data.
 # Only anonymized, committed golden fixtures belong in the repo (see docs/decisions/ADR-006).
 scripts/spikes/inbody-samples/
+
+# graphify knowledge-graph output. Fully derived from the repo and regenerable with
+# `/graphify`, and the sidecars hardcode absolute machine-local paths (interpreter
+# location, scan root, per-file cache keys) that are wrong on any other machine.
+graphify-out/
