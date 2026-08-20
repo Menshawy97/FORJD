@@ -25,6 +25,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _localError;
 
   @override
+  void initState() {
+    super.initState();
+
+    // A failure from an earlier attempt — possibly from a different screen — must not
+    // greet someone who has just opened this form. Deferred to after the first frame
+    // because a provider cannot be written during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(authControllerProvider.notifier).clearFailure();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();

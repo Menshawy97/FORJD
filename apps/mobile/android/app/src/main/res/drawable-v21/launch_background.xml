@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <!--
+      The app is dark-only (ADR-010). The Flutter default here is white, which flashed a
+      full white screen on every cold start before the first Dart frame — the longer the
+      start, the worse it looked.
+    -->
+    <item android:drawable="@color/forjd_background" />
 </layer-list>
