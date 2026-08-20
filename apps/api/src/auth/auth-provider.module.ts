@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AUTH_PROVIDER } from './providers/auth-provider.interface';
+import { supabaseAuthClientProvider } from './providers/supabase-auth-client';
 import { SupabaseAuthProvider } from './providers/supabase-auth.provider';
 
 /**
@@ -10,7 +11,10 @@ import { SupabaseAuthProvider } from './providers/supabase-auth.provider';
  * needs the guard's module, which would otherwise be a cycle.
  */
 @Module({
-  providers: [{ provide: AUTH_PROVIDER, useClass: SupabaseAuthProvider }],
+  providers: [
+    supabaseAuthClientProvider,
+    { provide: AUTH_PROVIDER, useClass: SupabaseAuthProvider },
+  ],
   exports: [AUTH_PROVIDER],
 })
 export class AuthProviderModule {}
