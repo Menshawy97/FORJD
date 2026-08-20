@@ -101,7 +101,7 @@ void main() {
     expect(find.text('Welcome back'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'ada@example.com');
-    await tester.enterText(find.byType(TextField).last, 'password123');
+    await tester.enterText(find.byType(TextField).last, 'Str0ng!Pass');
     await tester.tap(find.widgetWithText(InkWell, 'Log In').last);
     await tester.pumpAndSettle();
 
@@ -185,7 +185,7 @@ void main() {
     final fields = find.byType(TextField);
     await tester.enterText(fields.at(0), 'Ada Lovelace');
     await tester.enterText(fields.at(1), 'ada@example.com');
-    await tester.enterText(fields.at(2), 'password123');
+    await tester.enterText(fields.at(2), 'Str0ng!Pass');
     await tester.tap(find.widgetWithText(InkWell, 'Create Account').last);
     await tester.pumpAndSettle();
 
@@ -198,6 +198,50 @@ void main() {
     await tester.tap(find.text('Back to log in'));
     await tester.pumpAndSettle();
     expect(find.text('Welcome back'), findsOneWidget);
+  });
+
+  testWidgets('a rejected password says why, under the password field', (
+    tester,
+  ) async {
+    // The point of surfacing policy failures at all: a generic "Registration failed" would
+    // leave someone at a form with no idea what to change.
+    await boot(
+      tester,
+      (options) => options.path == '/auth/register'
+          ? jsonBody(400, {
+              'message': 'Validation failed',
+              'errors': {
+                'password': ['Password must include an uppercase letter'],
+              },
+            })
+          : jsonBody(404, {}),
+    );
+
+    await tester.tap(find.text('Create Account'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'Ada Lovelace');
+    await tester.enterText(fields.at(1), 'ada@example.com');
+    await tester.enterText(fields.at(2), 'password123');
+    await tester.tap(find.widgetWithText(InkWell, 'Create Account').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Password must include an uppercase letter'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Validation failed'),
+      findsNothing,
+      reason:
+          'the summary line would only repeat the field message less usefully',
+    );
+    expect(
+      find.text('Create account'),
+      findsOneWidget,
+      reason: 'the user stays on the form so they can fix it',
+    );
   });
 
   testWidgets('an empty register form is rejected before any network call', (

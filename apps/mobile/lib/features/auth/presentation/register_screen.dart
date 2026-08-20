@@ -63,10 +63,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     final isBusy = state is AuthAuthenticating;
-    final serverError = state is AuthUnauthenticated
-        ? state.failure?.message
-        : null;
+    final failure = state is AuthUnauthenticated ? state.failure : null;
     final localError = _showEmptyFieldError ? 'All fields are required.' : null;
+
+    // When the server named the offending fields, the messages render under those fields
+    // and the summary line would just repeat them less usefully.
+    final serverError = failure == null || failure.fieldErrors.isNotEmpty
+        ? null
+        : failure.message;
 
     return Scaffold(
       body: SafeArea(
@@ -117,19 +121,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.email],
-                      errorText: _blankMarker(_email.text.trim().isEmpty),
+                      errorText:
+                          _blankMarker(_email.text.trim().isEmpty) ??
+                          failure?.forField('email'),
                       enabled: !isBusy,
                     ),
                     const SizedBox(height: AppDimens.fieldGap),
                     ForjdTextField(
                       label: 'Password',
                       controller: _password,
-                      hintText: 'Min. 8 characters',
+                      hintText: '8+ chars, upper, lower, number, symbol',
                       obscure: true,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _submit(),
                       autofillHints: const [AutofillHints.newPassword],
-                      errorText: _blankMarker(_password.text.isEmpty),
+                      // The policy lives on the auth provider and is mirrored in
+                      // registerRequestSchema, so 'why was this rejected' is answerable
+                      // here rather than being collapsed into a generic failure.
+                      errorText:
+                          _blankMarker(_password.text.isEmpty) ??
+                          failure?.forField('password'),
                       enabled: !isBusy,
                     ),
                     ForjdInlineError(localError ?? serverError),

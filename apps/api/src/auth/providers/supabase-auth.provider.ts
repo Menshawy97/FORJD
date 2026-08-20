@@ -1,6 +1,11 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
+import {
+  AuthError,
+  createClient,
+  SupabaseClient,
+  User as SupabaseUser,
+} from '@supabase/supabase-js';
 
 import {
   AuthCredentials,
@@ -10,6 +15,16 @@ import {
   AuthSession,
   SignUpResult,
 } from './auth-provider.interface';
+
+/**
+ * GoTrue reports a policy rejection as `weak_password`. The message check is a fallback for
+ * older responses that carry no code — matching on the message alone would be fragile, but
+ * as a second condition it costs nothing and the failure mode is only that a weak-password
+ * error stays generic, which is what happens today anyway.
+ */
+function isWeakPasswordError(error: AuthError): boolean {
+  return error.code === 'weak_password' || error.message.startsWith('Password should');
+}
 
 interface SupabaseSessionShape {
   access_token: string;
@@ -42,6 +57,17 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { data, error } = await this.client.auth.signUp(credentials);
 
     if (error || !data.user) {
+      // A rejected password is the one signUp failure worth forwarding. It reveals nothing
+      // about whether the address already has an account, so withholding it protects
+      // nobody — it just leaves someone stuck at a form with no idea what is wrong.
+      // `registerRequestSchema` mirrors the provider's policy, so this should normally be
+      // unreachable; it stays as the backstop for when the two drift apart.
+      if (error && isWeakPasswordError(error)) {
+        this.logger.warn(`signUp rejected a weak password: ${error.message}`);
+
+        throw new BadRequestException(error.message);
+      }
+
       this.reject('signUp', error?.message);
     }
 

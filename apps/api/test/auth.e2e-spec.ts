@@ -150,7 +150,7 @@ describe('Auth and profile (e2e)', () => {
   it('registers a user and issues a session', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ email: testEmail, password: 'password123' })
+      .send({ email: testEmail, password: 'Str0ng!Pass' })
       .expect(201);
 
     expect(response.body.email).toBe(testEmail);
@@ -159,10 +159,35 @@ describe('Auth and profile (e2e)', () => {
     expect(response.body.userId).not.toBe(externalId);
   });
 
+  /**
+   * The policy is enforced here as well as on the auth provider so a rejection names the
+   * field. Without it the provider refuses the password and the caller gets a bare
+   * "Registration failed" with nothing to act on.
+   */
+  it('rejects a password that meets the length rule but not the policy', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({ email: `weak-${suiteId}@example.com`, password: 'password123' })
+      .expect(400);
+
+    expect(response.body.errors).toHaveProperty('password');
+    expect(response.body.errors.password.join(' ')).toMatch(/uppercase|symbol/i);
+  });
+
+  it('does not apply the policy at login, only at registration', async () => {
+    // A password that fails the policy must be rejected on credentials (401), never on
+    // validation (400). Applying the policy at login would lock out everyone whose
+    // password predates it.
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: testEmail, password: 'password123' })
+      .expect(401);
+  });
+
   it('stores a display name supplied at registration on the profile', async () => {
     const registered = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ email: namedEmail, password: 'password123', displayName: 'Grace Hopper' })
+      .send({ email: namedEmail, password: 'Str0ng!Pass', displayName: 'Grace Hopper' })
       .expect(201);
 
     const me = await request(app.getHttpServer())
@@ -177,7 +202,7 @@ describe('Auth and profile (e2e)', () => {
   it('logs in, reads the profile, updates it, then logs out', async () => {
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: testEmail, password: 'password123' })
+      .send({ email: testEmail, password: 'Str0ng!Pass' })
       .expect(200);
 
     const { accessToken, refreshToken } = login.body;
@@ -218,7 +243,7 @@ describe('Auth and profile (e2e)', () => {
   it('rejects a profile update that changes nothing', async () => {
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: testEmail, password: 'password123' })
+      .send({ email: testEmail, password: 'Str0ng!Pass' })
       .expect(200);
 
     await request(app.getHttpServer())
