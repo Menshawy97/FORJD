@@ -34,7 +34,12 @@ class ForjdBackButton extends StatelessWidget {
 
 /// A screen title with an optional back button above it.
 class ForjdHeader extends StatelessWidget {
-  const ForjdHeader({required this.title, this.onBack, this.trailing, super.key});
+  const ForjdHeader({
+    required this.title,
+    this.onBack,
+    this.trailing,
+    super.key,
+  });
 
   final String title;
   final VoidCallback? onBack;
@@ -95,7 +100,9 @@ class ForjdLogoMark extends StatelessWidget {
             width: 5.5 * scale,
             height: _barHeights[i] * scale,
             decoration: BoxDecoration(
-              color: i == _accentedBar ? AppColors.accentDark : AppColors.accent,
+              color: i == _accentedBar
+                  ? AppColors.accentDark
+                  : AppColors.accent,
               borderRadius: BorderRadius.circular(1.5 * scale),
             ),
           ),

@@ -109,11 +109,10 @@ class _TabItem extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               tab.label,
-              style:
-                  AppText.weighted(
-                    AppText.tabLabel,
-                    isSelected ? FontWeight.w600 : FontWeight.w500,
-                  ).copyWith(color: color),
+              style: AppText.weighted(
+                AppText.tabLabel,
+                isSelected ? FontWeight.w600 : FontWeight.w500,
+              ).copyWith(color: color),
             ),
           ],
         ),
