@@ -41,6 +41,12 @@ dependencies:
   sqlite3_flutter_libs: ^0.6.0+eol
   path_provider: ^2.1.6
   path: ^1.9.1
+  # Keychain on iOS, EncryptedSharedPreferences on Android. Session tokens never touch
+  # SharedPreferences or the Drift database.
+  flutter_secure_storage: ^9.2.4
+  # Parses the design's SVG path strings so ForjdIcon can stroke them in a CustomPainter.
+  # Pure Dart, so it costs the test runner nothing — see ADR-010.
+  path_drawing: ^1.0.1
 
 dev_dependencies:
   flutter_test:
