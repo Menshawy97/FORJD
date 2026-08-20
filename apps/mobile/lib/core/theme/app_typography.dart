@@ -9,8 +9,12 @@ import 'app_colors.dart';
 /// because a silently mis-converted `em` is the most likely way for this file to look
 /// correct and render wrong.
 abstract final class AppText {
-  /// Declared in pubspec.yaml. Falls back to the platform sans-serif until the Archivo
-  /// binaries are added, which changes metrics but nothing structural.
+  /// Bundled at assets/fonts/Archivo-Variable.ttf (SIL OFL 1.1).
+  ///
+  /// Upstream publishes only a variable face, so every style sets both [TextStyle.fontWeight]
+  /// and a `wght` [FontVariation]: the axis is what actually moves the rendered weight, while
+  /// `fontWeight` still governs the fallback face. Setting one without the other is the
+  /// failure mode to watch for — use [weighted] rather than a bare `copyWith`.
   static const fontFamily = 'Archivo';
 
   static const _base = TextStyle(fontFamily: fontFamily, color: AppColors.text);
@@ -21,6 +25,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 34,
     fontWeight: FontWeight.w700,
+    fontVariations: [FontVariation('wght', 700)],
     height: 1.14,
     letterSpacing: -1.02,
   );
@@ -31,6 +36,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 27,
     fontWeight: FontWeight.w700,
+    fontVariations: [FontVariation('wght', 700)],
     height: 1.15,
     letterSpacing: -0.54,
   );
@@ -41,6 +47,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 26,
     fontWeight: FontWeight.w700,
+    fontVariations: [FontVariation('wght', 700)],
     height: 1.15,
     letterSpacing: -0.52,
   );
@@ -51,6 +58,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 19,
     fontWeight: FontWeight.w700,
+    fontVariations: [FontVariation('wght', 700)],
     letterSpacing: -0.19,
   );
 
@@ -60,6 +68,7 @@ abstract final class AppText {
     color: AppColors.dim,
     fontSize: 13.5,
     fontWeight: FontWeight.w400,
+    fontVariations: [FontVariation('wght', 400)],
     height: 1.4,
   );
 
@@ -70,6 +79,7 @@ abstract final class AppText {
     color: AppColors.label,
     fontSize: 9.5,
     fontWeight: FontWeight.w600,
+    fontVariations: [FontVariation('wght', 600)],
     height: 1,
     letterSpacing: 1.33,
   );
@@ -79,6 +89,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 14.5,
     fontWeight: FontWeight.w500,
+    fontVariations: [FontVariation('wght', 500)],
   );
 
   /// .01em x 15.5 = 0.155
@@ -87,6 +98,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 15.5,
     fontWeight: FontWeight.w700,
+    fontVariations: [FontVariation('wght', 700)],
     height: 1,
     letterSpacing: 0.155,
   );
@@ -97,6 +109,7 @@ abstract final class AppText {
     color: AppColors.accent,
     fontSize: 12.5,
     fontWeight: FontWeight.w600,
+    fontVariations: [FontVariation('wght', 600)],
     height: 1,
   );
 
@@ -105,6 +118,7 @@ abstract final class AppText {
     color: AppColors.legal,
     fontSize: 11.5,
     fontWeight: FontWeight.w400,
+    fontVariations: [FontVariation('wght', 400)],
     height: 1.5,
   );
 
@@ -114,6 +128,7 @@ abstract final class AppText {
     color: AppColors.dimmer,
     fontSize: 12,
     fontWeight: FontWeight.w400,
+    fontVariations: [FontVariation('wght', 400)],
     height: 1,
   );
 
@@ -122,6 +137,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 14.5,
     fontWeight: FontWeight.w600,
+    fontVariations: [FontVariation('wght', 600)],
     height: 1.25,
   );
 
@@ -130,12 +146,17 @@ abstract final class AppText {
     color: AppColors.dimmer,
     fontSize: 12,
     fontWeight: FontWeight.w400,
+    fontVariations: [FontVariation('wght', 400)],
     height: 1.3,
   );
 
+  /// The tab bar swaps this to w600 when a tab is selected — via [weighted], so the
+  /// variable axis moves with it.
   static const tabLabel = TextStyle(
     fontFamily: fontFamily,
     fontSize: 10,
+    fontWeight: FontWeight.w500,
+    fontVariations: [FontVariation('wght', 500)],
     height: 1,
   );
 
@@ -144,6 +165,7 @@ abstract final class AppText {
     color: AppColors.errorText,
     fontSize: 12,
     fontWeight: FontWeight.w500,
+    fontVariations: [FontVariation('wght', 500)],
     height: 1,
   );
 
@@ -153,6 +175,7 @@ abstract final class AppText {
     color: AppColors.destructive,
     fontSize: 13,
     fontWeight: FontWeight.w600,
+    fontVariations: [FontVariation('wght', 600)],
     height: 1,
   );
 
@@ -162,6 +185,7 @@ abstract final class AppText {
     color: AppColors.welcomeFeature,
     fontSize: 12.8,
     fontWeight: FontWeight.w500,
+    fontVariations: [FontVariation('wght', 500)],
     height: 1.3,
   );
 
@@ -171,6 +195,7 @@ abstract final class AppText {
     color: AppColors.text,
     fontSize: 23,
     fontWeight: FontWeight.w800,
+    fontVariations: [FontVariation('wght', 800)],
     height: 1,
     letterSpacing: 0.46,
   );
@@ -191,6 +216,14 @@ abstract final class AppText {
     labelSmall: label,
   );
 
+  /// Restyles [base] to [weight], moving the variable `wght` axis alongside
+  /// [TextStyle.fontWeight]. A bare `copyWith(fontWeight: ...)` would change the fallback
+  /// face and leave Archivo rendering at its previous weight.
+  static TextStyle weighted(TextStyle base, FontWeight weight) => base.copyWith(
+    fontWeight: weight,
+    fontVariations: [FontVariation('wght', weight.value.toDouble())],
+  );
+
   /// Escape hatch for one-off styles that still need the family and default colour.
   static TextStyle custom({
     double? fontSize,
@@ -198,11 +231,14 @@ abstract final class AppText {
     Color? color,
     double? height,
     double? letterSpacing,
-  }) => _base.copyWith(
-    fontSize: fontSize,
-    fontWeight: fontWeight,
-    color: color,
-    height: height,
-    letterSpacing: letterSpacing,
-  );
+  }) {
+    final style = _base.copyWith(
+      fontSize: fontSize,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+
+    return fontWeight == null ? style : weighted(style, fontWeight);
+  }
 }
