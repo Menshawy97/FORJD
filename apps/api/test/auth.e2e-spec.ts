@@ -1,6 +1,7 @@
 import { INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { eq } from 'drizzle-orm';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { inArray } from 'drizzle-orm';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
@@ -16,8 +17,11 @@ import {
 import { Database, DRIZZLE } from '../src/database/database.module';
 import { users } from '../src/database/schema/users.schema';
 
-const testEmail = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const testEmail = `e2e-${suiteId}@example.com`;
+const namedEmail = `e2e-named-${suiteId}@example.com`;
 const externalId = '11111111-2222-3333-4444-555555555555';
+const namedExternalId = '66666666-7777-8888-9999-000000000000';
 
 /**
  * An in-memory stand-in for Supabase. Overriding this single token is the whole point of
@@ -26,14 +30,21 @@ const externalId = '11111111-2222-3333-4444-555555555555';
 class FakeAuthProvider implements AuthProvider {
   emailConfirmationRequired = false;
   revokedTokens: string[] = [];
+  resetRequests: string[] = [];
   private readonly accounts = new Map<string, string>();
+  /** Access token -> the address it authenticates, so two accounts can coexist in one suite. */
+  private readonly tokenOwners = new Map<string, string>([
+    ['access-token', testEmail],
+    ['rotated-access-token', testEmail],
+    ['named-access-token', namedEmail],
+  ]);
 
   async signUp(credentials: AuthCredentials): Promise<SignUpResult> {
     this.accounts.set(credentials.email, credentials.password);
 
     return {
       identity: this.identity(credentials.email),
-      session: this.emailConfirmationRequired ? null : this.session(),
+      session: this.emailConfirmationRequired ? null : this.session(credentials.email),
     };
   }
 
@@ -42,7 +53,10 @@ class FakeAuthProvider implements AuthProvider {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return { identity: this.identity(credentials.email), session: this.session() };
+    return {
+      identity: this.identity(credentials.email),
+      session: this.session(credentials.email),
+    };
   }
 
   async refreshSession(refreshToken: string): Promise<AuthSession> {
@@ -50,31 +64,45 @@ class FakeAuthProvider implements AuthProvider {
       throw new UnauthorizedException('Could not refresh session');
     }
 
-    return { ...this.session(), accessToken: 'rotated-access-token' };
+    return { ...this.session(testEmail), accessToken: 'rotated-access-token' };
   }
 
   async signOut(accessToken: string): Promise<void> {
     this.revokedTokens.push(accessToken);
   }
 
+  /**
+   * Records the attempt and resolves unconditionally, mirroring the real adapter: an
+   * unknown address must be indistinguishable from a known one.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    this.resetRequests.push(email);
+  }
+
   async verifyAccessToken(accessToken: string): Promise<AuthIdentity> {
-    if (!['access-token', 'rotated-access-token'].includes(accessToken)) {
+    const email = this.tokenOwners.get(accessToken);
+
+    if (!email) {
       throw new UnauthorizedException('Invalid access token');
     }
 
-    return this.identity(testEmail);
+    return this.identity(email);
   }
 
-  private session(): AuthSession {
+  private session(email: string): AuthSession {
     return {
-      accessToken: 'access-token',
+      accessToken: email === namedEmail ? 'named-access-token' : 'access-token',
       refreshToken: 'refresh-token',
       expiresAt: new Date('2026-06-01T12:00:00Z'),
     };
   }
 
   private identity(email: string): AuthIdentity {
-    return { externalId, email, emailVerified: !this.emailConfirmationRequired };
+    return {
+      externalId: email === namedEmail ? namedExternalId : externalId,
+      email,
+      emailVerified: !this.emailConfirmationRequired,
+    };
   }
 }
 
@@ -86,9 +114,14 @@ describe('Auth and profile (e2e)', () => {
   beforeAll(async () => {
     authProvider = new FakeAuthProvider();
 
+    // The suite makes more auth calls than any real user would in a minute, and
+    // forgot-password is deliberately limited to 3 per 15 minutes. Rate limiting is
+    // asserted by its own unit-level configuration, not by making this suite race a clock.
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(AUTH_PROVIDER)
       .useValue(authProvider)
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -100,7 +133,7 @@ describe('Auth and profile (e2e)', () => {
 
   afterAll(async () => {
     // profiles and audit_logs clean up via ON DELETE cascade / set null.
-    await db.delete(users).where(eq(users.email, testEmail));
+    await db.delete(users).where(inArray(users.email, [testEmail, namedEmail]));
     await app.close();
   });
 
@@ -124,6 +157,21 @@ describe('Auth and profile (e2e)', () => {
     expect(response.body.session.accessToken).toBe('access-token');
     // The internal id must not be the provider's id (ADR-008 identity mapping).
     expect(response.body.userId).not.toBe(externalId);
+  });
+
+  it('stores a display name supplied at registration on the profile', async () => {
+    const registered = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({ email: namedEmail, password: 'password123', displayName: 'Grace Hopper' })
+      .expect(201);
+
+    const me = await request(app.getHttpServer())
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${registered.body.session.accessToken}`)
+      .expect(200);
+
+    expect(me.body.email).toBe(namedEmail);
+    expect(me.body.profile.displayName).toBe('Grace Hopper');
   });
 
   it('logs in, reads the profile, updates it, then logs out', async () => {
@@ -182,5 +230,39 @@ describe('Auth and profile (e2e)', () => {
 
   it('refuses profile access without a token', async () => {
     await request(app.getHttpServer()).get('/api/v1/users/me').expect(401);
+  });
+
+  it('rejects a malformed address before reaching the provider', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/auth/forgot-password')
+      .send({ email: 'not-an-email' })
+      .expect(400);
+
+    expect(response.body.errors).toHaveProperty('email');
+    expect(authProvider.resetRequests).not.toContain('not-an-email');
+  });
+
+  /**
+   * The enumeration test. Asserting the two responses are equal to each other — rather than
+   * asserting twice against 202 — is what actually catches a future change that starts
+   * leaking the difference through a body, a header, or a status.
+   */
+  it('answers identically for a registered and an unregistered address', async () => {
+    const registered = await request(app.getHttpServer())
+      .post('/api/v1/auth/forgot-password')
+      .send({ email: testEmail });
+
+    const unregistered = await request(app.getHttpServer())
+      .post('/api/v1/auth/forgot-password')
+      .send({ email: `absent-${suiteId}@example.com` });
+
+    expect(registered.status).toBe(202);
+    expect({ status: registered.status, text: registered.text }).toEqual({
+      status: unregistered.status,
+      text: unregistered.text,
+    });
+    // Both reached the provider — the indistinguishability is in the response, not in
+    // quietly skipping the work for one of them.
+    expect(authProvider.resetRequests).toEqual([testEmail, `absent-${suiteId}@example.com`]);
   });
 });

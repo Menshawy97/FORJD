@@ -21,7 +21,9 @@ const identity = { externalId: 'ext-1', email: 'a@example.com', emailVerified: t
 
 describe('AuthService', () => {
   let authProvider: jest.Mocked<AuthProvider>;
-  let usersRepository: jest.Mocked<Pick<UsersRepository, 'upsertFromIdentity' | 'recordAudit'>>;
+  let usersRepository: jest.Mocked<
+    Pick<UsersRepository, 'upsertFromIdentity' | 'recordAudit' | 'updateProfile'>
+  >;
   let service: AuthService;
 
   beforeEach(() => {
@@ -30,11 +32,13 @@ describe('AuthService', () => {
       signIn: jest.fn(),
       refreshSession: jest.fn(),
       signOut: jest.fn(),
+      requestPasswordReset: jest.fn(),
       verifyAccessToken: jest.fn(),
     };
     usersRepository = {
       upsertFromIdentity: jest.fn().mockResolvedValue(user),
       recordAudit: jest.fn().mockResolvedValue(undefined),
+      updateProfile: jest.fn().mockResolvedValue(null),
     };
     service = new AuthService(authProvider, usersRepository as unknown as UsersRepository);
   });
@@ -77,6 +81,49 @@ describe('AuthService', () => {
         emailVerified: true,
       });
     });
+
+    it('writes a supplied display name to the profile', async () => {
+      authProvider.signUp.mockResolvedValue({ identity, session });
+
+      await service.register({
+        email: 'a@example.com',
+        password: 'password123',
+        displayName: 'Ada Lovelace',
+      });
+
+      expect(usersRepository.updateProfile).toHaveBeenCalledWith('user-1', {
+        displayName: 'Ada Lovelace',
+      });
+    });
+
+    it('leaves the profile untouched when no display name is supplied', async () => {
+      authProvider.signUp.mockResolvedValue({ identity, session });
+
+      await service.register({ email: 'a@example.com', password: 'password123' });
+
+      expect(usersRepository.updateProfile).not.toHaveBeenCalled();
+    });
+
+    it('returns the unchanged response shape when a display name is supplied', async () => {
+      authProvider.signUp.mockResolvedValue({ identity, session });
+
+      const result = await service.register({
+        email: 'a@example.com',
+        password: 'password123',
+        displayName: 'Ada Lovelace',
+      });
+
+      expect(result).toEqual({
+        userId: 'user-1',
+        email: 'a@example.com',
+        emailVerified: true,
+        session: {
+          accessToken: 'access-1',
+          refreshToken: 'refresh-1',
+          expiresAt: '2026-01-01T01:00:00.000Z',
+        },
+      });
+    });
   });
 
   describe('login', () => {
@@ -107,6 +154,28 @@ describe('AuthService', () => {
 
     expect(authProvider.refreshSession).toHaveBeenCalledWith('refresh-1');
     expect(result.expiresAt).toBe('2026-01-01T01:00:00.000Z');
+  });
+
+  describe('requestPasswordReset', () => {
+    it('delegates to the provider and audits without resolving a user', async () => {
+      authProvider.requestPasswordReset.mockResolvedValue(undefined);
+
+      await service.requestPasswordReset('a@example.com');
+
+      expect(authProvider.requestPasswordReset).toHaveBeenCalledWith('a@example.com');
+      expect(usersRepository.recordAudit).toHaveBeenCalledWith(
+        null,
+        'auth.password_reset_requested',
+        { email: 'a@example.com' },
+      );
+      expect(usersRepository.upsertFromIdentity).not.toHaveBeenCalled();
+    });
+
+    it('resolves for an address with no account, so callers cannot tell the difference', async () => {
+      authProvider.requestPasswordReset.mockResolvedValue(undefined);
+
+      await expect(service.requestPasswordReset('nobody@example.com')).resolves.toBeUndefined();
+    });
   });
 
   it('logout revokes the token before recording the audit entry', async () => {

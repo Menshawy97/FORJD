@@ -39,5 +39,11 @@ export interface AuthProvider {
   signIn(credentials: AuthCredentials): Promise<AuthResult>;
   refreshSession(refreshToken: string): Promise<AuthSession>;
   signOut(accessToken: string): Promise<void>;
+  /**
+   * Fire-and-forget by contract. Implementations must not signal whether the address has an
+   * account: the return type carries no information, so a caller cannot build an
+   * enumeration oracle out of it even by accident.
+   */
+  requestPasswordReset(email: string): Promise<void>;
   verifyAccessToken(accessToken: string): Promise<AuthIdentity>;
 }

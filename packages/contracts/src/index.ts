@@ -8,6 +8,12 @@ import { z } from 'zod';
 export const registerRequestSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  /**
+   * Optional so a client predating this field keeps working. The signup screen requires a
+   * name; the wire contract does not. Bounds match updateProfileRequestSchema.displayName,
+   * so a name accepted here cannot be rejected by the very next profile edit.
+   */
+  displayName: z.string().min(1).max(80).optional(),
 });
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 
@@ -21,6 +27,16 @@ export const refreshRequestSchema = z.object({
   refreshToken: z.string().min(1),
 });
 export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
+
+/**
+ * There is deliberately no response schema. The endpoint answers 202 with an empty body
+ * whether or not the address has an account — any field describing what happened would be
+ * an account-enumeration oracle for a product whose accounts hold health data.
+ */
+export const forgotPasswordRequestSchema = z.object({
+  email: z.string().email(),
+});
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
 
 export const sessionResponseSchema = z.object({
   accessToken: z.string(),

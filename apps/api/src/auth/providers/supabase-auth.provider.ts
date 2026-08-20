@@ -25,6 +25,7 @@ interface SupabaseSessionShape {
 export class SupabaseAuthProvider implements AuthProvider {
   private readonly logger = new Logger(SupabaseAuthProvider.name);
   private readonly client: SupabaseClient;
+  private readonly passwordResetRedirectUrl: string | undefined;
 
   constructor(config: ConfigService) {
     this.client = createClient(
@@ -32,6 +33,9 @@ export class SupabaseAuthProvider implements AuthProvider {
       config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
+    // `get`, not `getOrThrow`: CI supplies only the two required Supabase vars, and an
+    // unset redirect simply falls back to the project's Site URL.
+    this.passwordResetRedirectUrl = config.get<string>('AUTH_PASSWORD_RESET_REDIRECT_URL');
   }
 
   async signUp(credentials: AuthCredentials): Promise<SignUpResult> {
@@ -73,6 +77,24 @@ export class SupabaseAuthProvider implements AuthProvider {
 
     if (error) {
       this.reject('signOut', error.message);
+    }
+  }
+
+  /**
+   * Deliberately does not go through `reject()`. GoTrue reports "user not found" and its own
+   * per-address rate-limit errors here; turning either into a non-2xx would tell a caller
+   * which addresses hold accounts. The detail stays in the log, the caller always sees the
+   * same thing, and a genuine outage surfaces through monitoring rather than through the
+   * one response an attacker can read.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const { error } = await this.client.auth.resetPasswordForEmail(
+      email,
+      this.passwordResetRedirectUrl ? { redirectTo: this.passwordResetRedirectUrl } : undefined,
+    );
+
+    if (error) {
+      this.logger.warn(`requestPasswordReset failed: ${error.message}`);
     }
   }
 
