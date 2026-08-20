@@ -69,23 +69,49 @@ class AuthInterceptor extends QueuedInterceptor {
       return handler.next(err);
     }
 
+    final AuthTokens tokens;
+
     try {
       // Another request may already have refreshed while this one was in flight. If the
       // stored token has moved on from the one this request sent, there is nothing to
       // refresh — just replay with what is current.
       final sent = err.requestOptions.headers['Authorization'];
-      final tokens = sent == 'Bearer ${stale.accessToken}'
+      tokens = sent == 'Bearer ${stale.accessToken}'
           ? await _refreshOnce(stale.refreshToken)
           : stale;
-
-      handler.resolve(await _replay(err.requestOptions, tokens));
     } on Object {
-      await store.clear();
-      onSessionLost();
+      // The refresh itself failed, so the session cannot be renewed. This is the only
+      // place that is true.
+      await _endSession();
+
       // The original error, not the refresh error: the caller asked for a profile, and
       // "your profile request failed" is the true thing to tell them.
+      return handler.next(err);
+    }
+
+    try {
+      handler.resolve(await _replay(err.requestOptions, tokens));
+    } on DioException catch (replayError) {
+      // The replay is deliberately outside the block above. A dropped connection or a
+      // timeout here says nothing about whether the session is valid, and tearing it down
+      // for one would log a user out over a moment of bad signal — with a token that had
+      // just been refreshed successfully.
+      //
+      // A 401 is the exception: the token the server just issued was rejected, so the
+      // session really is gone.
+      if (replayError.response?.statusCode == 401) {
+        await _endSession();
+      }
+
+      handler.next(err);
+    } on Object {
       handler.next(err);
     }
+  }
+
+  Future<void> _endSession() async {
+    await store.clear();
+    onSessionLost();
   }
 
   bool _shouldAttemptRefresh(DioException err) {

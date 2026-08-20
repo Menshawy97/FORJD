@@ -112,6 +112,67 @@ void main() {
   });
 
   test(
+    'a dropped connection during the replay keeps the refreshed session',
+    () async {
+      // The regression this exists for: refresh succeeds and writes new tokens, then the
+      // replay dies on the network. Tearing the session down here would log someone out
+      // over a moment of bad signal, holding a token that had just been issued.
+      store = FakeTokenStore(tokens('access-1'));
+      refresher = FakeRefresher();
+      sessionLost = 0;
+
+      final adapter = FakeHttpAdapter(
+        (options, attempt) => attempt == 1
+            ? jsonBody(401, {'message': 'Unauthorized'})
+            : throwNetworkError(options),
+      );
+
+      dio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1'))
+        ..httpClientAdapter = adapter;
+      final replayClient = Dio(
+        BaseOptions(baseUrl: 'https://example.test/api/v1'),
+      )..httpClientAdapter = adapter;
+      dio.interceptors.add(
+        AuthInterceptor(
+          store: store,
+          refresher: refresher,
+          onSessionLost: () => sessionLost++,
+          retryClient: replayClient,
+        ),
+      );
+
+      await expectLater(
+        dio.get<dynamic>('/users/me'),
+        throwsA(isA<DioException>()),
+      );
+
+      expect(refresher.calls, 1);
+      expect(store.clears, 0, reason: 'the refreshed session must survive');
+      expect(sessionLost, 0);
+      expect(
+        (await store.read())?.accessToken,
+        'access-2',
+        reason: 'the newly refreshed token is still usable',
+      );
+    },
+  );
+
+  test('a 401 on the replay does end the session', () async {
+    // The counterpart: the server rejected the token it had just issued, so the session
+    // genuinely is gone and signing out is correct.
+    arrange(failTimes: 99);
+
+    await expectLater(
+      dio.get<dynamic>('/users/me'),
+      throwsA(isA<DioException>()),
+    );
+
+    expect(refresher.calls, 1);
+    expect(store.clears, 1);
+    expect(sessionLost, 1);
+  });
+
+  test(
     'a 401 from /auth/login is passed straight through without refreshing',
     () async {
       arrange(failingPath: '/auth/login', failTimes: 99);

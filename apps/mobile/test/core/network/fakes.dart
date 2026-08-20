@@ -99,6 +99,17 @@ class FakeHttpAdapter implements HttpClientAdapter {
 
 typedef Uint8ListOrString = List<int>;
 
+/// Simulates a transport failure — a dropped connection or a timeout — as opposed to a
+/// server that answered with an error status. The distinction matters: one says nothing
+/// about whether the session is valid, the other can.
+Never throwNetworkError(RequestOptions options) {
+  throw DioException(
+    requestOptions: options,
+    type: DioExceptionType.connectionError,
+    error: 'simulated connection drop',
+  );
+}
+
 ResponseBody jsonBody(int status, Map<String, dynamic> body) =>
     ResponseBody.fromString(
       jsonEncode(body),
