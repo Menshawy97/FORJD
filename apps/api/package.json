@@ -25,6 +25,7 @@
     "@sentry/nestjs": "^10.70.0",
     "@supabase/supabase-js": "^2.112.3",
     "drizzle-orm": "^0.45.2",
+    "jose": "^5.10.0",
     "nestjs-pino": "^4.1.0",
     "pg": "^8.23.0",
     "pino-http": "^10.3.0",

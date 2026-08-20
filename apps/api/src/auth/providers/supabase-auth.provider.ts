@@ -7,8 +7,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthError, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
+import { JWTVerifyGetKey, jwtVerify } from 'jose';
 
 import { SUPABASE_AUTH_CLIENT } from './supabase-auth-client';
+import { SUPABASE_JWKS, supabaseIssuer } from './supabase-jwks';
 import {
   AuthCredentials,
   AuthIdentity,
@@ -28,10 +30,31 @@ function isWeakPasswordError(error: AuthError): boolean {
   return error.code === 'weak_password' || error.message.startsWith('Password should');
 }
 
+/**
+ * Supabase issues every signed-in user's token with this audience. Anything else was minted
+ * for a different consumer and must not authenticate a request here.
+ */
+const ACCESS_TOKEN_AUDIENCE = 'authenticated';
+
+/**
+ * Asymmetric only, and pinned rather than read from the token's own header. The header is
+ * attacker-controlled: a verifier that honours it will accept an HS256 token signed with
+ * the public key, which is public. Listing both curves keeps a future RS256 rotation from
+ * being an outage.
+ */
+const ACCESS_TOKEN_ALGORITHMS = ['ES256', 'RS256'];
+
 interface SupabaseSessionShape {
   access_token: string;
   refresh_token: string;
   expires_at?: number;
+}
+
+/** The subset of a Supabase access token's claims this adapter reads. */
+interface JwtClaims {
+  sub?: string;
+  email?: string;
+  user_metadata?: { email_verified?: boolean };
 }
 
 /**
@@ -43,10 +66,14 @@ export class SupabaseAuthProvider implements AuthProvider {
   private readonly logger = new Logger(SupabaseAuthProvider.name);
   private readonly passwordResetRedirectUrl: string | undefined;
 
+  private readonly issuer: string;
+
   constructor(
     @Inject(SUPABASE_AUTH_CLIENT) private readonly client: SupabaseClient,
     config: ConfigService,
+    @Inject(SUPABASE_JWKS) private readonly jwks: JWTVerifyGetKey,
   ) {
+    this.issuer = supabaseIssuer(config);
     // `get`, not `getOrThrow`: CI supplies only the two required Supabase vars, and an
     // unset redirect simply falls back to the project's Site URL.
     this.passwordResetRedirectUrl = config.get<string>('AUTH_PASSWORD_RESET_REDIRECT_URL');
@@ -130,14 +157,45 @@ export class SupabaseAuthProvider implements AuthProvider {
     }
   }
 
+  /**
+   * Verified in process against the project's published signing keys, not by asking
+   * Supabase (ADR-012). This runs on every authenticated request, so the network round trip
+   * it replaces was the largest fixed cost in the API.
+   *
+   * The tradeoff is written down rather than hidden: a token stays valid until it expires,
+   * so signing out revokes the refresh token but cannot recall an access token already
+   * issued. The access-token lifetime is therefore the revocation window, which is why
+   * ADR-012 pins it short.
+   */
   async verifyAccessToken(accessToken: string): Promise<AuthIdentity> {
-    const { data, error } = await this.client.auth.getUser(accessToken);
+    let claims: JwtClaims;
 
-    if (error || !data.user) {
-      this.reject('verifyAccessToken', error?.message);
+    try {
+      const { payload } = await jwtVerify(accessToken, this.jwks, {
+        issuer: this.issuer,
+        audience: ACCESS_TOKEN_AUDIENCE,
+        algorithms: ACCESS_TOKEN_ALGORITHMS,
+      });
+
+      claims = payload as JwtClaims;
+    } catch (error: unknown) {
+      // Every failure reads the same to the caller. An expired token and a forged one are
+      // both just "not authenticated"; saying which would tell an attacker whether a
+      // signature was the part that failed.
+      this.reject('verifyAccessToken', error instanceof Error ? error.message : undefined);
     }
 
-    return this.toIdentity(data.user);
+    if (!claims.sub) {
+      this.reject('verifyAccessToken', 'token carried no subject');
+    }
+
+    return {
+      externalId: claims.sub,
+      email: claims.email ?? '',
+      // Absent means unverified. Defaulting the other way would let a token minted before
+      // this claim existed read as confirmed.
+      emailVerified: claims.user_metadata?.email_verified === true,
+    };
   }
 
   /**

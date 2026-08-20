@@ -20,7 +20,9 @@
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3000/api/v1';
 const email = process.env.FORJD_EMAIL;
 const password = process.env.FORJD_PASSWORD;
-const samples = Number(process.env.SAMPLES ?? 100);
+// Kept under the global throttler's 60-per-minute ceiling (see AppModule). Asking for
+// more than that does not produce a better measurement, it produces a 429 partway through.
+const samples = Number(process.env.SAMPLES ?? 40);
 
 /** Excluded from the statistics: the first requests pay for JIT warmup and TCP setup. */
 const warmups = 5;
@@ -58,6 +60,13 @@ async function timeOneRequest(token: string): Promise<number> {
 
   // Draining the body is part of the request. Skipping it would time the headers only.
   await response.arrayBuffer();
+
+  if (response.status === 429) {
+    throw new Error(
+      'Rate limited. SAMPLES plus warmups must stay under the throttler ceiling, and a ' +
+        'previous run in the same window counts against it — wait a minute and retry.',
+    );
+  }
 
   if (!response.ok) {
     throw new Error(`GET /users/me returned ${response.status}`);
