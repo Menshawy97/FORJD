@@ -19,7 +19,14 @@ const newPasswordSchema = z
   .regex(/[a-z]/, 'Password must include a lowercase letter')
   .regex(/[A-Z]/, 'Password must include an uppercase letter')
   .regex(/[0-9]/, 'Password must include a number')
-  .regex(/[^A-Za-z0-9]/, 'Password must include a symbol');
+  // Supabase's policy names an explicit symbol set, and a space is not in it. A broader
+  // class such as [^A-Za-z0-9] would accept "Str0ng Pass1" here and let the provider reject
+  // it instead — exactly the drift this schema exists to prevent. Found by typing a
+  // space-containing password into the real signup form on a device.
+  .regex(
+    /[!@#$%^&*()_+\-=[\]{};'\\:"|<>?,./`~]/,
+    'Password must include a symbol, such as ! @ # $ %',
+  );
 
 export const registerRequestSchema = z.object({
   email: z.string().email(),

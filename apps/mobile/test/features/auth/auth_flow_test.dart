@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:forjd/app/app.dart';
 import 'package:forjd/core/network/dio_client.dart';
+import 'package:forjd/core/widgets/widgets.dart';
 import 'package:forjd/data/local/database.dart';
 import 'package:forjd/features/auth/data/secure_token_store.dart';
 
@@ -241,6 +242,86 @@ void main() {
       find.text('Create account'),
       findsOneWidget,
       reason: 'the user stays on the form so they can fix it',
+    );
+  });
+
+  testWidgets('a stale failure does not greet the next form opened', (
+    tester,
+  ) async {
+    // Found on the emulator: a failed attempt left its error in AuthState, so opening the
+    // register screen later showed a red "Invalid email" on a field nobody had touched.
+    await boot(
+      tester,
+      (options) => options.path == '/auth/register'
+          ? jsonBody(400, {
+              'message': 'Validation failed',
+              'errors': {
+                'email': ['Invalid email'],
+              },
+            })
+          : jsonBody(404, {}),
+    );
+
+    await tester.tap(find.text('Create Account'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'Ada Lovelace');
+    await tester.enterText(fields.at(1), 'not-an-email');
+    await tester.enterText(fields.at(2), 'Str0ng!Pass');
+    await tester.tap(find.widgetWithText(InkWell, 'Create Account').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Invalid email'), findsOneWidget);
+
+    // Leave via the screen's own back control (not pageBack, which looks for a Material
+    // back button this design does not use), then return to an unsubmitted form.
+    await tester.tap(find.byType(ForjdBackButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create Account'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Invalid email'),
+      findsNothing,
+      reason: 'a fresh form must not show the earlier error',
+    );
+  });
+
+  testWidgets('editing a rejected field clears its error', (tester) async {
+    // Seen on the emulator: the message describes the value that was sent, so once that
+    // value changes it is talking about text no longer on screen.
+    await boot(
+      tester,
+      (options) => options.path == '/auth/register'
+          ? jsonBody(400, {
+              'message': 'Validation failed',
+              'errors': {
+                'password': ['Password must include a symbol'],
+              },
+            })
+          : jsonBody(404, {}),
+    );
+
+    await tester.tap(find.text('Create Account'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'Ada Lovelace');
+    await tester.enterText(fields.at(1), 'ada@example.com');
+    await tester.enterText(fields.at(2), 'Str0ngPass1');
+    await tester.tap(find.widgetWithText(InkWell, 'Create Account').last);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('must include a symbol'), findsOneWidget);
+
+    await tester.enterText(fields.at(2), 'Str0ng!Pass1');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('must include a symbol'),
+      findsNothing,
+      reason: 'the error described the old value',
     );
   });
 

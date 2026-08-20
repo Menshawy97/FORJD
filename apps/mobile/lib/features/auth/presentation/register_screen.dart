@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:forjd/core/network/api_failure.dart';
 import 'package:forjd/core/theme/app_colors.dart';
 import 'package:forjd/core/theme/app_dimens.dart';
 import 'package:forjd/core/theme/app_typography.dart';
@@ -23,6 +24,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   bool _showEmptyFieldError = false;
 
+  /// Fields edited since the last submit. A server error describes the value that was
+  /// sent, so the moment someone changes that value the error is about text no longer on
+  /// screen — it has to stop being shown rather than sit there until the next attempt.
+  final _edited = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+
+    // A failure from an earlier attempt — possibly from a different screen — must not
+    // greet someone who has just opened this form. Deferred to after the first frame
+    // because a provider cannot be written during build.
+    for (final entry in {'email': _email, 'password': _password}.entries) {
+      entry.value.addListener(() {
+        if (_edited.add(entry.key)) {
+          setState(() {});
+        }
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(authControllerProvider.notifier).clearFailure();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _name.dispose();
@@ -43,11 +71,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    setState(() => _showEmptyFieldError = false);
+    setState(() {
+      _showEmptyFieldError = false;
+      _edited.clear();
+    });
     await ref
         .read(authControllerProvider.notifier)
         .register(email: email, password: password, displayName: name);
   }
+
+  /// The server error for [field], unless the user has since changed it.
+  String? _serverFieldError(ApiFailure? failure, String field) =>
+      _edited.contains(field) ? null : failure?.forField(field);
 
   /// Marks a field that was left blank. Empty string, not a message: the form shows one
   /// summary line rather than repeating "required" three times.
@@ -123,7 +158,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       autofillHints: const [AutofillHints.email],
                       errorText:
                           _blankMarker(_email.text.trim().isEmpty) ??
-                          failure?.forField('email'),
+                          _serverFieldError(failure, 'email'),
                       enabled: !isBusy,
                     ),
                     const SizedBox(height: AppDimens.fieldGap),
@@ -140,7 +175,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       // here rather than being collapsed into a generic failure.
                       errorText:
                           _blankMarker(_password.text.isEmpty) ??
-                          failure?.forField('password'),
+                          _serverFieldError(failure, 'password'),
                       enabled: !isBusy,
                     ),
                     ForjdInlineError(localError ?? serverError),

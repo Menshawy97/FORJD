@@ -65,7 +65,14 @@ export class SupabaseAuthProvider implements AuthProvider {
       if (error && isWeakPasswordError(error)) {
         this.logger.warn(`signUp rejected a weak password: ${error.message}`);
 
-        throw new BadRequestException(error.message);
+        // Deliberately not the provider's own message. GoTrue's text lists its entire
+        // symbol alphabet and rendered as four dense lines on the signup screen. The full
+        // text stays in the log; the caller gets the same rule in the same words the
+        // contract uses, so the two can never contradict each other.
+        throw new BadRequestException(
+          'Password must be at least 8 characters and include an uppercase letter, ' +
+            'a lowercase letter, a number, and a symbol.',
+        );
       }
 
       this.reject('signUp', error?.message);
