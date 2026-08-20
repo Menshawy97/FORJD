@@ -7,7 +7,7 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-08-20)
+## Current status (last updated 2026-08-21)
 
 **We are inside Phase 1.** Phase 0 is complete except Spike B, which is open but
 does not gate Phase 1 (see "Spike status" below). Read this section first when
@@ -19,17 +19,29 @@ continue.
 
 Executing the 14-slice plan. **Slices 1-11 are done and merged; `main` is green.** The
 app has been walked end to end on an Android emulator against the live API — see "The
-emulator walk" below. What remains is the three deployment-shaped slices (12, 13, 14),
-which need the staging/prod Supabase projects, a Railway account, and the physical
-Android device.
+emulator walk" below.
+
+Between slice 11 and slice 12, a **four-slice hardening batch (A-D)** ran and is merged —
+see "Slices A-D" below. It was not in the original 14-slice numbering; it came from a
+critical re-read of the roadmap that found the highest-leverage work in the repo was
+unblocked and undone, while slices 12-14 were blocked on decisions rather than only on
+accounts.
+
+**The environment topology assumed by slice 12 no longer holds.** Only two Supabase
+projects are available, not three, and Railway is rejected on cost — ADR-009 chose it
+*for* its paid tier, so the decision needs retaking, not redirecting. Slices 12 and 13 are
+therefore **blocked on a decision, not only on an account**: see "Next, in order" below for
+the options.
 
 Half of the phase's definition of done is already mechanically true: exactly one
 file imports the Supabase SDK for auth, one for storage, and nothing else —
 verified by grep in CI rather than by discipline.
 
-**Current test surface:** 23 API unit tests, 12 API e2e tests, 60 Flutter tests, all
-passing. Lint, format, `flutter analyze`, and the architecture-conformance check are
-green, and the debug APK builds with the native secure-storage plugin.
+**Current test surface:** 52 API unit tests, 12 API e2e tests, 69 Flutter tests, all
+passing, with real coverage floors enforced in CI for the first time (see slice C). Lint,
+format, `flutter analyze`, and the architecture-conformance check are green. CI now builds
+a *release* APK with a size budget, not a debug one — see slice C for what that does and
+does not catch.
 
 ### Slice 11 — what it turned out to be
 
@@ -65,6 +77,24 @@ Landed, each its own commit, everything green at each step:
 request through the interceptor's own Dio deadlocks. `QueuedInterceptor` serialises its
 callbacks, so the replay queues behind the `onError` that is awaiting it and the request
 hangs until it times out. The replay client must not carry the interceptor.
+
+### Slices A-D — hardening between slice 11 and slice 12
+
+Four slices, each its own PR, each merged with `main` green afterward (PRs #7-#10). Not
+part of the original 14-slice numbering — they came out of re-reading the roadmap
+critically rather than executing the next listed slice by default.
+
+| Slice | Status | Detail |
+|---|---|---|
+| A — testability seam + index + baseline | ✅ Done | `SupabaseAuthProvider` now takes an injected Supabase client (`SUPABASE_AUTH_CLIENT`), so the weak-password passthrough, the enumeration-defence collapse, and the password-reset swallow are unit-tested for the first time — 8 new tests, closing an ADR-011 gap that had stood since slice 11. `audit_logs.user_id` indexed (migration `0002`) — the unindexed FK was sequential-scanning the fastest-growing table on every `ON DELETE SET NULL`. `scripts/perf/measure-auth-latency.ts` added so slice B could be argued from a number. |
+| B — local JWT verification | ✅ Done, **ADR-012** | `verifyAccessToken` verifies in process against the project's published ES256 keys instead of calling Supabase. Measured on `GET /users/me`: p50 **123.3 ms → 14.3 ms**, p95 **253.1 ms → 20.7 ms**. `IdentityCache` removes the remaining per-request DB read, bounded and keyed on external id **and** email so a re-pointed address still re-enters the repository's ownership check. 10 tests sign real tokens with a throwaway key, including both `alg: none` and the HS256-signed-with-the-public-key confusion attack. **The tradeoff is real and stated in the ADR**: an access token can no longer be recalled before it expires, so the token lifetime is now the revocation window — see the manual steps below, this is not finished until it is shortened. Walked on the emulator afterward; nothing broke, nothing new found (see below). |
+| C — real CI gates | ✅ Done | The repo has claimed 80% coverage since Phase 1 and enforced nothing. Now enforced: API `coverageThreshold` (43% general pool, **100% floor on `auth/guards/**` and `auth.service.ts`**), a Flutter lcov floor (75%), a release-APK size budget (+5% of measured), and a conformance grep pinning `flutter_secure_storage` to `secure_token_store.dart`. Every gate was watched to fail against a planted violation before being committed. CI now builds a **release** APK, not debug — the debug build ran no AOT compilation and no tree-shaking, so it could not have caught a size regression. **Correction to the original plan**: a release build does not exercise R8 — Flutter does not enable minification by default, confirmed by inspecting the dex — so enabling it is deferred to its own slice pending a device walk. `cupertino_icons` dropped (546 bytes; genuinely unused). `uses-material-design` stays `true`: the icon set has no eye or pencil, and Material Icons tree-shakes to 2,212 bytes, so the honest cost of keeping it is 2 KB, not 1.6 MB. |
+| D — contract-drift fixtures | ✅ Done | The Dart DTOs mirror the Zod contracts by hand and nothing checked they agreed — flagged as an open follow-up since slice 11. `packages/contracts/src/fixtures.ts` now defines one example per response shape, each validated by its own schema before being written to `packages/contracts/fixtures/*.json`; a Dart test parses those exact files through the real DTOs. CI regenerates the fixtures and fails on any diff. **Correction to the original plan**: it called for capturing real e2e response bodies as fixtures, which would have committed a live access token to the repo on every run; invented, schema-validated values are used instead — safer, and a tighter check, since the awaiting-confirmation and empty-profile cases were chosen deliberately rather than left to whatever a run happened to produce. Verified both directions: a renamed contract field produced `Expected: 172.5, Actual: null`; a deleted fixture failed the parser-coverage test. |
+
+Two corrections to the plan surfaced only by doing the work, both recorded above rather
+than silently absorbed: the release-build size gate does not imply R8 is running, and the
+fixture strategy changed from "capture live" to "generate from schema" once the security
+cost of the first approach became concrete.
 
 ### The emulator walk
 
@@ -184,8 +214,9 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
   The API figure reads lower than the API really is: controllers and services are covered by
   the e2e suite, which runs as a separate jest project and contributes no coverage data.
   **Merging the two runs' coverage is the next real improvement here.**
-- Generating the Dart DTOs from the Zod contracts. They are hand-written mirrors today and
-  can drift silently.
+- ✅ **Contract-drift check — done (slice D).** Generated fixtures, schema-validated, parsed
+  through the real Dart DTOs in CI. Full codegen (Zod → Dart) remains a further step, not
+  attempted here — worth revisiting once the contract passes roughly 20 types.
 - ✅ **Conformance grep pinning `flutter_secure_storage` to `secure_token_store.dart` — done**,
   and verified both ways: it catches a planted import elsewhere and allows the legitimate one.
 - Golden tests. Deliberately skipped: `flutter test` substitutes Ahem for bundled fonts, so
@@ -207,9 +238,9 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 - The launcher icon is still the default Flutter icon.
 - `AppColors.errorText` (`#E05A3C`) sits close to the accent, so an inline error reads a
   little like a link. A palette decision, deliberately not taken unilaterally.
-- A test for `SupabaseAuthProvider`'s weak-password passthrough. It has been exercised by
-  hand on a device but has no automated cover, because the class builds its client in the
-  constructor and offers no seam to stub (ADR-011).
+- ✅ **Weak-password-passthrough test — done (slice A).** The Supabase client is now
+  injected (`SUPABASE_AUTH_CLIENT`), giving a stub seam; 8 tests cover the passthrough, the
+  enumeration collapse, and the reset swallow.
 
 ### All 14 slices
 
@@ -226,8 +257,8 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 | 9 — Flutter shell | ✅ Done | `flutter create` scaffold + go_router routes, Riverpod, Dio client, theme. Analyzer clean, tests pass. |
 | 10 — Drift scaffold | ✅ Done | `AppDatabase` with a `CachedProfiles` table. Timestamps stored as **ISO-8601 text**, not Unix seconds — the default returns local time and silently shifts any instant that crossed a timezone. See `apps/mobile/build.yaml`. |
 | 11 — Mobile auth UI | ✅ Done | Merged (PRs #2, #3). Design tokens + Archivo, the widget library, the network layer with 401→refresh→replay, auth screens, the 5-tab shell, profile/edit-profile, and ADR-010/011. Walked on an emulator against the live API; four findings fixed. 60 Flutter tests; debug APK builds. |
-| 12 — Build flavors | ⬜ Blocked | Needs all three Supabase projects. |
-| 13 — Staging deploy | ⬜ Blocked | Host decided: **Railway** (ADR-009). Needs the staging Supabase project and a Railway account. |
+| 12 — Build flavors | ⬜ Blocked on a decision | The plan assumed three Supabase projects; only two are available, and Railway is rejected on cost. Needs a topology decision (see "Next, in order"), not only an account. |
+| 13 — Staging deploy | ⬜ Blocked on a decision | ADR-009's host choice (Railway) no longer holds — it was chosen partly *for* its paid tier. Needs a free-tier host picked and verified before an ADR can supersede it. |
 | 14 — Device DoD walk | ⬜ Not started | Needs 12/13 plus the physical Android device. |
 
 Phase 1's definition of done is unchanged: register → login → refresh → logout →
@@ -321,14 +352,21 @@ git identity + initial commit) are **done**. What remains:
 3. ✅ **`forjd-dev` Supabase project — done.** Email/password auth enabled, `inbody`
    bucket created, credentials in the gitignored `apps/api/.env`. Verified working:
    auth and storage endpoints respond, and a real registration round-tripped.
-   ⬜ **Still needed: `forjd-staging` and `forjd-prod`**, for slice 12 (build flavors),
-   so a debug build physically cannot reach production data.
-4. ⬜ **Create the Railway account and project.** The host is decided (ADR-009);
-   what remains is the account itself, which needs a card and is therefore yours
-   to do. Only slice 13 depends on it, so there is no rush — but the Phase 1
-   definition of done requires a *deployed* staging API, so it does gate the phase
-   closing. Verify current pricing while you are there; ADR-009 records that it
-   was not checked.
+   ⬜ **Only two Supabase projects are available in total**, not three, so slice 12's
+   original dev/staging/prod plan does not fit. **Pick one:** (a) create `forjd-prod` and
+   run local development against the Supabase CLI Docker stack instead of a cloud project —
+   frees a slot and removes the email-confirmation and IPv6-pooler friction `forjd-dev` has
+   caused; or (b) create `forjd-prod` and collapse dev and staging onto the existing
+   `forjd-dev` project — simpler, but staging then never matches prod's confirmation-on
+   config. Either way, `forjd-prod` is the one genuinely new project needed.
+4. ⬜ **Railway is declined (cost) — pick a free host instead.** ADR-009 chose Railway partly
+   *for* its paid tier's absence of cold starts, so that reasoning no longer applies and the
+   decision needs retaking, not redirecting. Candidates, cheapest-to-set-up first: **Render**
+   free web service (no card historically required, sleeps after ~15 min idle), **Koyeb**
+   free tier (comparable), **Google Cloud Run** (best technical fit — ~1-2 s cold start,
+   generous free tier — but needs a card on file even at $0). Verify current terms before
+   committing; ADR-009's own recorded weakness is that Railway's pricing was never checked,
+   and repeating that would be the same mistake twice.
 5. ⬜ **Shorten the access-token lifetime to 900 seconds** (Supabase dashboard →
    Authentication → Sessions), in `forjd-dev` and in every project created later. Since
    ADR-012 this value is the session revocation window, not a convenience setting: it is how
@@ -358,26 +396,39 @@ git identity + initial commit) are **done**. What remains:
 
 ### Next action once resumed
 
-**Slice 11 is merged, walked on an emulator, and its findings fixed. Start slice 12.**
-Everything left in Phase 1 is deployment-shaped and gated on things only the user can
-provide — the staging and prod Supabase projects, a Railway account, and the physical
-Android device.
+**Slices 1-11 and the A-D hardening batch are merged; `main` is green.** What is left in
+Phase 1 is genuinely deployment-shaped, but two of its three remaining slices are now
+blocked on a decision rather than only on an account — see the manual steps above for the
+Supabase-topology and hosting choices. **Phase 2 has no blocker at all.** A re-plan of its opening slices (canonical exercise
+model + ingest, browse/search API, on-device catalogue with local FTS5 search — see the
+"Working method" note at the bottom of this file for why later phases are re-planned rather
+than executed from the original outline) came out of the same session that ran slices A-D,
+but has not yet been transcribed into this file or into the plan file linked at the top.
+**Doing that transcription is itself the first useful step** if a session resumes before
+the topology/host decisions above are made — do not re-derive the re-plan from scratch, and
+do not start writing Phase 2 code before it is written down here.
 
-Nothing is half-finished. The next session can go straight to slice 12 once the Supabase
-projects exist; if they do not yet, there is no unblocked Phase 1 work left, and the
-useful thing to do instead is re-plan Phase 2 (see the bottom of this section).
+Nothing is half-finished. Slice D closed the last item that was both unblocked and open;
+there is no more free-standing hardening work sitting undone the way there was before the
+A-D batch.
 
 ### Next, in order
 
-1. **Slice 12 — build flavors.** Needs `forjd-staging` and `forjd-prod` to exist first. The
-   point is that a debug build physically cannot reach production data. `API_BASE_URL` is
-   already a compile-time `String.fromEnvironment`, so the mobile side is mostly wiring
-   flavors to defines rather than new code.
-2. **Slice 13 — deploy staging to Railway** (ADR-009). Needs the Railway account. Note the
-   IPv6 finding below: use the **session pooler** connection string when the hosted database
-   is first migrated, not the direct one.
-3. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
+1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
+   decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.
+2. **Slice 12 — build flavors**, once `forjd-prod` exists and the topology is chosen.
+   `API_BASE_URL` is already a compile-time `String.fromEnvironment`, so this is mostly
+   wiring flavors to defines rather than new code. Record the topology decision as ADR-013.
+3. **Slice 13 — deploy staging to the chosen free host.** Superseding ADR-009 requires
+   `apps/api/Dockerfile`, which does not exist yet and needs writing (multi-stage,
+   production dependencies only). Note the IPv6 finding below: use the **session pooler**
+   connection string when the hosted database is first migrated, not the direct one.
+4. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
    staging. This is what actually closes Phase 1.
+
+**If the topology/host decisions have not been made when a session resumes**, there is no
+unblocked Phase 1 work left, and the useful default is Phase 2 — transcribe its re-plan
+into this file first, per the note above, rather than starting from a blank slice.
 
 Before starting slice 12, re-read this file and the plan's Phase 1 outline, as the working
 method below requires. Phase 2 (exercise database) should be re-planned rather than executed
