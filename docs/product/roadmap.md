@@ -271,13 +271,36 @@ git identity + initial commit) are **done**. What remains:
 
 ### Next action once resumed
 
-**Merge slice 11, then walk it on the emulator.** The branch
-`slice-11-mobile-auth-ui` is complete and green but has not been exercised by a human
-against a running API. Before merging, run the walk in "Verifying slice 11" below — the
-tests prove the parts, not that the app is usable.
+**Slice 11 is merged. Everything left in Phase 1 is deployment-shaped and gated on things
+only the user can provide** — the staging and prod Supabase projects, a Railway account,
+and the physical Android device.
 
-Everything after that is deployment-shaped: slices 12 → 13 → 14, needing the staging and
-prod Supabase projects, a Railway account, and the phone plugged in.
+Two pieces of slice 11 are done but *unverified on a real screen*. The API half was walked
+against live Supabase and works end to end (register with a name → login → profile → edit →
+refresh → forgot-password → logout, with the token revoked afterwards). The mobile half has
+only ever run in widget tests: at the time of writing `flutter devices` shows no Android
+device and `flutter emulators` reports no AVD images, so nobody has actually used the app.
+**Do the walk under "Verifying slice 11" before trusting the UI.** It is the cheapest way to
+find the next thing of the kind the password-policy dead end turned out to be.
+
+### Next, in order
+
+1. **Slice 12 — build flavors.** Needs `forjd-staging` and `forjd-prod` to exist first. The
+   point is that a debug build physically cannot reach production data. `API_BASE_URL` is
+   already a compile-time `String.fromEnvironment`, so the mobile side is mostly wiring
+   flavors to defines rather than new code.
+2. **Slice 13 — deploy staging to Railway** (ADR-009). Needs the Railway account. Note the
+   IPv6 finding below: use the **session pooler** connection string when the hosted database
+   is first migrated, not the direct one.
+3. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
+   staging. This is what actually closes Phase 1.
+
+Before starting slice 12, re-read this file and the plan's Phase 1 outline, as the working
+method below requires. Phase 2 (exercise database) should be re-planned rather than executed
+from the outline — later phases were deliberately left thin so earlier ones could teach their
+lessons, and slice 11 taught several worth carrying forward: mirror provider-side constraints
+in the contract, walk a flow live before believing it, and prefer a test that has been shown
+to fail against the unfixed code.
 
 ### Verifying slice 11
 
