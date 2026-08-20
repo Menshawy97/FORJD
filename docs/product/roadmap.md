@@ -175,16 +175,35 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 - Per-email rate limiting on forgot-password. `ThrottlerGuard` keys on IP, so today it caps
   an origin, not an address; Supabase's own per-address limit is the only real backstop.
 - Username/handle, avatar upload (Phase 5), profile stat tiles (Phases 3/6).
-- A real coverage gate. The repo *states* 80% but enforces nothing — `collectCoverageFrom`
-  has no `coverageThreshold`, and `flutter test` runs without `--coverage`.
+- ✅ **A real coverage gate — done.** `coverageThreshold` in `apps/api/package.json` and
+  `scripts/ci/check-flutter-coverage.sh`, both wired into CI and both shown to fail against
+  a planted violation. The floors are set at what the suites measure today (API 43% on the
+  general pool with a separate **100% floor on `auth/guards/**` and `auth.service.ts`;
+  Flutter 75%) rather than at the stated 80%, because a threshold chosen for how it sounds
+  fails on the day it lands and is deleted the day after. Raise them deliberately.
+  The API figure reads lower than the API really is: controllers and services are covered by
+  the e2e suite, which runs as a separate jest project and contributes no coverage data.
+  **Merging the two runs' coverage is the next real improvement here.**
 - Generating the Dart DTOs from the Zod contracts. They are hand-written mirrors today and
   can drift silently.
-- Optional CI hardening: a conformance grep pinning `flutter_secure_storage` to
-  `secure_token_store.dart`, in the same spirit as the existing Supabase grep.
+- ✅ **Conformance grep pinning `flutter_secure_storage` to `secure_token_store.dart` — done**,
+  and verified both ways: it catches a planted import elsewhere and allows the legitimate one.
 - Golden tests. Deliberately skipped: `flutter test` substitutes Ahem for bundled fonts, so
   goldens need an explicit `FontLoader` — a separate decision (ADR-010).
-- A `calendar` icon. The set has 24 and none of them is one, so the birthday field uses
-  `clock`. Adding it means adding a path in the design's stroke style.
+- Three icons the set does not have: `calendar` (the birthday field uses `clock`), plus
+  `eye` and `pencil`. The last two are why `uses-material-design` is still `true` — the
+  password-visibility toggle and the edit affordance are Material glyphs. Worth knowing before
+  anyone treats that as waste: Flutter subsets the icon font to the codepoints actually used,
+  and the release build tree-shakes MaterialIcons from 1,645,184 bytes to **2,212**. Drawing
+  the three icons is a design task, not a size optimisation.
+
+- **R8 is not enabled**, so the release APK is unminified. Flutter does not turn on
+  minification by default, and the CI size gate measures the build as it actually is
+  (20,861,242 bytes, single-ABI arm64). Enabling `isMinifyEnabled` would shrink it and make
+  it harder to reverse-engineer, but Drift, `sqlite3_flutter_libs` and
+  `flutter_secure_storage` all need keep rules that can only be trusted after a device walk —
+  so it is a deliberate slice of its own, not a flag to flip. Re-baseline the size budget when
+  it lands.
 - The launcher icon is still the default Flutter icon.
 - `AppColors.errorText` (`#E05A3C`) sits close to the accent, so an inline error reads a
   little like a link. A palette decision, deliberately not taken unilaterally.

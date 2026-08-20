@@ -34,6 +34,16 @@ if [ -d apps/mobile/lib ]; then
   fi
 fi
 
+# ADR-011: session tokens live in the platform keystore and nowhere else. Pinning the
+# plugin to one file is what makes that checkable — a second caller could read or write a
+# token without the reasoning in secure_token_store.dart applying to it.
+if [ -d apps/mobile/lib ]; then
+  hits=$(grep -rn --include='*.dart' 'package:flutter_secure_storage/' apps/mobile/lib     | grep -v '^apps/mobile/lib/features/auth/data/secure_token_store.dart' || true)
+  if [ -n "$hits" ]; then
+    report "flutter_secure_storage imported outside secure_token_store.dart" "$hits"
+  fi
+fi
+
 # Rules 1-2: domain packages depend on neither UI nor provider SDKs.
 if [ -d packages/domain/src ]; then
   hits=$(grep -rn --include='*.ts' -E "from '(@supabase/|@nestjs/|react|flutter)" packages/domain/src || true)
