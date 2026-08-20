@@ -17,16 +17,17 @@ continue.
 
 ### Phase 1 progress
 
-Executing the 14-slice plan. **Slices 1-11 are done. Slice 11 is complete on branch
-`slice-11-mobile-auth-ui` and awaiting merge.** What remains is the three
-deployment-shaped slices (12, 13, 14), which need the staging/prod Supabase
-projects, a Railway account, and the physical Android device.
+Executing the 14-slice plan. **Slices 1-11 are done and merged; `main` is green.** The
+app has been walked end to end on an Android emulator against the live API — see "The
+emulator walk" below. What remains is the three deployment-shaped slices (12, 13, 14),
+which need the staging/prod Supabase projects, a Railway account, and the physical
+Android device.
 
 Half of the phase's definition of done is already mechanically true: exactly one
 file imports the Supabase SDK for auth, one for storage, and nothing else —
 verified by grep in CI rather than by discipline.
 
-**Current test surface:** 23 API unit tests, 10 API e2e tests, 43 Flutter tests, all
+**Current test surface:** 23 API unit tests, 12 API e2e tests, 60 Flutter tests, all
 passing. Lint, format, `flutter analyze`, and the architecture-conformance check are
 green, and the debug APK builds with the native secure-storage plugin.
 
@@ -65,6 +66,54 @@ request through the interceptor's own Dio deadlocks. `QueuedInterceptor` seriali
 callbacks, so the replay queues behind the `onError` that is awaiting it and the request
 hangs until it times out. The replay client must not carry the interceptor.
 
+### The emulator walk
+
+The UI was walked on a Pixel 7 / Android 14 emulator against the local API and live
+Supabase. It is worth doing again after any UI change — it found four things the 58 tests
+passing at the time did not.
+
+**The emulator already exists.** Do not re-derive this:
+
+```bash
+# AVD: forjd_pixel7_api34  (Play Store image, so Health Connect works on it in Phase 6)
+/c/Android/Sdk/emulator/emulator.exe -avd forjd_pixel7_api34 -no-snapshot-load -gpu host
+```
+
+`-gpu host` matters. The default software renderer ANR'd the emulator's own SystemUI at
+1080x2400 before the app could be used. Drive it with `adb shell input tap|text` and read
+the result with `adb exec-out screencap -p`; the package is **`com.forjd.forjd`**. No app
+config is needed — `apiBaseUrl` already defaults to `http://10.0.2.2:3000/api/v1`, which is
+the emulator's alias for the host. A physical phone would need the machine's LAN IP instead.
+
+**Confirmed working on device:** register with a name → session → app; the name surviving to
+`/users/me`; all five tabs; profile initials fallback; edit → save → `PATCH` persisting
+server-side; wrong credentials keeping the user on the form; the reset panel revealing
+nothing about whether an account exists; logout clearing the device; and a cold restart
+while signed in going straight to `/home` with no welcome-screen flash. It also exercised
+the weak-password passthrough, which ADR-011 records as having no automated test.
+
+**Found and fixed** (PR #3): a stale failure greeting the next form opened; a field error
+persisting while being corrected; the contract accepting a space as a symbol when Supabase
+does not; and the Flutter-default white launch screen flashing on every cold start of a
+dark app. The space-as-symbol bug was introduced earlier in the same session that fixed the
+password policy — only typing into a real form exposed it.
+
+**Found and left alone**, because each is a judgement call rather than a defect:
+
+- `AppColors.errorText` (`#E05A3C`) sits close to the accent, so "Invalid credentials" reads
+  a little like the "Forgot password?" link above it. Changing it means changing the design's
+  palette.
+- There is no `calendar` icon among the 24, so the birthday field uses `clock`. Fixing it
+  means adding a path to the icon set.
+- `applicationId` is `com.forjd.forjd` — the doubled segment is Flutter's default org+project
+  naming. Slice 12's flavors have to set this anyway; fix it there.
+- The launcher icon is still the default Flutter icon.
+
+**What an emulator still cannot cover**, and why the phone is not optional: no real health
+data (Phase 6), a software-backed keystore rather than hardware, no WHOOP device (Phase 7),
+a synthetic camera for InBody capture (Phase 5), and no sense of using the app mid-set in a
+gym. Rule 16 and ADR-007 both assume real hardware for health work.
+
 ### Deviations from the design, decided rather than drifted
 
 The design shows things the API cannot yet support. Each was a deliberate call, not an
@@ -99,9 +148,12 @@ and matched our own hint came back as a bare 401 "Registration failed".
 
 Two rules came out of fixing it:
 
-1. **`registerRequestSchema` mirrors the provider's policy**, so a rejection is a 400 naming
-   the field. If the policy changes in the Supabase dashboard, change it here too — the
-   duplication is deliberate, and drift between them is what caused the bug.
+1. **`registerRequestSchema` mirrors the provider's policy**, and **the symbol class must match
+   Supabase's exact set** — not a broad `[^A-Za-z0-9]`. A space satisfies the broad class and
+   not Supabase's, so `"Str0ng Pass1"` passed our validation and was rejected by the provider.
+   That was caught by typing it into the real form, not by any test. A rejection is then a
+   400 naming the field. If the policy changes in the Supabase dashboard, change it here
+   too — the duplication is deliberate, and drift between them is what caused both bugs.
 2. **Login keeps `min(1)`, permanently.** Applying a current policy to an existing password
    locks out everyone whose password predates it. An e2e test pins this: a policy-shaped
    password at login must fail on credentials (401), never on validation (400).
@@ -131,6 +183,14 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
   `secure_token_store.dart`, in the same spirit as the existing Supabase grep.
 - Golden tests. Deliberately skipped: `flutter test` substitutes Ahem for bundled fonts, so
   goldens need an explicit `FontLoader` — a separate decision (ADR-010).
+- A `calendar` icon. The set has 24 and none of them is one, so the birthday field uses
+  `clock`. Adding it means adding a path in the design's stroke style.
+- The launcher icon is still the default Flutter icon.
+- `AppColors.errorText` (`#E05A3C`) sits close to the accent, so an inline error reads a
+  little like a link. A palette decision, deliberately not taken unilaterally.
+- A test for `SupabaseAuthProvider`'s weak-password passthrough. It has been exercised by
+  hand on a device but has no automated cover, because the class builds its client in the
+  constructor and offers no seam to stub (ADR-011).
 
 ### All 14 slices
 
@@ -146,7 +206,7 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 | 8 — CI conformance grep | ✅ Done | `scripts/ci/check-architecture-conformance.sh`. **Verified non-vacuous**: catches a planted Supabase import outside the provider dirs, allows the same import inside them. |
 | 9 — Flutter shell | ✅ Done | `flutter create` scaffold + go_router routes, Riverpod, Dio client, theme. Analyzer clean, tests pass. |
 | 10 — Drift scaffold | ✅ Done | `AppDatabase` with a `CachedProfiles` table. Timestamps stored as **ISO-8601 text**, not Unix seconds — the default returns local time and silently shifts any instant that crossed a timezone. See `apps/mobile/build.yaml`. |
-| 11 — Mobile auth UI | ✅ Done | On branch `slice-11-mobile-auth-ui`, awaiting merge. Design tokens + Archivo, the widget library, the network layer with 401→refresh→replay, auth screens, the 5-tab shell, profile/edit-profile, and ADR-010/011. 43 Flutter tests; debug APK builds. |
+| 11 — Mobile auth UI | ✅ Done | Merged (PRs #2, #3). Design tokens + Archivo, the widget library, the network layer with 401→refresh→replay, auth screens, the 5-tab shell, profile/edit-profile, and ADR-010/011. Walked on an emulator against the live API; four findings fixed. 60 Flutter tests; debug APK builds. |
 | 12 — Build flavors | ⬜ Blocked | Needs all three Supabase projects. |
 | 13 — Staging deploy | ⬜ Blocked | Host decided: **Railway** (ADR-009). Needs the staging Supabase project and a Railway account. |
 | 14 — Device DoD walk | ⬜ Not started | Needs 12/13 plus the physical Android device. |
@@ -220,14 +280,15 @@ matters when the hosted database is first migrated in slice 13.
 | Android SDK | ✅ Done | At `C:\Android\Sdk` (moved from the default `%LOCALAPPDATA%` path because it contained a space in the Windows username, which breaks NDK tooling). platform-tools, `platforms;android-34`, `platforms;android-36`, `build-tools;36.0.0`, all licenses accepted. `flutter config --android-sdk` points at it. |
 | `flutter doctor` | ✅ Clean | Android toolchain green. Only remaining flag is "Visual Studio not installed" — **ignore this**, it's for Windows desktop apps, not a FORJD target platform. |
 | Docker Desktop | ✅ Done | WSL2 enabled via the elevated setup script + reboot. `docker-compose up -d` brings up `forjd-postgres` (5432) and `forjd-redis` (6379), both reporting healthy. |
-| Physical Android device | ⚠️ Not connected | Needs to be plugged in via USB with debugging enabled; `flutter devices` will pick it up. Still only Windows/Chrome/Edge are listed. |
+| Android emulator | ✅ Done | AVD `forjd_pixel7_api34` — Pixel 7, Android 14, **Play Store** image (so Health Connect works on it in Phase 6), 4 GB RAM, hardware keyboard. Launch with `-gpu host`; the software renderer ANRs SystemUI at this resolution. WHPX acceleration confirmed usable. |
+| Physical Android device | ⚠️ Not connected | Needs USB with debugging enabled; `flutter devices` will pick it up. The emulator covers UI work, but not real health data, a hardware-backed keystore, WHOOP, the camera, or gym use — so this is still required before Phase 6 and for slice 14. |
 
 ### Manual steps only the user can do (genuine hard stops — need a UAC click, physical hardware, a credential, or human judgement)
 
 Steps 1-4 of the original list (elevated setup script, reboot, Docker first-run,
 git identity + initial commit) are **done**. What remains:
 
-1. ⬜ **Plug in the physical Android device**, confirm with `flutter devices`.
+1. ⬜ **Plug in the physical Android device**, confirm with `flutter devices`. No longer blocks UI work — the emulator covers that — but still required for slice 14 and anything touching Health Connect (rule 16, ADR-007).
    Needed from week 1 — Health Connect is a system component and gym testing
    needs real hardware, not an emulator.
 2. ⬜ **Set `ANTHROPIC_API_KEY` to run Spike B.** No credential exists on this
@@ -271,17 +332,14 @@ git identity + initial commit) are **done**. What remains:
 
 ### Next action once resumed
 
-**Slice 11 is merged. Everything left in Phase 1 is deployment-shaped and gated on things
-only the user can provide** — the staging and prod Supabase projects, a Railway account,
-and the physical Android device.
+**Slice 11 is merged, walked on an emulator, and its findings fixed. Start slice 12.**
+Everything left in Phase 1 is deployment-shaped and gated on things only the user can
+provide — the staging and prod Supabase projects, a Railway account, and the physical
+Android device.
 
-Two pieces of slice 11 are done but *unverified on a real screen*. The API half was walked
-against live Supabase and works end to end (register with a name → login → profile → edit →
-refresh → forgot-password → logout, with the token revoked afterwards). The mobile half has
-only ever run in widget tests: at the time of writing `flutter devices` shows no Android
-device and `flutter emulators` reports no AVD images, so nobody has actually used the app.
-**Do the walk under "Verifying slice 11" before trusting the UI.** It is the cheapest way to
-find the next thing of the kind the password-policy dead end turned out to be.
+Nothing is half-finished. The next session can go straight to slice 12 once the Supabase
+projects exist; if they do not yet, there is no unblocked Phase 1 work left, and the
+useful thing to do instead is re-plan Phase 2 (see the bottom of this section).
 
 ### Next, in order
 
@@ -302,7 +360,10 @@ lessons, and slice 11 taught several worth carrying forward: mirror provider-sid
 in the contract, walk a flow live before believing it, and prefer a test that has been shown
 to fail against the unfixed code.
 
-### Verifying slice 11
+### Re-running the slice 11 verification
+
+This has been done once (see "The emulator walk"). Keep it as the procedure to repeat
+after any change to the auth or profile UI.
 
 ```bash
 docker compose up -d
@@ -329,10 +390,15 @@ token, open the profile screen, and confirm **exactly one** `/auth/refresh` in t
 followed by a successful `/users/me`. Then corrupt the refresh token and confirm the app
 lands back on `/welcome`.
 
-**One manual step first:** `forjd-dev` has email confirmation on, so register → login
-cannot be walked end to end without a real inbox. Turn "Confirm email" off in the **dev
-project only** (Authentication → Providers → Email). The `AuthNeedsEmailConfirmation`
-tests stay regardless — that is production behaviour.
+**Email confirmation is currently OFF in `forjd-dev`**, which is what lets register → login
+be walked without a real inbox. If a walk ever shows the "check your inbox" panel instead
+of signing straight in, that setting has been turned back on (Authentication → Providers →
+Email) rather than something being broken. The `AuthNeedsEmailConfirmation` state and its
+tests stay regardless — that is production behaviour, and staging/prod should keep
+confirmation on.
+
+Passwords must satisfy the policy: 8+ characters with an uppercase, a lowercase, a digit,
+and a symbol from Supabase's set — a space does not count. `Str0ng!Pass1` works.
 
 Spike B remains open and is worth finishing — Phase 5 is designed around its
 answer — but it does not block anything in Phase 1. Set `ANTHROPIC_API_KEY`, run
