@@ -11,8 +11,12 @@ class ForjdApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'FORJD',
-      theme: AppTheme.light,
+      // Both slots and an explicit mode: themeMode alone already forces dark, but a
+      // MaterialApp nested for a dialog or a test reads `theme`, and it should get the
+      // brand rather than Flutter's default light palette.
+      theme: AppTheme.dark,
       darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
       routerConfig: ref.watch(routerProvider),
     );
   }

@@ -54,6 +54,19 @@ Everything else can evolve around these. See `docs/architecture/system.md`.
     No feature code imports it directly, and every `HealthObservation` records its
     originating provider explicitly — never inferred from which API returned it.
 
+## Merging
+
+A merge is finished when `main` is green, not when the pull request closes.
+
+`.github/workflows/ci.yml` triggers on `pull_request` and on `push` to `main`. Those are
+two different runs: the PR checks validate the branch, and only the post-merge run
+validates the merge commit that actually landed. A branch that was green can still turn
+`main` red if something else merged in between.
+
+So after every merge: watch the run on `main` (`gh run list --branch main`, then
+`gh run watch <id>`) and confirm it passed before treating the work as done. A green PR is
+not a substitute.
+
 ## Enforced, not just stated
 
 From Phase 1, CI includes a grep-based conformance check that fails the build if:

@@ -1,9 +1,11 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
+  forgotPasswordRequestSchema,
   loginRequestSchema,
   refreshRequestSchema,
   registerRequestSchema,
+  type ForgotPasswordRequest,
   type LoginRequest,
   type RefreshRequest,
   type RegisterRequest,
@@ -46,6 +48,22 @@ export class AuthController {
     @Body(new ZodValidationPipe(refreshRequestSchema)) body: RefreshRequest,
   ): Promise<SessionResponse> {
     return this.authService.refresh(body.refreshToken);
+  }
+
+  /**
+   * 202, not 200-with-a-message: the honest meaning is "accepted — whether an email goes
+   * out is deliberately not disclosed". The tighter limit is because each call sends real
+   * mail, so the abuse here is bombarding someone else's mailbox rather than stuffing
+   * credentials. Note the limit keys on IP, so it caps an origin, not an address; Supabase's
+   * own per-address email limit is the backstop until a per-email tracker exists.
+   */
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle({ default: { limit: 3, ttl: 900_000 } })
+  async forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordRequestSchema)) body: ForgotPasswordRequest,
+  ): Promise<void> {
+    await this.authService.requestPasswordReset(body.email);
   }
 
   /**

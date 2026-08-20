@@ -5,9 +5,31 @@ import { z } from 'zod';
  * so a validator and its type can never drift apart.
  */
 
+/**
+ * Mirrors the password policy configured on the Supabase project. It is duplicated here on
+ * purpose: without it the API accepts a password the auth provider then rejects, and the
+ * caller gets a failure with nothing actionable in it.
+ *
+ * Applied to registration only. Login deliberately keeps `min(1)` — validating an existing
+ * password against a current policy would lock out everyone whose password predates it.
+ */
+const newPasswordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[a-z]/, 'Password must include a lowercase letter')
+  .regex(/[A-Z]/, 'Password must include an uppercase letter')
+  .regex(/[0-9]/, 'Password must include a number')
+  .regex(/[^A-Za-z0-9]/, 'Password must include a symbol');
+
 export const registerRequestSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: newPasswordSchema,
+  /**
+   * Optional so a client predating this field keeps working. The signup screen requires a
+   * name; the wire contract does not. Bounds match updateProfileRequestSchema.displayName,
+   * so a name accepted here cannot be rejected by the very next profile edit.
+   */
+  displayName: z.string().min(1).max(80).optional(),
 });
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 
@@ -21,6 +43,16 @@ export const refreshRequestSchema = z.object({
   refreshToken: z.string().min(1),
 });
 export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
+
+/**
+ * There is deliberately no response schema. The endpoint answers 202 with an empty body
+ * whether or not the address has an account — any field describing what happened would be
+ * an account-enumeration oracle for a product whose accounts hold health data.
+ */
+export const forgotPasswordRequestSchema = z.object({
+  email: z.string().email(),
+});
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
 
 export const sessionResponseSchema = z.object({
   accessToken: z.string(),

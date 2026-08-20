@@ -41,6 +41,12 @@ dependencies:
   sqlite3_flutter_libs: ^0.6.0+eol
   path_provider: ^2.1.6
   path: ^1.9.1
+  # Keychain on iOS, EncryptedSharedPreferences on Android. Session tokens never touch
+  # SharedPreferences or the Drift database.
+  flutter_secure_storage: ^9.2.4
+  # Parses the design's SVG path strings so ForjdIcon can stroke them in a CustomPainter.
+  # Pure Dart, so it costs the test runner nothing — see ADR-010.
+  path_drawing: ^1.0.1
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +71,18 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Archivo, SIL OFL 1.1 — see assets/fonts/OFL.txt. Bundled rather than fetched at runtime
+  # by google_fonts: a health app should not make a third-party network call to render its
+  # login screen, and a bundled face keeps first launch and CI deterministic.
+  #
+  # Only a variable face is published upstream, so weight is selected through the `wght`
+  # axis via TextStyle.fontVariations (see AppText) rather than by listing static weights
+  # here. `fontWeight` is still set alongside it so the fallback face is right too.
+  fonts:
+    - family: Archivo
+      fonts:
+        - asset: assets/fonts/Archivo-Variable.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

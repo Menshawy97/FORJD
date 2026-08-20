@@ -7,7 +7,7 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-08-19)
+## Current status (last updated 2026-08-20)
 
 **We are inside Phase 1.** Phase 0 is complete except Spike B, which is open but
 does not gate Phase 1 (see "Spike status" below). Read this section first when
@@ -17,8 +17,8 @@ continue.
 
 ### Phase 1 progress
 
-Executing the 14-slice plan. **Nine of fourteen slices are done and verified —
-1 through 10, except 11.** What remains is the mobile auth UI (11) and the three
+Executing the 14-slice plan. **Slices 1-11 are done. Slice 11 is complete on branch
+`slice-11-mobile-auth-ui` and awaiting merge.** What remains is the three
 deployment-shaped slices (12, 13, 14), which need the staging/prod Supabase
 projects, a Railway account, and the physical Android device.
 
@@ -26,9 +26,113 @@ Half of the phase's definition of done is already mechanically true: exactly one
 file imports the Supabase SDK for auth, one for storage, and nothing else —
 verified by grep in CI rather than by discipline.
 
-**Current test surface:** 12 API unit tests, 7 API e2e tests, 4 Flutter tests, all
-passing. Lint, format, and the architecture-conformance check are green, and the
-debug APK builds.
+**Current test surface:** 23 API unit tests, 10 API e2e tests, 43 Flutter tests, all
+passing. Lint, format, `flutter analyze`, and the architecture-conformance check are
+green, and the debug APK builds with the native secure-storage plugin.
+
+### Slice 11 — what it turned out to be
+
+Slice 11 grew beyond "mobile auth UI" because the imported
+[FORJD Mobile design](https://claude.ai/design/p/6dd27911-0e14-43cb-bebd-8c673fa83641)
+is dark and typography-led while the app was on a green-seed Material 3 theme, and
+because two of its screens asked for API surface that did not exist. Three scoping
+decisions were taken deliberately:
+
+1. **Design tokens land before the screens**, plus the full five-tab navigation shell.
+   Building slice 11's screens against the old theme would have meant building them twice.
+2. **`registerRequestSchema` gains an optional `displayName`**, so the design's "Full name"
+   field is honoured server-side rather than discarded.
+3. **`POST /auth/forgot-password` is real**, backing the design's "Forgot password?" link.
+
+Landed, each its own commit, everything green at each step:
+
+| Step | Status | Detail |
+|---|---|---|
+| A1 — `displayName` at register | ✅ Done | Optional in the contract (rule 7), written to `profiles` rather than provider metadata so there is one system of record for the name. |
+| A2 — `POST /auth/forgot-password` | ✅ Done | 202 with an empty body whether or not the address exists. `AuthProvider.requestPasswordReset` returns `void` so no implementation *can* leak the difference; the Supabase adapter swallows GoTrue's "user not found" into a log line; the audit row uses a null user id so latency does not reintroduce the enumeration channel. Throttled to 3 per 15 minutes. |
+| B1 — Design token layer | ✅ Done | `AppColors` / `AppText` / `AppDimens` plus a rewritten dark-only `AppTheme`. `ColorScheme` written out, never seeded. **`AppTheme.light` deleted.** CSS `em` letter-spacing converted to logical pixels with the arithmetic in comments. |
+| B2 — Archivo bundled | ✅ Done | SIL OFL 1.1, licence committed alongside. Bundled rather than `google_fonts`: no third-party network call to render a login screen. Only a variable face is published upstream, so weight moves through the `wght` axis — use `AppText.weighted`, never a bare `copyWith(fontWeight:)`. |
+| B3 — Widget library | ✅ Done | Button, text field, labels, list row, chips, header, brand marks, tab bar. Icons keep the design's SVG path data and are stroked in a `CustomPainter` via `path_drawing`; a test parses all 24 rather than trusting transcription. |
+| C2 — Network layer | ✅ Done | Three Dio clients (public / refresh / api), `ApiFailure` mapping, and the 401 → refresh → replay interceptor. Concurrent 401s share one in-flight future, so N of them cause exactly one refresh. |
+| C1 — Auth models + controller | ✅ Done | Sealed `AuthState` (five variants), `SecureTokenStore`, `AuthRepository`, `SessionRefresher`, `AuthController`, `main.dart` port overrides. |
+| C3 — Auth screens + router gate | ✅ Done | Welcome/login/register/forgot-password, redirect via `refreshListenable`, `_Placeholder` deleted and `widget_test.dart` rewritten in the same commit. |
+| 8 — Shell + tab bar wiring | ✅ Done | `StatefulShellRoute.indexedStack`, five branches, four honest placeholder tabs. |
+| 9 — Profile + edit profile | ✅ Done | `GET /users/me`, `PATCH /users/me/profile`, `appDatabaseProvider`, Drift-cached display name as the in-flight fallback. |
+| 10 — ADR-010, ADR-011 | ✅ Done | `docs/decisions/ADR-010-mobile-design-system.md` and `ADR-011-mobile-session-lifecycle.md`. |
+
+**One bug worth remembering, found by a test rather than in the field:** replaying a
+request through the interceptor's own Dio deadlocks. `QueuedInterceptor` serialises its
+callbacks, so the replay queues behind the `onError` that is awaiting it and the request
+hangs until it times out. The replay client must not carry the interceptor.
+
+### Deviations from the design, decided rather than drifted
+
+The design shows things the API cannot yet support. Each was a deliberate call, not an
+oversight, and each is a follow-up rather than a silent omission:
+
+- **`@username`** — no column, no uniqueness policy, no availability endpoint. Omitted; the
+  profile screen renders the user's email in the handle slot instead.
+- **Profile stat tiles** (147 Workouts / 9 This Month / #47 City Rank) — no data source until
+  Phases 3 and 6. Omitted entirely rather than rendered as zeros, which would read as a bug.
+- **Avatar upload** — `avatarUrl` is in the contract but `StorageProvider` stays unconsumed
+  until Phase 5. Initials in the tile, no upload affordance that does nothing.
+- **`heightCm` and `unitSystem`** — editable in the API, absent from the design's edit screen.
+  Left out for now, which means `unitSystem` stays `metric` until the first Phase 3 screen
+  that shows a weight forces the conversation.
+- **Sex chips** — the design draws three, `sexSchema` has four values. Rendering four, so
+  `other` is not a value the API accepts but the UI can never produce.
+- **Password reset is only half a flow** — `resetPasswordForEmail` sends a link; *completing*
+  the reset needs a deep link plus `POST /auth/reset-password`. The mobile screen ends at
+  "Check your email" and the user finishes in a browser. **This is the largest known gap.**
+- **Email-confirmation state** — the design has no such screen, but `registerResponse.session`
+  is nullable and `forjd-dev` returns null. The "check your inbox" panel is an addition to
+  the design, not an implementation of it.
+- **Input focus ring** — the design specifies none. A 1px accent border was added, because an
+  invisible focus state is an accessibility regression.
+
+### Password policy: mirrored in the contract, and partly surfaceable
+
+Walking the flow against live Supabase found a dead end. The project enforces a password
+complexity policy (lower + upper + digit + symbol); `registerRequestSchema` required only
+`min(8)` and the signup hint said "Min. 8 characters". A password that satisfied our contract
+and matched our own hint came back as a bare 401 "Registration failed".
+
+Two rules came out of fixing it:
+
+1. **`registerRequestSchema` mirrors the provider's policy**, so a rejection is a 400 naming
+   the field. If the policy changes in the Supabase dashboard, change it here too — the
+   duplication is deliberate, and drift between them is what caused the bug.
+2. **Login keeps `min(1)`, permanently.** Applying a current policy to an existing password
+   locks out everyone whose password predates it. An e2e test pins this: a policy-shaped
+   password at login must fail on credentials (401), never on validation (400).
+
+And one correction to the enumeration defence: `SupabaseAuthProvider.reject()` collapsed
+*every* `signUp` error into one message. That is right for "user already registered", which is
+an enumeration vector, but wrong for a weak password — that reveals nothing about whether an
+address has an account, so hiding it protected nobody. Password-policy failures now pass
+through as a 400; everything else stays generic.
+
+**Not covered by a test:** the adapter's weak-password passthrough itself. `SupabaseAuthProvider`
+builds its client in the constructor via `createClient`, so there is no seam to inject a stub
+through. It was verified by hand against the live project; making it testable means a
+constructor-injectable client, which is a small refactor nobody has needed yet.
+
+### Follow-ups opened by slice 11
+
+- Password-reset **completion**: deep link + `POST /auth/reset-password`.
+- Per-email rate limiting on forgot-password. `ThrottlerGuard` keys on IP, so today it caps
+  an origin, not an address; Supabase's own per-address limit is the only real backstop.
+- Username/handle, avatar upload (Phase 5), profile stat tiles (Phases 3/6).
+- A real coverage gate. The repo *states* 80% but enforces nothing — `collectCoverageFrom`
+  has no `coverageThreshold`, and `flutter test` runs without `--coverage`.
+- Generating the Dart DTOs from the Zod contracts. They are hand-written mirrors today and
+  can drift silently.
+- Optional CI hardening: a conformance grep pinning `flutter_secure_storage` to
+  `secure_token_store.dart`, in the same spirit as the existing Supabase grep.
+- Golden tests. Deliberately skipped: `flutter test` substitutes Ahem for bundled fonts, so
+  goldens need an explicit `FontLoader` — a separate decision (ADR-010).
+
+### All 14 slices
 
 | Slice | Status | Detail |
 |---|---|---|
@@ -42,7 +146,7 @@ debug APK builds.
 | 8 — CI conformance grep | ✅ Done | `scripts/ci/check-architecture-conformance.sh`. **Verified non-vacuous**: catches a planted Supabase import outside the provider dirs, allows the same import inside them. |
 | 9 — Flutter shell | ✅ Done | `flutter create` scaffold + go_router routes, Riverpod, Dio client, theme. Analyzer clean, tests pass. |
 | 10 — Drift scaffold | ✅ Done | `AppDatabase` with a `CachedProfiles` table. Timestamps stored as **ISO-8601 text**, not Unix seconds — the default returns local time and silently shifts any instant that crossed a timezone. See `apps/mobile/build.yaml`. |
-| 11 — Mobile auth UI | ⬜ Next | Unblocked — Slice 4's endpoints and DTOs exist. Login/register screens, Riverpod `AuthController`, Dio 401→refresh→retry interceptor, tokens in `flutter_secure_storage`. |
+| 11 — Mobile auth UI | ✅ Done | On branch `slice-11-mobile-auth-ui`, awaiting merge. Design tokens + Archivo, the widget library, the network layer with 401→refresh→replay, auth screens, the 5-tab shell, profile/edit-profile, and ADR-010/011. 43 Flutter tests; debug APK builds. |
 | 12 — Build flavors | ⬜ Blocked | Needs all three Supabase projects. |
 | 13 — Staging deploy | ⬜ Blocked | Host decided: **Railway** (ADR-009). Needs the staging Supabase project and a Railway account. |
 | 14 — Device DoD walk | ⬜ Not started | Needs 12/13 plus the physical Android device. |
@@ -167,11 +271,68 @@ git identity + initial commit) are **done**. What remains:
 
 ### Next action once resumed
 
-**Build slice 11, the mobile auth and profile screens.** It is the last slice with no
-external dependency: the API endpoints, the `@forjd/contracts` DTOs, the Flutter shell,
-and the Drift store all exist. After it, everything left is deployment-shaped —
-slices 12 → 13 → 14 — needing the staging and prod Supabase projects, a Railway
-account, and the phone plugged in.
+**Slice 11 is merged. Everything left in Phase 1 is deployment-shaped and gated on things
+only the user can provide** — the staging and prod Supabase projects, a Railway account,
+and the physical Android device.
+
+Two pieces of slice 11 are done but *unverified on a real screen*. The API half was walked
+against live Supabase and works end to end (register with a name → login → profile → edit →
+refresh → forgot-password → logout, with the token revoked afterwards). The mobile half has
+only ever run in widget tests: at the time of writing `flutter devices` shows no Android
+device and `flutter emulators` reports no AVD images, so nobody has actually used the app.
+**Do the walk under "Verifying slice 11" before trusting the UI.** It is the cheapest way to
+find the next thing of the kind the password-policy dead end turned out to be.
+
+### Next, in order
+
+1. **Slice 12 — build flavors.** Needs `forjd-staging` and `forjd-prod` to exist first. The
+   point is that a debug build physically cannot reach production data. `API_BASE_URL` is
+   already a compile-time `String.fromEnvironment`, so the mobile side is mostly wiring
+   flavors to defines rather than new code.
+2. **Slice 13 — deploy staging to Railway** (ADR-009). Needs the Railway account. Note the
+   IPv6 finding below: use the **session pooler** connection string when the hosted database
+   is first migrated, not the direct one.
+3. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
+   staging. This is what actually closes Phase 1.
+
+Before starting slice 12, re-read this file and the plan's Phase 1 outline, as the working
+method below requires. Phase 2 (exercise database) should be re-planned rather than executed
+from the outline — later phases were deliberately left thin so earlier ones could teach their
+lessons, and slice 11 taught several worth carrying forward: mirror provider-side constraints
+in the contract, walk a flow live before believing it, and prefer a test that has been shown
+to fail against the unfixed code.
+
+### Verifying slice 11
+
+```bash
+docker compose up -d
+pnpm install && pnpm -r build
+pnpm --filter @forjd/api test && pnpm --filter @forjd/api test:e2e
+bash scripts/ci/check-architecture-conformance.sh
+pnpm --filter @forjd/api start:dev
+```
+
+```bash
+cd apps/mobile
+flutter run -d <emulator> --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
+```
+
+The walk that proves it: cold start → splash → welcome; register with a name → the
+"check your inbox" panel; log in → `/home`; move through all five tabs and confirm each
+keeps its own scroll position; profile shows the registered name; edit → save → survives
+a reload; forgot-password → "check your email"; log out → `/welcome`; **kill and relaunch
+while logged in → straight to `/home` with no welcome-screen flash** — that last one is
+the `AuthUnknown` state doing its job.
+
+Refresh-and-replay is invisible in a normal walk. Force it: corrupt the stored access
+token, open the profile screen, and confirm **exactly one** `/auth/refresh` in the API log
+followed by a successful `/users/me`. Then corrupt the refresh token and confirm the app
+lands back on `/welcome`.
+
+**One manual step first:** `forjd-dev` has email confirmation on, so register → login
+cannot be walked end to end without a real inbox. Turn "Confirm email" off in the **dev
+project only** (Authentication → Providers → Email). The `AuthNeedsEmailConfirmation`
+tests stay regardless — that is production behaviour.
 
 Spike B remains open and is worth finishing — Phase 5 is designed around its
 answer — but it does not block anything in Phase 1. Set `ANTHROPIC_API_KEY`, run

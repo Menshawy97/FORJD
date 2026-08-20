@@ -1,6 +1,11 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
+import {
+  AuthError,
+  createClient,
+  SupabaseClient,
+  User as SupabaseUser,
+} from '@supabase/supabase-js';
 
 import {
   AuthCredentials,
@@ -10,6 +15,16 @@ import {
   AuthSession,
   SignUpResult,
 } from './auth-provider.interface';
+
+/**
+ * GoTrue reports a policy rejection as `weak_password`. The message check is a fallback for
+ * older responses that carry no code — matching on the message alone would be fragile, but
+ * as a second condition it costs nothing and the failure mode is only that a weak-password
+ * error stays generic, which is what happens today anyway.
+ */
+function isWeakPasswordError(error: AuthError): boolean {
+  return error.code === 'weak_password' || error.message.startsWith('Password should');
+}
 
 interface SupabaseSessionShape {
   access_token: string;
@@ -25,6 +40,7 @@ interface SupabaseSessionShape {
 export class SupabaseAuthProvider implements AuthProvider {
   private readonly logger = new Logger(SupabaseAuthProvider.name);
   private readonly client: SupabaseClient;
+  private readonly passwordResetRedirectUrl: string | undefined;
 
   constructor(config: ConfigService) {
     this.client = createClient(
@@ -32,12 +48,26 @@ export class SupabaseAuthProvider implements AuthProvider {
       config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
+    // `get`, not `getOrThrow`: CI supplies only the two required Supabase vars, and an
+    // unset redirect simply falls back to the project's Site URL.
+    this.passwordResetRedirectUrl = config.get<string>('AUTH_PASSWORD_RESET_REDIRECT_URL');
   }
 
   async signUp(credentials: AuthCredentials): Promise<SignUpResult> {
     const { data, error } = await this.client.auth.signUp(credentials);
 
     if (error || !data.user) {
+      // A rejected password is the one signUp failure worth forwarding. It reveals nothing
+      // about whether the address already has an account, so withholding it protects
+      // nobody — it just leaves someone stuck at a form with no idea what is wrong.
+      // `registerRequestSchema` mirrors the provider's policy, so this should normally be
+      // unreachable; it stays as the backstop for when the two drift apart.
+      if (error && isWeakPasswordError(error)) {
+        this.logger.warn(`signUp rejected a weak password: ${error.message}`);
+
+        throw new BadRequestException(error.message);
+      }
+
       this.reject('signUp', error?.message);
     }
 
@@ -73,6 +103,24 @@ export class SupabaseAuthProvider implements AuthProvider {
 
     if (error) {
       this.reject('signOut', error.message);
+    }
+  }
+
+  /**
+   * Deliberately does not go through `reject()`. GoTrue reports "user not found" and its own
+   * per-address rate-limit errors here; turning either into a non-2xx would tell a caller
+   * which addresses hold accounts. The detail stays in the log, the caller always sees the
+   * same thing, and a genuine outage surfaces through monitoring rather than through the
+   * one response an attacker can read.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const { error } = await this.client.auth.resetPasswordForEmail(
+      email,
+      this.passwordResetRedirectUrl ? { redirectTo: this.passwordResetRedirectUrl } : undefined,
+    );
+
+    if (error) {
+      this.logger.warn(`requestPasswordReset failed: ${error.message}`);
     }
   }
 

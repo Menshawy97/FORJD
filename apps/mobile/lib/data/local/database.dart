@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -33,3 +34,12 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 }
+
+/// One database for the app's lifetime. Closed on dispose so a test container that builds
+/// its own does not leak a connection into the next test.
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  final database = AppDatabase();
+  ref.onDispose(database.close);
+
+  return database;
+});
