@@ -220,12 +220,14 @@ no file outside `apps/api/src/auth/providers/` importing the Supabase SDK.
 Two review findings were judged as tradeoffs rather than defects, and are tracked here
 rather than silently dropped.
 
-**Token verification is uncached.** `JwtAuthGuard` calls Supabase on every authenticated
-request, which adds latency and makes Supabase Auth availability a dependency of every
-call. The obvious fix — caching verification results — trades away revocation latency: a
-logged-out or compromised token stays valid until the cache entry expires. That is a real
-security cost, not a free win, so it should be a deliberate decision with a chosen TTL and
-not a reflex optimisation. Revisit when measured latency justifies it.
+**Token verification is uncached.** ✅ **Resolved — see ADR-012.** Tokens are now verified
+in process against the project's published ES256 signing keys. Measured on the cheapest
+authenticated endpoint, p50 went from 123.3 ms to 14.3 ms and p95 from 253.1 ms to 20.7 ms.
+The decision was taken the way this entry asked for it: with a measurement first, and with
+the cost written down. That cost is that an access token cannot be recalled before it
+expires, so **the access-token lifetime is now the revocation window** — currently 3600 s
+and needing to be set to 900 s in the Supabase dashboard. That manual step is listed below
+and ADR-012 is incomplete until it is done.
 
 **RLS is enabled on no table.** Acceptable today because nothing except the API holds a
 Postgres credential — the mobile app has no Supabase client, and the CI conformance check
@@ -308,7 +310,12 @@ git identity + initial commit) are **done**. What remains:
    definition of done requires a *deployed* staging API, so it does gate the phase
    closing. Verify current pricing while you are there; ADR-009 records that it
    was not checked.
-5. ⬜ **Hand-label Spike B ground truth.** This one is not automatable *in
+5. ⬜ **Shorten the access-token lifetime to 900 seconds** (Supabase dashboard →
+   Authentication → Sessions), in `forjd-dev` and in every project created later. Since
+   ADR-012 this value is the session revocation window, not a convenience setting: it is how
+   long a signed-out or deleted account's token keeps working. It is 3600 s today. The mobile
+   client refreshes transparently on a 401, so users notice nothing.
+6. ⬜ **Hand-label Spike B ground truth.** This one is not automatable *in
    principle*, not just in practice: if the same model that extracts the values
    also writes the answer key, the accuracy number measures self-consistency
    rather than correctness — and it fails silently, looking like a clean result.
@@ -359,6 +366,26 @@ from the outline — later phases were deliberately left thin so earlier ones co
 lessons, and slice 11 taught several worth carrying forward: mirror provider-side constraints
 in the contract, walk a flow live before believing it, and prefer a test that has been shown
 to fail against the unfixed code.
+
+### The slice B walk (2026-08, after ADR-012)
+
+Token verification changed, so the walk was repeated on the same emulator. **Nothing broke
+and no new findings came out of it**, which is the honest result rather than a disappointing
+one — the change was server-side and the mobile client never knew.
+
+Confirmed on device against the local API and live Supabase: register with a name → straight
+into `/home`; the five-tab shell; the name reaching `/users/me` through the rewritten guard;
+edit → save → `PATCH` persisting (checked in Postgres, not just on screen); a cold restart
+while signed in going straight to `/home` with no welcome flash; log out returning to
+`/welcome`; and a cold restart after logout staying on `/welcome`.
+
+**Not covered, and worth being precise about:** the 401 → refresh → replay path was *not*
+forced on device. Doing so needs an access token the server will reject while the refresh
+token still works, and there is no way to produce one by hand — the stored token is
+encrypted by `flutter_secure_storage`, and corrupting the ciphertext produces a failed
+read rather than a rejected token. It is covered by `auth_interceptor_test.dart`, including
+the single-flight property. The natural way to exercise it on a device is after the
+access-token lifetime is shortened (see the manual steps), when it can simply be waited out.
 
 ### Re-running the slice 11 verification
 

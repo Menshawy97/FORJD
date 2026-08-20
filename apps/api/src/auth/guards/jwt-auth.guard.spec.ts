@@ -3,6 +3,7 @@ import { User } from '@forjd/domain';
 
 import { UsersRepository } from '../../users/users.repository';
 import { AuthIdentity, AuthProvider } from '../providers/auth-provider.interface';
+import { IdentityCache } from './identity-cache';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 const internalUser: User = {
@@ -33,6 +34,7 @@ describe('JwtAuthGuard', () => {
     guard = new JwtAuthGuard(
       authProvider as unknown as AuthProvider,
       usersRepository as unknown as UsersRepository,
+      new IdentityCache(),
     );
   });
 
@@ -82,5 +84,55 @@ describe('JwtAuthGuard', () => {
     usersRepository.upsertFromIdentity.mockResolvedValue(internalUser);
 
     await expect(guard.canActivate(contextWith('bearer good-token'))).resolves.toBe(true);
+  });
+  describe('cost', () => {
+    const identity: AuthIdentity = {
+      externalId: 'ext-1',
+      email: 'a@example.com',
+      emailVerified: true,
+    };
+
+    beforeEach(() => {
+      authProvider.verifyAccessToken.mockResolvedValue(identity);
+      usersRepository.upsertFromIdentity.mockResolvedValue(internalUser);
+    });
+
+    it('reads the user once across repeated requests from the same identity', async () => {
+      for (let i = 0; i < 5; i += 1) {
+        await guard.canActivate(contextWith('Bearer good-token'));
+      }
+
+      // The database read is what the cache exists to remove. Without this assertion the
+      // cache could quietly stop working and every test would still pass.
+      expect(usersRepository.upsertFromIdentity).toHaveBeenCalledTimes(1);
+    });
+
+    it('still verifies the token on every request', async () => {
+      for (let i = 0; i < 5; i += 1) {
+        await guard.canActivate(contextWith('Bearer good-token'));
+      }
+
+      // Caching this would be a security bug, not an optimisation: expiry is checked
+      // during verification, so a skipped verification is a token that never expires.
+      expect(authProvider.verifyAccessToken).toHaveBeenCalledTimes(5);
+    });
+
+    it('attaches the cached user to later requests', async () => {
+      await guard.canActivate(contextWith('Bearer good-token'));
+
+      const second = contextWith('Bearer good-token');
+      await guard.canActivate(second);
+
+      expect(second.switchToHttp().getRequest<{ user: User }>().user).toEqual(internalUser);
+    });
+
+    it('reads again for a different identity', async () => {
+      await guard.canActivate(contextWith('Bearer good-token'));
+
+      authProvider.verifyAccessToken.mockResolvedValue({ ...identity, externalId: 'ext-2' });
+      await guard.canActivate(contextWith('Bearer other-token'));
+
+      expect(usersRepository.upsertFromIdentity).toHaveBeenCalledTimes(2);
+    });
   });
 });

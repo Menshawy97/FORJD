@@ -20,6 +20,25 @@ enforced in NestJS guards, RLS as defense-in-depth only (`CLAUDE.md` rule
 Provider disconnect. Consent tracking. Minimal permissions requested per
 provider capability, not blanket grants.
 
+## Session revocation has a window, and the window is the token lifetime
+
+Access tokens are verified in process against Supabase's published signing keys rather
+than by calling Supabase on each request (ADR-012). That removed roughly nine tenths of
+the latency of every authenticated request, and it has one security consequence worth
+stating in this document rather than only in the ADR: **an access token cannot be recalled
+before it expires.**
+
+Signing out revokes the refresh token, so a session cannot renew itself, and it dies at the
+end of at most one access-token lifetime. Deleting an account is the same. The lifetime is
+therefore a security parameter, not a convenience setting, and it is configured in the
+Supabase dashboard rather than in this repository — which is exactly the kind of setting
+that drifts unnoticed. Target: **900 seconds**.
+
+Anything that must take effect immediately — a compromised account, a legal hold — cannot
+rely on token expiry alone and needs a deliberate mechanism. None exists today, and none is
+needed until the product has a reason for one; `IdentityCache` is bounded and clearable,
+which is the seam such a mechanism would use.
+
 ## Data separation
 
 Authentication data, health data, analytics, AI context, and uploaded

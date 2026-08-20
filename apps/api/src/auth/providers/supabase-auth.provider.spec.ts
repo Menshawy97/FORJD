@@ -46,7 +46,15 @@ describe('SupabaseAuthProvider', () => {
 
     provider = new SupabaseAuthProvider(
       { auth } as never,
-      { get: jest.fn().mockReturnValue(undefined) } as never,
+      {
+        get: jest.fn().mockReturnValue(undefined),
+        getOrThrow: jest.fn().mockReturnValue('https://project.supabase.co'),
+      } as never,
+      // Token verification has its own suite (supabase-jwt.spec.ts). Nothing here reaches
+      // the key set, so a resolver that would throw is the honest stub.
+      (() => {
+        throw new Error('the key set must not be consulted by these tests');
+      }) as never,
     );
   });
 
