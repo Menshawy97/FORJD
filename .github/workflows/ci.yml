@@ -1,9 +1,40 @@
 name: CI
 
+# Documentation-only changes skip CI entirely, on pull requests and on main alike. Nothing
+# in these paths can affect a build, a test, or the conformance grep, so running the full
+# suite for a roadmap edit costs ~6 minutes and proves nothing.
+#
+# `paths-ignore` skips a run only when EVERY changed file matches. A change touching both a
+# doc and a source file still runs the whole suite — which is the behaviour that matters,
+# since the risk with path filtering is skipping a run that was needed, not running one
+# that wasn't.
+#
+# The two lists are duplicated because GitHub Actions does not support YAML anchors. Keep
+# them identical: a path ignored on pull_request but not on push would run the suite at
+# merge time for a change whose PR never ran it.
+#
+# Safe here only because `main` has no branch protection requiring these checks. If required
+# status checks are ever enabled, a skipped workflow reports nothing and a docs-only PR
+# would wait forever on a check that never arrives. At that point replace this with a filter
+# job that always runs and reports success for docs-only changes.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '**/*.txt'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '**/*.txt'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
