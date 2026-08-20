@@ -1,0 +1,5 @@
+{
+  "accessToken": "fixture-access-token",
+  "refreshToken": "fixture-refresh-token",
+  "expiresAt": "2026-01-01T01:00:00.000Z"
+}

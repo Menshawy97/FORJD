@@ -1,0 +1,110 @@
+import { z } from 'zod';
+
+import {
+  meResponseSchema,
+  profileResponseSchema,
+  registerResponseSchema,
+  sessionResponseSchema,
+} from './index';
+
+/**
+ * Canonical examples of every response the API can send, one per shape worth pinning.
+ *
+ * They exist because the Flutter DTOs in `apps/mobile/lib/features/auth/domain/auth_models.dart`
+ * mirror these schemas by hand, and nothing connected the two: a field could be renamed here
+ * and the app would keep compiling, keep passing its tests, and return null at runtime.
+ *
+ * Each sample is parsed by its own schema before being written, so a fixture cannot describe
+ * a shape the contract does not accept. The Dart side then parses the written files through
+ * the real DTOs. Drift in either direction becomes a failing test rather than a field that
+ * quietly stops arriving.
+ *
+ * The values are invented, never captured from a live response. A real one carries a working
+ * access token and a real address, and neither belongs in the repository.
+ */
+export interface ResponseFixture<T extends z.ZodTypeAny> {
+  schema: T;
+  sample: z.input<T>;
+}
+
+const session = {
+  accessToken: 'fixture-access-token',
+  refreshToken: 'fixture-refresh-token',
+  expiresAt: '2026-01-01T01:00:00.000Z',
+};
+
+const profile = {
+  userId: '11111111-1111-4111-8111-111111111111',
+  displayName: 'Ada Lovelace',
+  dateOfBirth: '1990-07-04',
+  sex: 'female' as const,
+  heightCm: 172.5,
+  unitSystem: 'metric' as const,
+  avatarUrl: 'https://example.com/avatar.png',
+};
+
+/**
+ * Keyed by the file each one is written to. Adding a response schema without adding a
+ * fixture here is caught by the Dart test, which fails on a file it has no parser for and
+ * on a parser with no file.
+ */
+export const responseFixtures = {
+  'session-response': { schema: sessionResponseSchema, sample: session },
+
+  'register-response': {
+    schema: registerResponseSchema,
+    sample: {
+      userId: '11111111-1111-4111-8111-111111111111',
+      email: 'ada@example.com',
+      emailVerified: true,
+      session,
+    },
+  },
+
+  /**
+   * The case a client is most likely to get wrong. When the project requires email
+   * confirmation the account exists and the session does not, so `session` is null by
+   * contract rather than by accident.
+   */
+  'register-response-awaiting-confirmation': {
+    schema: registerResponseSchema,
+    sample: {
+      userId: '11111111-1111-4111-8111-111111111111',
+      email: 'ada@example.com',
+      emailVerified: false,
+      session: null,
+    },
+  },
+
+  'profile-response': { schema: profileResponseSchema, sample: profile },
+
+  /** Every nullable field actually null, which is what a profile looks like at signup. */
+  'profile-response-empty': {
+    schema: profileResponseSchema,
+    sample: {
+      userId: '11111111-1111-4111-8111-111111111111',
+      displayName: null,
+      dateOfBirth: null,
+      sex: null,
+      heightCm: null,
+      unitSystem: 'metric' as const,
+      avatarUrl: null,
+    },
+  },
+
+  'me-response': {
+    schema: meResponseSchema,
+    sample: { id: '11111111-1111-4111-8111-111111111111', email: 'ada@example.com', profile },
+  },
+
+  'me-response-no-profile': {
+    schema: meResponseSchema,
+    sample: {
+      id: '11111111-1111-4111-8111-111111111111',
+      email: 'ada@example.com',
+      profile: null,
+    },
+  },
+} satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;
+
+export type ResponseFixtureName = keyof typeof responseFixtures;
