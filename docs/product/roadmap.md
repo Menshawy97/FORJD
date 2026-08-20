@@ -488,3 +488,10 @@ of each phase, re-read this roadmap and the plan file's phase outline
 before writing the phase's detailed task breakdown — later phases are
 intentionally left as an outline to re-plan once earlier phases have taught
 their lessons.
+
+<!--
+CI note: documentation-only changes skip the suite entirely (`paths-ignore` in
+.github/workflows/ci.yml), on pull requests and on main alike. A merge like that produces
+no run, which is intended rather than a trigger that failed. A change touching both a doc
+and a source file still runs everything.
+-->
