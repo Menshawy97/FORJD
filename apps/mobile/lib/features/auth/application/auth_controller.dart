@@ -135,6 +135,16 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Leaves the awaiting-confirmation state, returning the app to signed out.
+  ///
+  /// The router pins [AuthNeedsEmailConfirmation] to the register screen, so this is what
+  /// lets someone navigate away from the "check your inbox" panel at all.
+  void dismissEmailConfirmation() {
+    if (state is AuthNeedsEmailConfirmation) {
+      state = const AuthUnauthenticated();
+    }
+  }
+
   /// Clears a stale error so returning to a form does not show the last attempt's message.
   void clearFailure() {
     if (state case AuthUnauthenticated(failure: final failure)
