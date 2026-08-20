@@ -98,6 +98,13 @@ jobs:
 
       - run: pnpm --filter @forjd/api lint
 
+      # Regenerating the contract fixtures must be a no-op. When it is not, a wire contract
+      # changed and the committed fixtures are stale — which is the signal to go and check
+      # the Flutter DTOs that mirror the same shapes by hand.
+      - run: pnpm --filter @forjd/contracts fixtures
+
+      - run: git diff --exit-code packages/contracts/fixtures
+
       # The Postgres service container starts empty. users.repository.spec.ts and the
       # e2e suite both need the real schema, not just a reachable server.
       - run: pnpm --filter @forjd/api db:migrate

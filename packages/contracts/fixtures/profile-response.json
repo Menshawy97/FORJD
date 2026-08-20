@@ -1,0 +1,9 @@
+{
+  "userId": "11111111-1111-4111-8111-111111111111",
+  "displayName": "Ada Lovelace",
+  "dateOfBirth": "1990-07-04",
+  "sex": "female",
+  "heightCm": 172.5,
+  "unitSystem": "metric",
+  "avatarUrl": "https://example.com/avatar.png"
+}
