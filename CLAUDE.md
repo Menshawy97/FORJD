@@ -67,6 +67,15 @@ So after every merge: watch the run on `main` (`gh run list --branch main`, then
 `gh run watch <id>`) and confirm it passed before treating the work as done. A green PR is
 not a substitute.
 
+**Exception — documentation-only changes.** The workflow's `paths-ignore` skips CI entirely
+when every changed file is a `.md`, something under `docs/`, or another non-buildable file.
+Those merge without waiting, and no run appears on `main` afterwards. That absence is
+correct, not a failed trigger — don't go hunting for a run that was never meant to exist.
+
+A change touching both a doc and a source file is *not* documentation-only: `paths-ignore`
+skips a run only when every changed path matches, so it runs the full suite and the rule
+above applies unchanged.
+
 ## Enforced, not just stated
 
 From Phase 1, CI includes a grep-based conformance check that fails the build if:
