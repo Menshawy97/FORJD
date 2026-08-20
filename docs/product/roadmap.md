@@ -90,6 +90,33 @@ oversight, and each is a follow-up rather than a silent omission:
 - **Input focus ring** — the design specifies none. A 1px accent border was added, because an
   invisible focus state is an accessibility regression.
 
+### Password policy: mirrored in the contract, and partly surfaceable
+
+Walking the flow against live Supabase found a dead end. The project enforces a password
+complexity policy (lower + upper + digit + symbol); `registerRequestSchema` required only
+`min(8)` and the signup hint said "Min. 8 characters". A password that satisfied our contract
+and matched our own hint came back as a bare 401 "Registration failed".
+
+Two rules came out of fixing it:
+
+1. **`registerRequestSchema` mirrors the provider's policy**, so a rejection is a 400 naming
+   the field. If the policy changes in the Supabase dashboard, change it here too — the
+   duplication is deliberate, and drift between them is what caused the bug.
+2. **Login keeps `min(1)`, permanently.** Applying a current policy to an existing password
+   locks out everyone whose password predates it. An e2e test pins this: a policy-shaped
+   password at login must fail on credentials (401), never on validation (400).
+
+And one correction to the enumeration defence: `SupabaseAuthProvider.reject()` collapsed
+*every* `signUp` error into one message. That is right for "user already registered", which is
+an enumeration vector, but wrong for a weak password — that reveals nothing about whether an
+address has an account, so hiding it protected nobody. Password-policy failures now pass
+through as a 400; everything else stays generic.
+
+**Not covered by a test:** the adapter's weak-password passthrough itself. `SupabaseAuthProvider`
+builds its client in the constructor via `createClient`, so there is no seam to inject a stub
+through. It was verified by hand against the live project; making it testable means a
+constructor-injectable client, which is a small refactor nobody has needed yet.
+
 ### Follow-ups opened by slice 11
 
 - Password-reset **completion**: deep link + `POST /auth/reset-password`.
