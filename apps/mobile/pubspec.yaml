@@ -31,9 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   go_router: ^17.5.0
   flutter_riverpod: ^2.6.1
   dio: ^5.11.0
@@ -67,9 +64,13 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
+  # Still true, and deliberately so. The design's own 24-icon set has no eye or pencil, so
+  # the password-visibility toggle and the edit-profile affordance use Material glyphs.
+  # Dropping this needs those two icons drawn in the design's stroke style first — see the
+  # roadmap's icon follow-ups, alongside the missing calendar.
+  #
+  # It costs less than it looks: Flutter subsets the icon font to the codepoints actually
+  # referenced, so three glyphs ship, not the whole face.
   uses-material-design: true
 
   # Archivo, SIL OFL 1.1 — see assets/fonts/OFL.txt. Bundled rather than fetched at runtime

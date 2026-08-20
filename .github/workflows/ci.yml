@@ -102,7 +102,9 @@ jobs:
       # e2e suite both need the real schema, not just a reachable server.
       - run: pnpm --filter @forjd/api db:migrate
 
-      - run: pnpm --filter @forjd/api test
+      # test:cov, not test: the coverage thresholds in apps/api/package.json are the gate,
+      # and running the suite without --coverage skips them entirely.
+      - run: pnpm --filter @forjd/api test:cov
 
       - run: pnpm --filter @forjd/api test:e2e
 
@@ -136,6 +138,13 @@ jobs:
 
       - run: flutter analyze
 
-      - run: flutter test
+      - run: flutter test --coverage
 
-      - run: flutter build apk --debug
+      - run: bash ../../scripts/ci/check-flutter-coverage.sh
+
+      # Release, not debug. A debug APK runs no AOT compilation and no asset tree-shaking,
+      # so its size says nothing about what ships and a size regression could not be seen.
+      # Single ABI keeps the build honest to compare run over run.
+      - run: flutter build apk --release --target-platform android-arm64
+
+      - run: bash ../../scripts/ci/check-apk-size.sh
