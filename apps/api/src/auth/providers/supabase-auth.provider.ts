@@ -1,12 +1,14 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
-  AuthError,
-  createClient,
-  SupabaseClient,
-  User as SupabaseUser,
-} from '@supabase/supabase-js';
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AuthError, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
 
+import { SUPABASE_AUTH_CLIENT } from './supabase-auth-client';
 import {
   AuthCredentials,
   AuthIdentity,
@@ -39,15 +41,12 @@ interface SupabaseSessionShape {
 @Injectable()
 export class SupabaseAuthProvider implements AuthProvider {
   private readonly logger = new Logger(SupabaseAuthProvider.name);
-  private readonly client: SupabaseClient;
   private readonly passwordResetRedirectUrl: string | undefined;
 
-  constructor(config: ConfigService) {
-    this.client = createClient(
-      config.getOrThrow<string>('SUPABASE_URL'),
-      config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
-      { auth: { persistSession: false, autoRefreshToken: false } },
-    );
+  constructor(
+    @Inject(SUPABASE_AUTH_CLIENT) private readonly client: SupabaseClient,
+    config: ConfigService,
+  ) {
     // `get`, not `getOrThrow`: CI supplies only the two required Supabase vars, and an
     // unset redirect simply falls back to the project's Site URL.
     this.passwordResetRedirectUrl = config.get<string>('AUTH_PASSWORD_RESET_REDIRECT_URL');
