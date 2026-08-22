@@ -133,6 +133,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The app imports @forjd/contracts and @forjd/domain as workspace packages, and both
+      # resolve through their built `dist/`. Without this the job fails on a clean checkout
+      # with "Cannot find module '@forjd/contracts'" while passing locally, because a local
+      # tree almost always has a stale dist/ lying around from an earlier build. Only these
+      # two are built rather than `pnpm -r build` (what the api job does) because the app
+      # depends on nothing else in the workspace.
+      - run: pnpm --filter @forjd/domain --filter @forjd/contracts build
+
       - run: pnpm --filter @forjd/mobile typecheck
 
       - run: pnpm --filter @forjd/mobile lint

@@ -5,7 +5,6 @@ import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
 import {
-  AuthCredentials,
   AuthIdentity,
   AuthProvider,
   AuthResult,
