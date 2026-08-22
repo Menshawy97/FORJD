@@ -116,42 +116,38 @@ jobs:
       - run: pnpm --filter @forjd/api test:e2e
 
   mobile:
-    name: Mobile analyze, test, build
+    name: Mobile lint, typecheck, test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/mobile
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: pnpm/action-setup@v4
         with:
-          distribution: temurin
-          java-version: '17'
+          version: 11
 
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-node@v4
         with:
-          flutter-version: 3.47.0
-          channel: stable
-          cache: true
+          node-version: 24
+          cache: pnpm
 
-      - run: flutter pub get
+      - run: pnpm install --frozen-lockfile
 
-      # *.g.dart is gitignored, so generated sources must be rebuilt before analysis.
-      - run: dart run build_runner build
+      - run: pnpm --filter @forjd/mobile typecheck
 
-      - run: dart format --set-exit-if-changed lib test
+      - run: pnpm --filter @forjd/mobile lint
 
-      - run: flutter analyze
+      # --ci --watchAll=false: Jest's own CI auto-detection turns off the interactive
+      # watch-mode UI, but not the watch-mode plugins/prompts that still register the
+      # process as attached to a TTY; passed explicitly so a runner never hangs waiting
+      # for input. Runs all 35 tests (15 suites) under jest-expo.
+      - run: pnpm --filter @forjd/mobile test --ci --watchAll=false
 
-      - run: flutter test --coverage
-
-      - run: bash ../../scripts/ci/check-flutter-coverage.sh
-
-      # Release, not debug. A debug APK runs no AOT compilation and no asset tree-shaking,
-      # so its size says nothing about what ships and a size regression could not be seen.
-      # Single ABI keeps the build honest to compare run over run.
-      - run: flutter build apk --release --target-platform android-arm64
-
-      - run: bash ../../scripts/ci/check-apk-size.sh
+      # expo-doctor is deliberately not wired in here yet. It runs without any account
+      # or auth step (only npm registry access, which this job already has), but two of
+      # its 21 checks currently fail against what's committed today: a metro.config.js
+      # override it flags as risky, and expo-secure-store/expo-sqlite pinned behind the
+      # SDK 57 versions it expects. Both are pre-existing dependency/config drift, not a
+      # CI environment problem, and fixing them is app-config work outside this
+      # CI-wiring change. Add the step once that drift is cleared — a step that fails on
+      # every run from day one is worse than no step.

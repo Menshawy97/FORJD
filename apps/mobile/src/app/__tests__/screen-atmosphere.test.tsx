@@ -1,0 +1,63 @@
+// RED first: the ember gradient is the prototype's *default* atmosphere, so "which screens
+// get it" has one answer — all of them. `ScreenBackground` existing is not the fix; every
+// screen mounting it is. See src/components/__tests__/screen-background.test.tsx for the
+// geometry itself.
+//
+// This also pins 2b: welcome, login and signup were painted `bg-bg` (#08090A), which
+// 02-design-tokens.md annotates as "the desk, not the screen" — the page *outside* the phone
+// frame. The frame itself is #101011. Asserting the gradient is present asserts the right
+// ground with it, since `ScreenBackground` owns both.
+//
+// No events are fired here, so several `renderRouter()` calls in one file are safe — the
+// hazard documented in signup-field-highlight.test.tsx only applies after an event.
+import { renderRouter } from 'expo-router/testing-library';
+
+jest.mock('@/auth/secureStorage', () => ({
+  hasSession: jest.fn().mockResolvedValue(true),
+  subscribeToSession: jest.fn(() => () => {}),
+  getCachedHasSession: jest.fn(() => true),
+}));
+
+interface HostNode {
+  type: string;
+  props: Record<string, unknown>;
+  children: HostNode[] | null;
+}
+
+function flatten(node: unknown): HostNode[] {
+  if (!node || typeof node !== 'object') {
+    return [];
+  }
+  const host = node as HostNode;
+  return [host, ...(host.children ?? []).flatMap(flatten)];
+}
+
+async function emberGradientCount(url: string, settleOn: RegExp | string) {
+  const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: url });
+  await findByText(settleOn);
+  return flatten(toJSON()).filter((node) => node.type === 'RNSVGRadialGradient').length;
+}
+
+describe('every screen is drawn on the ember atmosphere', () => {
+  it('welcome', async () => {
+    expect(await emberGradientCount('/welcome', /Training\./)).toBe(1);
+  });
+
+  it('login', async () => {
+    expect(await emberGradientCount('/login', 'Welcome back')).toBe(1);
+  });
+
+  it('signup', async () => {
+    expect(await emberGradientCount('/signup', 'Create account')).toBe(1);
+  });
+
+  it('profile', async () => {
+    expect(await emberGradientCount('/profile', 'James Mitchell')).toBe(1);
+  });
+
+  // The placeholder screen stands in for four of the five tabs, so one assertion here covers
+  // home/train/progress/rank at once.
+  it('the placeholder screens', async () => {
+    expect(await emberGradientCount('/train', /coming soon/)).toBe(1);
+  });
+});

@@ -82,7 +82,14 @@ export const registerResponseSchema = z.object({
 export type RegisterResponse = z.infer<typeof registerResponseSchema>;
 
 export const unitSystemSchema = z.enum(['metric', 'imperial']);
-export const sexSchema = z.enum(['male', 'female', 'other', 'prefer_not_to_say']);
+/**
+ * Three options by product decision: Male, Female, Rather not say. `other` was dropped
+ * rather than left accepted-but-unoffered, so the contract and the UI cannot drift — a value
+ * no screen can produce is surface nobody maintains. Safe to narrow here because `sex` is a
+ * nullable `text` column, not a Postgres enum (see profiles.schema.ts), so no migration is
+ * involved, and nothing had shipped that could hold the old value.
+ */
+export const sexSchema = z.enum(['male', 'female', 'prefer_not_to_say']);
 
 export const profileResponseSchema = z.object({
   userId: z.string().uuid(),

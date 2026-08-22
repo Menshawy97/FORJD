@@ -1,6 +1,18 @@
 # ADR-010: The mobile design system is dark-only, token-driven, and self-contained
 
-**Status:** Accepted
+**Status:** Accepted — values and rationale below stand. **Mechanics amended by
+ADR-013** (2026-08): the mobile client moved from Flutter to Expo React Native,
+so the *implementation* of these tokens changed while the *values and reasoning*
+did not. `AppColors`/`AppText`/`AppDimens` Dart classes → a `tailwind.config.ts`
+`theme.extend` block (NativeWind) holding the identical values, transcribed
+straight from the same design-token source; `path_drawing`-stroked SVG icons →
+`react-native-svg` rendering the same 24 raw path strings, synchronously, same
+"a transcription error fails the build rather than rendering an invisible icon"
+test requirement; Archivo bundled via `assets/fonts/` + `expo-font`, same
+no-network-fetch-for-a-login-screen rationale carried over unchanged; hand-written
+DTO mirrors are no longer needed at all — the RN app imports
+`packages/contracts` (Zod) directly, closing the "hand-written DTOs can drift...
+nothing enforces the correspondence" risk this ADR flagged as an open follow-up.
 **Date:** 2026-08
 
 ## Context

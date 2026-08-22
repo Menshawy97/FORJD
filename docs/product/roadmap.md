@@ -7,13 +7,109 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-08-21)
+## Current status (last updated 2026-08-22)
 
 **We are inside Phase 1.** Phase 0 is complete except Spike B, which is open but
 does not gate Phase 1 (see "Spike status" below). Read this section first when
 resuming — it says exactly what's done, what's blocked on a manual step, and what
 to do next. Don't re-derive this from scratch; verify it's still accurate and
 continue.
+
+### Mobile framework pivot: Flutter → Expo React Native
+
+**`apps/mobile` is Expo (React Native) + TypeScript, not Flutter.** The Flutter
+app described throughout the rest of this Phase 1 section (design tokens, Drift,
+go_router, the 69-test suite) was deleted and replaced in the same change — see
+**ADR-013** (`docs/decisions/ADR-013-expo-react-native.md`, supersedes ADR-001)
+for the full reasoning: Expo Go's zero-build, hot-reload preview on a physical
+iPhone from a Windows dev machine beats Flutter's Codemagic → TestFlight loop for
+the screen-heavy phase of work the design handoff opened up. **ADR-014**
+(`docs/decisions/ADR-014-openai-inbody-vision.md`, supersedes ADR-006 on vendor
+choice only) rides along with it: InBody photo extraction moves to OpenAI vision
+instead of Claude vision, since the pivot prompted standardizing on one AI vendor
+for the app. Spike B's pipeline shape and confirmation-gate requirement are
+unchanged; it still hasn't been run under either vendor. ADR-007, ADR-010, and
+ADR-011 were amended (not replaced) to carry their reasoning over to the new
+stack — see each ADR for what changed mechanically (Dio → axios,
+`flutter_secure_storage` → `expo-secure-store`, Codemagic → EAS Build, etc.).
+
+**Slice 1 of the Expo rebuild — auth + 5-tab shell, wired to the real backend,
+test-first — is done.** This is the direct replacement for what the "Slice 11 —
+Mobile auth UI" entry below describes; that Flutter work is superseded, not
+current. The new slice was built RED→GREEN per phase (navigation shell, then auth
+flow) against the actual NestJS `/api/v1/auth/*` endpoints, with `expo-secure-store`
+token persistence and the same three-client (public / refresh / api) pattern with
+refresh-dedup that ADR-011 established for Flutter. **117 tests passing across 37
+suites** in `apps/mobile` (Jest + `@testing-library/react-native`), `typecheck` and
+`lint` clean, and both the iOS and Android bundles compile (~9.6 MB each, zero
+unresolved modules). CI's `mobile` job now runs `typecheck`, `lint`, and
+`test --ci` for real (see `.github/workflows/ci.yml`) rather than the Phase-2
+install-only stub.
+
+**The Expo SDK is pinned to 54, not the latest.** Expo Go on the App Store ships a
+single SDK version, and scanning an SDK-57 bundle with Expo Go 54 fails outright
+with a version error. Since ADR-013's entire justification is the zero-build
+Expo Go loop on a physical iPhone, the app follows whatever SDK Expo Go ships.
+Downgrading surfaced one real API break worth remembering: `expo-router@6` (the
+SDK 54 line) does not re-export `ThemeProvider`/`DarkTheme`/`DefaultTheme` — those
+come from `@react-navigation/native` directly — while `Redirect` does still come
+from `expo-router`. `jest.config.js` also sets `testTimeout: 30000`, because
+`renderRouter()` rebuilds the whole route tree per call and overruns Jest's 5 s
+default once workers contend for CPU.
+
+**Design fidelity and a code review were both run against slice 1, and their
+findings fixed.** The design was implemented against the runnable prototype
+(`FORJD mobile app design/FORJD Mobile.dc.html`), *not* the handoff markdown —
+the markdown paraphrases and was caught contradicting it outright (it gives the
+login headline as "Log in"; the prototype and screenshots both say "Welcome
+back"). A full audit then found 17 further gaps, all now closed. The ones worth
+carrying forward as lessons:
+
+- The app-wide **"ember" atmosphere** — `radial-gradient(130% 90% at 50% -10%,
+  rgba(233,113,47,.20), #101011 55%)`, an orange glow from above the top edge — is
+  the design's default on *every* screen, set in code (`atmosphere ?? 'ember'`)
+  rather than in any screen's own styles. Transcribing the flat background token
+  alone silently dropped it. It is now a shared `ScreenBackground` component
+  (SVG `RadialGradient`, since `expo-linear-gradient` cannot do radial).
+- There are **two darks**, and picking the wrong one is invisible in code review:
+  `#08090A` is *"the desk, not the screen"* (outside the phone frame) and
+  `#101011` is the screen itself. Three screens used the desk colour.
+- **Safe-area insets** were absent app-wide; the prototype's 52 px status-bar row
+  had been approximated with a hardcoded `pt-16`.
+- The icon set was previously assumed not to exist and shipped as placeholder
+  dots. **The full 22-glyph SVG path data is inline in the prototype** and is now
+  transcribed into `src/components/icon.tsx`, verified path-by-path.
+
+**Contract change — `sex` narrowed to three values.** `sexSchema` was
+`male | female | other | prefer_not_to_say`; it is now
+`male | female | prefer_not_to_say`, matching the three chips the prototype
+actually draws (Male / Female / Rather not say). `other` had no chip at all, so a
+stored `other` would have rendered nothing selected and been unreachable from the
+UI. Narrowing was cheap and needed no migration because `sex` is a nullable
+`text` column, not a Postgres enum (`profiles.schema.ts`). The compiler then
+caught a **duplicate `Sex` type in `@forjd/domain`** that still carried the old
+value — the two are now aligned, and that duplication is worth remembering as a
+place where drift hides. Fixtures regenerated (content unchanged; the sample uses
+`"female"`), API builds clean, 52 API tests still pass.
+
+**Known open item, needs a human:** `eslint-plugin-react-hooks` is installed and
+imported in `apps/mobile/eslint.config.mjs`, but its rules are not registered —
+the ECC `config-protection` hook blocks edits to ESLint configs, and disabling a
+protection hook is not a change to make unattended. Nothing enforces
+`rules-of-hooks` / `exhaustive-deps` until this lands. The rules were verified to
+pass cleanly against a throwaway config, so registering them is green work, not a
+cleanup. See the PR description for the exact diff needed.
+Slices 2-8 of the Expo rebuild (profile/settings, exercise library, live workout
++ offline sync, programs, InBody + AI module, real home/progress, ranking/
+subscriptions) are sequenced but not built — see §9 of the mobile-pivot plan
+(`C:\Users\Mostafa Ashraf\.claude\plans\i-have-added-the-declarative-cake.md`) for
+the slice/screen/dependency breakdown; it is not duplicated here.
+
+**Everything below this point that discusses the Flutter app** (design tokens,
+Drift, go_router, the 69/60-Flutter-test counts, the emulator walk, the "All 14
+slices" table's mobile-shaped rows 9-14) **is historical record of Phase 1 work
+that has since been superseded by the pivot above**, kept for the reasoning it
+captured rather than as a description of what's in `apps/mobile` today.
 
 ### Phase 1 progress
 
@@ -256,8 +352,8 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 | 8 — CI conformance grep | ✅ Done | `scripts/ci/check-architecture-conformance.sh`. **Verified non-vacuous**: catches a planted Supabase import outside the provider dirs, allows the same import inside them. |
 | 9 — Flutter shell | ✅ Done | `flutter create` scaffold + go_router routes, Riverpod, Dio client, theme. Analyzer clean, tests pass. |
 | 10 — Drift scaffold | ✅ Done | `AppDatabase` with a `CachedProfiles` table. Timestamps stored as **ISO-8601 text**, not Unix seconds — the default returns local time and silently shifts any instant that crossed a timezone. See `apps/mobile/build.yaml`. |
-| 11 — Mobile auth UI | ✅ Done | Merged (PRs #2, #3). Design tokens + Archivo, the widget library, the network layer with 401→refresh→replay, auth screens, the 5-tab shell, profile/edit-profile, and ADR-010/011. Walked on an emulator against the live API; four findings fixed. 60 Flutter tests; debug APK builds. |
-| 12 — Build flavors | ⬜ Blocked on a decision | The plan assumed three Supabase projects; only two are available, and Railway is rejected on cost. Needs a topology decision (see "Next, in order"), not only an account. |
+| 11 — Mobile auth UI | ⬜ **Superseded** | Was merged as Flutter (PRs #2, #3): design tokens + Archivo, widget library, 401→refresh→replay network layer, auth screens, 5-tab shell, profile/edit-profile, ADR-010/011. Walked on an emulator; four findings fixed; 60 Flutter tests; debug APK builds. **The Flutter app this built no longer exists** — see "Mobile framework pivot" above. Its replacement is the Expo rebuild's **Slice 1** (auth + 5-tab shell, wired to the real backend, test-first, 35 tests), done under ADR-013. |
+| 12 — Build flavors | ⬜ Blocked on a decision | Written against the Flutter app; needs re-scoping for Expo (EAS Build profiles rather than Flutter flavors) once reached. The underlying blocker is unchanged: the plan assumed three Supabase projects, only two are available, and Railway is rejected on cost. Needs a topology decision (see "Next, in order"), not only an account. |
 | 13 — Staging deploy | ⬜ Blocked on a decision | ADR-009's host choice (Railway) no longer holds — it was chosen partly *for* its paid tier. Needs a free-tier host picked and verified before an ADR can supersede it. |
 | 14 — Device DoD walk | ⬜ Not started | Needs 12/13 plus the physical Android device. |
 
@@ -316,8 +412,10 @@ matters when the hosted database is first migrated in slice 13.
   Local git identity is set per-repo (`--local`) to Mostafa Menshawy /
   mostafa.menshawy97@gmail.com. All commits are authored under that identity —
   keep it that way; do not add other co-authorship trailers.
-- No application code yet (`apps/api`, `apps/mobile` are empty placeholder
-  directories, correctly untracked by git since they're empty).
+- `apps/api` and `apps/mobile` both have real, tested application code now (see
+  "Current status" above) — this line describing them as empty placeholder
+  directories was a stale carryover from the repo's very first skeleton commit,
+  left uncorrected through an earlier exploration pass, and is corrected here.
 
 ### Toolchain — installed and verified on this machine
 
@@ -414,11 +512,31 @@ A-D batch.
 
 ### Next, in order
 
+0. **Slice 2 of the Expo rebuild — profile/settings screens.** The only slice-2 screen
+   that is fully buildable today is **`editProfile`**: Name / Birthday / Sex are all backed
+   by `updateProfileRequestSchema`. The rest are gated on backend fields that do not exist:
+   - `units` — only 1 of its 4 controls (`unitSystem`) is backed; energy units cannot even
+     be derived from it.
+   - `goals` — **nothing** in the contract backs it, and it sits on the onboarding path, so
+     it is the highest-priority new backend field.
+   - `privacy` — five consent flags, all needing *server-side* enforcement (a private
+     profile must be refused by the API, not merely hidden by the client).
+   - `location` — renders today, but "Allow" has no field to write to (no `city` exists).
+
+   Also noted while extracting the specs: `heightCm` exists in the contract but **no screen
+   edits it**, and `avatarUrl` has no control anywhere. The screen specs are extracted and
+   verified against the prototype; they found a further ten places where the handoff
+   markdown disagrees with it (e.g. `05-interactions.md` says "disabled does not exist in
+   this design" while `goals` disables Save at `opacity .4`; `privacy` has three permission
+   rows, not the two documented). **Trust the prototype.**
+
 1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
    decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.
 2. **Slice 12 — build flavors**, once `forjd-prod` exists and the topology is chosen.
-   `API_BASE_URL` is already a compile-time `String.fromEnvironment`, so this is mostly
-   wiring flavors to defines rather than new code. Record the topology decision as ADR-013.
+   `API_BASE_URL` is now an Expo `app.config.ts` `extra` value rather than a Dart
+   `String.fromEnvironment`, so this becomes EAS Build profiles rather than Flutter flavors.
+   Record the topology decision as **ADR-015** (013 and 014 are taken by the Expo pivot and
+   the OpenAI/InBody vendor change).
 3. **Slice 13 — deploy staging to the chosen free host.** Superseding ADR-009 requires
    `apps/api/Dockerfile`, which does not exist yet and needs writing (multi-stage,
    production dependencies only). Note the IPv6 finding below: use the **session pooler**
