@@ -1,6 +1,21 @@
 # ADR-011: How the mobile app holds and renews a session
 
-**Status:** Accepted
+**Status:** Accepted — decision shape below stands. **Mechanics amended by
+ADR-013** (2026-08): the mobile client moved from Flutter to Expo React Native.
+`flutter_secure_storage` → `expo-secure-store` (confirm its Android default is
+comparable to `encryptedSharedPreferences: true` rather than assuming — this ADR's
+whole point was not defaulting blindly). The three-Dio-client pattern (public /
+refresh-only / authenticated-with-interceptor, plus an interceptor-free replay
+client) maps to three `axios` instances with identical reasoning: a separate
+refresh client makes recursive refresh structurally impossible, and a separate
+replay client avoids the same interceptor-serialization deadlock this ADR's tests
+caught in Dio's `QueuedInterceptor` — axios interceptors have an analogous
+request-queuing behavior that needs the same test, not an assumption that RN is
+immune to the bug class. The `_inFlight ??= refresher.refresh(...)` singleton-future
+dedup pattern ports directly. `refreshListenable`-style gating (read auth state at
+redirect time, not reactively watched, to avoid tearing down the navigator on every
+sign-in) becomes an Expo Router redirect in the root layout using `router`'s
+imperative APIs at redirect time.
 **Date:** 2026-08
 
 ## Context

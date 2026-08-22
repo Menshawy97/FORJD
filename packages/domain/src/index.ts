@@ -5,7 +5,12 @@
 
 export type UnitSystem = 'metric' | 'imperial';
 
-export type Sex = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+/**
+ * Kept in step with `sexSchema` in @forjd/contracts — three options by product decision
+ * (Male, Female, Rather not say), matching the three chips the design actually draws.
+ * `other` was removed from both rather than left accepted-but-unoffered.
+ */
+export type Sex = 'male' | 'female' | 'prefer_not_to_say';
 
 export interface User {
   id: string;

@@ -25,22 +25,34 @@ if [ -d apps/api/src ]; then
   fi
 fi
 
-# Rule 17 / ADR-003: the health package is an implementation detail behind HealthProvider.
-if [ -d apps/mobile/lib ]; then
-  hits=$(grep -rn --include='*.dart' "package:health/" apps/mobile/lib \
-    | grep -v '^apps/mobile/lib/integrations/' || true)
+# Rule 5 / CLAUDE.md: OpenAI must stay behind a single provider adapter file on mobile, not
+# scattered across screens — mirrors the Supabase-SDK check above for the RN app.
+# Scoped to apps/mobile/src (application source), not the whole app dir: app.config.ts,
+# metro.config.js etc. at the app root are build/tooling config, not app code, and
+# app.config.ts legitimately references plugin names as strings for Expo's config-plugin
+# system (e.g. registering the expo-secure-store plugin below) — that isn't an import.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' "['\"]openai['\"]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/ai/providers/openai-provider.ts$' || true)
   if [ -n "$hits" ]; then
-    report "package:health imported outside apps/mobile/lib/integrations/" "$hits"
+    report "openai imported outside apps/mobile/src/ai/providers/openai-provider.ts" "$hits"
   fi
 fi
 
 # ADR-011: session tokens live in the platform keystore and nowhere else. Pinning the
-# plugin to one file is what makes that checkable — a second caller could read or write a
-# token without the reasoning in secure_token_store.dart applying to it.
-if [ -d apps/mobile/lib ]; then
-  hits=$(grep -rn --include='*.dart' 'package:flutter_secure_storage/' apps/mobile/lib     | grep -v '^apps/mobile/lib/features/auth/data/secure_token_store.dart' || true)
+# module to one file is what makes that checkable — a second caller could read or write a
+# token without the reasoning in secureStorage.ts applying to it. Tests are exempt
+# app-wide: `jest.mock('expo-secure-store')` at a component/screen test boundary verifies
+# that component through the wrapper's real save/notify behaviour (see
+# apps/mobile/src/app/__tests__/login.test.tsx's header comment for why that's preferred
+# over mocking the wrapper itself), which is a different thing from production code
+# reaching around the wrapper.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' "['\"]expo-secure-store['\"]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/auth/secureStorage.ts$' \
+    | grep -v '/__tests__/' || true)
   if [ -n "$hits" ]; then
-    report "flutter_secure_storage imported outside secure_token_store.dart" "$hits"
+    report "expo-secure-store imported outside apps/mobile/src/auth/secureStorage.ts" "$hits"
   fi
 fi
 

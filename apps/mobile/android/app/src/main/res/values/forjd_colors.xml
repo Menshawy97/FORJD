@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!--
-      AppColors.background from lib/core/theme/app_colors.dart. Duplicated here because the
-      native launch window is drawn by Android before any Dart runs, so it cannot read the
-      Flutter theme. Keep the two in step.
-    -->
-    <color name="forjd_background">#FF08090A</color>
-</resources>

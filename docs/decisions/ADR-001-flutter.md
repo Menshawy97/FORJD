@@ -1,6 +1,6 @@
 # ADR-001: Flutter for the mobile client
 
-**Status:** Accepted
+**Status:** Superseded by ADR-013 (2026-08) — mobile client moved to Expo React Native.
 **Date:** 2026-08
 
 ## Context

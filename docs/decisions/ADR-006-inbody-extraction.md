@@ -1,6 +1,8 @@
 # ADR-006: InBody photo extraction via Claude vision
 
-**Status:** Proposed — pending Spike B (Phase 0, week 1-3)
+**Status:** Superseded by ADR-014 (2026-08) — vendor changed to OpenAI vision;
+pipeline shape and confirmation-gate requirement carry over unchanged.
+Was: Proposed — pending Spike B (Phase 0, week 1-3)
 
 ## Context
 

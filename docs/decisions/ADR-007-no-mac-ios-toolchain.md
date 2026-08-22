@@ -34,13 +34,17 @@ touching Mac hardware, owned or rented.
    edited as plain text on Windows.** These files don't require Xcode to
    edit correctly, only to be aware of their schema.
 
-4. **Codemagic builds and signs with no Mac in the loop.** Automatic code
-   signing via an App Store Connect API key (generated in a browser) lets
-   Codemagic fetch/create certificates and provisioning profiles itself,
-   build on its own macOS runners, and upload to TestFlight — see
-   [Codemagic's documented no-Mac signing flow](https://blog.codemagic.io/automatic-code-signing-for-ios-that-doesnt-require-a-mac/).
-   Free tier (500 macOS build-minutes/month) is sufficient for a solo
-   release cadence.
+4. **~~Codemagic~~ EAS Build builds and signs with no Mac in the loop** (amended
+   by ADR-013 — mobile client is now Expo React Native, not Flutter; Codemagic
+   was Flutter-specific tooling). EAS Build's managed credentials flow is the
+   RN-ecosystem equivalent: an Apple Developer API key entered once in a
+   browser lets EAS fetch/create certificates and provisioning profiles, build
+   on its own macOS runners, and submit to TestFlight via `eas submit` — same
+   no-Mac shape Codemagic provided, different vendor. **This step is now needed
+   less often than ADR-007 originally assumed**: Expo Go requires no build at
+   all for pure-JS/TS changes (no signing, no cloud runner, no Xcode) — EAS
+   Build is only invoked once a screen needs a native module outside Expo Go's
+   managed sandbox. See ADR-013 for the full reasoning.
 
 5. **The physical iPhone, via TestFlight, is the HealthKit test
    environment** — not the iOS Simulator (which is Mac-only software

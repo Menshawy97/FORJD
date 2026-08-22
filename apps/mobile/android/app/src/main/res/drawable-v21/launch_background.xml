@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!--
-      The app is dark-only (ADR-010). The Flutter default here is white, which flashed a
-      full white screen on every cold start before the first Dart frame — the longer the
-      start, the worse it looked.
-    -->
-    <item android:drawable="@color/forjd_background" />
-</layer-list>
