@@ -8,6 +8,17 @@
     "sex": "female",
     "heightCm": 172.5,
     "unitSystem": "metric",
+    "weightUnit": "lb",
+    "distanceUnit": "km",
+    "energyUnit": "kJ",
+    "trainingGoals": [
+      "get_stronger",
+      "improve_endurance"
+    ],
+    "activities": [
+      "strength",
+      "hyrox"
+    ],
     "avatarUrl": "https://example.com/avatar.png"
   }
 }

@@ -5,5 +5,10 @@
   "sex": null,
   "heightCm": null,
   "unitSystem": "metric",
+  "weightUnit": "kg",
+  "distanceUnit": "km",
+  "energyUnit": "kcal",
+  "trainingGoals": [],
+  "activities": [],
   "avatarUrl": null
 }
