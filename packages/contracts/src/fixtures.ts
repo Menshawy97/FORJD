@@ -33,6 +33,19 @@ const session = {
   expiresAt: '2026-01-01T01:00:00.000Z',
 };
 
+/**
+ * All-off, which is what every account starts as and what the opt-in decision means. The
+ * consent timestamp is null precisely because consent has not been given.
+ */
+const privacy = {
+  publicProfile: false,
+  leaderboardOptIn: false,
+  locationForLeaderboard: false,
+  aiFeaturesConsent: false,
+  aiFeaturesConsentAt: null,
+  crashDiagnostics: false,
+};
+
 const profile = {
   userId: '11111111-1111-4111-8111-111111111111',
   displayName: 'Ada Lovelace',
@@ -114,7 +127,12 @@ export const responseFixtures = {
 
   'me-response': {
     schema: meResponseSchema,
-    sample: { id: '11111111-1111-4111-8111-111111111111', email: 'ada@example.com', profile },
+    sample: {
+      id: '11111111-1111-4111-8111-111111111111',
+      email: 'ada@example.com',
+      profile,
+      privacy,
+    },
   },
 
   'me-response-no-profile': {
@@ -123,6 +141,9 @@ export const responseFixtures = {
       id: '11111111-1111-4111-8111-111111111111',
       email: 'ada@example.com',
       profile: null,
+      // Privacy is present even when the profile is not: the row is created with the
+      // account, so a client must never treat it as optional the way it does `profile`.
+      privacy,
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;

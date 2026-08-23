@@ -20,5 +20,13 @@
       "hyrox"
     ],
     "avatarUrl": "https://example.com/avatar.png"
+  },
+  "privacy": {
+    "publicProfile": false,
+    "leaderboardOptIn": false,
+    "locationForLeaderboard": false,
+    "aiFeaturesConsent": false,
+    "aiFeaturesConsentAt": null,
+    "crashDiagnostics": false
   }
 }

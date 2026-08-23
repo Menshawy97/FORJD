@@ -1,8 +1,32 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { MeResponse, ProfileResponse, UpdateProfileRequest } from '@forjd/contracts';
-import { Profile, UnitSystem, User } from '@forjd/domain';
+import type {
+  MeResponse,
+  PrivacySettingsResponse,
+  ProfileResponse,
+  UpdatePrivacyRequest,
+  UpdateProfileRequest,
+} from '@forjd/contracts';
+import { PrivacySettings, Profile, UnitSystem, User } from '@forjd/domain';
+import * as Sentry from '@sentry/nestjs';
 
+import { applyCrashDiagnosticsConsent } from '../observability/sentry-scrub';
+import { PrivacyService } from '../privacy/privacy.service';
 import { ProfilePatch, UsersRepository } from './users.repository';
+
+/**
+ * `userId` is deliberately dropped: the caller already knows whose settings these are, and
+ * echoing an id into a nested object invites a client to key off it.
+ */
+function toPrivacyResponse(settings: PrivacySettings): PrivacySettingsResponse {
+  return {
+    publicProfile: settings.publicProfile,
+    leaderboardOptIn: settings.leaderboardOptIn,
+    locationForLeaderboard: settings.locationForLeaderboard,
+    aiFeaturesConsent: settings.aiFeaturesConsent,
+    aiFeaturesConsentAt: settings.aiFeaturesConsentAt?.toISOString() ?? null,
+    crashDiagnostics: settings.crashDiagnostics,
+  };
+}
 
 /**
  * What each `unitSystem` preset writes. Energy is absent on purpose and not by omission:
@@ -18,16 +42,37 @@ const UNIT_SYSTEM_PRESETS = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private readonly privacyService: PrivacyService,
+  ) {}
 
+  /**
+   * Reads profile and privacy together. Privacy rides along rather than living behind its own
+   * `GET /users/me/privacy`, so the settings screen is one request and there is one source
+   * for one truth — two endpoints would be two answers free to disagree.
+   */
   async getMe(user: User): Promise<MeResponse> {
-    const profile = await this.usersRepository.findProfile(user.id);
+    const [profile, privacy] = await Promise.all([
+      this.usersRepository.findProfile(user.id),
+      this.privacyService.get(user.id),
+    ]);
+
+    // The one point in a request that has genuinely read this user's diagnostics choice, so
+    // it is where the crash reporter is told about it. Not cached: the tag is set from the
+    // row that was just read.
+    applyCrashDiagnosticsConsent(Sentry.getCurrentScope(), privacy.crashDiagnostics);
 
     return {
       id: user.id,
       email: user.email,
       profile: profile ? this.toProfileResponse(profile) : null,
+      privacy: toPrivacyResponse(privacy),
     };
+  }
+
+  async updatePrivacy(user: User, request: UpdatePrivacyRequest): Promise<PrivacySettingsResponse> {
+    return toPrivacyResponse(await this.privacyService.update(user.id, request));
   }
 
   async updateProfile(user: User, request: UpdateProfileRequest): Promise<ProfileResponse> {

@@ -1,8 +1,11 @@
 import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
 import {
+  updatePrivacyRequestSchema,
   updateProfileRequestSchema,
   type MeResponse,
+  type PrivacySettingsResponse,
   type ProfileResponse,
+  type UpdatePrivacyRequest,
   type UpdateProfileRequest,
 } from '@forjd/contracts';
 
@@ -26,5 +29,16 @@ export class UsersController {
     @Body(new ZodValidationPipe(updateProfileRequestSchema)) body: UpdateProfileRequest,
   ): Promise<ProfileResponse> {
     return this.usersService.updateProfile(request.user, body);
+  }
+  /**
+   * There is deliberately no matching GET. Privacy rides along on GET /users/me, so the
+   * settings screen is one read and one source of truth.
+   */
+  @Patch('me/privacy')
+  updatePrivacy(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(updatePrivacyRequestSchema)) body: UpdatePrivacyRequest,
+  ): Promise<PrivacySettingsResponse> {
+    return this.usersService.updatePrivacy(request.user, body);
   }
 }

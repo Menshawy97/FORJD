@@ -161,10 +161,59 @@ export const profileResponseSchema = z.object({
 });
 export type ProfileResponse = z.infer<typeof profileResponseSchema>;
 
+/**
+ * Consent state. Separate from the profile because these gate *server behaviour* while the
+ * profile is display data, and because an audit of "what did this user agree to" should read
+ * one shape rather than a subset of a larger one.
+ *
+ * Never null and never partial: the columns behind it are NOT NULL and a row is created with
+ * the account, so a client always receives all six values. A missing flag would be a third
+ * state that is neither consent nor refusal.
+ */
+export const privacySettingsResponseSchema = z.object({
+  publicProfile: z.boolean(),
+  leaderboardOptIn: z.boolean(),
+  locationForLeaderboard: z.boolean(),
+  aiFeaturesConsent: z.boolean(),
+  /** When consent was granted; null whenever `aiFeaturesConsent` is false. */
+  aiFeaturesConsentAt: z.string().datetime().nullable(),
+  crashDiagnostics: z.boolean(),
+});
+export type PrivacySettingsResponse = z.infer<typeof privacySettingsResponseSchema>;
+
+/**
+ * `aiFeaturesConsentAt` is deliberately absent — it is derived from the transition, never
+ * supplied. Letting a client send it would let it claim a consent date it did not have.
+ */
+export const updatePrivacyRequestSchema = z
+  .object({
+    publicProfile: z.boolean(),
+    leaderboardOptIn: z.boolean(),
+    /**
+     * Requires `leaderboardOptIn`. Turning this on without its parent is a 400 rather than a
+     * silent coercion, because silently ignoring it would hide a client bug behind a
+     * successful response — on a location field, of all things.
+     */
+    locationForLeaderboard: z.boolean(),
+    aiFeaturesConsent: z.boolean(),
+    crashDiagnostics: z.boolean(),
+  })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  });
+export type UpdatePrivacyRequest = z.infer<typeof updatePrivacyRequestSchema>;
+
 export const meResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   profile: profileResponseSchema.nullable(),
+  /**
+   * Privacy rides along here on purpose. There is deliberately **no** `GET /users/me/privacy`:
+   * the settings screen needs one read, and a second endpoint would be a second source for
+   * one truth, free to disagree with this one.
+   */
+  privacy: privacySettingsResponseSchema,
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
 

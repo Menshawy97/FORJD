@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AuthProviderModule } from '../auth/auth-provider.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PrivacyRepository } from '../privacy/privacy.repository';
+import { PrivacyService } from '../privacy/privacy.service';
 import { UsersController } from './users.controller';
 import { UsersRepository } from './users.repository';
 import { UsersService } from './users.service';
@@ -15,7 +16,7 @@ import { UsersService } from './users.service';
 @Module({
   imports: [AuthProviderModule],
   controllers: [UsersController],
-  providers: [UsersService, UsersRepository, PrivacyRepository, JwtAuthGuard],
-  exports: [UsersRepository, PrivacyRepository],
+  providers: [UsersService, UsersRepository, PrivacyRepository, PrivacyService, JwtAuthGuard],
+  exports: [UsersRepository, PrivacyRepository, PrivacyService],
 })
 export class UsersModule {}

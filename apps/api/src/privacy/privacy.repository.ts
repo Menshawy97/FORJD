@@ -3,10 +3,21 @@ import { PrivacySettings } from '@forjd/domain';
 import { eq } from 'drizzle-orm';
 
 import { Database, DRIZZLE } from '../database/database.module';
+import { auditLogs } from '../database/schema/audit-logs.schema';
 import {
   privacySettings,
   PrivacySettingsRow,
 } from '../database/schema/privacy-settings.schema';
+
+/**
+ * What `updateLocked`'s caller decided to do with the locked row: the columns to write, and
+ * the audit row to write alongside them in the same transaction, if the change is one that
+ * warrants a record.
+ */
+export interface PrivacyDecision {
+  patch: PrivacyPatch;
+  audit: { action: string; metadata?: Record<string, unknown> } | null;
+}
 
 export interface PrivacyPatch {
   publicProfile?: boolean;
@@ -66,9 +77,72 @@ export class PrivacyRepository {
   }
 
   /**
+   * Reads the row **under a write lock**, lets the caller decide what to change, then writes
+   * the patch and any audit row in the same transaction.
+   *
+   * The lock is the point. Consent rules are all statements about a *transition*, so they
+   * have to be evaluated against the row as it is at write time — not against a snapshot read
+   * earlier in the request. Without `FOR UPDATE`, two overlapping requests both read the old
+   * row, both conclude their change is legal, and the second write lands on a state its
+   * decision was never checked against: one turning `leaderboardOptIn` off while another
+   * turns `locationForLeaderboard` on ends with location sharing enabled for a leaderboard
+   * the user has left. That is not an adversarial-timing edge case — the design's Save button
+   * re-sends every toggle on each tap, so overlapping PATCHes are the ordinary case.
+   *
+   * The audit row is written here rather than by the caller afterwards so that the consent
+   * change and its record either both land or both roll back. An audit trail that can lose
+   * the event for a change that did happen is worse than none, because it reads as complete.
+   *
+   * `decide` runs inside an open transaction holding a row lock, so anything slow inside it
+   * holds that lock. It is expected to be pure computation over the row it is given.
+   */
+  async updateLocked(
+    userId: string,
+    decide: (current: PrivacySettings) => PrivacyDecision | Promise<PrivacyDecision>,
+  ): Promise<PrivacySettings | null> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(privacySettings)
+        .where(eq(privacySettings.userId, userId))
+        .for('update')
+        .limit(1);
+
+      if (!locked) {
+        return null;
+      }
+
+      const { patch, audit } = await decide(this.toPrivacySettings(locked));
+
+      const [row] = await tx
+        .update(privacySettings)
+        .set({ ...patch, updatedAt: new Date() })
+        .where(eq(privacySettings.userId, userId))
+        .returning();
+
+      if (!row) {
+        return null;
+      }
+
+      if (audit) {
+        await tx.insert(auditLogs).values({
+          userId,
+          action: audit.action,
+          metadata: audit.metadata ?? null,
+        });
+      }
+
+      return this.toPrivacySettings(row);
+    });
+  }
+
+  /**
    * Applies a partial update, returning null when there is no row to update. Fields left
    * `undefined` are untouched — clearing `aiFeaturesConsentAt` requires an explicit null,
    * which is what distinguishes "withdraw consent" from "change something else".
+   *
+   * Unlocked, so it is only for changes that depend on nothing already in the row. Anything
+   * conditional on current state must go through `updateLocked`.
    */
   async update(userId: string, patch: PrivacyPatch): Promise<PrivacySettings | null> {
     const [row] = await this.db

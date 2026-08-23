@@ -2,6 +2,7 @@ import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, inArray } from 'drizzle-orm';
 import { Pool } from 'pg';
 
+import { auditLogs } from '../database/schema/audit-logs.schema';
 import { privacySettings } from '../database/schema/privacy-settings.schema';
 import { users } from '../database/schema/users.schema';
 import { UsersRepository } from '../users/users.repository';
@@ -152,6 +153,168 @@ describe('PrivacyRepository', () => {
     await expect(
       repository.update(crypto.randomUUID(), { publicProfile: true }),
     ).resolves.toBeNull();
+  });
+
+  describe('updateLocked', () => {
+    it('runs the decision against the stored row and writes the patch', async () => {
+      const user = await newUser('locked');
+      await repository.findOrCreate(user.id);
+
+      const updated = await repository.updateLocked(user.id, (current) => {
+        expect(current.publicProfile).toBe(false);
+        return { patch: { publicProfile: true }, audit: null };
+      });
+
+      expect(updated?.publicProfile).toBe(true);
+    });
+
+    it('returns null when there is no row to lock', async () => {
+      const user = await newUser('locked-missing');
+      await db.delete(privacySettings).where(eq(privacySettings.userId, user.id));
+
+      await expect(
+        repository.updateLocked(user.id, () => ({ patch: { publicProfile: true }, audit: null })),
+      ).resolves.toBeNull();
+    });
+
+    it('writes the audit row in the same transaction as the change', async () => {
+      const user = await newUser('locked-audit');
+      await repository.findOrCreate(user.id);
+
+      await repository.updateLocked(user.id, () => ({
+        patch: { aiFeaturesConsent: true },
+        audit: { action: 'privacy.ai_consent_granted', metadata: { at: 'now' } },
+      }));
+
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.userId, user.id));
+      expect(logs.map((log) => log.action)).toContain('privacy.ai_consent_granted');
+    });
+
+    /**
+     * A throw from the decision must undo the whole thing, audit row included. This is what
+     * makes rejecting an invalid consent change safe to do from inside the callback.
+     */
+    it('rolls back the change and the audit row when the decision throws', async () => {
+      const user = await newUser('locked-rollback');
+      await repository.findOrCreate(user.id);
+
+      await expect(
+        repository.updateLocked(user.id, () => {
+          throw new Error('refused');
+        }),
+      ).rejects.toThrow('refused');
+
+      const [row] = await db
+        .select()
+        .from(privacySettings)
+        .where(eq(privacySettings.userId, user.id));
+      expect(row?.publicProfile).toBe(false);
+
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.userId, user.id));
+      expect(logs).toHaveLength(0);
+    });
+
+    /**
+     * The guarantee `updateLocked` rests on, tested directly rather than through an outcome.
+     *
+     * An earlier version of this test raced two `updateLocked` calls with `Promise.all` and
+     * asserted the invariant on the resulting row. It passed with the lock **and without it**,
+     * across repeated runs — the two transactions did not reliably interleave in the window
+     * that matters, so it proved nothing. A concurrency test that cannot fail when the
+     * protection is removed is worse than no test, because it reads as evidence.
+     *
+     * This asserts the mechanism instead, deterministically: while `updateLocked` holds the
+     * row, a second `SELECT ... FOR UPDATE NOWAIT` on the same row must fail with Postgres's
+     * lock_not_available (55P03). If the `.for('update')` is ever dropped from the repository,
+     * the second statement succeeds and this test fails.
+     */
+    it('holds a row lock for the duration of the decision', async () => {
+      const user = await newUser('locked-holds');
+      await repository.findOrCreate(user.id);
+
+      // A separate connection, so it contends for the row rather than joining the
+      // transaction. It tries to take the same lock from *inside* the decision callback,
+      // which is the only moment the repository's own transaction is provably holding it.
+      const contender = new Pool({ connectionString });
+      let contention: unknown = 'never attempted';
+
+      try {
+        await repository.updateLocked(user.id, async () => {
+          try {
+            await contender.query(
+              'SELECT user_id FROM privacy_settings WHERE user_id = $1 FOR UPDATE NOWAIT',
+              [user.id],
+            );
+            contention = null;
+          } catch (error: unknown) {
+            contention = error;
+          }
+
+          return { patch: { publicProfile: true }, audit: null };
+        });
+      } finally {
+        await contender.end();
+      }
+
+      // 55P03 is lock_not_available: the row was already locked, which is exactly the
+      // guarantee the consent rules depend on. Drop `.for('update')` from the repository and
+      // the NOWAIT select succeeds instead, `contention` is null, and this fails — which is
+      // how this test was confirmed to be load-bearing rather than merely green.
+      expect((contention as { code?: string } | null)?.code).toBe('55P03');
+
+      // And the lock is released afterwards, or every later request for this row would hang.
+      const after = new Pool({ connectionString });
+      try {
+        const result = await after.query(
+          'SELECT user_id FROM privacy_settings WHERE user_id = $1 FOR UPDATE NOWAIT',
+          [user.id],
+        );
+        expect(result.rowCount).toBe(1);
+      } finally {
+        await after.end();
+      }
+    });
+
+    /**
+     * The application-level invariant, kept as a regression guard even though it cannot
+     * force the interleaving (see the test above for why that matters). It never fails
+     * spuriously: whichever order the two transactions commit in, location must not be left
+     * enabled without the leaderboard that justifies it.
+     */
+    it('never leaves location enabled without the leaderboard under concurrent updates', async () => {
+      const user = await newUser('locked-race');
+      await repository.findOrCreate(user.id);
+      await repository.update(user.id, { leaderboardOptIn: true, locationForLeaderboard: true });
+
+      /** The same rule PrivacyService applies, reproduced here as the decision under test. */
+      const decide =
+        (request: { leaderboardOptIn?: boolean; locationForLeaderboard?: boolean }) =>
+        (current: { leaderboardOptIn: boolean; locationForLeaderboard: boolean }) => {
+          const leaderboardAfter = request.leaderboardOptIn ?? current.leaderboardOptIn;
+          if (request.locationForLeaderboard === true && !leaderboardAfter) {
+            throw new Error('refused');
+          }
+          const patch: Record<string, boolean> = { ...request };
+          if (request.leaderboardOptIn === false && current.locationForLeaderboard) {
+            patch.locationForLeaderboard = false;
+          }
+          return { patch, audit: null };
+        };
+
+      await Promise.allSettled([
+        repository.updateLocked(user.id, decide({ leaderboardOptIn: false })),
+        repository.updateLocked(user.id, decide({ locationForLeaderboard: true })),
+      ]);
+
+      const [row] = await db
+        .select()
+        .from(privacySettings)
+        .where(eq(privacySettings.userId, user.id));
+
+      if (row && !row.leaderboardOptIn) {
+        expect(row.locationForLeaderboard).toBe(false);
+      }
+    });
   });
 
   /**
