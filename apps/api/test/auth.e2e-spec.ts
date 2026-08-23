@@ -1,21 +1,14 @@
-import { INestApplication, UnauthorizedException } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { inArray } from 'drizzle-orm';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
-import {
-  AuthCredentials,
-  AuthIdentity,
-  AuthProvider,
-  AuthResult,
-  AuthSession,
-  AUTH_PROVIDER,
-  SignUpResult,
-} from '../src/auth/providers/auth-provider.interface';
+import { AUTH_PROVIDER } from '../src/auth/providers/auth-provider.interface';
 import { Database, DRIZZLE } from '../src/database/database.module';
 import { users } from '../src/database/schema/users.schema';
+import { FakeAuthProvider } from './support/fake-auth-provider';
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const testEmail = `e2e-${suiteId}@example.com`;
@@ -23,96 +16,19 @@ const namedEmail = `e2e-named-${suiteId}@example.com`;
 const externalId = '11111111-2222-3333-4444-555555555555';
 const namedExternalId = '66666666-7777-8888-9999-000000000000';
 
-/**
- * An in-memory stand-in for Supabase. Overriding this single token is the whole point of
- * ADR-008: the flow is exercised end to end with no network and no credentials in CI.
- */
-class FakeAuthProvider implements AuthProvider {
-  emailConfirmationRequired = false;
-  revokedTokens: string[] = [];
-  resetRequests: string[] = [];
-  private readonly accounts = new Map<string, string>();
-  /** Access token -> the address it authenticates, so two accounts can coexist in one suite. */
-  private readonly tokenOwners = new Map<string, string>([
-    ['access-token', testEmail],
-    ['rotated-access-token', testEmail],
-    ['named-access-token', namedEmail],
-  ]);
-
-  async signUp(credentials: AuthCredentials): Promise<SignUpResult> {
-    this.accounts.set(credentials.email, credentials.password);
-
-    return {
-      identity: this.identity(credentials.email),
-      session: this.emailConfirmationRequired ? null : this.session(credentials.email),
-    };
-  }
-
-  async signIn(credentials: AuthCredentials): Promise<AuthResult> {
-    if (this.accounts.get(credentials.email) !== credentials.password) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    return {
-      identity: this.identity(credentials.email),
-      session: this.session(credentials.email),
-    };
-  }
-
-  async refreshSession(refreshToken: string): Promise<AuthSession> {
-    if (refreshToken !== 'refresh-token') {
-      throw new UnauthorizedException('Could not refresh session');
-    }
-
-    return { ...this.session(testEmail), accessToken: 'rotated-access-token' };
-  }
-
-  async signOut(accessToken: string): Promise<void> {
-    this.revokedTokens.push(accessToken);
-  }
-
-  /**
-   * Records the attempt and resolves unconditionally, mirroring the real adapter: an
-   * unknown address must be indistinguishable from a known one.
-   */
-  async requestPasswordReset(email: string): Promise<void> {
-    this.resetRequests.push(email);
-  }
-
-  async verifyAccessToken(accessToken: string): Promise<AuthIdentity> {
-    const email = this.tokenOwners.get(accessToken);
-
-    if (!email) {
-      throw new UnauthorizedException('Invalid access token');
-    }
-
-    return this.identity(email);
-  }
-
-  private session(email: string): AuthSession {
-    return {
-      accessToken: email === namedEmail ? 'named-access-token' : 'access-token',
-      refreshToken: 'refresh-token',
-      expiresAt: new Date('2026-06-01T12:00:00Z'),
-    };
-  }
-
-  private identity(email: string): AuthIdentity {
-    return {
-      externalId: email === namedEmail ? namedExternalId : externalId,
-      email,
-      emailVerified: !this.emailConfirmationRequired,
-    };
-  }
-}
-
 describe('Auth and profile (e2e)', () => {
   let app: INestApplication;
   let authProvider: FakeAuthProvider;
   let db: Database;
 
   beforeAll(async () => {
-    authProvider = new FakeAuthProvider();
+    authProvider = new FakeAuthProvider({
+      accounts: [
+        { email: testEmail, externalId, tokens: ['access-token', 'rotated-access-token'] },
+        { email: namedEmail, externalId: namedExternalId, tokens: ['named-access-token'] },
+      ],
+      refresh: { refreshToken: 'refresh-token', rotatedAccessToken: 'rotated-access-token', targetEmail: testEmail },
+    });
 
     // The suite makes more auth calls than any real user would in a minute, and
     // forgot-password is deliberately limited to 3 per 15 minutes. Rate limiting is

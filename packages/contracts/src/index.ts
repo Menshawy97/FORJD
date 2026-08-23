@@ -204,6 +204,39 @@ export const updatePrivacyRequestSchema = z
   });
 export type UpdatePrivacyRequest = z.infer<typeof updatePrivacyRequestSchema>;
 
+/**
+ * Another athlete's profile, as seen by someone who is not them.
+ *
+ * **A standalone shape, deliberately not `profileResponseSchema.pick(...)`.** A derived type
+ * would put adding a field to the owner's profile one keystroke away from exposing it to
+ * strangers: `pick` is a list of what to keep, so a new field stays private only for as long
+ * as nobody adds it to that list — and nothing fails when they do. Written out in full, a new
+ * field on the owner's profile appears here only if someone types it here, in a file whose
+ * name says who is going to read it.
+ *
+ * "Public" means visible to other signed-in FORJD users, not to the internet. The endpoint is
+ * authenticated.
+ *
+ * No email, date of birth, sex, height, unit preferences or privacy flags. No stat tiles
+ * either — the design draws them, but they need the leaderboard and analytics data that
+ * arrives in phase 10, and a placeholder would be a lie with a number on it.
+ */
+export const publicProfileResponseSchema = z.object({
+  userId: z.string().uuid(),
+  displayName: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+  /** Coarse and volunteered. Never a coordinate — see profiles.schema.ts. */
+  city: z.string().nullable(),
+  trainingGoals: z.array(trainingGoalSchema),
+  activities: z.array(activitySchema),
+  /**
+   * True when you are looking at your own profile. Drives the design's "Your public profile"
+   * self-view, and is why a private profile is still visible to its owner.
+   */
+  isSelf: z.boolean(),
+});
+export type PublicProfileResponse = z.infer<typeof publicProfileResponseSchema>;
+
 export const meResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),

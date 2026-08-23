@@ -6,6 +6,5 @@
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "_comment_testTimeout": "Jest's 5s default is not a realistic budget for these suites: each beforeAll compiles the whole Nest module graph and then talks to Postgres, and Jest runs suites in parallel so they contend for CPU and connections. At 5s this passed alone but failed roughly one run in three once a second heavy suite existed — a flake that would have surfaced as a random CI failure rather than as anything to do with the change that introduced it.",
   "testTimeout": 30000
 }
