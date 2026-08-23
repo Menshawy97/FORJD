@@ -1,13 +1,14 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { UpdateProfileRequest } from '@forjd/contracts';
 import type { Sex } from '@forjd/domain';
 
 import { getMe, updateProfile } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
+import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
@@ -113,7 +114,10 @@ export default function EditProfileScreen() {
   return (
     <ScreenBackground>
       <Header title="Edit Profile" onBack={goBack} />
-      <View className="flex-1 px-screen-x pb-[26px]">
+      <ScrollView
+        className="flex-1 px-screen-x"
+        contentContainerStyle={{ paddingBottom: 26 }}
+        showsVerticalScrollIndicator={false}>
         {loadError ? (
           <Text className="mt-3 font-archivo text-inline-error font-medium text-errorText">
             {loadError}
@@ -139,11 +143,12 @@ export default function EditProfileScreen() {
                 accessibilityLabel="Birthday"
                 accessibilityRole="button"
                 onPress={() => setPickerOpen(true)}
-                className="justify-center rounded-field border border-border bg-fieldBg px-[15px]"
+                className="flex-row items-center justify-between rounded-field border border-border bg-fieldBg px-[15px]"
                 style={{ height: INPUT_HEIGHT }}>
                 <Text className="font-archivo text-input font-semibold text-text">
                   {dateOfBirth ? formatDisplayDate(dateOfBirth) : ''}
                 </Text>
+                <Icon name="chevron" size={18} color={colors.metadata} />
               </Pressable>
               {pickerOpen && (
                 <DateTimePicker
@@ -234,11 +239,8 @@ export default function EditProfileScreen() {
                 accessibilityState={{ disabled: saving }}
                 disabled={saving}
                 onPress={handleSave}
-                style={({ pressed }) => [
-                  { marginTop: 26, height: 52, shadowColor: colors.accent },
-                  pressScale({ pressed }),
-                ]}
-                className="items-center justify-center rounded-button bg-accent shadow-primary-button">
+                style={({ pressed }) => [{ marginTop: 56 }, pressScale({ pressed })]}
+                className="h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
                 <Text className="font-archivo text-button font-bold text-white">
                   Save Changes
                 </Text>
@@ -246,7 +248,7 @@ export default function EditProfileScreen() {
             </>
           )
         )}
-      </View>
+      </ScrollView>
       <Toast message={toast.message} />
     </ScreenBackground>
   );

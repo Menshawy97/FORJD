@@ -591,20 +591,30 @@ A-D batch.
    - `heightCm` has no screen and `avatarUrl` has no control anywhere in the current design;
      both already round-trip through the API correctly for whichever future screen adds them.
 
-   **Start here: `docs/product/ui-remediation-and-phase-i-plan.md`** — a written, approved,
-   self-contained plan covering the next two PRs, in order:
+   **`docs/product/ui-remediation-and-phase-i-plan.md`** — a written, approved,
+   self-contained plan covering two PRs, in order. **Part 1 is done, merged, and green on
+   `main`; Part 2 (Phase I) is next.**
 
-   1. **Fidelity/navigation remediation on already-shipped screens.** Includes a **live
-      navigation bug**: swiping back from any screen lands on `welcome` and looks like a
-      sign-out. Root cause is traced and confirmed — the session is *never* cleared; `welcome`
-      is parked at stack index 0 because the auth screens `push` and the post-login navigation
-      `replace`, so the stack sits at depth 2 forever and the pop gesture has nowhere else to
-      go. Also fixes the Save-button glow (four screens override the translucent shadow token
-      with an opaque `shadowColor` inline), a ghost-button pressed transform the design does
-      not have, the missing Google/Apple social auth row on `login`/`signup`, and the
-      `@jmitch` handle that contradicts a shipped decision.
-   2. **Phase I — `privacy` + `notifs`.** Strict TDD, apply the whole-row-toggle deviation
-      above, link `privacy`'s location row to `/location?back=privacy`.
+   1. **DONE — Fidelity/navigation remediation on already-shipped screens.** Fixed the
+      swipe-back navigation bug (`welcome` was never popped by the post-login `replace`, so
+      the stack sat at depth 2 forever and swiping back landed on it looking like a
+      sign-out) — `login`/`signup` now `dismissAll()` before replacing, and `_layout.tsx`
+      gained an `AuthenticatedGate` safety net that redirects an authenticated user away
+      from `welcome`/`login` (deliberately excluding `signup`, which the goals-screen
+      back-chevron trap still needs reachable). Also fixed: the Save-button glow (four
+      screens' opaque `shadowColor` inline was fighting the translucent `shadow-primary-
+      button` token; added a deliberate Android `elevation` theme block so NativeWind stops
+      inferring one from blur radius), the ghost-button pressed transform the design does
+      not have, the missing Google/Apple social auth row on `login`/`signup` (new
+      `components/social-auth-row.tsx`, inert — no OAuth backend yet), the `@jmitch` handle
+      that contradicted a shipped decision (now shows city alone), and three `goals.tsx`
+      token/color deltas. Also picked up from live device testing mid-PR: the Birthday row
+      on `editProfile` had no visual tap affordance (added the same trailing `chevron` icon
+      `profile.tsx`'s settings rows already use), and `editProfile`/`units` are now
+      `ScrollView`-wrapped rather than a fixed `View`, as a defensive fix against content
+      overflowing short screens.
+   2. **NEXT — Phase I — `privacy` + `notifs`.** Strict TDD, apply the whole-row-toggle
+      deviation above, link `privacy`'s location row to `/location?back=privacy`.
 
    **After I:** Phase J — `athlete` screen + wire the `profile` tab to real `/users/me` data,
    replacing the hardcoded "James Mitchell" identity block.

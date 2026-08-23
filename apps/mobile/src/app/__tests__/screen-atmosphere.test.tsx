@@ -12,11 +12,22 @@
 // hazard documented in signup-field-highlight.test.tsx only applies after an event.
 import { renderRouter } from 'expo-router/testing-library';
 
+// Defaults to unauthenticated: `welcome`/`login`/`signup` need that to render at all now that
+// _layout.tsx's AuthenticatedGate (Part 1.1 of ui-remediation-and-phase-i-plan.md) redirects an
+// authenticated user away from those two routes. `profile` and `train` override to
+// authenticated per-test below, since they are gated the other way.
 jest.mock('@/auth/secureStorage', () => ({
-  hasSession: jest.fn().mockResolvedValue(true),
+  hasSession: jest.fn().mockResolvedValue(false),
   subscribeToSession: jest.fn(() => () => {}),
-  getCachedHasSession: jest.fn(() => true),
+  getCachedHasSession: jest.fn(() => false),
 }));
+
+import { getCachedHasSession, hasSession } from '@/auth/secureStorage';
+
+function authenticate() {
+  (hasSession as jest.Mock).mockResolvedValue(true);
+  (getCachedHasSession as jest.Mock).mockReturnValue(true);
+}
 
 interface HostNode {
   type: string;
@@ -52,12 +63,14 @@ describe('every screen is drawn on the ember atmosphere', () => {
   });
 
   it('profile', async () => {
+    authenticate();
     expect(await emberGradientCount('/profile', 'James Mitchell')).toBe(1);
   });
 
   // The placeholder screen stands in for four of the five tabs, so one assertion here covers
   // home/train/progress/rank at once.
   it('the placeholder screens', async () => {
+    authenticate();
     expect(await emberGradientCount('/train', /coming soon/)).toBe(1);
   });
 });

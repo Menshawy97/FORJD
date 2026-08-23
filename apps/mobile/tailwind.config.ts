@@ -39,6 +39,9 @@ export default {
         proBanner: '#1C1408',
         // The fill a ghost control takes while held — `btn('ghost')`'s hover state.
         pressedGhost: 'rgba(255,255,255,.04)',
+        // A selected goals/activities pick-row's fill (goals.tsx), from the prototype's
+        // selected pick-row style.
+        pickRowSelectedBg: 'rgba(233,113,47,.1)',
 
         // Borders
         border: 'rgba(255,255,255,.07)',
@@ -48,8 +51,13 @@ export default {
         borderBadge: 'rgba(255,255,255,.08)',
         // The Go Pro banner's accent outline.
         borderPro: 'rgba(233,113,47,.35)',
+        // A selected goals/activities pick-row's outline (goals.tsx) — a stronger accent
+        // alpha than `borderPro`, from the prototype's selected pick-row style.
+        borderPickRowSelected: 'rgba(233,113,47,.45)',
         // The toast pill's outline, from the prototype's `flash()` render.
         borderToast: 'rgba(255,255,255,.1)',
+        // A goals/activities pick-row checkbox's unselected ring (goals.tsx).
+        borderCheckbox: '#37383C',
         errorBorder: '#B8422F',
 
         // Text
@@ -155,6 +163,19 @@ export default {
         toast: '0 10px 30px rgba(0,0,0,.50)',
         'selected-segment': '0 1px 3px rgba(0,0,0,.40)',
         'fab-action': '0 6px 18px rgba(233,113,47,.25)',
+      },
+      // Android has no CSS shadow model — NativeWind's `getElevation()` maps each `boxShadow`
+      // key to an Android `elevation` here, keyed identically. Without an entry it falls back
+      // to scraping the key's blur radius as a raw elevation number (22 for `primary-button`),
+      // which renders as a heavy hard black shadow, not the soft translucent orange glow the
+      // design specifies. These values are deliberate, chosen for visual weight relative to
+      // each other, not derived from the blur radius above.
+      elevation: {
+        'primary-button': 4,
+        'accent-hero-card': 5,
+        toast: 8,
+        'selected-segment': 1,
+        'fab-action': 6,
       },
     },
   },

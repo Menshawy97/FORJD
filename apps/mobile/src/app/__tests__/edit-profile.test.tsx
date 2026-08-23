@@ -82,6 +82,36 @@ describe('EditProfileScreen', () => {
     expect(await findByText('Edit Profile')).toBeTruthy();
   });
 
+  // Part 1 (user-reported): the Birthday row opens a native date picker on tap, but nothing
+  // visually signals that — it reads as a plain, disabled-looking text row. Fix reuses the
+  // `chevron` glyph already used for this exact "tappable row" affordance in
+  // (tabs)/profile.tsx, rather than inventing a calendar icon the prototype does not have
+  // (the prototype gets a calendar affordance for free from the browser's native
+  // `<input type="date">` chrome — see slice2-screen-specs.md §9 discrepancy #7).
+  it('shows a tap affordance on the Birthday row so it does not look inert', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+
+    const { findByLabelText, toJSON } = await render(<EditProfileScreen />);
+    await findByLabelText('Birthday');
+
+    interface HostNode {
+      type: string;
+      props: Record<string, unknown>;
+      children: HostNode[] | null;
+    }
+    function flatten(node: unknown): HostNode[] {
+      if (!node || typeof node !== 'object') return [];
+      const host = node as HostNode;
+      return [host, ...(host.children ?? []).flatMap(flatten)];
+    }
+
+    const CHEVRON_PATH = 'm9.6 6.4 5 5.6-5 5.6';
+    const hasChevron = flatten(toJSON()).some(
+      (node) => node.type === 'RNSVGPath' && node.props.d === CHEVRON_PATH,
+    );
+    expect(hasChevron).toBe(true);
+  });
+
   it('back navigates to the profile tab, same as Save', async () => {
     (getMe as jest.Mock).mockResolvedValue(ME);
 

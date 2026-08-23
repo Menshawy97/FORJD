@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { DistanceUnit, EnergyUnit, UnitSystem, WeightUnit } from '@forjd/domain';
 
 import { getMe, updateProfile } from '@/auth/apiClient';
@@ -121,7 +121,10 @@ export default function UnitsScreen() {
     <ScreenBackground>
       <Header title="Units & Preferences" onBack={goBack} />
       {loaded && (
-        <View className="flex-1 px-screen-x pb-[26px]">
+        <ScrollView
+          className="flex-1 px-screen-x"
+          contentContainerStyle={{ paddingBottom: 26 }}
+          showsVerticalScrollIndicator={false}>
           <OptionGroup group={SYSTEM_GROUP} value={unitSystem} onPick={handleSystem} />
           <OptionGroup group={WEIGHT_GROUP} value={weightUnit} onPick={setWeightUnit} />
           <OptionGroup group={DISTANCE_GROUP} value={distanceUnit} onPick={setDistanceUnit} />
@@ -138,14 +141,11 @@ export default function UnitsScreen() {
             accessibilityState={{ disabled: saving }}
             disabled={saving}
             onPress={handleSave}
-            style={({ pressed }) => [
-              { marginTop: 26, height: 52, shadowColor: colors.accent },
-              pressScale({ pressed }),
-            ]}
-            className="items-center justify-center rounded-button bg-accent shadow-primary-button">
+            style={({ pressed }) => [{ marginTop: 56 }, pressScale({ pressed })]}
+            className="h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
             <Text className="font-archivo text-button font-bold text-white">Save Changes</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
       <Toast message={toast.message} />
     </ScreenBackground>

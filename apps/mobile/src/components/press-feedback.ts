@@ -5,8 +5,9 @@ import { colors } from '@/theme/tokens';
 /**
  * The press feedback from `05-interactions.md` and the prototype's `btn()`:
  *
- *   any button, active -> transform: scale(.985)
- *   ghost, pressed     -> background rgba(255,255,255,.04); color #f6f5f3
+ *   primary, active -> transform: scale(.985)
+ *   ghost, pressed  -> background rgba(255,255,255,.04); color #f6f5f3 (no active/pressed
+ *                      transform rule — slice2-screen-specs.md §1 calls this out explicitly)
  *
  * Written as `Pressable`'s `style` callback rather than as NativeWind classes: `pressed` is
  * runtime state that the className transform has no way to see, and the transform is a real
@@ -26,7 +27,5 @@ export function pressScale({ pressed }: PressState): StyleProp<ViewStyle> {
 }
 
 export function pressGhost({ pressed }: PressState): StyleProp<ViewStyle> {
-  return pressed
-    ? { transform: [{ scale: PRESSED_SCALE }], backgroundColor: colors.pressedGhost }
-    : undefined;
+  return pressed ? { backgroundColor: colors.pressedGhost } : undefined;
 }

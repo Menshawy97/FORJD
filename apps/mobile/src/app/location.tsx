@@ -127,11 +127,8 @@ export default function LocationScreen() {
             accessibilityState={{ disabled: allowing }}
             disabled={allowing}
             onPress={handleAllow}
-            style={({ pressed }) => [
-              { height: 52, shadowColor: colors.accent },
-              pressScale({ pressed }),
-            ]}
-            className="items-center justify-center rounded-button bg-accent shadow-primary-button">
+            style={pressScale}
+            className="h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
             <Text className="font-archivo text-button font-bold text-white">Allow Location</Text>
           </Pressable>
           <Pressable

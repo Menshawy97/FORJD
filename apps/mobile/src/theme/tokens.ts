@@ -36,6 +36,9 @@ export const colors = {
   proBanner: '#1C1408',
   // The fill a ghost control takes while held — the prototype's `btn('ghost')` hover state.
   pressedGhost: 'rgba(255,255,255,.04)',
+  // A selected goals/activities pick-row's fill (goals.tsx), from the prototype's selected
+  // pick-row style.
+  pickRowSelectedBg: 'rgba(233,113,47,.1)',
 
   // Borders
   border: 'rgba(255,255,255,.07)',
@@ -45,8 +48,13 @@ export const colors = {
   borderBadge: 'rgba(255,255,255,.08)',
   // The Go Pro banner's accent outline.
   borderPro: 'rgba(233,113,47,.35)',
+  // A selected goals/activities pick-row's outline (goals.tsx) — a stronger accent alpha
+  // than `borderPro`, from the prototype's selected pick-row style.
+  borderPickRowSelected: 'rgba(233,113,47,.45)',
   // The toast pill's outline, from the prototype's `flash()` render.
   borderToast: 'rgba(255,255,255,.1)',
+  // A goals/activities pick-row checkbox's unselected ring (goals.tsx).
+  borderCheckbox: '#37383C',
   errorBorder: '#B8422F',
 
   // Text

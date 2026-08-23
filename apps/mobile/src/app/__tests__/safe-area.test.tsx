@@ -23,11 +23,22 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
+// Defaults to unauthenticated: `login`/`signup`/`welcome` need that to render at all now that
+// _layout.tsx's AuthenticatedGate (Part 1.1 of ui-remediation-and-phase-i-plan.md) redirects an
+// authenticated user away from `login`/`welcome`. `profile` overrides to authenticated
+// per-test below, since it is gated the other way.
 jest.mock('@/auth/secureStorage', () => ({
-  hasSession: jest.fn().mockResolvedValue(true),
+  hasSession: jest.fn().mockResolvedValue(false),
   subscribeToSession: jest.fn(() => () => {}),
-  getCachedHasSession: jest.fn(() => true),
+  getCachedHasSession: jest.fn(() => false),
 }));
+
+import { getCachedHasSession, hasSession } from '@/auth/secureStorage';
+
+function authenticate() {
+  (hasSession as jest.Mock).mockResolvedValue(true);
+  (getCachedHasSession as jest.Mock).mockReturnValue(true);
+}
 
 interface HostNode {
   type: string;
@@ -60,6 +71,11 @@ async function open(url: string, settleOn: RegExp | string) {
 }
 
 describe('safe area', () => {
+  beforeEach(() => {
+    (hasSession as jest.Mock).mockResolvedValue(false);
+    (getCachedHasSession as jest.Mock).mockReturnValue(false);
+  });
+
   it('offsets login by the device inset', async () => {
     expect(paddingTops(await open('/login', 'Welcome back'))).toContain(TOP_INSET);
   });
@@ -69,6 +85,7 @@ describe('safe area', () => {
   });
 
   it('offsets profile by the device inset, so the identity row clears the notch', async () => {
+    authenticate();
     expect(paddingTops(await open('/profile', 'James Mitchell'))).toContain(TOP_INSET);
   });
 
