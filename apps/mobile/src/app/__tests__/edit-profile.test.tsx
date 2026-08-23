@@ -216,11 +216,12 @@ describe('EditProfileScreen', () => {
    * Hermes/jest-expo environment does not re-read it after startup, so a test built that way
    * passed identically whether the bug was present or not, which is not a regression test.
    *
-   * This checks something environment-independent instead: a *local*-time construction is
-   * never exactly UTC midnight unless the runner's own zone happens to be UTC+0 (confirmed not
-   * the case here — this suite's runner sits at UTC+3), while a UTC-string parse always is,
-   * in every zone. Confirmed to fail against the naive `new Date(iso)` implementation before
-   * being kept in this form.
+   * A `getUTCHours() !== 0` check was tried next, but that fails on a UTC-zone CI runner: a
+   * local-time construction genuinely *is* UTC midnight when the local zone is UTC itself.
+   * This asserts against `new Date(1990, 6, 4)` directly instead — the same local-time
+   * constructor `parseIsoDate` itself calls — which matches in every timezone including UTC,
+   * and would still fail against the naive `new Date(iso)` implementation on any non-UTC
+   * runner (confirmed locally at UTC+3 before this form was kept).
    */
   it('parses the ISO date via the local calendar, not a UTC string parse', () => {
     const parsed = parseIsoDate('1990-07-04');
@@ -228,6 +229,6 @@ describe('EditProfileScreen', () => {
     expect(parsed.getFullYear()).toBe(1990);
     expect(parsed.getMonth()).toBe(6);
     expect(parsed.getDate()).toBe(4);
-    expect(parsed.getUTCHours()).not.toBe(0);
+    expect(parsed.getTime()).toBe(new Date(1990, 6, 4).getTime());
   });
 });
