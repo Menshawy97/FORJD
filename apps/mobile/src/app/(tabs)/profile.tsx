@@ -44,6 +44,9 @@ const GROUPS: Array<{ label: string; rows: SettingsRow[] }> = [
         icon: 'target',
         title: 'Goals & Activities',
         subtitle: 'Get stronger · Strength, Running',
+        // Phase H. Same choice as Units: router.replace, not push (ADR-011) — a settings
+        // destination, not a stack the user should accumulate entries on.
+        onPress: () => router.replace('/goals'),
       },
       {
         icon: 'bars',

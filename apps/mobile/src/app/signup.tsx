@@ -103,7 +103,7 @@ export default function SignupScreen() {
       if (result.session) {
         await saveSession(result.session);
       }
-      router.replace('/');
+      router.replace('/goals?returnTo=newAccount');
     } catch (cause) {
       // No field is implicated: the input passed every client-side rule, so nothing on the
       // screen is the thing to point at.
