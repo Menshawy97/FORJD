@@ -1,7 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 import type { UpdateProfileRequest } from '@forjd/contracts';
-import { Profile, User } from '@forjd/domain';
+import { PrivacySettings, Profile, User } from '@forjd/domain';
 
+import { PrivacyService } from '../privacy/privacy.service';
 import { ProfilePatch, UsersRepository } from './users.repository';
 import { UsersService } from './users.service';
 
@@ -35,7 +36,19 @@ describe('UsersService', () => {
     avatarUrl: null,
   };
 
+  /** What every account starts as, and what the opt-in decision means. */
+  const allOffPrivacy: PrivacySettings = {
+    userId: user.id,
+    publicProfile: false,
+    leaderboardOptIn: false,
+    locationForLeaderboard: false,
+    aiFeaturesConsent: false,
+    aiFeaturesConsentAt: null,
+    crashDiagnostics: false,
+  };
+
   let repository: { findProfile: jest.Mock; updateProfile: jest.Mock };
+  let privacyService: { get: jest.Mock; update: jest.Mock };
   let service: UsersService;
 
   /** The patch the service handed the repository for a given request. */
@@ -49,7 +62,14 @@ describe('UsersService', () => {
       findProfile: jest.fn().mockResolvedValue(profile),
       updateProfile: jest.fn().mockResolvedValue(profile),
     };
-    service = new UsersService(repository as unknown as UsersRepository);
+    privacyService = {
+      get: jest.fn().mockResolvedValue(allOffPrivacy),
+      update: jest.fn().mockResolvedValue(allOffPrivacy),
+    };
+    service = new UsersService(
+      repository as unknown as UsersRepository,
+      privacyService as unknown as PrivacyService,
+    );
   });
 
   describe('getMe', () => {
@@ -71,6 +91,75 @@ describe('UsersService', () => {
           activities: ['strength'],
           avatarUrl: null,
         },
+        privacy: {
+          publicProfile: false,
+          leaderboardOptIn: false,
+          locationForLeaderboard: false,
+          aiFeaturesConsent: false,
+          aiFeaturesConsentAt: null,
+          crashDiagnostics: false,
+        },
+      });
+    });
+
+    /**
+     * The settings screen must be one read. A second endpoint for privacy would be a second
+     * source for one truth, free to disagree with this one — which is why there is no
+     * `GET /users/me/privacy`.
+     */
+    it('returns privacy alongside the profile, in one read', async () => {
+      await service.getMe(user);
+
+      expect(privacyService.get).toHaveBeenCalledWith(user.id);
+    });
+
+    it('serialises the consent timestamp as an ISO string, not a Date', async () => {
+      privacyService.get.mockResolvedValue({
+        ...allOffPrivacy,
+        aiFeaturesConsent: true,
+        aiFeaturesConsentAt: new Date('2026-03-04T05:06:07.000Z'),
+      });
+
+      const me = await service.getMe(user);
+
+      expect(me.privacy.aiFeaturesConsentAt).toBe('2026-03-04T05:06:07.000Z');
+    });
+
+    /**
+     * Privacy is present even when the profile is not — the row is created with the account,
+     * so a client must never treat it as optional the way it treats `profile`.
+     */
+    it('still returns privacy when the profile row is missing', async () => {
+      repository.findProfile.mockResolvedValue(null);
+
+      const me = await service.getMe(user);
+
+      expect(me.profile).toBeNull();
+      expect(me.privacy).toMatchObject({ publicProfile: false });
+    });
+
+    /** The nested response must not leak the id — the caller already knows whose it is. */
+    it('does not echo userId inside the privacy object', async () => {
+      const me = await service.getMe(user);
+
+      expect(me.privacy).not.toHaveProperty('userId');
+    });
+  });
+
+  describe('updatePrivacy', () => {
+    it('delegates to the privacy service and returns the wire shape', async () => {
+      privacyService.update.mockResolvedValue({ ...allOffPrivacy, publicProfile: true });
+
+      const result = await service.updatePrivacy(user, { publicProfile: true });
+
+      expect(privacyService.update).toHaveBeenCalledWith(user.id, { publicProfile: true });
+      expect(result).toEqual({
+        publicProfile: true,
+        leaderboardOptIn: false,
+        locationForLeaderboard: false,
+        aiFeaturesConsent: false,
+        aiFeaturesConsentAt: null,
+        crashDiagnostics: false,
       });
     });
 
