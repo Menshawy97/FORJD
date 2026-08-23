@@ -12,6 +12,59 @@ export type UnitSystem = 'metric' | 'imperial';
  */
 export type Sex = 'male' | 'female' | 'prefer_not_to_say';
 
+/**
+ * The closed value sets for the profile's unit preferences and its two chip lists.
+ *
+ * They are `as const` tuples rather than bare union types so that a single declaration
+ * serves both as a TypeScript union *and* as a runtime array — which is what lets the wire
+ * contracts build `z.enum(...)` from them instead of restating the values. `Sex` was
+ * restated in @forjd/contracts and drifted, and slice 2 adds six more unions; duplicating
+ * them would multiply a bug that has already bitten once.
+ *
+ * All of these are stored in `text` / `text[]` columns, never Postgres enums. Narrowing a
+ * PG enum is impossible — `ALTER TYPE` cannot remove a value — whereas narrowing the tuple
+ * below costs nothing, exactly as the recent `sex` narrowing did.
+ */
+export const WEIGHT_UNITS = ['kg', 'lb'] as const;
+export type WeightUnit = (typeof WEIGHT_UNITS)[number];
+
+export const DISTANCE_UNITS = ['km', 'mi'] as const;
+export type DistanceUnit = (typeof DISTANCE_UNITS)[number];
+
+/**
+ * `kJ` keeps its SI capitalisation deliberately — the symbol's case is semantic (`kJ` is
+ * kilojoule, `KJ` and `kj` are neither) and it is also the literal string the design draws.
+ */
+export const ENERGY_UNITS = ['kcal', 'kJ'] as const;
+export type EnergyUnit = (typeof ENERGY_UNITS)[number];
+
+/**
+ * Untargeted training *intents*, deliberately not the existing `goals` table, which models
+ * measurable targets with a `target_value` and a `target_date`. "Get stronger" has neither,
+ * and reusing that table would force both columns to hold something meaningless.
+ *
+ * Stored as stable slugs; the display strings ("Get stronger") live in the mobile app, so
+ * copy can be reworded or translated without a migration.
+ */
+export const TRAINING_GOALS = [
+  'get_stronger',
+  'lose_fat',
+  'build_muscle',
+  'improve_endurance',
+  'feel_better',
+] as const;
+export type TrainingGoal = (typeof TRAINING_GOALS)[number];
+
+export const ACTIVITIES = [
+  'strength',
+  'running',
+  'hyrox',
+  'pilates',
+  'cycling',
+  'swimming',
+] as const;
+export type Activity = (typeof ACTIVITIES)[number];
+
 export interface User {
   id: string;
   email: string;
@@ -27,5 +80,42 @@ export interface Profile {
   /** Always metric. Imperial is a display concern, converted at the edge. */
   heightCm: number | null;
   unitSystem: UnitSystem;
+  /**
+   * Three independent display preferences, not values derived from `unitSystem`. Deriving
+   * them is lossy in both directions: `kg` with `mi` has no correct system, and `kJ` has no
+   * system at all. `unitSystem` survives as a preset that writes weight and distance.
+   */
+  weightUnit: WeightUnit;
+  distanceUnit: DistanceUnit;
+  energyUnit: EnergyUnit;
+  trainingGoals: TrainingGoal[];
+  activities: Activity[];
+  /**
+   * A city name the user volunteered, and a slug derived from it for future grouping. Coarse
+   * and string-only by design — no coordinate is ever stored on the user record, because
+   * docs/architecture/security.md puts location on WorkoutSession. The device reverse-geocodes
+   * locally and sends the name.
+   */
+  city: string | null;
+  citySlug: string | null;
   avatarUrl: string | null;
+}
+
+/**
+ * Consent state, separated from the profile because these flags gate *server behaviour* and
+ * the profile is display data. Every flag is opt-in and defaults to false, including crash
+ * diagnostics — an off-by-default diagnostic is a decision, not an oversight.
+ *
+ * `aiFeaturesConsentAt` records when consent was granted and is nulled when it is withdrawn.
+ * Only real transitions touch it, so a no-op update cannot manufacture a consent record.
+ */
+export interface PrivacySettings {
+  userId: string;
+  publicProfile: boolean;
+  leaderboardOptIn: boolean;
+  /** Meaningless without `leaderboardOptIn`; the service enforces that, not the database. */
+  locationForLeaderboard: boolean;
+  aiFeaturesConsent: boolean;
+  aiFeaturesConsentAt: Date | null;
+  crashDiagnostics: boolean;
 }

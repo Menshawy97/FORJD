@@ -104,6 +104,17 @@ preset.
 
 Regenerate fixtures in the same commit — CI diffs them with `git diff --exit-code`.
 
+**Carried forward from Phase A's reviews — Phase B's job, not defects in Phase A:**
+- **Validate the two arrays on write**, for membership *and* a maximum length
+  (`z.array(z.enum(TRAINING_GOALS)).max(n)`). `toProfile`'s read-side filter is graceful
+  degradation for a narrowed value set, not an input check, and nothing at the database level
+  bounds these arrays.
+- **Derive `citySlug` from `city` server-side.** The repository's patch type accepts it, but a
+  client-supplied slug is free to disagree with the city it claims to slugify.
+- **Bound `city`** at the boundary, for the same reason `displayName` is bounded.
+- Both obligations are also written next to the code, on `ProfilePatch` in
+  `users.repository.ts`, so they survive a session that never opens this file.
+
 ### Phase C — privacy storage + endpoint
 
 `PATCH /api/v1/users/me/privacy`. `privacy` rides along on `meResponse` so the settings

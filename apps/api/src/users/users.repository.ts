@@ -1,9 +1,25 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
-import { Profile, Sex, UnitSystem, User } from '@forjd/domain';
+import {
+  ACTIVITIES,
+  Activity,
+  DISTANCE_UNITS,
+  DistanceUnit,
+  ENERGY_UNITS,
+  EnergyUnit,
+  Profile,
+  Sex,
+  TRAINING_GOALS,
+  TrainingGoal,
+  UnitSystem,
+  User,
+  WEIGHT_UNITS,
+  WeightUnit,
+} from '@forjd/domain';
 import { eq } from 'drizzle-orm';
 
 import { Database, DRIZZLE } from '../database/database.module';
 import { auditLogs } from '../database/schema/audit-logs.schema';
+import { privacySettings } from '../database/schema/privacy-settings.schema';
 import { profiles, ProfileRow } from '../database/schema/profiles.schema';
 import { users, UserRow } from '../database/schema/users.schema';
 
@@ -12,12 +28,52 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
 }
 
+/**
+ * Keeps only the members a `text[]` column holds that are still in the closed set.
+ *
+ * The columns are `text[]` so the set can be narrowed without a migration — which is the
+ * whole reason narrowing `sex` was free. The cost is that a stored value can outlive its own
+ * valid set. Unfiltered, that value would reach the response and make the API's own output
+ * fail the API's own schema; filtered, the worst outcome is that the chip renders deselected.
+ */
+function keepKnown<T extends string>(values: string[], known: readonly T[]): T[] {
+  return values.filter((value): value is T => (known as readonly string[]).includes(value));
+}
+
+/**
+ * Narrows a single-value `text` column, falling back when the stored value has left the set.
+ * Same reasoning as `keepKnown`, but a scalar has no "drop it" option — a unit preference
+ * must be *something*, so it degrades to the column default rather than to null.
+ */
+function keepKnownScalar<T extends string>(value: string, known: readonly T[], fallback: T): T {
+  return (known as readonly string[]).includes(value) ? (value as T) : fallback;
+}
+
+/**
+ * A already-validated patch. This type is the repository's input, not a wire shape — two
+ * obligations sit on whichever service builds one once these fields become client-writable:
+ *
+ * - **`citySlug` must be derived from `city` server-side, never copied from the request.**
+ *   Accepting a client-supplied slug lets the two disagree, which turns a grouping key into
+ *   something the client chooses.
+ * - **`trainingGoals` and `activities` must be validated on write**, for membership and for a
+ *   sane maximum length. `toProfile` filters unknown members on *read*, which is a graceful
+ *   degradation for a narrowed value set — not an input check, and no substitute for one.
+ *   Nothing at the database level bounds these arrays.
+ */
 export interface ProfilePatch {
   displayName?: string | null;
   dateOfBirth?: string | null;
   sex?: Sex | null;
   heightCm?: number | null;
   unitSystem?: UnitSystem;
+  weightUnit?: WeightUnit;
+  distanceUnit?: DistanceUnit;
+  energyUnit?: EnergyUnit;
+  trainingGoals?: TrainingGoal[];
+  activities?: Activity[];
+  city?: string | null;
+  citySlug?: string | null;
   avatarUrl?: string | null;
 }
 
@@ -71,11 +127,26 @@ export class UsersRepository {
     let row: UserRow | undefined;
 
     try {
-      [row] = await this.db
-        .insert(users)
-        .values({ supabaseUserId: externalId, email })
-        .onConflictDoUpdate({ target: users.supabaseUserId, set: { email } })
-        .returning();
+      // One transaction for all three rows. Registration must not be able to leave an
+      // account that half exists — a user without a profile has no name, and a user without
+      // a privacy row has no consent state, which is worse: nothing to read means nothing
+      // that reliably reads as "has not consented".
+      row = await this.db.transaction(async (tx) => {
+        const [inserted] = await tx
+          .insert(users)
+          .values({ supabaseUserId: externalId, email })
+          .onConflictDoUpdate({ target: users.supabaseUserId, set: { email } })
+          .returning();
+
+        if (!inserted) {
+          throw new Error('Failed to persist user');
+        }
+
+        await tx.insert(profiles).values({ userId: inserted.id }).onConflictDoNothing();
+        await tx.insert(privacySettings).values({ userId: inserted.id }).onConflictDoNothing();
+
+        return inserted;
+      });
     } catch (error: unknown) {
       // A concurrent insert for a different identity can still win the email uniqueness
       // race between the check above and this statement. Fail loudly, never merge.
@@ -85,12 +156,6 @@ export class UsersRepository {
 
       throw error;
     }
-
-    if (!row) {
-      throw new Error('Failed to persist user');
-    }
-
-    await this.db.insert(profiles).values({ userId: row.id }).onConflictDoNothing();
 
     return this.toUser(row);
   }
@@ -141,6 +206,13 @@ export class UsersRepository {
       sex: row.sex as Sex | null,
       heightCm: row.heightCm === null ? null : Number(row.heightCm),
       unitSystem: row.unitSystem as UnitSystem,
+      weightUnit: keepKnownScalar(row.weightUnit, WEIGHT_UNITS, 'kg'),
+      distanceUnit: keepKnownScalar(row.distanceUnit, DISTANCE_UNITS, 'km'),
+      energyUnit: keepKnownScalar(row.energyUnit, ENERGY_UNITS, 'kcal'),
+      trainingGoals: keepKnown(row.trainingGoals, TRAINING_GOALS),
+      activities: keepKnown(row.activities, ACTIVITIES),
+      city: row.city,
+      citySlug: row.citySlug,
       avatarUrl: row.avatarUrl,
     };
   }
