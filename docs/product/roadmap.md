@@ -513,71 +513,64 @@ A-D batch.
 ### Next, in order
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
-   **In progress — Phases A and B are done and merged; Phase C is next.** Two documents
-   carry it, and a resuming session should read both before touching anything:
-   - **`docs/product/slice-2-plan.md`** — the approved plan: locked decisions, phase-by-phase
-     build order (A–F backend, G–J mobile), verification steps, and remaining open questions.
+   **Backend (phases A–F) is done, merged, and green on `main`. Mobile (phases G–J) is next
+   and has not been started.** Read, in this order, before writing any screen:
+   - **`docs/product/slice-2-plan.md`** — locked decisions (do not re-litigate — see its
+     table), phase-by-phase build order, verification steps. Phases A–F are marked done
+     inline with what they produced; phases G–J are still to do.
    - **`docs/design/slice2-screen-specs.md`** — every value (copy, typography, colour,
-     spacing, states) extracted from the runnable prototype for all six screens. Its header
-     box records which of its own open questions have since been answered; that box wins
-     over the body where they disagree.
+     spacing, states) extracted from the runnable prototype
+     (`FORJD mobile app design/FORJD Mobile.dc.html`) for all six screens plus `athlete`.
+     Its header box records which of its own open questions have since been answered —
+     that box wins over the body where they disagree. **Trust the prototype over the
+     `design_handoff_forjd_mobile/*.md` summaries**, which disagree with it in ten places.
 
-   Scope covers `editProfile`, `units`, `goals`, `notifs`, `privacy`, `location`, plus the
-   `athlete` public-profile screen. Four screens were blocked on backend fields that do not
-   exist, so **the backend work is inside this slice rather than deferred** — new columns on
-   `profiles` (three independent unit preferences, `training_goals`/`activities` arrays,
-   `city`), a new `privacy_settings` table, and `GET /api/v1/athletes/:userId`.
+   **What the backend now gives phases G–J to build against** (all live on `main`, verified
+   end to end by 161 unit + 30 e2e tests):
+   - `GET /api/v1/users/me` → `{ id, email, profile, privacy }` in one read. `profile` carries
+     name/DOB/sex/height, the three real unit preferences (`weightUnit`/`distanceUnit`/
+     `energyUnit` — **not** the deprecated `unitSystem`, see ADR-016), `trainingGoals`/
+     `activities` arrays, `city`, `avatarUrl`, and a hardcoded `plan: 'free'`. `privacy`
+     carries all six consent flags, every account starting all-**off**.
+   - `PATCH /api/v1/users/me/profile` → any subset of the writable profile fields above
+     (`city` included; `citySlug`/`plan` are server-derived, never client-writable).
+   - `PATCH /api/v1/users/me/privacy` → any subset of the five flags. Turning
+     `leaderboardOptIn` off cascades `locationForLeaderboard` off; turning the latter on
+     without the former is a `400`.
+   - `GET /api/v1/athletes/:userId` → the public projection (identity + goals/activities/
+     city only, no stat tiles — those need Phase 10). Refusal is always `404`, indistinguishable
+     between "no such user" and "private profile." Self-view (`isSelf: true`) bypasses the
+     flag, which is what backs the design's "Preview my public profile" row.
 
-   Decisions already locked (do not re-litigate): no push in Phase 1 so `notifs` is
-   device-local; units are three real preferences with `unitSystem` demoted to a deprecated
-   preset; handles (`@jmitch`) dropped entirely; the athlete screen ships identity only
-   because its stat tiles need Phase 10 data; privacy flags all default **off**; and
-   `athletes.service.ts` / `privacy.service.ts` carry a 100% coverage threshold, since the
-   untested branch in an authorization decision is the one that leaks.
+   Full wire contract: `packages/contracts/src/index.ts`. A worked example of every response
+   shape, including the empty/first-run states: `packages/contracts/fixtures/*.json` — these
+   are real parsed output, not hand-written samples, so they cannot drift from the schema.
 
-   Two traps worth knowing before starting. The existing **`goals` table is not these
-   goals** — it models measurable targets (`target_value`, `target_date`), while the screen's
-   are untargeted intents; the new thing is `training_goals`. And the handoff markdown
-   disagrees with the prototype in **ten** places (e.g. `05-interactions.md` says "disabled
-   does not exist in this design" while `goals` disables Save at `opacity .4`; `privacy` has
-   three permission rows, not the two documented). **Trust the prototype.**
+   **Two things phases G–J must get right, both already decided:**
+   - Bind to `weightUnit`/`distanceUnit`/`energyUnit` for the `units` screen's three rows.
+     `unitSystem` still exists on the response (deprecated) but a client that reads it
+     instead of the real fields will visibly disagree with the pinned fixture, which
+     deliberately pairs `unitSystem: metric` with `weightUnit: lb`.
+   - In `notifs`/`privacy`, make the **whole row** tap-to-toggle, not just the 46×27 track —
+     a deliberate, already-approved deviation from the prototype (accessibility minimum tap
+     target; see `slice2-screen-specs.md` §9).
 
-   Also unresolved: `heightCm` exists in the contract but no screen edits it, and
-   `avatarUrl` has no control anywhere in the design.
+   **Genuinely open, not backend-blocking — surface if hit, don't guess:**
+   - RLS still isn't configured on any table. Needs a human decision (build it, or correct
+     rule 12's docs) — unrelated to G–J and not something a mobile phase should resolve.
+   - Energy default (`kcal`) and the `Analyse`/`programs` copy-locale inconsistency are both
+     open product/content calls, not backend gaps — see `slice-2-plan.md`'s still-open list.
+   - `heightCm` has no screen and `avatarUrl` has no control anywhere in the current design;
+     both already round-trip through the API correctly for whichever future screen adds them.
 
-   **Phase A — schema, migration, repository — is merged.** What landed:
-   - `profiles` gained `weight_unit`/`distance_unit`/`energy_unit` (text, NOT NULL,
-     defaulting `kg`/`km`/`kcal`), `training_goals`/`activities` (`text[]`, NOT NULL,
-     default `'{}'`), and `city`/`city_slug` (nullable). All `text`, never PG enums —
-     `ALTER TYPE` cannot remove an enum value, whereas narrowing a tuple in code is free,
-     as the `sex` narrowing was.
-   - New `privacy_settings` table: `public_profile`, `leaderboard_opt_in`,
-     `location_for_leaderboard`, `ai_features_consent` (+ `ai_features_consent_at`),
-     `crash_diagnostics` — every one boolean, NOT NULL, **default false**.
-   - Migrations `0003_damp_luke_cage.sql` (generated) and
-     `0004_backfill_privacy_settings.sql` (`--custom`, gives every pre-existing account an
-     all-off row).
-   - The closed value sets now live in `@forjd/domain` as `as const` tuples
-     (`WEIGHT_UNITS`, `TRAINING_GOALS`, …). Phase B makes `@forjd/contracts` depend on
-     domain and build its `z.enum(...)` from them, which is the fix for the duplication that
-     let `Sex` drift.
-   - `upsertFromIdentity` now creates user, profile **and** privacy row in one transaction;
-     `PrivacyRepository.findOrCreate` is defensive on top of that, so a missing row can
-     never 500 the settings screen.
-   - `toProfile` filters both arrays and all three unit columns through the known-value set,
-     so a future narrowing degrades to "that chip is deselected" rather than the API's own
-     response failing the API's own schema.
-
-   **The ~43%-vs-~59% coverage discrepancy was a misreading, not a real divergence.** CI's
-   `test:cov` reported **59.3%** statements on the last run of `main`; `43` is simply the
-   *threshold* configured in `apps/api/package.json`, set conservatively below the measured
-   value. CI and local measure the same file set. Nothing to fix — the number to watch is the
-   threshold, and it now has ~20 points of slack (Phase A took the measurement to ~63%).
-
-   **A number collision to resolve before Phase F:** this document assigns **ADR-015** to the
-   Supabase topology decision (item 2 below), while `docs/product/slice-2-plan.md` assigns
-   the same number to the unitSystem-as-preset reversal. Whichever is written first takes
-   015; the other takes 016.
+   **Start here:** Phase G — `editProfile` + `units`. Strict TDD (RED before GREEN, per the
+   project's standing rule), then start Expo (`npx expo start --offline` — plain `expo start`
+   fails with `TypeError: fetch failed` in this environment), hand over the QR code for Expo
+   Go, and verify each screen against the prototype's **computed styles** read live in a
+   browser (`expo start --web --port 8082 --offline`), not by reading code — this is how
+   slice 1's screens were confirmed exact. Full verification steps, including the
+   coverage-gate trap (every new `apps/api/src` file needs a colocated spec — does not apply
+   to mobile) and the bundle-compile check, are in `slice-2-plan.md`'s "Verification" section.
 
 1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
    decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.
