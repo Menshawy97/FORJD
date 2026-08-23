@@ -39,6 +39,24 @@ rely on token expiry alone and needs a deliberate mechanism. None exists today, 
 needed until the product has a reason for one; `IdentityCache` is bounded and clearable,
 which is the seam such a mechanism would use.
 
+## The public athlete profile has an accepted timing window
+
+`GET /api/v1/athletes/:userId` (slice 2, `AthletesService`) answers **404, never 403**, for
+every refusal — unknown user, private profile, missing privacy row, malformed id — through
+one `refuse()` call, so the response body, status and message are identical for "no such
+account" and "that account exists but is private". That closes the enumeration oracle at the
+response-shape level, which is the threat this document's other sections are about.
+
+It does not close a *timing* side channel: the private-profile path runs one more query
+(a privacy-table lookup) than the unknown-user path, which returns as soon as the profile
+lookup misses. A large-sample statistical timing attack could in principle distinguish the
+two. This is accepted rather than fixed, for the same reason the session-revocation window
+above is accepted rather than eliminated: closing it (e.g. an unconditional dummy privacy
+read on every path) adds real complexity for a threat that requires an attacker to run a
+timing attack over a network against a uniformly rate-limited endpoint (`ThrottlerGuard`
+applies to every route), which is impractical at the precision such an attack needs. Stated
+here rather than left to be rediscovered.
+
 ## Data separation
 
 Authentication data, health data, analytics, AI context, and uploaded

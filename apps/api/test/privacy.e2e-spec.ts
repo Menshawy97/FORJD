@@ -1,70 +1,19 @@
-import { INestApplication, UnauthorizedException } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { inArray } from 'drizzle-orm';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
-import {
-  AuthCredentials,
-  AuthIdentity,
-  AuthProvider,
-  AuthResult,
-  AuthSession,
-  AUTH_PROVIDER,
-  SignUpResult,
-} from '../src/auth/providers/auth-provider.interface';
+import { AUTH_PROVIDER } from '../src/auth/providers/auth-provider.interface';
 import { Database, DRIZZLE } from '../src/database/database.module';
 import { users } from '../src/database/schema/users.schema';
+import { FakeAuthProvider } from './support/fake-auth-provider';
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const testEmail = `e2e-privacy-${suiteId}@example.com`;
 const externalId = '99999999-8888-7777-6666-555555555555';
 const accessToken = 'privacy-access-token';
-
-/** The same in-memory stand-in as auth.e2e-spec, narrowed to the one account this suite needs. */
-class FakeAuthProvider implements AuthProvider {
-  private password = '';
-
-  async signUp(credentials: AuthCredentials): Promise<SignUpResult> {
-    this.password = credentials.password;
-    return { identity: this.identity(), session: this.session() };
-  }
-
-  async signIn(credentials: AuthCredentials): Promise<AuthResult> {
-    if (credentials.password !== this.password) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    return { identity: this.identity(), session: this.session() };
-  }
-
-  async refreshSession(): Promise<AuthSession> {
-    return this.session();
-  }
-
-  async signOut(): Promise<void> {}
-
-  async requestPasswordReset(): Promise<void> {}
-
-  async verifyAccessToken(token: string): Promise<AuthIdentity> {
-    if (token !== accessToken) {
-      throw new UnauthorizedException('Invalid access token');
-    }
-    return this.identity();
-  }
-
-  private session(): AuthSession {
-    return {
-      accessToken,
-      refreshToken: 'refresh-token',
-      expiresAt: new Date('2026-06-01T12:00:00Z'),
-    };
-  }
-
-  private identity(): AuthIdentity {
-    return { externalId, email: testEmail, emailVerified: true };
-  }
-}
 
 /**
  * Proves the privacy route is actually reachable and that the consent invariants surface as
@@ -86,7 +35,12 @@ describe('Privacy settings (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(AUTH_PROVIDER)
-      .useValue(new FakeAuthProvider())
+      .useValue(
+        new FakeAuthProvider({
+          accounts: [{ email: testEmail, externalId, tokens: [accessToken] }],
+          refresh: { targetEmail: testEmail },
+        }),
+      )
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();

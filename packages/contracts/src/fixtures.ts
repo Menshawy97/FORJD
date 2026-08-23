@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   meResponseSchema,
   profileResponseSchema,
+  publicProfileResponseSchema,
   registerResponseSchema,
   sessionResponseSchema,
 } from './index';
@@ -144,6 +145,36 @@ export const responseFixtures = {
       // Privacy is present even when the profile is not: the row is created with the
       // account, so a client must never treat it as optional the way it does `profile`.
       privacy,
+    },
+  },
+
+  'public-profile-response': {
+    schema: publicProfileResponseSchema,
+    sample: {
+      userId: '11111111-1111-4111-8111-111111111111',
+      displayName: 'Ada Lovelace',
+      avatarUrl: 'https://example.com/avatar.png',
+      city: 'Cairo',
+      trainingGoals: ['get_stronger', 'improve_endurance'],
+      activities: ['strength', 'hyrox'],
+      isSelf: false,
+    },
+  },
+
+  /**
+   * Every nullable field null and every list empty, which is what a bare-minimum public
+   * profile looks like — a user who set nothing beyond a display name.
+   */
+  'public-profile-response-empty': {
+    schema: publicProfileResponseSchema,
+    sample: {
+      userId: '11111111-1111-4111-8111-111111111111',
+      displayName: null,
+      avatarUrl: null,
+      city: null,
+      trainingGoals: [],
+      activities: [],
+      isSelf: false,
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;
