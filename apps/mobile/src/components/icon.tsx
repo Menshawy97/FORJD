@@ -170,13 +170,15 @@ interface IconProps {
   /** Raw color string (not a NativeWind class) — svg props take colors, not classNames. */
   color?: string;
   size?: number;
+  /** Overrides the glyph's own stroke width. Only `goals`' selected checkmark needs this. */
+  strokeWidth?: number;
 }
 
-export function Icon({ name, color, size }: IconProps) {
+export function Icon({ name, color, size, strokeWidth: strokeWidthOverride }: IconProps) {
   const glyph: Glyph = GLYPHS[name];
   const stroke = color ?? (name === 'back' ? colors.text : colors.dim);
   const rendered = size ?? glyph.size ?? DEFAULT_SIZE;
-  const strokeWidth = glyph.strokeWidth ?? DEFAULT_STROKE_WIDTH;
+  const strokeWidth = strokeWidthOverride ?? glyph.strokeWidth ?? DEFAULT_STROKE_WIDTH;
 
   return (
     <Svg width={rendered} height={rendered} viewBox={glyph.viewBox} fill="none">

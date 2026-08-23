@@ -123,6 +123,12 @@ describe('Icon', () => {
     expect(listChevron.ofType('RNSVGPath')[0].props.d).toBe('m9.6 6.4 5 5.6-5 5.6');
   });
 
+  it('applies an explicit strokeWidth prop over the glyph default', async () => {
+    const { ofType } = await renderIcon(<Icon name="check" strokeWidth={2.6} />);
+
+    expect(ofType('RNSVGPath')[0].props.strokeWidth).toBe(2.6);
+  });
+
   it('exposes every glyph the app needs', async () => {
     const names = [
       'home',

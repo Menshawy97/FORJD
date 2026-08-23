@@ -513,9 +513,9 @@ A-D batch.
 ### Next, in order
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
-   **Backend (phases A–F) and mobile Phase G (`editProfile` + `units`) are done, merged, and
-   green on `main`. Phases H–J are next and have not been started.** Read, in this order,
-   before writing any screen:
+   **Backend (phases A–F) and mobile phases G (`editProfile` + `units`) and H (`location` +
+   `goals`) are done, merged, and green on `main`. Phases I–J are next and have not been
+   started.** Read, in this order, before writing any screen:
    - **`docs/product/slice-2-plan.md`** — locked decisions (do not re-litigate — see its
      table), phase-by-phase build order, verification steps. Phases A–F are marked done
      inline with what they produced; phases G–J are still to do.
@@ -575,20 +575,36 @@ A-D batch.
    `getUTCHours() !== 0` — that check only fails on a non-UTC dev machine and is a false-negative
    on CI.
 
-   **Start here:** Phase H — `location` + `goals`. Strict TDD (RED before GREEN, per the
-   project's standing rule), then start Expo (`npx expo start --offline` — plain `expo start`
-   fails with `TypeError: fetch failed` in this environment), hand over the LAN URL for Expo
-   Go (`exp://<machine-LAN-IP>:8081`, manual entry — `--offline` suppresses the printed QR),
-   and verify each screen against the prototype's **computed styles** read live in a browser
-   (`expo start --web --port 8082 --offline`), not by reading code — this is how every prior
-   slice's screens were confirmed exact. Full verification steps, including the coverage-gate
-   trap (every new `apps/api/src` file needs a colocated spec — does not apply to mobile) and
-   the bundle-compile check, are in `slice-2-plan.md`'s "Verification" section. Note the
-   design's documented "back-chevron trap" for `location`/`goals`: back from the first-run
-   path returns to `signup`, not `home`, and always resets the return target to `profile`.
+   **Phase H is done** (`location` + `goals`, merged and green on `main`). Notes for I/J:
+   - `goals`'s first-run mode is now real, not just spec'd: `signup.tsx` redirects to
+     `/goals?returnTo=newAccount` on success instead of straight to home, so the prototype's
+     documented back-chevron trap (back → `signup`, not `home`; destination `home` with the
+     "Welcome to FORJD!" toast) is live and tested, not dead code behind an unreachable
+     branch. A plain query param (`returnTo`/`back`) stands in for the prototype's
+     `goalsReturnTo`/`locationReturnTo` navigation state throughout — `03-navigation.md`'s
+     stack-depth version was deliberately not ported (per the spec's own §4.8/§7.6 note).
+   - `location` is built but **not yet linked from anywhere** — `rank` is still a
+     `PlaceholderScreen` and `privacy` doesn't exist yet, so nothing currently sets `back`.
+     It defaults to `'rank'` per spec and takes `?back=privacy` once Phase I's privacy screen
+     is built and links to it; verify that wiring then, not now.
+   - New shared `components/tab-bar.tsx`: a presentational copy of the `(tabs)` bottom bar
+     for `location`, the first screen outside the `(tabs)` group that still shows one. If
+     `notifs`/`privacy` or `athlete` also need it, reuse this rather than a second copy.
+   - The web preview path (`expo start --web --port 8082 --offline`) is currently **broken
+     for any authenticated screen**: `expo-secure-store`'s `.web.js` build exists but isn't
+     resolving in this Metro/pnpm setup, so `getMe()`'s token read throws
+     (`ExpoSecureStore.default.getValueWithKeyAsync is not a function`) before the screen
+     renders. Unauthenticated screens (welcome/login/signup) still preview fine on web; for
+     anything behind auth, verify via the LAN Expo Go connection instead
+     (`exp://<machine-LAN-IP>:8081`, manual entry — `--offline` suppresses the printed QR).
+     Fixing the web resolution is unrelated to any one screen and wasn't chased down here —
+     flag it if it starts blocking verification again.
 
-   **After H:** Phase I — `privacy` + `notifs` (apply the whole-row-toggle deviation noted
-   below). Phase J — `athlete` screen + wire the `profile` tab to real `/users/me` data,
+   **Start here:** Phase I — `privacy` + `notifs`. Strict TDD (RED before GREEN, per the
+   project's standing rule). Apply the whole-row-toggle deviation noted above. `privacy`'s
+   location row should link to `/location?back=privacy` (see the `location` note above).
+
+   **After I:** Phase J — `athlete` screen + wire the `profile` tab to real `/users/me` data,
    replacing the hardcoded "James Mitchell" identity block.
 
 1. **Pick the Supabase topology and the free host** (see manual steps above) — both are

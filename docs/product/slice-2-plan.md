@@ -197,14 +197,22 @@ glyphs), `screen-background.tsx` (ember gradient + safe-area), `toast.tsx`,
 `press-feedback.ts`, `src/theme/tokens.ts` + `tailwind.config.ts`, and the
 `apiClient`/`secureStorage` pattern.
 
-- **G — `editProfile` + `units`.** Both fully backed after Phase B. Note `editProfile`
+- **G — `editProfile` + `units`. Done, merged, green on `main`.** Note `editProfile`
   defines its own `inputStyle` at **height 50**, not the 52 used by `field()`/`btn()` —
   that is the prototype's value, not a transcription error. Sex chips: Male / Female /
   Rather not say.
-- **H — `location` + `goals`.** `location` is a static explainer; its "Allow" writes
-  `city` after Phase E. `goals` has a **back-chevron trap**: back from the first-run path
-  returns to `signup`, not `home`, and always resets the return target to `profile` — the
-  route graph in `03-navigation.md` does not show this.
+- **H — `location` + `goals`. Done, merged, green on `main`.** `location`'s "Allow" writes
+  `city` via the existing `PATCH /users/me/profile` (no new endpoint needed — the plan's
+  original "Class B, needs backend work" note for both screens was stale by the time H was
+  built; Phase B's `trainingGoals`/`activities`/`city` fields already covered them). The
+  **back-chevron trap** is real and now live: `signup.tsx` redirects to
+  `/goals?returnTo=newAccount` on success, so back from the first-run path returns to
+  `signup`, not `home`, and the destination after Save resets to `profile` — matching
+  `slice2-screen-specs.md` §4.6/§4.8 exactly. `location` is built but not yet linked from
+  any screen (`rank` is a placeholder, `privacy` doesn't exist yet); it takes an optional
+  `?back=privacy` query param for Phase I to use once the privacy screen exists. Both
+  screens' `goalsReturnTo`/`locationReturnTo` are ported as query params, not app state, per
+  the spec's note not to port `03-navigation.md`'s stack-depth version.
 - **I — `privacy` + `notifs`.** `privacy` cuts nothing now that the endpoint is being
   built. `notifs` persists device-locally (`expo-sqlite` is registered but unused, or
   AsyncStorage if the shape stays flat). Quiet hours is a local window; its `Change`
