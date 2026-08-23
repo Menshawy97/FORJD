@@ -9,6 +9,8 @@ import { saveSession } from '@/auth/secureStorage';
 import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
+import { SocialAuthRow } from '@/components/social-auth-row';
+import { Toast, useToast } from '@/components/toast';
 import { colors } from '@/theme/tokens';
 
 // Copy and layout from the prototype's `s_signup()`; validation order from
@@ -22,9 +24,6 @@ import { colors } from '@/theme/tokens';
 // exported directly), so validating against it is what keeps this screen honest if the
 // contract ever changes. The hint line below is the design's wording verbatim and is
 // deliberately looser than what is enforced — that mismatch is the design's, not a bug here.
-//
-// The social auth row the prototype draws under the CTA is out of Phase 1 scope; the legal
-// footnote it draws below that is kept, since it is one line of static text.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const PASSWORD_HINT = 'Must be at least 8 characters, with a number and a letter.';
@@ -65,6 +64,7 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<SubmitError | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const toast = useToast();
 
   const clearErrorOnEdit = (setter: (value: string) => void) => (value: string) => {
     setter(value);
@@ -103,6 +103,11 @@ export default function SignupScreen() {
       if (result.session) {
         await saveSession(result.session);
       }
+      // `welcome` was pushed under this screen and never popped by a bare `replace`, so the
+      // swipe-back gesture always had a phantom entry to land on (see
+      // ui-remediation-and-phase-i-plan.md §1.1). Dismiss everything below this screen before
+      // replacing it so the authenticated app mounts at stack depth 1, with nothing to pop to.
+      if (router.canDismiss()) router.dismissAll();
       router.replace('/goals?returnTo=newAccount');
     } catch (cause) {
       // No field is implicated: the input passed every client-side rule, so nothing on the
@@ -178,6 +183,11 @@ export default function SignupScreen() {
           <Text className="font-archivo text-button font-bold text-white">Create Account</Text>
         </Pressable>
 
+        <SocialAuthRow
+          onGooglePress={() => toast.show('Continuing with Google…')}
+          onApplePress={() => toast.show('Continuing with Apple…')}
+        />
+
         {/* `legal` is both a fontSize and a color token, so `text-legal` would collide as a
             class name — the color comes from the token module directly instead. */}
         <Text
@@ -186,6 +196,7 @@ export default function SignupScreen() {
           By creating an account you agree to our Terms of Service and Privacy Policy.
         </Text>
       </View>
+      <Toast message={toast.message} />
     </ScreenBackground>
   );
 }

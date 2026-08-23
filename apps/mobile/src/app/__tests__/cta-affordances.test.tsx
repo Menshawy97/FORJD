@@ -100,9 +100,11 @@ describe('controls acknowledge a press', () => {
     // is already the assertion three lines up, before any press happened.
   });
 
-  // The ghost variant gets the same scale plus the fill and text lift the prototype gives it
-  // on hover — a pointer state that on a touch device only ever surfaces as "pressed".
-  it('fills and brightens the welcome ghost CTA while held', async () => {
+  // The ghost variant gets the fill and text lift the prototype gives it on hover — a
+  // pointer state that on a touch device only ever surfaces as "pressed" — but, per
+  // press-feedback.ts (Part 1.3 of ui-remediation-and-phase-i-plan.md), NOT the primary
+  // CTA's scale transform: the prototype's `btn()` has no active/pressed rule for ghost.
+  it('fills and brightens the welcome ghost CTA while held, with no scale transform', async () => {
     const { findByText, findByLabelText } = await renderRouter('src/app', {
       initialUrl: '/welcome',
     });
@@ -116,9 +118,9 @@ describe('controls acknowledge a press', () => {
     await hold(await ghost());
 
     expect(flatStyle(await ghost())).toMatchObject({
-      transform: [{ scale: 0.985 }],
       backgroundColor: 'rgba(255,255,255,.04)',
     });
+    expect(flatStyle(await ghost()).transform).toBeUndefined();
     expect(classesOf(await ghostLabel())).toContain('text-text');
   });
 });

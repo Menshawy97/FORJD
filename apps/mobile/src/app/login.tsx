@@ -8,6 +8,7 @@ import { saveSession } from '@/auth/secureStorage';
 import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
+import { SocialAuthRow } from '@/components/social-auth-row';
 import { Toast, useToast } from '@/components/toast';
 import { colors } from '@/theme/tokens';
 
@@ -15,9 +16,6 @@ import { colors } from '@/theme/tokens';
 // `FORJD mobile app design/FORJD Mobile.dc.html`. Where 01-screen-inventory.md paraphrases
 // ("Log in" as the headline), the prototype is authoritative — the headline is
 // "Welcome back", with "Log in to continue your training." beneath it.
-//
-// The social auth row the prototype draws under the CTA is explicitly out of Phase 1 scope
-// and is deliberately not built here.
 //
 // Wrong-credentials renders an inline error and does not navigate: the API's 401 is the
 // single source of truth, not client-side guessing.
@@ -61,6 +59,11 @@ export default function LoginScreen() {
     try {
       const session = await login({ email, password });
       await saveSession(session);
+      // `welcome` was pushed under this screen and never popped by a bare `replace`, so the
+      // swipe-back gesture always had a phantom entry to land on (see
+      // ui-remediation-and-phase-i-plan.md §1.1). Dismiss everything below this screen before
+      // replacing it so the authenticated app mounts at stack depth 1, with nothing to pop to.
+      if (router.canDismiss()) router.dismissAll();
       router.replace('/');
     } catch (cause) {
       setError(describeLoginFailure(cause));
@@ -170,6 +173,11 @@ export default function LoginScreen() {
           className="mt-[26px] h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
           <Text className="font-archivo text-button font-bold text-white">Log In</Text>
         </Pressable>
+
+        <SocialAuthRow
+          onGooglePress={() => toast.show('Continuing with Google…')}
+          onApplePress={() => toast.show('Continuing with Apple…')}
+        />
 
         <View className="mt-5 flex-row justify-center">
           <Text className="font-archivo text-link text-dimmer">No account? </Text>

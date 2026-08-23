@@ -193,11 +193,8 @@ export default function GoalsScreen() {
               accessibilityState={{ disabled: !ready || saving }}
               disabled={!ready || saving}
               onPress={handleSave}
-              style={({ pressed }) => [
-                { height: 52, shadowColor: colors.accent },
-                pressScale({ pressed }),
-              ]}
-              className="items-center justify-center rounded-button bg-accent shadow-primary-button">
+              style={pressScale}
+              className="h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
               <Text className="font-archivo text-button font-bold text-white">Save</Text>
             </Pressable>
           </View>
@@ -226,9 +223,9 @@ function PickRow({ label, selected, onPress }: PickRowProps) {
       className="flex-row items-center justify-between rounded-[11px] px-[15px] py-[13px]"
       style={{
         gap: 10,
-        backgroundColor: selected ? 'rgba(233,113,47,.1)' : colors.elevated,
+        backgroundColor: selected ? colors.pickRowSelectedBg : colors.surface,
         borderWidth: 1,
-        borderColor: selected ? 'rgba(233,113,47,.45)' : colors.border,
+        borderColor: selected ? colors.borderPickRowSelected : colors.border,
       }}>
       <Text
         className="font-archivo text-[14px] font-semibold"
@@ -239,7 +236,7 @@ function PickRow({ label, selected, onPress }: PickRowProps) {
         className="h-5 w-5 items-center justify-center rounded-[10px]"
         style={{
           borderWidth: selected ? 0 : 1.5,
-          borderColor: '#37383c',
+          borderColor: colors.borderCheckbox,
           backgroundColor: selected ? colors.accent : 'transparent',
         }}>
         {selected && <Icon name="check" size={12} color="#fff" strokeWidth={2.6} />}

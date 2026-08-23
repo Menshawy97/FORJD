@@ -94,6 +94,7 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <Stack screenOptions={stackScreenOptions} />
         {!authenticated && <AuthGate />}
+        {authenticated && <AuthenticatedGate />}
       </ThemeProvider>
     </SafeAreaProvider>
   );
@@ -133,4 +134,29 @@ function AuthGate() {
   }
 
   return <Redirect href="/welcome" />;
+}
+
+/**
+ * Safety net for the swipe-back bug (ui-remediation-and-phase-i-plan.md §1.1): the primary
+ * fix is dismissing the stack down to depth 1 at both auth boundaries (login.tsx, signup.tsx),
+ * so the gesture has nothing left to pop to. This is the second layer — if a phantom `welcome`
+ * or `login` entry is ever reachable again by an authenticated user, land them back on `/`
+ * immediately instead of rendering "Create Account" / "Log In", which reads as a sign-out.
+ *
+ * `signup` is deliberately NOT included. `saveSession` fires before signup's own navigation
+ * (signup.tsx), so the user is already authenticated while still on `/signup` for the
+ * first-run `goals` screen's back-chevron trap (slice2-screen-specs.md §4.1/§4.6) — gating
+ * `signup` here would redirect that screen away before its own `replace` runs.
+ */
+const AUTHENTICATED_REDIRECT_ROUTES = new Set(['welcome', 'login']);
+
+function AuthenticatedGate() {
+  const segments = useSegments();
+  const firstSegment = segments[0] as string | undefined;
+
+  if (firstSegment === undefined || !AUTHENTICATED_REDIRECT_ROUTES.has(firstSegment)) {
+    return null;
+  }
+
+  return <Redirect href="/" />;
 }

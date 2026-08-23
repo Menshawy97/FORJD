@@ -42,7 +42,9 @@ describe('profile screen', () => {
 
     await findByText('James Mitchell');
     await findByText('Free User');
-    await findByText('@jmitch · Alexandria');
+    // Part 1.5: slice2-screen-specs.md's decisions box drops the `@jmitch` handle entirely
+    // (no `handle` column, no username concept) — this line shows the city alone.
+    await findByText('Alexandria');
   });
 
   it('renders the three labelled settings groups with the design rows and subtitles', async () => {

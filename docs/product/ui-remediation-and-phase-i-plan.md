@@ -1,5 +1,11 @@
 # FORJD — fidelity/navigation remediation, then slice 2 Phase I (`privacy` + `notifs`)
 
+**Status: Part 1 is done, merged, and green on `main`. Part 2 (Phase I) has not been
+started.** See `docs/product/roadmap.md`'s "Next, in order" section for the current summary
+and any deltas picked up from live device testing during Part 1 (a birthday-row tap
+affordance and a defensive `ScrollView` wrap on `editProfile`/`units`, neither in the
+original written plan below).
+
 ## Orientation for a fresh session
 
 Repo: `C:\Users\Mostafa Ashraf\Desktop\FORJD` (pnpm monorepo). Mobile app is `apps/mobile`

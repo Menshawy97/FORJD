@@ -25,7 +25,7 @@ import { colors } from '@/theme/tokens';
 const IDENTITY = {
   name: 'James Mitchell',
   plan: 'Free User',
-  handle: '@jmitch · Alexandria',
+  handle: 'Alexandria',
 } as const;
 
 interface SettingsRow {
