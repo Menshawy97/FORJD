@@ -8,6 +8,7 @@
     "@expo/ui": "0.2.0-canary-20260121-a63c0dd",
     "@forjd/contracts": "workspace:*",
     "@forjd/domain": "workspace:*",
+    "@react-native-community/datetimepicker": "8.4.4",
     "@react-navigation/native": "7.3.17",
     "axios": "^1.19.0",
     "expo": "~54.0.37",

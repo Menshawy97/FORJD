@@ -18,7 +18,15 @@ import axios, {
   InternalAxiosRequestConfig,
 } from 'axios';
 import Constants from 'expo-constants';
-import type { LoginRequest, RegisterRequest, RegisterResponse, SessionResponse } from '@forjd/contracts';
+import type {
+  LoginRequest,
+  MeResponse,
+  ProfileResponse,
+  RegisterRequest,
+  RegisterResponse,
+  SessionResponse,
+  UpdateProfileRequest,
+} from '@forjd/contracts';
 
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
 
@@ -116,5 +124,15 @@ export async function signup(input: RegisterRequest): Promise<RegisterResponse> 
 
 export async function login(input: LoginRequest): Promise<SessionResponse> {
   const response = await publicClient.post<SessionResponse>('/auth/login', input);
+  return response.data;
+}
+
+export async function getMe(): Promise<MeResponse> {
+  const response = await apiClient.get<MeResponse>('/users/me');
+  return response.data;
+}
+
+export async function updateProfile(patch: UpdateProfileRequest): Promise<ProfileResponse> {
+  const response = await apiClient.patch<ProfileResponse>('/users/me/profile', patch);
   return response.data;
 }

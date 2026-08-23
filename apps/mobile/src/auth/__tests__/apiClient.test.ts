@@ -13,6 +13,8 @@ jest.mock('axios', () => {
       };
     };
     post: jest.Mock;
+    get: jest.Mock;
+    patch: jest.Mock;
     request: jest.Mock;
     defaults: { baseURL: string };
   }> = [];
@@ -34,6 +36,8 @@ jest.mock('axios', () => {
         },
       },
       post: jest.fn(),
+      get: jest.fn(),
+      patch: jest.fn(),
       request: jest.fn(),
       defaults: { baseURL: 'http://test.local/api/v1' },
     };
@@ -273,5 +277,44 @@ describe('apiClient - what a failure on the retry path is allowed to destroy', (
     expect(secureStorage.clearSession).not.toHaveBeenCalled();
     expect(secureStorage.saveSession).toHaveBeenCalledTimes(1);
     expect(rejection).toBe(replayError);
+  });
+});
+
+// Phase G: profile reads and writes both go through `apiClient` (not `publicClient`) so the
+// bearer token and the 401-refresh-retry both apply automatically — neither function needs
+// its own auth handling.
+describe('apiClient - profile reads and writes', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (axios as unknown as { __instances: unknown[] }).__instances.length = 0;
+  });
+
+  function apiClientInstance() {
+    const instances = (axios as unknown as { __instances: Array<Record<string, unknown>> })
+      .__instances;
+    // Construction order in apiClient.ts: public, refresh, api, replay.
+    return instances[2] as unknown as { get: jest.Mock; patch: jest.Mock };
+  }
+
+  it('getMe reads GET /users/me through the authenticated client', async () => {
+    const { getMe } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = { id: 'u1', email: 'a@example.com', profile: null, privacy: null };
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(getMe()).resolves.toEqual(body);
+
+    expect(instance.get).toHaveBeenCalledWith('/users/me');
+  });
+
+  it('updateProfile sends only the given fields through PATCH /users/me/profile', async () => {
+    const { updateProfile } = loadApiClient();
+    const instance = apiClientInstance();
+    const updated = { userId: 'u1', displayName: 'Ada' };
+    instance.patch.mockResolvedValue({ data: updated });
+
+    await expect(updateProfile({ displayName: 'Ada' })).resolves.toEqual(updated);
+
+    expect(instance.patch).toHaveBeenCalledWith('/users/me/profile', { displayName: 'Ada' });
   });
 });

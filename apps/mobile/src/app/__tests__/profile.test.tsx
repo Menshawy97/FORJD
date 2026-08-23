@@ -11,6 +11,13 @@
 // hand-rolled `subscribeToSession` stub would break exactly the behaviour under test.
 // `clearSession` is additionally wrapped in a jest.fn over the real implementation so the
 // call itself is assertable without severing that plumbing.
+//
+// Slice-2 navigation off this screen (editProfile/units) has its own dedicated file,
+// profile-navigation.test.tsx — not appended here. A separate spec file gets its own fresh
+// module registry from Jest, which sidesteps a real problem: `clearSession()` in this file's
+// logout test mutates the actual (singleton) secureStorage session, which nothing resets
+// between `it()` blocks here, so any later test in this same file that needs an
+// authenticated `/profile` render would inherit the signed-out state.
 import { fireEvent } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 
