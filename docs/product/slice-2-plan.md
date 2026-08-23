@@ -171,12 +171,22 @@ volunteered and coarse.
 `plan: 'free'` hardcoded from a single `SubscriptionService.getPlan()` seam. Billing is
 Phase 10. The `editProfile` Plan row renders as `Free plan` / `Go Pro`, non-navigating.
 
-### Phase F — docs (no CI run; `paths-ignore`)
+### Phase F — docs (no CI run; `paths-ignore`) — done
 
 `domain-model.md` (new table + columns), `security.md` (consent model, the 404-not-403
 decision, the deferred `ConsentGuard`, the no-caching decision), and **an ADR for
 unitSystem-as-preset** — that is a reversal of an implied earlier design, which is exactly
-what `docs/decisions/` is for. Next free number is **ADR-015**.
+what `docs/decisions/` is for.
+
+Landed as [ADR-016](../decisions/ADR-016-unit-system-as-preset.md), written during Phase B
+rather than held for this phase — the reversal was decided and coded together, so writing it
+down immediately kept the decision and the code it justifies from drifting apart. (015 went
+to the Supabase topology decision, reserved first — see `docs/product/roadmap.md`.) All of
+Phase F's remaining doc obligations — `domain-model.md`, `security.md`'s consent model and
+deferred `ConsentGuard` — landed together in this phase's own commit.
+
+**Backend is complete.** Phases A–F are all merged and green on `main`. Everything from here
+is mobile (G–J).
 
 ---
 
@@ -249,19 +259,36 @@ the merge commit is green.
 
 ## Still open — surface these rather than guessing
 
-1. **Is RLS actually configured on Supabase?** Nothing in the repo creates a policy and the
-   API connects as the owning role, so rule 12's "RLS is defense-in-depth" currently
-   describes something that does not exist. Either build it or correct the docs.
-2. **Is `city` public whenever the profile is public**, or does it need
-   `locationForLeaderboard` separately? Currently it follows `publicProfile` — it is the
-   only location-shaped field on the public projection and deserves a deliberate answer.
-3. **Energy default is hardcoded `kcal`** for everyone; kJ is the norm in some markets.
-4. **Locale inconsistency in the design copy:** `Analyse` (British, privacy) vs `programs`
-   (US, goals). Pick one.
-5. **`preferences.notifications_enabled`** already exists and is unwired; notifications are
-   device-local this phase, so it is a column nothing enforces. Leave with a comment rather
-   than migrating for no gain — but it will mislead a later session if unannotated.
-6. **`heightCm` has no screen** and `avatarUrl` has no control anywhere in the design.
-7. **Blocked, unrelated:** `eslint-plugin-react-hooks` is installed and imported but its
-   rules are unregistered — the `config-protection` hook blocks ESLint config edits. Needs
-   a human. Diff is in PR #12's description.
+1. **Is RLS actually configured on Supabase? Still genuinely open — needs a human decision,
+   not an engineering call.** Nothing in the repo creates a policy and the API connects as the
+   owning role, so rule 12's "RLS is defense-in-depth" currently describes something that does
+   not exist for any table, `privacy_settings` included. Two honest paths: build the policies
+   (real work, and a decision about who else might read the DB directly — Studio, an admin
+   tool, a future service — that a human should make), or correct CLAUDE.md rule 12 and this
+   repo's docs to say plainly that NestJS guards are the *only* enforcement today. Both are
+   legitimate; picking between them is not something a backend phase should decide on its own.
+2. **Resolved in Phase D/F.** `city` is public whenever the profile is public, gated only by
+   `publicProfile` and not separately by `locationForLeaderboard` — the two flags answer
+   different questions (server behaviour vs. display), and requiring a second flag for one
+   field would be a distinction the product draws nowhere else on that response. Recorded in
+   `docs/architecture/security.md`.
+3. **Still open — a content/locale call, not a backend one.** Energy default is hardcoded
+   `kcal` for everyone; kJ is the norm in some markets. Lower stakes than at plan-writing time:
+   Phase B made `energyUnit` a real, user-editable field, so a "wrong" default is now a
+   one-time change per account rather than a structural gap. Worth a product decision before
+   launch in a kJ-majority market, not before.
+4. **Still open — a copy decision for whoever builds the mobile screens (Phase I).**
+   `Analyse` (British, privacy screen) vs `programs` (US, goals screen) — pick one spelling
+   convention and apply it consistently; the prototype itself is inconsistent.
+5. **Resolved in Phase F.** `preferences.notifications_enabled` is annotated in
+   `apps/api/src/database/schema/preferences.schema.ts` explaining it is unwired by design
+   this phase, so a future session does not mistake its presence for a working feature.
+6. **Still open — a design-scope question, not a backend one.** `heightCm` has no screen and
+   `avatarUrl` has no control anywhere in the current design. Neither blocks phases G-J, since
+   both fields already round-trip correctly through the API for whichever future screen adds
+   them; flagging here so their absence from the design isn't mistaken for an oversight in the
+   backend.
+7. **Resolved.** `eslint-plugin-react-hooks`'s rules are registered and verified active
+   (`react-hooks/rules-of-hooks: error`, `exhaustive-deps: warn`) —
+   [PR #14](https://github.com/Menshawy97/FORJD/pull/14), merged and green on `main` before
+   Phase A started.
