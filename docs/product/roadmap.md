@@ -514,9 +514,9 @@ A-D batch.
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
 
-   **Status: backend (phases A–F) and mobile phases G (`editProfile` + `units`) and H
-   (`location` + `goals`) are done, merged, and green on `main`. Phase I (`privacy` +
-   `notifs`) is next and has not been started; Phase J (`athlete`) follows it.**
+   **Status: backend (phases A–F) and mobile phases G (`editProfile` + `units`), H
+   (`location` + `goals`) and I (`privacy` + `notifs`) are done, merged, and green on
+   `main`. Phase J (`athlete`) is next and has not been started.**
 
    Read, in this order, before writing any screen:
    - **`docs/product/slice-2-plan.md`** — locked decisions (do not re-litigate — see its
@@ -613,8 +613,22 @@ A-D batch.
       `profile.tsx`'s settings rows already use), and `editProfile`/`units` are now
       `ScrollView`-wrapped rather than a fixed `View`, as a defensive fix against content
       overflowing short screens.
-   2. **NEXT — Phase I — `privacy` + `notifs`.** Strict TDD, apply the whole-row-toggle
-      deviation above, link `privacy`'s location row to `/location?back=privacy`.
+   2. **DONE — Phase I — `privacy` + `notifs`.** Both shipped with the whole-row-toggle
+      deviation applied, and `privacy`'s location row links to `/location?back=privacy`,
+      finally making Phase H's param real. `privacy` mirrors the server's
+      leaderboard/location dependency in both directions so its 400 is unreachable;
+      `notifs` is device-local via AsyncStorage behind `store/notification-preferences.ts`,
+      with no Save button. Two reusable components came out of it —
+      `components/toggle.tsx` and `components/toggle-row.tsx`. See `slice-2-plan.md`'s
+      Phase I entry for the full decision record.
+
+      One cross-cutting lesson worth carrying forward: **put box-model properties
+      (height/border/background/flex-direction/radius) in NativeWind `className`, not in a
+      raw inline `style` callback on a `Pressable`.** The social auth row was built the
+      latter way in Part 1 and rendered correctly on web but visibly broken on a physical
+      iOS device; rewriting to `className` (keeping only the dynamic pressed background in
+      the `style` callback) fixed it. Every component added in Phase I follows that
+      convention.
 
    **After I:** Phase J — `athlete` screen + wire the `profile` tab to real `/users/me` data,
    replacing the hardcoded "James Mitchell" identity block.

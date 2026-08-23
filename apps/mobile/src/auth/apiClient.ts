@@ -21,10 +21,12 @@ import Constants from 'expo-constants';
 import type {
   LoginRequest,
   MeResponse,
+  PrivacySettingsResponse,
   ProfileResponse,
   RegisterRequest,
   RegisterResponse,
   SessionResponse,
+  UpdatePrivacyRequest,
   UpdateProfileRequest,
 } from '@forjd/contracts';
 
@@ -134,5 +136,12 @@ export async function getMe(): Promise<MeResponse> {
 
 export async function updateProfile(patch: UpdateProfileRequest): Promise<ProfileResponse> {
   const response = await apiClient.patch<ProfileResponse>('/users/me/profile', patch);
+  return response.data;
+}
+
+export async function updatePrivacy(
+  patch: UpdatePrivacyRequest,
+): Promise<PrivacySettingsResponse> {
+  const response = await apiClient.patch<PrivacySettingsResponse>('/users/me/privacy', patch);
   return response.data;
 }

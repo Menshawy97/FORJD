@@ -46,11 +46,8 @@ export default function LocationScreen() {
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
-  // '/privacy' is not a registered route until Phase I builds that screen — this cast is the
-  // honest way to say "this Href will resolve once that screen exists", not a blanket escape
-  // hatch. Every other Href in this file stays fully typed.
   const toPrivacy = back === 'privacy';
-  const destination: Href = toPrivacy ? ('/privacy' as Href) : '/rank';
+  const destination: Href = toPrivacy ? '/privacy' : '/rank';
   const activeTab: TabId = toPrivacy ? 'profile' : 'rank';
   const goBack = () => router.replace(destination);
 

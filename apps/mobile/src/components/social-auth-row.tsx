@@ -69,18 +69,8 @@ function SocialButton({ label, accessibilityLabel, onPress, icon }: SocialButton
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        height: 52,
-        borderRadius: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 9,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: pressed ? colors.elevated2 : colors.fieldBg,
-      })}>
+      style={({ pressed }) => ({ backgroundColor: pressed ? colors.elevated2 : colors.fieldBg })}
+      className="h-[52px] flex-1 flex-row items-center justify-center gap-[9px] rounded-button border border-border">
       {icon}
       <Text
         className="font-archivo"

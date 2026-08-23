@@ -213,10 +213,28 @@ glyphs), `screen-background.tsx` (ember gradient + safe-area), `toast.tsx`,
   `?back=privacy` query param for Phase I to use once the privacy screen exists. Both
   screens' `goalsReturnTo`/`locationReturnTo` are ported as query params, not app state, per
   the spec's note not to port `03-navigation.md`'s stack-depth version.
-- **I — `privacy` + `notifs`.** `privacy` cuts nothing now that the endpoint is being
-  built. `notifs` persists device-locally (`expo-sqlite` is registered but unused, or
-  AsyncStorage if the shape stays flat). Quiet hours is a local window; its `Change`
-  control goes nowhere in the prototype and has no editor anywhere.
+- **I — `privacy` + `notifs`. Done, merged, green on `main`.** `privacy` cut nothing: the
+  `PATCH /users/me/privacy` endpoint already existed, so the spec's "blocked on backend"
+  note for that screen was stale. It renders from `getMe()`'s `privacy` object (real
+  accounts start all-off; §6.4's defaults describe the prototype's local state only) and
+  **mirrors the server's leaderboard/location dependency client-side in both directions** —
+  parent off cascades the child off, child on turns the parent on — so the server's 400 is
+  structurally unreachable without inventing a disabled row state the design does not
+  define. Its Location permission row is what finally makes Phase H's `?back=privacy` param
+  real. "Preview my public profile" and "Download my data" render **inert**: the athlete
+  screen is Phase J and `POST /me/export` does not exist, so the prototype's "Export
+  requested — we will email you" toast would be factually untrue.
+  `notifs` persists device-locally to **AsyncStorage behind `store/notification-preferences.ts`**
+  — chosen over `expo-sqlite` (a table holding five scalars), MMKV (needs a custom dev
+  client, breaking the Expo Go workflow ADR-007 depends on) and `expo-secure-store` (for
+  secrets; it is the auth layer's seam). Behind a seam specifically so that moving these
+  server-side once push exists (Phase 6/8) is an adapter swap, not a screen rewrite. It has
+  **no Save button** — toggles apply and persist immediately — and quiet hours is a local
+  window whose `Change` control is a deliberate stub, since no editor exists anywhere in
+  the design.
+  Two new shared components came out of this phase and should be reused, not re-derived:
+  `components/toggle.tsx` (presentational; the row owns the tap) and
+  `components/toggle-row.tsx`.
 - **J — `athlete`** + wire `profile` to real `/users/me` data, replacing hardcoded
   "James Mitchell". Handle line shows city alone (handles dropped). Include the private/
   hidden state the prototype renders.

@@ -74,8 +74,18 @@ const GROUPS: Array<{ label: string; rows: SettingsRow[] }> = [
   {
     label: 'Privacy & permissions',
     rows: [
-      { icon: 'shield', title: 'Privacy Settings', subtitle: 'Leaderboard, location, AI' },
-      { icon: 'bell', title: 'Notifications', subtitle: 'Workouts, recovery, PRs' },
+      {
+        icon: 'shield',
+        title: 'Privacy Settings',
+        subtitle: 'Leaderboard, location, AI',
+        onPress: () => router.replace('/privacy'),
+      },
+      {
+        icon: 'bell',
+        title: 'Notifications',
+        subtitle: 'Workouts, recovery, PRs',
+        onPress: () => router.replace('/notifs'),
+      },
     ],
   },
 ];
