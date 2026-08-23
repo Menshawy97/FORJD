@@ -40,6 +40,15 @@ const profile = {
   sex: 'female' as const,
   heightCm: 172.5,
   unitSystem: 'metric' as const,
+  // Deliberately not the metric preset's own values. A fixture where every unit agreed with
+  // `unitSystem` would document the one case that cannot catch a client still reading the
+  // deprecated preset instead of the three real fields; this one breaks such a client
+  // visibly, which is the entire job of a pinned fixture.
+  weightUnit: 'lb' as const,
+  distanceUnit: 'km' as const,
+  energyUnit: 'kJ' as const,
+  trainingGoals: ['get_stronger', 'improve_endurance'] as const,
+  activities: ['strength', 'hyrox'] as const,
   avatarUrl: 'https://example.com/avatar.png',
 };
 
@@ -78,7 +87,13 @@ export const responseFixtures = {
 
   'profile-response': { schema: profileResponseSchema, sample: profile },
 
-  /** Every nullable field actually null, which is what a profile looks like at signup. */
+  /**
+   * Every nullable field actually null, which is what a profile looks like at signup.
+   *
+   * The unit and list fields are the interesting part: they are **not** null, because their
+   * columns are NOT NULL with defaults. A client that treats them as nullable is wrong, and
+   * this fixture is where that gets caught rather than at runtime on a fresh account.
+   */
   'profile-response-empty': {
     schema: profileResponseSchema,
     sample: {
@@ -88,6 +103,11 @@ export const responseFixtures = {
       sex: null,
       heightCm: null,
       unitSystem: 'metric' as const,
+      weightUnit: 'kg' as const,
+      distanceUnit: 'km' as const,
+      energyUnit: 'kcal' as const,
+      trainingGoals: [],
+      activities: [],
       avatarUrl: null,
     },
   },

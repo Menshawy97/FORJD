@@ -3,14 +3,27 @@
  * may be imported here (CLAUDE.md rules 1-2, enforced by the CI conformance check).
  */
 
-export type UnitSystem = 'metric' | 'imperial';
+/**
+ * A **preset**, not a preference. It writes `weightUnit` and `distanceUnit` as a convenience
+ * and deliberately says nothing about energy — see `ENERGY_UNITS`. It survives only because
+ * removing it would be a breaking change to a shipped `/api/v1` (CLAUDE.md rule 7); it is
+ * `@deprecated` on the wire and goes away in `/api/v2`.
+ *
+ * @see docs/decisions/ADR-016-unit-system-as-preset.md
+ */
+export const UNIT_SYSTEMS = ['metric', 'imperial'] as const;
+export type UnitSystem = (typeof UNIT_SYSTEMS)[number];
 
 /**
- * Kept in step with `sexSchema` in @forjd/contracts — three options by product decision
- * (Male, Female, Rather not say), matching the three chips the design actually draws.
- * `other` was removed from both rather than left accepted-but-unoffered.
+ * Three options by product decision (Male, Female, Rather not say), matching the three chips
+ * the design actually draws. `other` was removed rather than left accepted-but-unoffered.
+ *
+ * This tuple used to be a bare union here *and* a separate `z.enum([...])` in
+ * @forjd/contracts, and the two drifted. @forjd/contracts now builds its schema from this
+ * declaration, so the drift is not merely detectable — it is unrepresentable.
  */
-export type Sex = 'male' | 'female' | 'prefer_not_to_say';
+export const SEXES = ['male', 'female', 'prefer_not_to_say'] as const;
+export type Sex = (typeof SEXES)[number];
 
 /**
  * The closed value sets for the profile's unit preferences and its two chip lists.

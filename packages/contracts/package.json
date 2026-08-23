@@ -11,6 +11,7 @@
     "fixtures": "ts-node scripts/write-fixtures.ts"
   },
   "dependencies": {
+    "@forjd/domain": "workspace:*",
     "zod": "^3.24.1"
   },
   "devDependencies": {

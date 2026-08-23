@@ -1,8 +1,27 @@
+import {
+  ACTIVITIES,
+  DISTANCE_UNITS,
+  ENERGY_UNITS,
+  SEXES,
+  TRAINING_GOALS,
+  UNIT_SYSTEMS,
+  WEIGHT_UNITS,
+} from '@forjd/domain';
 import { z } from 'zod';
 
 /**
  * Wire contracts for /api/v1. Schemas are the source of truth; types are inferred from them,
  * so a validator and its type can never drift apart.
+ *
+ * Closed value sets are imported from @forjd/domain rather than restated here. They used to
+ * be written out twice — once as a domain union, once as a `z.enum([...])` — and the two
+ * copies of `sex` drifted, which is a bug this package exists to prevent. Building the
+ * schemas from the domain tuples makes that class of drift unrepresentable rather than
+ * merely testable, which matters more now that slice 2 adds five more such sets.
+ *
+ * The dependency direction is deliberate and legal: domain is pure TypeScript with no
+ * imports at all, so contracts depending on it cannot pull a framework or an SDK into the
+ * domain layer (CLAUDE.md rules 1-2).
  */
 
 /**
@@ -81,15 +100,44 @@ export const registerResponseSchema = z.object({
 });
 export type RegisterResponse = z.infer<typeof registerResponseSchema>;
 
-export const unitSystemSchema = z.enum(['metric', 'imperial']);
+/**
+ * @deprecated A preset, not a preference — it writes `weightUnit` and `distanceUnit` and
+ * says nothing about energy. Read `weightUnit`/`distanceUnit`/`energyUnit` instead. Retained
+ * in /api/v1 because removing a shipped field is a breaking change (CLAUDE.md rule 7);
+ * removed in /api/v2. See docs/decisions/ADR-016-unit-system-as-preset.md.
+ */
+export const unitSystemSchema = z.enum(UNIT_SYSTEMS);
+
 /**
  * Three options by product decision: Male, Female, Rather not say. `other` was dropped
- * rather than left accepted-but-unoffered, so the contract and the UI cannot drift — a value
- * no screen can produce is surface nobody maintains. Safe to narrow here because `sex` is a
- * nullable `text` column, not a Postgres enum (see profiles.schema.ts), so no migration is
- * involved, and nothing had shipped that could hold the old value.
+ * rather than left accepted-but-unoffered — a value no screen can produce is surface nobody
+ * maintains. Safe to narrow because `sex` is a nullable `text` column, not a Postgres enum
+ * (see profiles.schema.ts), so no migration is involved.
  */
-export const sexSchema = z.enum(['male', 'female', 'prefer_not_to_say']);
+export const sexSchema = z.enum(SEXES);
+
+/** The three real unit preferences. Independent of each other and of `unitSystem`. */
+export const weightUnitSchema = z.enum(WEIGHT_UNITS);
+export const distanceUnitSchema = z.enum(DISTANCE_UNITS);
+export const energyUnitSchema = z.enum(ENERGY_UNITS);
+
+export const trainingGoalSchema = z.enum(TRAINING_GOALS);
+export const activitySchema = z.enum(ACTIVITIES);
+
+/**
+ * Both chip lists are bounded at their own length. The bound is not about payload size — it
+ * is that a request naming more members than exist can only be a duplicate-laden or
+ * malformed one, and `.max()` says so at the boundary instead of letting the database store
+ * an array nothing can render.
+ *
+ * Uniqueness is enforced too: `['strength', 'strength']` is not a different selection from
+ * `['strength']`, and storing it would make the same UI state have two representations.
+ */
+const chipListSchema = <T extends readonly [string, ...string[]]>(values: T) =>
+  z
+    .array(z.enum(values))
+    .max(values.length)
+    .refine((list) => new Set(list).size === list.length, 'Values must be unique');
 
 export const profileResponseSchema = z.object({
   userId: z.string().uuid(),
@@ -97,7 +145,18 @@ export const profileResponseSchema = z.object({
   dateOfBirth: z.string().nullable(),
   sex: sexSchema.nullable(),
   heightCm: z.number().nullable(),
+  /** @deprecated See `unitSystemSchema`. Use the three unit fields below. */
   unitSystem: unitSystemSchema,
+  weightUnit: weightUnitSchema,
+  distanceUnit: distanceUnitSchema,
+  energyUnit: energyUnitSchema,
+  /**
+   * Never null. The columns behind these are NOT NULL with an empty-array default, so
+   * "nothing selected" and "never chosen" are one state and a client has two cases to handle
+   * rather than three.
+   */
+  trainingGoals: z.array(trainingGoalSchema),
+  activities: z.array(activitySchema),
   avatarUrl: z.string().nullable(),
 });
 export type ProfileResponse = z.infer<typeof profileResponseSchema>;
@@ -138,7 +197,22 @@ export const updateProfileRequestSchema = z
     dateOfBirth: isoDateSchema.nullable(),
     sex: sexSchema.nullable(),
     heightCm: z.number().positive().max(300).nullable(),
+    /**
+     * @deprecated Sending this sets `weightUnit` and `distanceUnit` and leaves `energyUnit`
+     * alone. An explicit unit in the same request wins over the preset; sending only
+     * explicit units never back-derives this field, because `kg` with `mi` belongs to no
+     * system and any answer would be invented. See ADR-016.
+     */
     unitSystem: unitSystemSchema,
+    weightUnit: weightUnitSchema,
+    distanceUnit: distanceUnitSchema,
+    energyUnit: energyUnitSchema,
+    /**
+     * Not nullable: an empty array clears the selection. Allowing null as well would give
+     * "none selected" two spellings for a distinction the product does not make.
+     */
+    trainingGoals: chipListSchema(TRAINING_GOALS),
+    activities: chipListSchema(ACTIVITIES),
     avatarUrl: httpUrlSchema.nullable(),
   })
   .partial()
