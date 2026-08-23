@@ -317,4 +317,24 @@ describe('apiClient - profile reads and writes', () => {
 
     expect(instance.patch).toHaveBeenCalledWith('/users/me/profile', { displayName: 'Ada' });
   });
+
+  it('updatePrivacy sends the given flags through PATCH /users/me/privacy', async () => {
+    const { updatePrivacy } = loadApiClient();
+    const instance = apiClientInstance();
+    const updated = {
+      publicProfile: false,
+      leaderboardOptIn: true,
+      locationForLeaderboard: true,
+      aiFeaturesConsent: true,
+      aiFeaturesConsentAt: '2026-01-01T00:00:00.000Z',
+      crashDiagnostics: false,
+    };
+    instance.patch.mockResolvedValue({ data: updated });
+
+    await expect(updatePrivacy({ leaderboardOptIn: true })).resolves.toEqual(updated);
+
+    expect(instance.patch).toHaveBeenCalledWith('/users/me/privacy', {
+      leaderboardOptIn: true,
+    });
+  });
 });

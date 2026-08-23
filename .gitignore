@@ -76,6 +76,10 @@ desktop.ini
 /postgres-data/
 /redis-data/
 
+# Expo CLI scratch state. `apps/mobile/.gitignore` already covers the app itself; this
+# catches the dirs the CLI drops in whatever workspace it happens to be invoked from.
+.expo/
+
 # InBody spike inputs: real report photos are personal health data.
 # Only anonymized, committed golden fixtures belong in the repo (see docs/decisions/ADR-006).
 scripts/spikes/inbody-samples/
