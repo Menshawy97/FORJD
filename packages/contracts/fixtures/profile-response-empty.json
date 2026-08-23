@@ -10,5 +10,7 @@
   "energyUnit": "kcal",
   "trainingGoals": [],
   "activities": [],
-  "avatarUrl": null
+  "city": null,
+  "avatarUrl": null,
+  "plan": "free"
 }

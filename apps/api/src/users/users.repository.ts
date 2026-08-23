@@ -50,16 +50,18 @@ function keepKnownScalar<T extends string>(value: string, known: readonly T[], f
 }
 
 /**
- * A already-validated patch. This type is the repository's input, not a wire shape — two
- * obligations sit on whichever service builds one once these fields become client-writable:
+ * An already-validated patch. This type is the repository's input, not a wire shape.
  *
- * - **`citySlug` must be derived from `city` server-side, never copied from the request.**
- *   Accepting a client-supplied slug lets the two disagree, which turns a grouping key into
- *   something the client chooses.
- * - **`trainingGoals` and `activities` must be validated on write**, for membership and for a
- *   sane maximum length. `toProfile` filters unknown members on *read*, which is a graceful
- *   degradation for a narrowed value set — not an input check, and no substitute for one.
- *   Nothing at the database level bounds these arrays.
+ * `citySlug` is never client-writable — there is no such field on
+ * `updateProfileRequestSchema` — and this repository does not derive it either. That happens
+ * once, in `UsersService.toPatch` (`slugifyCity`), which is the only place a `ProfilePatch`
+ * carrying `citySlug` is constructed from a request; the repository just stores whatever it is
+ * given, same as every other field.
+ *
+ * `trainingGoals` and `activities` are validated on write by `updateProfileRequestSchema`
+ * (membership and a max length equal to the value set's own size). `toProfile` filters unknown
+ * members on *read*, which is a graceful degradation for a narrowed value set — not an input
+ * check, and not a substitute for the one on write.
  */
 export interface ProfilePatch {
   displayName?: string | null;

@@ -6,11 +6,13 @@ import type {
   UpdatePrivacyRequest,
   UpdateProfileRequest,
 } from '@forjd/contracts';
-import { PrivacySettings, Profile, UnitSystem, User } from '@forjd/domain';
+import { Plan, PrivacySettings, Profile, UnitSystem, User } from '@forjd/domain';
 import * as Sentry from '@sentry/nestjs';
 
 import { applyCrashDiagnosticsConsent } from '../observability/sentry-scrub';
 import { PrivacyService } from '../privacy/privacy.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { slugifyCity } from './city-slug';
 import { ProfilePatch, UsersRepository } from './users.repository';
 
 /**
@@ -45,17 +47,26 @@ export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly privacyService: PrivacyService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   /**
-   * Reads profile and privacy together. Privacy rides along rather than living behind its own
-   * `GET /users/me/privacy`, so the settings screen is one request and there is one source
-   * for one truth — two endpoints would be two answers free to disagree.
+   * Reads profile, privacy and plan together. Privacy rides along rather than living behind
+   * its own `GET /users/me/privacy`, so the settings screen is one request and there is one
+   * source for one truth — two endpoints would be two answers free to disagree. Plan is
+   * fetched here rather than assumed, even though it is hardcoded today, because the point of
+   * `SubscriptionService` as a seam is that every caller already asks it.
+   *
+   * When `profile` turns out to be null, the `plan` fetched here is discarded below. That is
+   * a real wasted call once `getPlan` reads a billing table in Phase 10, not merely today
+   * while it is a free in-memory constant — worth reconsidering then (e.g. skip the fetch, or
+   * accept the cost since a missing profile is itself abnormal), not before.
    */
   async getMe(user: User): Promise<MeResponse> {
-    const [profile, privacy] = await Promise.all([
+    const [profile, privacy, plan] = await Promise.all([
       this.usersRepository.findProfile(user.id),
       this.privacyService.get(user.id),
+      this.subscriptionService.getPlan(user.id),
     ]);
 
     // The one point in a request that has genuinely read this user's diagnostics choice, so
@@ -66,7 +77,7 @@ export class UsersService {
     return {
       id: user.id,
       email: user.email,
-      profile: profile ? this.toProfileResponse(profile) : null,
+      profile: profile ? this.toProfileResponse(profile, plan) : null,
       privacy: toPrivacyResponse(privacy),
     };
   }
@@ -76,13 +87,16 @@ export class UsersService {
   }
 
   async updateProfile(user: User, request: UpdateProfileRequest): Promise<ProfileResponse> {
-    const updated = await this.usersRepository.updateProfile(user.id, this.toPatch(request));
+    const [updated, plan] = await Promise.all([
+      this.usersRepository.updateProfile(user.id, this.toPatch(request)),
+      this.subscriptionService.getPlan(user.id),
+    ]);
 
     if (!updated) {
       throw new NotFoundException('Profile not found');
     }
 
-    return this.toProfileResponse(updated);
+    return this.toProfileResponse(updated, plan);
   }
 
   /**
@@ -119,13 +133,23 @@ export class UsersService {
       }
     }
 
+    // citySlug is derived here and only here. There is no such field on
+    // `UpdateProfileRequest`, so nothing above could have set it from the request — this is
+    // the sole place a ProfilePatch carrying citySlug is built. Deriving it from `city` rather
+    // than trusting anything client-supplied is what keeps the two from disagreeing.
+    if (request.city !== undefined) {
+      patch.city = request.city;
+      patch.citySlug = request.city === null ? null : slugifyCity(request.city);
+    }
+
     return patch;
   }
 
-  private toProfileResponse(profile: Profile): ProfileResponse {
+  private toProfileResponse(profile: Profile, plan: Plan): ProfileResponse {
     // Every field is named explicitly rather than spread. A spread would put adding a column
-    // to `Profile` one keystroke away from publishing it — which is exactly how `city` would
-    // reach the wire before the phase that decides what it means.
+    // to `Profile` one keystroke away from publishing it, and `plan` is not even a column —
+    // it comes from the subscription seam, not from this object, so a spread could not have
+    // produced it correctly anyway.
     return {
       userId: profile.userId,
       displayName: profile.displayName,
@@ -138,7 +162,9 @@ export class UsersService {
       energyUnit: profile.energyUnit,
       trainingGoals: profile.trainingGoals,
       activities: profile.activities,
+      city: profile.city,
       avatarUrl: profile.avatarUrl,
+      plan,
     };
   }
 }

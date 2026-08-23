@@ -2,6 +2,7 @@ import {
   ACTIVITIES,
   DISTANCE_UNITS,
   ENERGY_UNITS,
+  PLANS,
   SEXES,
   TRAINING_GOALS,
   UNIT_SYSTEMS,
@@ -139,6 +140,23 @@ const chipListSchema = <T extends readonly [string, ...string[]]>(values: T) =>
     .max(values.length)
     .refine((list) => new Set(list).size === list.length, 'Values must be unique');
 
+/**
+ * A volunteered, coarse city name — never a coordinate. security.md places location on
+ * `WorkoutSession`, never on the user record, and a lat/long here would contradict it; the
+ * device reverse-geocodes locally (`expo-location`'s `reverseGeocodeAsync`) and sends only the
+ * resulting name. `citySlug` is derived from this server-side and is never itself writable —
+ * see `toPatch` in `UsersService` — so a client cannot submit a slug that disagrees with the
+ * name it claims to represent.
+ *
+ * 120 chars covers real outliers (the longest official place name in English usage, the Welsh
+ * town Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch, is 58) with room to spare,
+ * while still bounding what an unvalidated free-text field can cost to store and render.
+ */
+const citySchema = z.string().min(1).max(120);
+
+/** Only `free` is reachable today — billing is Phase 10. See `SubscriptionService`. */
+export const planSchema = z.enum(PLANS);
+
 export const profileResponseSchema = z.object({
   userId: z.string().uuid(),
   displayName: z.string().nullable(),
@@ -157,7 +175,13 @@ export const profileResponseSchema = z.object({
    */
   trainingGoals: z.array(trainingGoalSchema),
   activities: z.array(activitySchema),
+  city: citySchema.nullable(),
   avatarUrl: z.string().nullable(),
+  /**
+   * Never client-writable — there is no `plan` field on `updateProfileRequestSchema`. Always
+   * `'free'` until Phase 10; the `editProfile` screen's Plan row renders it non-navigating.
+   */
+  plan: planSchema,
 });
 export type ProfileResponse = z.infer<typeof profileResponseSchema>;
 
@@ -225,8 +249,7 @@ export const publicProfileResponseSchema = z.object({
   userId: z.string().uuid(),
   displayName: z.string().nullable(),
   avatarUrl: z.string().nullable(),
-  /** Coarse and volunteered. Never a coordinate — see profiles.schema.ts. */
-  city: z.string().nullable(),
+  city: citySchema.nullable(),
   trainingGoals: z.array(trainingGoalSchema),
   activities: z.array(activitySchema),
   /**
@@ -295,6 +318,12 @@ export const updateProfileRequestSchema = z
      */
     trainingGoals: chipListSchema(TRAINING_GOALS),
     activities: chipListSchema(ACTIVITIES),
+    /**
+     * Setting a city needs no consent flag — it is volunteered and coarse, unlike
+     * `locationForLeaderboard`, which gates whether the server *uses* it for a leaderboard.
+     * Sending `null` clears both `city` and its derived slug.
+     */
+    city: citySchema.nullable(),
     avatarUrl: httpUrlSchema.nullable(),
   })
   .partial()

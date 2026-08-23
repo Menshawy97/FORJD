@@ -93,6 +93,7 @@ describe('AthletesService', () => {
         'distanceUnit',
         'energyUnit',
         'citySlug',
+        'plan',
         'publicProfile',
         'leaderboardOptIn',
         'locationForLeaderboard',

@@ -78,6 +78,16 @@ export const ACTIVITIES = [
 ] as const;
 export type Activity = (typeof ACTIVITIES)[number];
 
+/**
+ * Only `free` is reachable today — billing is Phase 10, so `SubscriptionService.getPlan`
+ * always returns it (see apps/api/src/subscription). A one-member tuple looks like it is
+ * anticipating `pro`, but it is not: it exists so the eventual second value is a data change
+ * (`PLANS`, `z.enum(PLANS)`) rather than a signature change to every caller of `getPlan`,
+ * matching how every other closed value set in this file is declared.
+ */
+export const PLANS = ['free'] as const;
+export type Plan = (typeof PLANS)[number];
+
 export interface User {
   id: string;
   email: string;
