@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -31,6 +32,8 @@ interface SettingsRow {
   icon: IconName;
   title: string;
   subtitle: string;
+  /** Absent means inert — see this file's header comment for why most rows have none yet. */
+  onPress?: () => void;
 }
 
 const GROUPS: Array<{ label: string; rows: SettingsRow[] }> = [
@@ -42,7 +45,15 @@ const GROUPS: Array<{ label: string; rows: SettingsRow[] }> = [
         title: 'Goals & Activities',
         subtitle: 'Get stronger · Strength, Running',
       },
-      { icon: 'bars', title: 'Units & Preferences', subtitle: 'Metric · kg' },
+      {
+        icon: 'bars',
+        title: 'Units & Preferences',
+        subtitle: 'Metric · kg',
+        // Phase G. router.replace, matching the prototype's go('units') and every other
+        // navigation off this screen (login/signup use the same choice, ADR-011) — this is a
+        // settings destination, not a stack the user should be able to accumulate entries on.
+        onPress: () => router.replace('/units'),
+      },
     ],
   },
   {
@@ -177,7 +188,13 @@ function GoProBanner() {
 
 function IdentityRow() {
   return (
-    <View className="mt-[10px] flex-row items-center pb-2 pt-3" style={{ gap: 14 }}>
+    <Pressable
+      accessibilityRole="button"
+      // Phase G: this is `editProfile`'s one entry point, matching the prototype's
+      // `onClick="{{ editProfile }}"` on this exact row.
+      onPress={() => router.replace('/edit-profile')}
+      className="mt-[10px] flex-row items-center pb-2 pt-3"
+      style={{ gap: 14 }}>
       <View className="h-[52px] w-[52px] items-center justify-center rounded-card bg-elevated2">
         <Icon name="profile" size={26} color={colors.metadata} />
       </View>
@@ -195,13 +212,16 @@ function IdentityRow() {
         </Text>
       </View>
       <TrailingChevron />
-    </View>
+    </Pressable>
   );
 }
 
-function Row({ icon, title, subtitle }: SettingsRow) {
+function Row({ icon, title, subtitle, onPress }: SettingsRow) {
+  const Container = onPress ? Pressable : View;
   return (
-    <View
+    <Container
+      accessibilityRole={onPress ? 'button' : undefined}
+      onPress={onPress}
       className="flex-row items-center border-b border-borderFaint px-[2px] py-[15px]"
       style={{ gap: 14 }}>
       <Icon name={icon} size={ROW_ICON_SIZE} color={colors.metadata} />
@@ -210,7 +230,7 @@ function Row({ icon, title, subtitle }: SettingsRow) {
         <Text className="mt-[3px] font-archivo text-row-subtitle text-dimmer">{subtitle}</Text>
       </View>
       <TrailingChevron />
-    </View>
+    </Container>
   );
 }
 

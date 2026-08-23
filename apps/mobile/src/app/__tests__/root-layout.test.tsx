@@ -39,6 +39,28 @@ describe('root layout auth gate', () => {
     expect(rendered.getPathname()).toBe('/welcome');
   });
 
+  /**
+   * `editProfile`/`units` (slice 2, phase G) are top-level routes — no tab bar, same as
+   * `login`/`signup`/`welcome` — not nested under `(tabs)`. The original gate only checked
+   * `segments[0] === '(tabs)'`, so a route outside that group was invisible to it: an
+   * unauthenticated deep link straight to `/edit-profile` would render the screen instead of
+   * redirecting, and the screen's own `GET /users/me` call would then fail with no session to
+   * retry. Every future authenticated top-level screen (`goals`, `notifs`, `privacy`,
+   * `location`, `athlete`) has the same shape of gap, so this is fixed once, here, rather
+   * than re-discovered per screen.
+   */
+  it('redirects an unauthenticated user away from a top-level authenticated screen', async () => {
+    (hasSession as jest.Mock).mockResolvedValue(false);
+    (getCachedHasSession as jest.Mock).mockReturnValue(false);
+
+    const rendered = renderRouter('src/app', { initialUrl: '/edit-profile' });
+    const { findByText } = await rendered;
+
+    await findByText(/Training\./);
+
+    expect(rendered.getPathname()).toBe('/welcome');
+  });
+
   it('lets an authenticated user land on the tabs group', async () => {
     (hasSession as jest.Mock).mockResolvedValue(true);
     (getCachedHasSession as jest.Mock).mockReturnValue(true);

@@ -99,18 +99,36 @@ export default function RootLayout() {
   );
 }
 
-/** Redirects to /welcome only when the current route is inside the (tabs) group — the one
- * part of the app that actually requires a session. Separated from RootLayout so the
- * `useSegments` read (and the resulting extra render on route changes) is scoped to this
- * tiny component rather than the whole layout tree. */
+/**
+ * The three routes reachable with no session: the ones that exist to *get* one. Every other
+ * top-level route requires auth — including ones outside the `(tabs)` group, like
+ * `editProfile`/`units` (slice 2) and whatever else lands beside them later
+ * (`goals`/`notifs`/`privacy`/`location`/`athlete`).
+ *
+ * This is an allowlist rather than a denylist on purpose: the previous version denylisted
+ * exactly one thing (`(tabs)`), so a new top-level authenticated screen was invisible to it
+ * by construction — nobody had to forget to update this file, there was nothing to update.
+ * An allowlist fails the other direction instead: a new *public* route that forgets to be
+ * added here is over-protected (redirected when it should not be), which surfaces
+ * immediately as a broken screen rather than silently as reachable-while-signed-out.
+ */
+const PUBLIC_ROUTES = new Set(['welcome', 'login', 'signup']);
+
+/** Redirects to /welcome for any authenticated route when there is no session. Separated
+ * from RootLayout so the `useSegments` read (and the resulting extra render on route
+ * changes) is scoped to this tiny component rather than the whole layout tree. */
 function AuthGate() {
   const segments = useSegments();
   // Cast to string: the typed-routes union for useSegments() is generated from the app's
-  // route tree and does not reliably include group segment names like "(tabs)" — this
-  // check is a runtime string comparison regardless of what TS infers here.
-  const inTabsGroup = (segments[0] as string) === '(tabs)';
+  // route tree and does not reliably include every segment name — this check is a runtime
+  // string comparison regardless of what TS infers here.
+  const firstSegment = segments[0] as string | undefined;
 
-  if (!inTabsGroup) {
+  // No segment yet is the transient pre-resolution state, not a route decision — treated as
+  // "not public" would redirect before any real route has even resolved. RootLayout's own
+  // `authChecked`/`fontsLoaded` gate keeps this from being reachable in practice; kept
+  // conservative here anyway rather than relying on that alone.
+  if (firstSegment === undefined || PUBLIC_ROUTES.has(firstSegment)) {
     return null;
   }
 
