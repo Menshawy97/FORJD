@@ -513,12 +513,15 @@ A-D batch.
 ### Next, in order
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
-   **Backend (phases A–F) and mobile phases G (`editProfile` + `units`) and H (`location` +
-   `goals`) are done, merged, and green on `main`. Phases I–J are next and have not been
-   started.** Read, in this order, before writing any screen:
+
+   **Status: backend (phases A–F) and mobile phases G (`editProfile` + `units`) and H
+   (`location` + `goals`) are done, merged, and green on `main`. Phase I (`privacy` +
+   `notifs`) is next and has not been started; Phase J (`athlete`) follows it.**
+
+   Read, in this order, before writing any screen:
    - **`docs/product/slice-2-plan.md`** — locked decisions (do not re-litigate — see its
-     table), phase-by-phase build order, verification steps. Phases A–F are marked done
-     inline with what they produced; phases G–J are still to do.
+     table), phase-by-phase build order, verification steps. Phases A–H are marked done
+     inline with what they produced; phases I–J are still to do.
    - **`docs/design/slice2-screen-specs.md`** — every value (copy, typography, colour,
      spacing, states) extracted from the runnable prototype
      (`FORJD mobile app design/FORJD Mobile.dc.html`) for all six screens plus `athlete`.
@@ -526,8 +529,8 @@ A-D batch.
      that box wins over the body where they disagree. **Trust the prototype over the
      `design_handoff_forjd_mobile/*.md` summaries**, which disagree with it in ten places.
 
-   **What the backend now gives phases G–J to build against** (all live on `main`, verified
-   end to end by 161 unit + 30 e2e tests):
+   **What the backend gives every remaining phase to build against** (all live on `main`,
+   verified end to end by 161 unit + 30 e2e tests):
    - `GET /api/v1/users/me` → `{ id, email, profile, privacy }` in one read. `profile` carries
      name/DOB/sex/height, the three real unit preferences (`weightUnit`/`distanceUnit`/
      `energyUnit` — **not** the deprecated `unitSystem`, see ADR-016), `trainingGoals`/
@@ -547,62 +550,61 @@ A-D batch.
    shape, including the empty/first-run states: `packages/contracts/fixtures/*.json` — these
    are real parsed output, not hand-written samples, so they cannot drift from the schema.
 
-   **Two things phases G–J must get right, both already decided:**
-   - Bind to `weightUnit`/`distanceUnit`/`energyUnit` for the `units` screen's three rows.
-     `unitSystem` still exists on the response (deprecated) but a client that reads it
-     instead of the real fields will visibly disagree with the pinned fixture, which
-     deliberately pairs `unitSystem: metric` with `weightUnit: lb`.
+   **What phases G and H already established — reuse, don't rediscover:**
+   - **Auth gating.** `_layout.tsx`'s `AuthGate` is an explicit `PUBLIC_ROUTES` allowlist
+     (`welcome`/`login`/`signup`), not a `(tabs)`-only denylist — every new top-level route
+     is automatically covered, no per-screen wiring needed.
+   - **CI runs in UTC.** Any date-parsing regression test must assert against
+     `new Date(y, m, d)` directly (or otherwise be timezone-construction-independent), not
+     `getUTCHours() !== 0` — that check only fails on a non-UTC dev machine and is a
+     false-negative on CI. (Bit Phase G once; fixed forward.)
+   - **`unitSystem` vs. the real fields.** Bind to `weightUnit`/`distanceUnit`/`energyUnit`
+     for anything unit-related. `unitSystem` still exists on the response (deprecated) but
+     the pinned fixture deliberately pairs `unitSystem: metric` with `weightUnit: lb` to
+     catch a client that reads the wrong one.
+   - **Navigation-state query params.** `goals`/`location` port the prototype's
+     `goalsReturnTo`/`locationReturnTo` as plain query params (`returnTo`, `back`) rather
+     than app state — `03-navigation.md`'s stack-depth version was deliberately not ported.
+     Follow the same pattern for any screen with more than one entry point.
+   - **`components/tab-bar.tsx`.** A presentational copy of the `(tabs)` bottom bar, for
+     screens outside that group that still need to show one (`location` is the first).
+     Reuse it rather than writing a second copy.
+   - **Web preview is broken for authenticated screens.** `expo start --web` fails before
+     render on anything that calls `getMe()` — `expo-secure-store`'s web build isn't
+     resolving in this Metro/pnpm setup (pre-existing, not chased down). Unauthenticated
+     screens (welcome/login/signup) still preview fine on web. For anything behind auth,
+     verify via the LAN Expo Go connection instead (`exp://<machine-LAN-IP>:8081`, manual
+     entry — `--offline` suppresses the printed QR).
+
+   **Two deliberate deviations from the prototype, already decided — apply without asking:**
    - In `notifs`/`privacy`, make the **whole row** tap-to-toggle, not just the 46×27 track —
-     a deliberate, already-approved deviation from the prototype (accessibility minimum tap
-     target; see `slice2-screen-specs.md` §9).
+     accessibility minimum tap target (see `slice2-screen-specs.md` §9).
+   - `location` is built but not yet linked from anywhere (`rank` is still a placeholder,
+     `privacy` doesn't exist yet). It takes an optional `?back=privacy` param — Phase I's
+     privacy screen should link to it as `/location?back=privacy`.
 
    **Genuinely open, not backend-blocking — surface if hit, don't guess:**
    - RLS still isn't configured on any table. Needs a human decision (build it, or correct
-     rule 12's docs) — unrelated to G–J and not something a mobile phase should resolve.
+     rule 12's docs) — unrelated to slice 2 and not something a mobile phase should resolve.
    - Energy default (`kcal`) and the `Analyse`/`programs` copy-locale inconsistency are both
      open product/content calls, not backend gaps — see `slice-2-plan.md`'s still-open list.
    - `heightCm` has no screen and `avatarUrl` has no control anywhere in the current design;
      both already round-trip through the API correctly for whichever future screen adds them.
 
-   **Phase G is done** (`editProfile` + `units`, PR #22, merged and green on `main`). It
-   shipped an `AuthGate` fix along the way: top-level authenticated routes (`editProfile`,
-   `units`, and the still-to-come `goals`/`notifs`/`privacy`/`location`/`athlete`) were
-   structurally invisible to the old `(tabs)`-only denylist, so `_layout.tsx`'s `AuthGate` is
-   now an explicit `PUBLIC_ROUTES` allowlist (`welcome`/`login`/`signup`) instead — every new
-   top-level route from here on is automatically covered, no per-screen wiring needed. It also
-   confirmed the CI runner runs in UTC: any date-parsing regression test must assert against
-   `new Date(y, m, d)` directly (or otherwise be timezone-construction-independent), not
-   `getUTCHours() !== 0` — that check only fails on a non-UTC dev machine and is a false-negative
-   on CI.
+   **Start here: `docs/product/ui-remediation-and-phase-i-plan.md`** — a written, approved,
+   self-contained plan covering the next two PRs, in order:
 
-   **Phase H is done** (`location` + `goals`, merged and green on `main`). Notes for I/J:
-   - `goals`'s first-run mode is now real, not just spec'd: `signup.tsx` redirects to
-     `/goals?returnTo=newAccount` on success instead of straight to home, so the prototype's
-     documented back-chevron trap (back → `signup`, not `home`; destination `home` with the
-     "Welcome to FORJD!" toast) is live and tested, not dead code behind an unreachable
-     branch. A plain query param (`returnTo`/`back`) stands in for the prototype's
-     `goalsReturnTo`/`locationReturnTo` navigation state throughout — `03-navigation.md`'s
-     stack-depth version was deliberately not ported (per the spec's own §4.8/§7.6 note).
-   - `location` is built but **not yet linked from anywhere** — `rank` is still a
-     `PlaceholderScreen` and `privacy` doesn't exist yet, so nothing currently sets `back`.
-     It defaults to `'rank'` per spec and takes `?back=privacy` once Phase I's privacy screen
-     is built and links to it; verify that wiring then, not now.
-   - New shared `components/tab-bar.tsx`: a presentational copy of the `(tabs)` bottom bar
-     for `location`, the first screen outside the `(tabs)` group that still shows one. If
-     `notifs`/`privacy` or `athlete` also need it, reuse this rather than a second copy.
-   - The web preview path (`expo start --web --port 8082 --offline`) is currently **broken
-     for any authenticated screen**: `expo-secure-store`'s `.web.js` build exists but isn't
-     resolving in this Metro/pnpm setup, so `getMe()`'s token read throws
-     (`ExpoSecureStore.default.getValueWithKeyAsync is not a function`) before the screen
-     renders. Unauthenticated screens (welcome/login/signup) still preview fine on web; for
-     anything behind auth, verify via the LAN Expo Go connection instead
-     (`exp://<machine-LAN-IP>:8081`, manual entry — `--offline` suppresses the printed QR).
-     Fixing the web resolution is unrelated to any one screen and wasn't chased down here —
-     flag it if it starts blocking verification again.
-
-   **Start here:** Phase I — `privacy` + `notifs`. Strict TDD (RED before GREEN, per the
-   project's standing rule). Apply the whole-row-toggle deviation noted above. `privacy`'s
-   location row should link to `/location?back=privacy` (see the `location` note above).
+   1. **Fidelity/navigation remediation on already-shipped screens.** Includes a **live
+      navigation bug**: swiping back from any screen lands on `welcome` and looks like a
+      sign-out. Root cause is traced and confirmed — the session is *never* cleared; `welcome`
+      is parked at stack index 0 because the auth screens `push` and the post-login navigation
+      `replace`, so the stack sits at depth 2 forever and the pop gesture has nowhere else to
+      go. Also fixes the Save-button glow (four screens override the translucent shadow token
+      with an opaque `shadowColor` inline), a ghost-button pressed transform the design does
+      not have, the missing Google/Apple social auth row on `login`/`signup`, and the
+      `@jmitch` handle that contradicts a shipped decision.
+   2. **Phase I — `privacy` + `notifs`.** Strict TDD, apply the whole-row-toggle deviation
+      above, link `privacy`'s location row to `/location?back=privacy`.
 
    **After I:** Phase J — `athlete` screen + wire the `profile` tab to real `/users/me` data,
    replacing the hardcoded "James Mitchell" identity block.
