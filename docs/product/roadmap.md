@@ -512,23 +512,39 @@ A-D batch.
 
 ### Next, in order
 
-0. **Slice 2 of the Expo rebuild — profile/settings screens.** The only slice-2 screen
-   that is fully buildable today is **`editProfile`**: Name / Birthday / Sex are all backed
-   by `updateProfileRequestSchema`. The rest are gated on backend fields that do not exist:
-   - `units` — only 1 of its 4 controls (`unitSystem`) is backed; energy units cannot even
-     be derived from it.
-   - `goals` — **nothing** in the contract backs it, and it sits on the onboarding path, so
-     it is the highest-priority new backend field.
-   - `privacy` — five consent flags, all needing *server-side* enforcement (a private
-     profile must be refused by the API, not merely hidden by the client).
-   - `location` — renders today, but "Allow" has no field to write to (no `city` exists).
+0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
+   **Planned and approved; not started.** Two documents carry it, and a resuming session
+   should read both before touching anything:
+   - **`docs/product/slice-2-plan.md`** — the approved plan: locked decisions, phase-by-phase
+     build order (A–F backend, G–J mobile), verification steps, and remaining open questions.
+   - **`docs/design/slice2-screen-specs.md`** — every value (copy, typography, colour,
+     spacing, states) extracted from the runnable prototype for all six screens. Its header
+     box records which of its own open questions have since been answered; that box wins
+     over the body where they disagree.
 
-   Also noted while extracting the specs: `heightCm` exists in the contract but **no screen
-   edits it**, and `avatarUrl` has no control anywhere. The screen specs are extracted and
-   verified against the prototype; they found a further ten places where the handoff
-   markdown disagrees with it (e.g. `05-interactions.md` says "disabled does not exist in
-   this design" while `goals` disables Save at `opacity .4`; `privacy` has three permission
-   rows, not the two documented). **Trust the prototype.**
+   Scope covers `editProfile`, `units`, `goals`, `notifs`, `privacy`, `location`, plus the
+   `athlete` public-profile screen. Four screens were blocked on backend fields that do not
+   exist, so **the backend work is inside this slice rather than deferred** — new columns on
+   `profiles` (three independent unit preferences, `training_goals`/`activities` arrays,
+   `city`), a new `privacy_settings` table, and `GET /api/v1/athletes/:userId`.
+
+   Decisions already locked (do not re-litigate): no push in Phase 1 so `notifs` is
+   device-local; units are three real preferences with `unitSystem` demoted to a deprecated
+   preset; handles (`@jmitch`) dropped entirely; the athlete screen ships identity only
+   because its stat tiles need Phase 10 data; privacy flags all default **off**; and
+   `athletes.service.ts` / `privacy.service.ts` carry a 100% coverage threshold, since the
+   untested branch in an authorization decision is the one that leaks.
+
+   Two traps worth knowing before starting. The existing **`goals` table is not these
+   goals** — it models measurable targets (`target_value`, `target_date`), while the screen's
+   are untargeted intents; the new thing is `training_goals`. And the handoff markdown
+   disagrees with the prototype in **ten** places (e.g. `05-interactions.md` says "disabled
+   does not exist in this design" while `goals` disables Save at `opacity .4`; `privacy` has
+   three permission rows, not the two documented). **Trust the prototype.**
+
+   Also unresolved and worth a look during Phase A: `heightCm` exists in the contract but no
+   screen edits it, `avatarUrl` has no control anywhere, and CI reports ~43% API coverage
+   where the same command locally reports ~59% — they are measuring different file sets.
 
 1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
    decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.
