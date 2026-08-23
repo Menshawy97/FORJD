@@ -234,12 +234,14 @@ export default function EditProfileScreen() {
                 </Text>
               )}
 
+              <View style={{ height: 56 }} />
+
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ disabled: saving }}
                 disabled={saving}
                 onPress={handleSave}
-                style={({ pressed }) => [{ marginTop: 56 }, pressScale({ pressed })]}
+                style={pressScale}
                 className="h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
                 <Text className="font-archivo text-button font-bold text-white">
                   Save Changes
