@@ -513,8 +513,9 @@ A-D batch.
 ### Next, in order
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
-   **Backend (phases A–F) is done, merged, and green on `main`. Mobile (phases G–J) is next
-   and has not been started.** Read, in this order, before writing any screen:
+   **Backend (phases A–F) and mobile Phase G (`editProfile` + `units`) are done, merged, and
+   green on `main`. Phases H–J are next and have not been started.** Read, in this order,
+   before writing any screen:
    - **`docs/product/slice-2-plan.md`** — locked decisions (do not re-litigate — see its
      table), phase-by-phase build order, verification steps. Phases A–F are marked done
      inline with what they produced; phases G–J are still to do.
@@ -563,14 +564,32 @@ A-D batch.
    - `heightCm` has no screen and `avatarUrl` has no control anywhere in the current design;
      both already round-trip through the API correctly for whichever future screen adds them.
 
-   **Start here:** Phase G — `editProfile` + `units`. Strict TDD (RED before GREEN, per the
+   **Phase G is done** (`editProfile` + `units`, PR #22, merged and green on `main`). It
+   shipped an `AuthGate` fix along the way: top-level authenticated routes (`editProfile`,
+   `units`, and the still-to-come `goals`/`notifs`/`privacy`/`location`/`athlete`) were
+   structurally invisible to the old `(tabs)`-only denylist, so `_layout.tsx`'s `AuthGate` is
+   now an explicit `PUBLIC_ROUTES` allowlist (`welcome`/`login`/`signup`) instead — every new
+   top-level route from here on is automatically covered, no per-screen wiring needed. It also
+   confirmed the CI runner runs in UTC: any date-parsing regression test must assert against
+   `new Date(y, m, d)` directly (or otherwise be timezone-construction-independent), not
+   `getUTCHours() !== 0` — that check only fails on a non-UTC dev machine and is a false-negative
+   on CI.
+
+   **Start here:** Phase H — `location` + `goals`. Strict TDD (RED before GREEN, per the
    project's standing rule), then start Expo (`npx expo start --offline` — plain `expo start`
-   fails with `TypeError: fetch failed` in this environment), hand over the QR code for Expo
-   Go, and verify each screen against the prototype's **computed styles** read live in a
-   browser (`expo start --web --port 8082 --offline`), not by reading code — this is how
-   slice 1's screens were confirmed exact. Full verification steps, including the
-   coverage-gate trap (every new `apps/api/src` file needs a colocated spec — does not apply
-   to mobile) and the bundle-compile check, are in `slice-2-plan.md`'s "Verification" section.
+   fails with `TypeError: fetch failed` in this environment), hand over the LAN URL for Expo
+   Go (`exp://<machine-LAN-IP>:8081`, manual entry — `--offline` suppresses the printed QR),
+   and verify each screen against the prototype's **computed styles** read live in a browser
+   (`expo start --web --port 8082 --offline`), not by reading code — this is how every prior
+   slice's screens were confirmed exact. Full verification steps, including the coverage-gate
+   trap (every new `apps/api/src` file needs a colocated spec — does not apply to mobile) and
+   the bundle-compile check, are in `slice-2-plan.md`'s "Verification" section. Note the
+   design's documented "back-chevron trap" for `location`/`goals`: back from the first-run
+   path returns to `signup`, not `home`, and always resets the return target to `profile`.
+
+   **After H:** Phase I — `privacy` + `notifs` (apply the whole-row-toggle deviation noted
+   below). Phase J — `athlete` screen + wire the `profile` tab to real `/users/me` data,
+   replacing the hardcoded "James Mitchell" identity block.
 
 1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
    decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.
