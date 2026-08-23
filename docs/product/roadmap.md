@@ -513,8 +513,8 @@ A-D batch.
 ### Next, in order
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
-   **In progress — Phase A is done and merged; Phase B is next.** Two documents carry it,
-   and a resuming session should read both before touching anything:
+   **In progress — Phases A and B are done and merged; Phase C is next.** Two documents
+   carry it, and a resuming session should read both before touching anything:
    - **`docs/product/slice-2-plan.md`** — the approved plan: locked decisions, phase-by-phase
      build order (A–F backend, G–J mobile), verification steps, and remaining open questions.
    - **`docs/design/slice2-screen-specs.md`** — every value (copy, typography, colour,
