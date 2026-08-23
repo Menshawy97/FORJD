@@ -7,7 +7,7 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-08-22)
+## Current status (last updated 2026-08-23)
 
 **We are inside Phase 1.** Phase 0 is complete except Spike B, which is open but
 does not gate Phase 1 (see "Spike status" below). Read this section first when
@@ -513,8 +513,8 @@ A-D batch.
 ### Next, in order
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
-   **Planned and approved; not started.** Two documents carry it, and a resuming session
-   should read both before touching anything:
+   **In progress — Phase A is done and merged; Phase B is next.** Two documents carry it,
+   and a resuming session should read both before touching anything:
    - **`docs/product/slice-2-plan.md`** — the approved plan: locked decisions, phase-by-phase
      build order (A–F backend, G–J mobile), verification steps, and remaining open questions.
    - **`docs/design/slice2-screen-specs.md`** — every value (copy, typography, colour,
@@ -542,9 +542,42 @@ A-D batch.
    does not exist in this design" while `goals` disables Save at `opacity .4`; `privacy` has
    three permission rows, not the two documented). **Trust the prototype.**
 
-   Also unresolved and worth a look during Phase A: `heightCm` exists in the contract but no
-   screen edits it, `avatarUrl` has no control anywhere, and CI reports ~43% API coverage
-   where the same command locally reports ~59% — they are measuring different file sets.
+   Also unresolved: `heightCm` exists in the contract but no screen edits it, and
+   `avatarUrl` has no control anywhere in the design.
+
+   **Phase A — schema, migration, repository — is merged.** What landed:
+   - `profiles` gained `weight_unit`/`distance_unit`/`energy_unit` (text, NOT NULL,
+     defaulting `kg`/`km`/`kcal`), `training_goals`/`activities` (`text[]`, NOT NULL,
+     default `'{}'`), and `city`/`city_slug` (nullable). All `text`, never PG enums —
+     `ALTER TYPE` cannot remove an enum value, whereas narrowing a tuple in code is free,
+     as the `sex` narrowing was.
+   - New `privacy_settings` table: `public_profile`, `leaderboard_opt_in`,
+     `location_for_leaderboard`, `ai_features_consent` (+ `ai_features_consent_at`),
+     `crash_diagnostics` — every one boolean, NOT NULL, **default false**.
+   - Migrations `0003_damp_luke_cage.sql` (generated) and
+     `0004_backfill_privacy_settings.sql` (`--custom`, gives every pre-existing account an
+     all-off row).
+   - The closed value sets now live in `@forjd/domain` as `as const` tuples
+     (`WEIGHT_UNITS`, `TRAINING_GOALS`, …). Phase B makes `@forjd/contracts` depend on
+     domain and build its `z.enum(...)` from them, which is the fix for the duplication that
+     let `Sex` drift.
+   - `upsertFromIdentity` now creates user, profile **and** privacy row in one transaction;
+     `PrivacyRepository.findOrCreate` is defensive on top of that, so a missing row can
+     never 500 the settings screen.
+   - `toProfile` filters both arrays and all three unit columns through the known-value set,
+     so a future narrowing degrades to "that chip is deselected" rather than the API's own
+     response failing the API's own schema.
+
+   **The ~43%-vs-~59% coverage discrepancy was a misreading, not a real divergence.** CI's
+   `test:cov` reported **59.3%** statements on the last run of `main`; `43` is simply the
+   *threshold* configured in `apps/api/package.json`, set conservatively below the measured
+   value. CI and local measure the same file set. Nothing to fix — the number to watch is the
+   threshold, and it now has ~20 points of slack (Phase A took the measurement to ~63%).
+
+   **A number collision to resolve before Phase F:** this document assigns **ADR-015** to the
+   Supabase topology decision (item 2 below), while `docs/product/slice-2-plan.md` assigns
+   the same number to the unitSystem-as-preset reversal. Whichever is written first takes
+   015; the other takes 016.
 
 1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
    decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.
