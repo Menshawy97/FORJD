@@ -16,5 +16,7 @@
     "strength",
     "hyrox"
   ],
-  "avatarUrl": "https://example.com/avatar.png"
+  "city": "Cairo",
+  "avatarUrl": "https://example.com/avatar.png",
+  "plan": "free"
 }

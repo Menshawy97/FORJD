@@ -3,6 +3,7 @@ import type { UpdateProfileRequest } from '@forjd/contracts';
 import { PrivacySettings, Profile, User } from '@forjd/domain';
 
 import { PrivacyService } from '../privacy/privacy.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { ProfilePatch, UsersRepository } from './users.repository';
 import { UsersService } from './users.service';
 
@@ -49,6 +50,7 @@ describe('UsersService', () => {
 
   let repository: { findProfile: jest.Mock; updateProfile: jest.Mock };
   let privacyService: { get: jest.Mock; update: jest.Mock };
+  let subscriptionService: { getPlan: jest.Mock };
   let service: UsersService;
 
   /** The patch the service handed the repository for a given request. */
@@ -66,9 +68,11 @@ describe('UsersService', () => {
       get: jest.fn().mockResolvedValue(allOffPrivacy),
       update: jest.fn().mockResolvedValue(allOffPrivacy),
     };
+    subscriptionService = { getPlan: jest.fn().mockResolvedValue('free') };
     service = new UsersService(
       repository as unknown as UsersRepository,
       privacyService as unknown as PrivacyService,
+      subscriptionService as unknown as SubscriptionService,
     );
   });
 
@@ -89,7 +93,9 @@ describe('UsersService', () => {
           energyUnit: 'kcal',
           trainingGoals: ['get_stronger'],
           activities: ['strength'],
+          city: null,
           avatarUrl: null,
+          plan: 'free',
         },
         privacy: {
           publicProfile: false,
@@ -170,15 +176,23 @@ describe('UsersService', () => {
     });
 
     /**
-     * `city` belongs to phase E and the public projection, and must not appear on the
-     * owner's response until the phase that designs it lands. Asserted explicitly because
-     * "a field nobody added on purpose" is exactly what a spread would introduce silently.
+     * `citySlug` is never on the owner's own response — it exists purely as an internal
+     * grouping key for a leaderboard feature (phase 10) that has no reader yet, and exposing
+     * it would be surface with zero consumers. `city` itself is exposed; `citySlug` is not.
      */
-    it('does not yet expose city on the wire', async () => {
+    it('never exposes citySlug on the wire', async () => {
       const me = await service.getMe(user);
 
-      expect(me.profile).not.toHaveProperty('city');
       expect(me.profile).not.toHaveProperty('citySlug');
+    });
+
+    it('includes the plan, fetched from the subscription seam', async () => {
+      subscriptionService.getPlan.mockResolvedValue('free');
+
+      const me = await service.getMe(user);
+
+      expect(me.profile?.plan).toBe('free');
+      expect(subscriptionService.getPlan).toHaveBeenCalledWith(user.id);
     });
   });
 
@@ -300,6 +314,55 @@ describe('UsersService', () => {
       // Clearing every chip is a real choice, not a missing field — the columns are NOT NULL
       // with an empty-array default precisely so the two are the same state.
       expect(patch.activities).toEqual([]);
+    });
+
+    describe('city', () => {
+      it('derives citySlug from city on write', async () => {
+        const patch = await patchFor({ city: 'Alexandria' });
+
+        expect(patch.city).toBe('Alexandria');
+        expect(patch.citySlug).toBe('alexandria');
+      });
+
+      /**
+       * The client never supplies a slug — there is no such field on
+       * `UpdateProfileRequest` — so `toPatch` computing it from scratch, rather than
+       * trusting anything from the request, is the only path that exists.
+       */
+      it('ignores any citySlug that might arrive on the request object', async () => {
+        const patch = await patchFor({
+          city: 'Cairo',
+          ...({ citySlug: 'attacker-supplied' } as unknown as object),
+        });
+
+        expect(patch.citySlug).toBe('cairo');
+      });
+
+      it('clears both city and citySlug together', async () => {
+        const patch = await patchFor({ city: null });
+
+        expect(patch.city).toBeNull();
+        expect(patch.citySlug).toBeNull();
+      });
+
+      it('leaves city and citySlug untouched when the request does not mention city', async () => {
+        const patch = await patchFor({ displayName: 'Ada' });
+
+        expect(patch.city).toBeUndefined();
+        expect(patch.citySlug).toBeUndefined();
+      });
+
+      /**
+       * `slugifyCity` returns null for a name that slugifies to nothing (pure punctuation).
+       * `city` is still stored as given — a user's typed input is not silently discarded —
+       * but its slug is null rather than the empty string, matching `slugifyCity`'s contract.
+       */
+      it('stores a null slug when the city name has nothing slugifiable in it', async () => {
+        const patch = await patchFor({ city: '!!!' });
+
+        expect(patch.city).toBe('!!!');
+        expect(patch.citySlug).toBeNull();
+      });
     });
   });
 });

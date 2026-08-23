@@ -151,6 +151,7 @@ describe('Public athlete profile (e2e)', () => {
       'distanceUnit',
       'energyUnit',
       'citySlug',
+      'plan',
     ]) {
       expect(response.body).not.toHaveProperty(field);
     }

@@ -130,6 +130,9 @@ describe('Auth and profile (e2e)', () => {
 
     expect(me.body.email).toBe(testEmail);
     expect(me.body.profile.unitSystem).toBe('metric');
+    // plan comes from SubscriptionService, not from any column — present from the very first
+    // read, before the account has set anything else.
+    expect(me.body.profile.plan).toBe('free');
 
     const refreshed = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
@@ -141,12 +144,21 @@ describe('Auth and profile (e2e)', () => {
     const updated = await request(app.getHttpServer())
       .patch('/api/v1/users/me/profile')
       .set('Authorization', `Bearer ${refreshed.body.accessToken}`)
-      .send({ displayName: 'Test Lifter', heightCm: 180.5, unitSystem: 'imperial' })
+      .send({
+        displayName: 'Test Lifter',
+        heightCm: 180.5,
+        unitSystem: 'imperial',
+        city: 'Zürich',
+      })
       .expect(200);
 
     expect(updated.body.displayName).toBe('Test Lifter');
     expect(updated.body.heightCm).toBe(180.5);
     expect(updated.body.unitSystem).toBe('imperial');
+    // Stored exactly as typed — diacritics and all. The slug is derived separately for
+    // grouping and is never itself on this response.
+    expect(updated.body.city).toBe('Zürich');
+    expect(updated.body).not.toHaveProperty('citySlug');
 
     await request(app.getHttpServer())
       .post('/api/v1/auth/logout')

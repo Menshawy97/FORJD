@@ -104,16 +104,15 @@ preset.
 
 Regenerate fixtures in the same commit — CI diffs them with `git diff --exit-code`.
 
-**Carried forward from Phase A's reviews — Phase B's job, not defects in Phase A:**
+**Carried forward from Phase A's reviews, and done:**
 - **Validate the two arrays on write**, for membership *and* a maximum length
   (`z.array(z.enum(TRAINING_GOALS)).max(n)`). `toProfile`'s read-side filter is graceful
   degradation for a narrowed value set, not an input check, and nothing at the database level
-  bounds these arrays.
-- **Derive `citySlug` from `city` server-side.** The repository's patch type accepts it, but a
-  client-supplied slug is free to disagree with the city it claims to slugify.
-- **Bound `city`** at the boundary, for the same reason `displayName` is bounded.
-- Both obligations are also written next to the code, on `ProfilePatch` in
-  `users.repository.ts`, so they survive a session that never opens this file.
+  bounds these arrays. **Done in Phase B** (`chipListSchema` in `packages/contracts`).
+- **Derive `citySlug` from `city` server-side, and bound `city`.** Filed under Phase B at the
+  time; both are properly Phase E's job, since `city` does not reach the wire until then.
+  **Done in Phase E** (`slugifyCity` in `apps/api/src/users/city-slug.ts`, called from
+  `UsersService.toPatch`; `citySchema` in `packages/contracts` bounds it to 1–120 chars).
 
 ### Phase C — privacy storage + endpoint
 
