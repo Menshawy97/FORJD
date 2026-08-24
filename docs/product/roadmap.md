@@ -504,18 +504,17 @@ git identity + initial commit) are **done**. What remains:
 
 ### Next action once resumed
 
-**Slices 1-11, the A-D hardening batch, and slice 2 (phases A-J) are all merged; `main` is
-green.** What is left in Phase 1 is genuinely deployment-shaped. The Supabase-topology and
-hosting decisions are now made ([ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md))
-— what remains is the manual account-creation work (`forjd-prod`, the Google Cloud project)
-those slices are blocked on, not a decision. **Phase 2 has no blocker at all.** A re-plan of
-its opening slices (canonical exercise model + ingest, browse/search API, on-device
-catalogue with local FTS5 search — see the "Working method" note at the bottom of this file
-for why later phases are re-planned rather than executed from the original outline) came out
-of an earlier session, but has not yet been transcribed into this file or into the plan file
-linked at the top. **Doing that transcription is itself the first useful step** if a session
-resumes before the manual account-creation steps above are done — do not re-derive the
-re-plan from scratch, and do not start writing Phase 2 code before it is written down here.
+**SUPERSEDED (2026-08-24): Phase 1 is now complete** — slices 12, 13 and 14 all landed, so
+the deployment work and manual account-creation steps this paragraph treated as outstanding
+are done. See "Current status" at the top of this file.
+
+What remains true and still matters: **Phase 2 has no blocker.** Its opening slices are
+shaped as canonical exercise model + ingest, browse/search API, then an on-device catalogue
+with local FTS5 search — see the "Working method" note at the bottom of this file for why
+later phases are re-planned rather than executed from the original outline. A re-plan was
+sketched in an earlier session but **was never transcribed into this file or the plan file**,
+and that session's context is gone, so it must be redone rather than recovered.
+**Write the Phase 2 plan into this repo before writing any Phase 2 code.**
 
 Nothing is half-finished. Slice D closed the last item that was both unblocked and open;
 there is no more free-standing hardening work sitting undone the way there was before the
