@@ -7,7 +7,7 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-08-23)
+## Current status (last updated 2026-08-24)
 
 **We are inside Phase 1.** Phase 0 is complete except Spike B, which is open but
 does not gate Phase 1 (see "Spike status" below). Read this section first when
@@ -123,11 +123,11 @@ critical re-read of the roadmap that found the highest-leverage work in the repo
 unblocked and undone, while slices 12-14 were blocked on decisions rather than only on
 accounts.
 
-**The environment topology assumed by slice 12 no longer holds.** Only two Supabase
-projects are available, not three, and Railway is rejected on cost — ADR-009 chose it
-*for* its paid tier, so the decision needs retaking, not redirecting. Slices 12 and 13 are
-therefore **blocked on a decision, not only on an account**: see "Next, in order" below for
-the options.
+**The environment topology assumed by slice 12 no longer held**, and Railway (ADR-009) was
+rejected on cost. Both are now decided —
+[ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md) — so slices 12 and 13
+are back to being blocked only on the manual account-creation steps, not on a decision: see
+"Next, in order" below.
 
 Half of the phase's definition of done is already mechanically true: exactly one
 file imports the Supabase SDK for auth, one for storage, and nothing else —
@@ -353,8 +353,8 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 | 9 — Flutter shell | ✅ Done | `flutter create` scaffold + go_router routes, Riverpod, Dio client, theme. Analyzer clean, tests pass. |
 | 10 — Drift scaffold | ✅ Done | `AppDatabase` with a `CachedProfiles` table. Timestamps stored as **ISO-8601 text**, not Unix seconds — the default returns local time and silently shifts any instant that crossed a timezone. See `apps/mobile/build.yaml`. |
 | 11 — Mobile auth UI | ⬜ **Superseded** | Was merged as Flutter (PRs #2, #3): design tokens + Archivo, widget library, 401→refresh→replay network layer, auth screens, 5-tab shell, profile/edit-profile, ADR-010/011. Walked on an emulator; four findings fixed; 60 Flutter tests; debug APK builds. **The Flutter app this built no longer exists** — see "Mobile framework pivot" above. Its replacement is the Expo rebuild's **Slice 1** (auth + 5-tab shell, wired to the real backend, test-first, 35 tests), done under ADR-013. |
-| 12 — Build flavors | ⬜ Blocked on a decision | Written against the Flutter app; needs re-scoping for Expo (EAS Build profiles rather than Flutter flavors) once reached. The underlying blocker is unchanged: the plan assumed three Supabase projects, only two are available, and Railway is rejected on cost. Needs a topology decision (see "Next, in order"), not only an account. |
-| 13 — Staging deploy | ⬜ Blocked on a decision | ADR-009's host choice (Railway) no longer holds — it was chosen partly *for* its paid tier. Needs a free-tier host picked and verified before an ADR can supersede it. |
+| 12 — Build flavors | ⬜ Blocked on an account | Written against the Flutter app; needs re-scoping for Expo (EAS Build profiles rather than Flutter flavors). Topology decided ([ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md)); blocked only on creating `forjd-prod` and reconfiguring `forjd-dev` to confirmation-on. |
+| 13 — Staging deploy | ⬜ Blocked on an account | Host decided — Google Cloud Run ([ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md), supersedes ADR-009's Railway choice). Blocked only on creating the Google Cloud project and writing `apps/api/Dockerfile`. |
 | 14 — Device DoD walk | ⬜ Not started | Needs 12/13 plus the physical Android device. |
 
 Phase 1's definition of done is unchanged: register → login → refresh → logout →
@@ -450,21 +450,19 @@ git identity + initial commit) are **done**. What remains:
 3. ✅ **`forjd-dev` Supabase project — done.** Email/password auth enabled, `inbody`
    bucket created, credentials in the gitignored `apps/api/.env`. Verified working:
    auth and storage endpoints respond, and a real registration round-tripped.
-   ⬜ **Only two Supabase projects are available in total**, not three, so slice 12's
-   original dev/staging/prod plan does not fit. **Pick one:** (a) create `forjd-prod` and
-   run local development against the Supabase CLI Docker stack instead of a cloud project —
-   frees a slot and removes the email-confirmation and IPv6-pooler friction `forjd-dev` has
-   caused; or (b) create `forjd-prod` and collapse dev and staging onto the existing
-   `forjd-dev` project — simpler, but staging then never matches prod's confirmation-on
-   config. Either way, `forjd-prod` is the one genuinely new project needed.
-4. ⬜ **Railway is declined (cost) — pick a free host instead.** ADR-009 chose Railway partly
-   *for* its paid tier's absence of cold starts, so that reasoning no longer applies and the
-   decision needs retaking, not redirecting. Candidates, cheapest-to-set-up first: **Render**
-   free web service (no card historically required, sleeps after ~15 min idle), **Koyeb**
-   free tier (comparable), **Google Cloud Run** (best technical fit — ~1-2 s cold start,
-   generous free tier — but needs a card on file even at $0). Verify current terms before
-   committing; ADR-009's own recorded weakness is that Railway's pricing was never checked,
-   and repeating that would be the same mistake twice.
+   ✅ **Decided — [ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md).**
+   `forjd-prod` (new) is production, confirmation-on. `forjd-dev` (existing) is repurposed
+   as **staging**, brought in line with prod's confirmation-on config. Local development
+   moves to the Supabase CLI Docker stack, which is what frees the third slot. `forjd-prod`
+   is the one genuinely new project to create — creating it is what unblocks slice 12.
+4. ✅ **Decided — [ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md).**
+   **Google Cloud Run** hosts `apps/api` (staging first, production once it exists), chosen
+   over Render/Koyeb for its much shorter cold start (~1-2 s vs. a sleeping free-tier
+   instance's wake time) and a real scale-up path with no later hosting migration — decisive
+   given a release build has to survive App Store/Play Store review and early real users,
+   where a slow or timed-out first request is a real risk, not a rare one. Needs a Google
+   Cloud project and a card on file (even at $0 usage under the free tier) — the same
+   category of manual step as creating `forjd-prod`.
 5. ⬜ **Shorten the access-token lifetime to 900 seconds** (Supabase dashboard →
    Authentication → Sessions), in `forjd-dev` and in every project created later. Since
    ADR-012 this value is the session revocation window, not a convenience setting: it is how
@@ -494,17 +492,18 @@ git identity + initial commit) are **done**. What remains:
 
 ### Next action once resumed
 
-**Slices 1-11 and the A-D hardening batch are merged; `main` is green.** What is left in
-Phase 1 is genuinely deployment-shaped, but two of its three remaining slices are now
-blocked on a decision rather than only on an account — see the manual steps above for the
-Supabase-topology and hosting choices. **Phase 2 has no blocker at all.** A re-plan of its opening slices (canonical exercise
-model + ingest, browse/search API, on-device catalogue with local FTS5 search — see the
-"Working method" note at the bottom of this file for why later phases are re-planned rather
-than executed from the original outline) came out of the same session that ran slices A-D,
-but has not yet been transcribed into this file or into the plan file linked at the top.
-**Doing that transcription is itself the first useful step** if a session resumes before
-the topology/host decisions above are made — do not re-derive the re-plan from scratch, and
-do not start writing Phase 2 code before it is written down here.
+**Slices 1-11, the A-D hardening batch, and slice 2 (phases A-J) are all merged; `main` is
+green.** What is left in Phase 1 is genuinely deployment-shaped. The Supabase-topology and
+hosting decisions are now made ([ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md))
+— what remains is the manual account-creation work (`forjd-prod`, the Google Cloud project)
+those slices are blocked on, not a decision. **Phase 2 has no blocker at all.** A re-plan of
+its opening slices (canonical exercise model + ingest, browse/search API, on-device
+catalogue with local FTS5 search — see the "Working method" note at the bottom of this file
+for why later phases are re-planned rather than executed from the original outline) came out
+of an earlier session, but has not yet been transcribed into this file or into the plan file
+linked at the top. **Doing that transcription is itself the first useful step** if a session
+resumes before the manual account-creation steps above are done — do not re-derive the
+re-plan from scratch, and do not start writing Phase 2 code before it is written down here.
 
 Nothing is half-finished. Slice D closed the last item that was both unblocked and open;
 there is no more free-standing hardening work sitting undone the way there was before the
@@ -520,8 +519,8 @@ A-D batch.
 
    Read, in this order, before writing any screen:
    - **`docs/product/slice-2-plan.md`** — locked decisions (do not re-litigate — see its
-     table), phase-by-phase build order, verification steps. Phases A–H are marked done
-     inline with what they produced; phases I–J are still to do.
+     table), phase-by-phase build order, verification steps. Phases A–J are all marked done
+     inline with what they produced; slice 2 is closed.
    - **`docs/design/slice2-screen-specs.md`** — every value (copy, typography, colour,
      spacing, states) extracted from the runnable prototype
      (`FORJD mobile app design/FORJD Mobile.dc.html`) for all six screens plus `athlete`.
@@ -592,8 +591,8 @@ A-D batch.
      both already round-trip through the API correctly for whichever future screen adds them.
 
    **`docs/product/ui-remediation-and-phase-i-plan.md`** — a written, approved,
-   self-contained plan covering two PRs, in order. **Part 1 is done, merged, and green on
-   `main`; Part 2 (Phase I) is next.**
+   self-contained plan covering two PRs, in order. **Both parts are done, merged, and green
+   on `main`.**
 
    1. **DONE — Fidelity/navigation remediation on already-shipped screens.** Fixed the
       swipe-back navigation bug (`welcome` was never popped by the post-login `replace`, so
@@ -652,23 +651,26 @@ A-D batch.
 
    **This closes slice 2.** Phases A through J are all done, merged, and green on `main`.
 
-1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
-   decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.
-2. **Slice 12 — build flavors**, once `forjd-prod` exists and the topology is chosen.
-   `API_BASE_URL` is now an Expo `app.config.ts` `extra` value rather than a Dart
-   `String.fromEnvironment`, so this becomes EAS Build profiles rather than Flutter flavors.
-   Record the topology decision as **ADR-015** (013 and 014 are taken by the Expo pivot and
-   the OpenAI/InBody vendor change).
-3. **Slice 13 — deploy staging to the chosen free host.** Superseding ADR-009 requires
-   `apps/api/Dockerfile`, which does not exist yet and needs writing (multi-stage,
-   production dependencies only). Note the IPv6 finding below: use the **session pooler**
-   connection string when the hosted database is first migrated, not the direct one.
+1. ✅ **Supabase topology and free host — decided, [ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md).**
+   `forjd-prod` + Cloud Run + local Docker dev, `forjd-dev` repurposed as staging. Not yet
+   *created* — see next steps.
+2. **Slice 12 — build flavors.** Blocked only on actually creating `forjd-prod` (manual
+   Supabase step) and reconfiguring `forjd-dev` to confirmation-on per ADR-015 — the
+   decision itself is no longer the blocker. `API_BASE_URL` is now an Expo `app.config.ts`
+   `extra` value rather than a Dart `String.fromEnvironment`, so this becomes EAS Build
+   profiles rather than Flutter flavors.
+3. **Slice 13 — deploy staging to Cloud Run.** Superseding ADR-009 (now done via ADR-015)
+   requires `apps/api/Dockerfile`, which does not exist yet and needs writing (multi-stage,
+   production dependencies only), plus a Google Cloud project (manual step, ADR-015).
+   Note the IPv6 finding below: use the **session pooler** connection string when the
+   hosted database is first migrated, not the direct one.
 4. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
    staging. This is what actually closes Phase 1.
 
-**If the topology/host decisions have not been made when a session resumes**, there is no
-unblocked Phase 1 work left, and the useful default is Phase 2 — transcribe its re-plan
-into this file first, per the note above, rather than starting from a blank slice.
+**If the manual account-creation steps (creating `forjd-prod`, the Google Cloud project)
+have not been done when a session resumes**, there is no unblocked Phase 1 work left, and
+the useful default is Phase 2 — transcribe its re-plan into this file first, per the note
+above, rather than starting from a blank slice.
 
 Before starting slice 12, re-read this file and the plan's Phase 1 outline, as the working
 method below requires. Phase 2 (exercise database) should be re-planned rather than executed

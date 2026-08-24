@@ -1,7 +1,11 @@
 # ADR-009: Railway hosts the API
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-015](ADR-015-supabase-topology-and-free-host.md)
 **Date:** 2026-08
+
+**Why superseded:** Railway's paid tier (the reason "no cold starts" below held) was
+declined on cost after this ADR was written — FORJD runs on free tiers only. See ADR-015
+for the replacement decision.
 
 ## Context
 
