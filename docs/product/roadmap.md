@@ -132,6 +132,20 @@ been able to exercise. The other half of the definition of done was already mech
 true and enforced by CI: nothing outside `apps/api/src/auth/providers/` imports the Supabase
 SDK.
 
+> ### ⚠️ Open bug, read before touching `apps/mobile`
+>
+> **The app does not currently render in Expo Go**, so the physical-device loop ADR-013 built
+> the whole Expo pivot around is broken. Root cause is proven and written up in full:
+> [`docs/product/expo-go-duplicate-sdk-tree.md`](expo-go-duplicate-sdk-tree.md) — `expo@54`
+> declares `@expo/dom-webview` as an optional peer with an unbounded `"*"` range, which pnpm
+> resolved to an SDK 57 release, dragging a whole parallel SDK 57 tree (`expo-router@57`,
+> `react-native@0.86.2`, ~40 more) alongside the SDK 54 one the app targets. Two copies of
+> `expo-router` means two `LinkPreviewContext` objects, which is the error the device shows.
+>
+> One fix is merged (a Metro `blockList` for the stray react-native, which cleared the first of
+> two errors). One approach was tried and **reverted** — it broke 39 mobile test suites; that
+> doc says exactly what and why, so don't repeat it. Backend work (Phases D–G) is unaffected.
+
 **Phase 2 (exercise database) has been re-planned, and the plan is in the repo:
 [`docs/product/phase-2-plan.md`](phase-2-plan.md).** Read it before writing any Phase 2 code —
 it carries the locked-decisions table, the phase-by-phase build order (Phase 0 through K) and
