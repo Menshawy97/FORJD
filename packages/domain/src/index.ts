@@ -3,6 +3,8 @@
  * may be imported here (CLAUDE.md rules 1-2, enforced by the CI conformance check).
  */
 
+export * from "./exercise-vocabulary";
+
 /**
  * A **preset**, not a preference. It writes `weightUnit` and `distanceUnit` as a convenience
  * and deliberately says nothing about energy — see `ENERGY_UNITS`. It survives only because

@@ -96,6 +96,12 @@ jobs:
       # consumes their emitted types. Filtering to the API alone leaves them unbuilt.
       - run: pnpm -r build
 
+      # @forjd/domain has its own jest suite (exercise-vocabulary.spec.ts and onward) and no
+      # Postgres dependency, so it runs here rather than getting a job of its own. `pnpm -r
+      # build` above only type-checks these files as a build artifact; without this step they
+      # would never actually execute in CI.
+      - run: pnpm --filter @forjd/domain test
+
       - run: pnpm --filter @forjd/api lint
 
       # Regenerating the contract fixtures must be a no-op. When it is not, a wire contract
