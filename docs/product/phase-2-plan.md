@@ -187,7 +187,18 @@ Muscle groups and equipment are each a superset of the custom-exercise screen's 
 lists (`docs/design/phase2-screen-specs.md` §6.1) plus the values free-exercise-db's source data
 needs, so the Phase D adapter can map either direction without lossy collapsing.
 
-### Phase C — Migration and repository *(no wire change)* — ✅ **DONE**
+### Phase C — Migration and repository *(no wire change)* — ✅ **DONE & MERGED** ([PR #40](https://github.com/Menshawy97/FORJD/pull/40), CI green on `main`)
+
+> **Next session starts here → Phase D.** Phases 0, A, B and C are merged and `main` is green.
+> Nothing in Phase C is half-finished. The `UsersRepository` follow-up this phase discovered was
+> also fixed and merged separately ([PR #39](https://github.com/Menshawy97/FORJD/pull/39)).
+>
+> The Expo Go device-rendering bug flagged in an earlier version of this note is **fixed** —
+> confirmed working on a physical iPhone 2026-08-25. See the roadmap's callout and
+> `docs/product/expo-go-duplicate-sdk-tree.md` for what was fixed and what remains only
+> partially understood about the mechanism. The mobile phases (I–K) are unblocked. Jest still
+> cannot prove a screen actually renders on a device — the device walk each mobile phase ends
+> with remains the real check, not a substitute for one.
 
 - ✅ `exercises.schema.ts`: `id`, `ownerUserId` (nullable FK), `name`, `slug`, `category`,
   `goal`, `measure`, `primaryMuscles`/`secondaryMuscles`/`equipment` (`text[]` NOT NULL

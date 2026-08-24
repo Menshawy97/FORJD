@@ -132,6 +132,20 @@ been able to exercise. The other half of the definition of done was already mech
 true and enforced by CI: nothing outside `apps/api/src/auth/providers/` imports the Supabase
 SDK.
 
+> ### ✅ Expo Go device loop — fixed 2026-08-25
+>
+> The app previously failed to render in Expo Go, breaking the physical-device loop ADR-013
+> built the whole Expo pivot around. **Confirmed working again on a physical iPhone.** Root
+> cause and full writeup: [`docs/product/expo-go-duplicate-sdk-tree.md`](expo-go-duplicate-sdk-tree.md)
+> — `expo@54` declares `@expo/dom-webview` as an optional peer with an unbounded `"*"` range,
+> which pnpm resolved to an SDK 57 release, dragging a parallel SDK 57 tree (`expo-router@57`,
+> `react-native@0.86.2`, ~40 more) alongside the SDK 54 tree the app targets. A single Metro
+> `resolver.blockList` fix closed both symptoms this produced (a codegen crash, then a
+> two-copies-of-expo-router render error) — the doc records the likely mechanism and what
+> remains only partially understood, since one diagnostic approach was tried and **reverted**
+> (it broke 39 mobile test suites) before it could fully confirm the causal chain. That
+> doc says exactly what and why, so don't repeat it. Backend work (Phases D–G) is unaffected.
+
 **Phase 2 (exercise database) has been re-planned, and the plan is in the repo:
 [`docs/product/phase-2-plan.md`](phase-2-plan.md).** Read it before writing any Phase 2 code —
 it carries the locked-decisions table, the phase-by-phase build order (Phase 0 through K) and

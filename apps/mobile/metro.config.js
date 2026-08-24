@@ -14,12 +14,35 @@ let config = getDefaultConfig(projectRoot);
 // packages/*, which live outside apps/mobile. Metro only watches projectRoot by
 // default, so without this it never sees changes in — or resolves imports from —
 // the linked-in package source. See the mobile-pivot plan's Phase 3 spike.
+//
+// This has to stay the whole workspace root, not just the two package directories --
+// pnpm's shared virtual store (node_modules/.pnpm) lives at the workspace root too, and
+// Metro needs it in scope to resolve into symlinked packages like expo-router's own entry
+// point. Narrowing this to only packages/domain and packages/contracts was tried and broke
+// `Unable to resolve module .../expo-router/entry.js` outright -- confirmed by actually
+// running a Metro export, not assumed. See the blockList below instead for excluding the
+// one thing that needs excluding without breaking resolution.
 config.watchFolders = [workspaceRoot];
 
 // Metro does not resolve symlinks by default; pnpm's whole node_modules strategy
 // is built on them (both for the workspace packages above and for pnpm's internal
 // dependency layout).
 config.resolver.unstable_enableSymlinks = true;
+
+// The workspace's shared pnpm store can contain more than one react-native version --
+// e.g. a stray one pulled in purely as apps/api's drizzle-orm's optional peer on
+// expo-sqlite, unrelated to this app, which pins react-native@0.81.5 directly. Metro's
+// codegen scans every react-native copy its file watcher can see for native spec files,
+// not just the one this app's own import graph resolves to, and a newer copy's spec
+// syntax (e.g. `ReadonlyArray`) can be unparseable by an older RN's codegen -- producing a
+// crash in Expo Go from a package this app never actually imports. Confirmed by tracing a
+// real crash to exactly this: node_modules/.pnpm/react-native@0.86.2.../specs_DEPRECATED/
+// DebuggingOverlayNativeComponent.js. `getDefaultConfig`'s own blockList is an array
+// (confirmed at runtime), appended to rather than replaced.
+config.resolver.blockList = [
+  ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : [config.resolver.blockList]),
+  /node_modules[\\/]\.pnpm[\\/]react-native@(?!0\.81\.5)/,
+];
 
 // Deliberately NOT setting disableHierarchicalLookup / a custom nodeModulesPaths here.
 // pnpm nests each package's own dependencies inside its own node_modules (e.g.
