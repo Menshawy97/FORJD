@@ -26,7 +26,12 @@ export function Toggle({ on }: ToggleProps) {
           height: 21,
           borderRadius: 11,
           backgroundColor: '#fff',
-          transform: on ? [{ translateX: 19 }] : undefined,
+          // Conditionally spread, not `transform: on ? [...] : undefined` — a `transform` key
+          // present with an `undefined` value can diff to `transform: null` on native, which
+          // crashes RN Fabric's transform validator ("Cannot read property 'forEach' of
+          // null"). Omitting the key entirely when off is the only safe way to say "no
+          // transform" — see press-feedback.ts, which does the same for the same reason.
+          ...(on ? { transform: [{ translateX: 19 }] } : null),
         }}
       />
     </View>

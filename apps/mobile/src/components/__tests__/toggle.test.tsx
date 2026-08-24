@@ -70,4 +70,21 @@ describe('Toggle', () => {
     const style = flatStyle(knob!.props.style);
     expect(style.transform ?? undefined).toBeFalsy();
   });
+
+  // Real device crash: "Cannot read property 'forEach' of null" inside RN Fabric's
+  // transform validator. `transform: on ? [...] : undefined` keeps the `transform` key
+  // present with an `undefined` value, which RN's native prop diffing can turn into
+  // `transform: null` — and Fabric's validator does `.forEach` on it with no null guard.
+  // Every other transform in this codebase (press-feedback.ts) avoids this by omitting the
+  // whole style object rather than a key with an undefined value; `toJSON()` under Jest does
+  // not reproduce the native diffing step, so this has to be asserted structurally.
+  it('does not include a transform key at all when off, not just a falsy one', async () => {
+    const { toJSON } = await render(<Toggle on={false} />);
+    const nodes = flatten(toJSON());
+    const knob = nodes.find(
+      (n) => n.type === 'View' && flatStyle(n.props.style).width === 21,
+    );
+    const style = flatStyle(knob!.props.style);
+    expect('transform' in style).toBe(false);
+  });
 });
