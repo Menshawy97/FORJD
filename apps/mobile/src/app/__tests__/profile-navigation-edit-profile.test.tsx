@@ -26,7 +26,11 @@ describe('profile tab navigation (slice 2) — editProfile', () => {
     const rendered = renderRouter('src/app', { initialUrl: '/profile' });
     const { findByText } = await rendered;
 
-    fireEvent.press(await findByText('James Mitchell'));
+    // This file's getMe() mock resolves `profile: null`, so the identity row falls back to
+    // its empty-state name (Phase J, see (tabs)/profile.tsx's EMPTY_IDENTITY) — that fallback
+    // text is what's pressed here, not real profile data, which is fine: this test is only
+    // about the row's own tap destination.
+    fireEvent.press(await findByText('—'));
 
     await findByText('Name');
     expect(rendered.getPathname()).toBe('/edit-profile');

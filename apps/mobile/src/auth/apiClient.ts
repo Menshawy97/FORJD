@@ -23,6 +23,7 @@ import type {
   MeResponse,
   PrivacySettingsResponse,
   ProfileResponse,
+  PublicProfileResponse,
   RegisterRequest,
   RegisterResponse,
   SessionResponse,
@@ -143,5 +144,10 @@ export async function updatePrivacy(
   patch: UpdatePrivacyRequest,
 ): Promise<PrivacySettingsResponse> {
   const response = await apiClient.patch<PrivacySettingsResponse>('/users/me/privacy', patch);
+  return response.data;
+}
+
+export async function getAthlete(userId: string): Promise<PublicProfileResponse> {
+  const response = await apiClient.get<PublicProfileResponse>(`/athletes/${userId}`);
   return response.data;
 }

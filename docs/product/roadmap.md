@@ -514,9 +514,9 @@ A-D batch.
 
 0. **Slice 2 of the Expo rebuild — profile/settings screens + the backend behind them.**
 
-   **Status: backend (phases A–F) and mobile phases G (`editProfile` + `units`), H
-   (`location` + `goals`) and I (`privacy` + `notifs`) are done, merged, and green on
-   `main`. Phase J (`athlete`) is next and has not been started.**
+   **Status: DONE. All mobile phases — G (`editProfile` + `units`), H (`location` +
+   `goals`), I (`privacy` + `notifs`) and J (`athlete` + wiring `profile` to real data) —
+   are merged and green on `main`, alongside backend phases A–F. Slice 2 is closed.**
 
    Read, in this order, before writing any screen:
    - **`docs/product/slice-2-plan.md`** — locked decisions (do not re-litigate — see its
@@ -630,8 +630,27 @@ A-D batch.
       the `style` callback) fixed it. Every component added in Phase I follows that
       convention.
 
-   **After I:** Phase J — `athlete` screen + wire the `profile` tab to real `/users/me` data,
-   replacing the hardcoded "James Mitchell" identity block.
+   **DONE — Phase J — `athlete` screen + wire `profile` to real `/users/me` data.** New
+   dynamic `app/athlete/[userId].tsx`, backed by the already-built `GET /athletes/:userId`.
+   Ships identity only (no stat tiles/records/sessions — Phase 10 data), no handle line
+   (dropped project-wide), and one generic error state for any load failure rather than the
+   prototype's stranger-specific "this profile is private" copy — the backend deliberately
+   makes a private profile and a nonexistent one return byte-identical 404s (accounts hold
+   health data; a distinguishable refusal is an enumeration oracle), so reproducing that copy
+   client-side would leak exactly what the backend refuses to leak. The self-view "your
+   profile is private" nudge is a different case and does render: self always gets data back
+   regardless of the flag, so `privacy.tsx`'s "Preview my public profile" row carries the
+   current `publicProfile` value as a `?publicProfile=` query param (the response itself
+   never includes privacy flags, by design).
+   `(tabs)/profile.tsx`'s identity block and its Goals/Units row subtitles now read
+   `getMe()` instead of the hardcoded `IDENTITY` object — the "James Mitchell" placeholder
+   flagged since Phase G is gone. `plan` stays the literal "Free User": `PLANS` is a
+   one-member tuple until billing (Phase 10). Unlike every sub-screen in this app, the render
+   is not gated behind a `loaded` flag — profile is a persistent bottom tab, so static/inert
+   rows and sign-out stay usable immediately while only the dynamic identity bits show a
+   `'—'` fallback until the fetch resolves.
+
+   **This closes slice 2.** Phases A through J are all done, merged, and green on `main`.
 
 1. **Pick the Supabase topology and the free host** (see manual steps above) — both are
    decisions, not implementation, and both slices 12 and 13 are stalled on them specifically.

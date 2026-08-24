@@ -18,6 +18,12 @@
 // logout test mutates the actual (singleton) secureStorage session, which nothing resets
 // between `it()` blocks here, so any later test in this same file that needs an
 // authenticated `/profile` render would inherit the signed-out state.
+//
+// Phase J: the identity block and the Goals/Units subtitles now read from real `getMe()`
+// data (roadmap.md flags these two subtitles as "backed by real saved values... the natural
+// first things Phase J wires"). `plan` stays the static string "Free User" — `PLANS` in
+// @forjd/domain is a one-member tuple (`['free']`, billing is Phase 10), so there is no
+// second value to branch on yet, not stale sample data.
 import { fireEvent } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 
@@ -26,28 +32,73 @@ jest.mock('@/auth/secureStorage', () => {
   const actual = jest.requireActual('@/auth/secureStorage');
   return { ...actual, clearSession: jest.fn(actual.clearSession) };
 });
+jest.mock('@/auth/apiClient', () => ({ getMe: jest.fn() }));
 
 import * as SecureStore from 'expo-secure-store';
+import { getMe } from '@/auth/apiClient';
 import { clearSession } from '@/auth/secureStorage';
+
+const PROFILE = {
+  userId: 'u1',
+  displayName: 'Ada Lovelace',
+  dateOfBirth: null,
+  sex: null,
+  heightCm: null,
+  unitSystem: 'metric' as const,
+  weightUnit: 'kg' as const,
+  distanceUnit: 'km' as const,
+  energyUnit: 'kcal' as const,
+  trainingGoals: ['get_stronger'] as const,
+  activities: ['strength', 'running'] as const,
+  city: 'Alexandria',
+  avatarUrl: null,
+  plan: 'free' as const,
+};
+
+const ME = {
+  id: 'u1',
+  email: 'a@example.com',
+  profile: PROFILE,
+  privacy: {
+    publicProfile: false,
+    leaderboardOptIn: false,
+    locationForLeaderboard: false,
+    aiFeaturesConsent: false,
+    aiFeaturesConsentAt: null,
+    crashDiagnostics: false,
+  },
+};
 
 describe('profile screen', () => {
   beforeEach(() => {
     // Signed in: hasSession() reads a token, so the root layout renders the tabs group.
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('access-1');
     (SecureStore.deleteItemAsync as jest.Mock).mockResolvedValue(undefined);
+    (getMe as jest.Mock).mockResolvedValue(ME);
   });
 
-  it('renders the identity row', async () => {
+  it('renders the identity row from real profile data', async () => {
     const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
 
-    await findByText('James Mitchell');
+    await findByText('Ada Lovelace');
     await findByText('Free User');
     // Part 1.5: slice2-screen-specs.md's decisions box drops the `@jmitch` handle entirely
     // (no `handle` column, no username concept) — this line shows the city alone.
     await findByText('Alexandria');
   });
 
-  it('renders the three labelled settings groups with the design rows and subtitles', async () => {
+  it('falls back to an em dash when the display name is not set', async () => {
+    (getMe as jest.Mock).mockResolvedValue({
+      ...ME,
+      profile: { ...PROFILE, displayName: null },
+    });
+
+    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+
+    await findByText('—');
+  });
+
+  it('renders the Goals and Units subtitles from real saved values', async () => {
     const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
 
     await findByText('Training');
@@ -55,6 +106,21 @@ describe('profile screen', () => {
     await findByText('Get stronger · Strength, Running');
     await findByText('Units & Preferences');
     await findByText('Metric · kg');
+  });
+
+  it('falls back to "No goal set" when trainingGoals is empty', async () => {
+    (getMe as jest.Mock).mockResolvedValue({
+      ...ME,
+      profile: { ...PROFILE, trainingGoals: [], activities: [] },
+    });
+
+    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+
+    await findByText('No goal set');
+  });
+
+  it('renders the three labelled settings groups with the design rows', async () => {
+    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
 
     await findByText('Data');
     await findByText('Connected Sources');
@@ -74,13 +140,25 @@ describe('profile screen', () => {
   it('replaces the "coming soon" placeholder', async () => {
     const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/profile' });
 
-    await findByText('James Mitchell');
+    await findByText('Ada Lovelace');
     expect(queryByText('profile — coming soon')).toBeNull();
   });
 
   it('renders the Log out control', async () => {
     const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
 
+    await findByText('Log out');
+  });
+
+  it('shows an inline error rather than a blank screen when the load fails', async () => {
+    (getMe as jest.Mock).mockRejectedValue(new Error('boom'));
+
+    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+
+    expect(
+      await findByText('Could not load your profile. Please try again.'),
+    ).toBeTruthy();
+    // The rest of the screen — including sign-out — must stay usable.
     await findByText('Log out');
   });
 
