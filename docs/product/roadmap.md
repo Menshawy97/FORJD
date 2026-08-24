@@ -132,8 +132,25 @@ been able to exercise. The other half of the definition of done was already mech
 true and enforced by CI: nothing outside `apps/api/src/auth/providers/` imports the Supabase
 SDK.
 
-**The next action is to re-plan Phase 2 (exercise database) and write that plan into this
-file before writing any Phase 2 code.**
+**Phase 2 (exercise database) has been re-planned, and the plan is in the repo:
+[`docs/product/phase-2-plan.md`](phase-2-plan.md).** Read it before writing any Phase 2 code —
+it carries the locked-decisions table, the phase-by-phase build order (Phase 0 through K) and
+the verification steps. Its companion design spec is
+[`docs/design/phase2-screen-specs.md`](../design/phase2-screen-specs.md), extracted from the
+runnable prototype with a script rather than by eye.
+
+Three decisions from that re-plan are worth knowing without opening it. **Custom exercises and
+favourites are in Phase 2**, not deferred — so the library screen ships as the prototype draws
+it, the "＋ New" pill included. **Exercise imagery is a recorded stopgap:** free-exercise-db's
+photographic stills were rejected on quality (the bar named was Hevy, whose demos turn out to be
+3D-rendered MP4s self-hosted on its own S3), no free source produces that look, and there is no
+budget — so the stills ship mirrored into our own Supabase Storage bucket, with the database
+holding a storage *key* rather than a URL so replacing them later is one script rather than a
+migration. See [ADR-018](../decisions/ADR-018-exercise-media-hosting.md), which records both
+exits: buy a commercial pack, or get a legal read on Everkinetic's CC BY-SA — the *same*
+share-alike question ADR-005 already queued for wger, so it costs nothing extra to ask.
+**The search is both server-side and on-device** (`expo-sqlite` + FTS5, full versioned
+catalogue sync), which is also what Phase 3's offline workout execution will need.
 
 Two things carry forward and are easy to lose: the five deployment failure modes recorded
 under slice 13 (every one will recur when production is set up, and two prod secrets are
@@ -511,10 +528,14 @@ are done. See "Current status" at the top of this file.
 What remains true and still matters: **Phase 2 has no blocker.** Its opening slices are
 shaped as canonical exercise model + ingest, browse/search API, then an on-device catalogue
 with local FTS5 search — see the "Working method" note at the bottom of this file for why
-later phases are re-planned rather than executed from the original outline. A re-plan was
-sketched in an earlier session but **was never transcribed into this file or the plan file**,
-and that session's context is gone, so it must be redone rather than recovered.
-**Write the Phase 2 plan into this repo before writing any Phase 2 code.**
+later phases are re-planned rather than executed from the original outline.
+
+**RESOLVED (2026-08-24): the Phase 2 re-plan is done and committed.** The re-plan sketched in
+an earlier session had never been transcribed and its context was gone, so it was redone from
+scratch. It now lives at [`docs/product/phase-2-plan.md`](phase-2-plan.md), with
+[`docs/design/phase2-screen-specs.md`](../design/phase2-screen-specs.md) and
+[ADR-018](../decisions/ADR-018-exercise-media-hosting.md) alongside it — that is Phase 0 of the
+plan, and it is complete. Start at the plan's Phase A.
 
 Nothing is half-finished. Slice D closed the last item that was both unblocked and open;
 there is no more free-standing hardening work sitting undone the way there was before the
@@ -897,7 +918,7 @@ failure).
 |---|---|---|---|
 | 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
 | 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
-| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **Next — needs re-planning first** |
+| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **In progress — [re-planned](phase-2-plan.md); Phase 0 done** |
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Programs | 18-21 | Program/week/day, enrollment, progression | Not started |
