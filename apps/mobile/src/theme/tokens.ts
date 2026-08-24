@@ -39,6 +39,8 @@ export const colors = {
   // A selected goals/activities pick-row's fill (goals.tsx), from the prototype's selected
   // pick-row style.
   pickRowSelectedBg: 'rgba(233,113,47,.1)',
+  // The athlete screen's initials-avatar tile fill, from the prototype's `s_athlete()`.
+  athleteAvatarBg: 'rgba(233,113,47,.14)',
 
   // Borders
   border: 'rgba(255,255,255,.07)',
@@ -51,6 +53,9 @@ export const colors = {
   // A selected goals/activities pick-row's outline (goals.tsx) — a stronger accent alpha
   // than `borderPro`, from the prototype's selected pick-row style.
   borderPickRowSelected: 'rgba(233,113,47,.45)',
+  // The athlete screen's initials-avatar tile outline, from the prototype's `s_athlete()`.
+  // Not `borderPro` (.35) — a different, close-but-not-equal alpha.
+  borderAthleteAvatar: 'rgba(233,113,47,.28)',
   // The toast pill's outline, from the prototype's `flash()` render.
   borderToast: 'rgba(255,255,255,.1)',
   // A goals/activities pick-row checkbox's unselected ring (goals.tsx).

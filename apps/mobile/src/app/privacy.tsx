@@ -111,6 +111,7 @@ function describeLoadFailure(error: unknown): string {
 }
 
 export default function PrivacyScreen() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [flags, setFlags] = useState<PrivacyFlags>(EMPTY_FLAGS);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -123,6 +124,7 @@ export default function PrivacyScreen() {
     getMe()
       .then((me) => {
         if (cancelled) return;
+        setUserId(me.id);
         if (me.privacy) {
           setFlags(toFlags(me.privacy));
         }
@@ -196,15 +198,27 @@ export default function PrivacyScreen() {
                 subtitle="How your city is assigned"
                 onPress={() => router.replace('/location?back=privacy')}
               />
-              {/* Both inert: the athlete screen is Phase J and POST /me/export does not exist.
-                  The prototype's "Export requested — we will email you" toast would be
-                  factually untrue. Same precedent as profile.tsx — a Pressable to nowhere is
-                  worse than no Pressable. */}
+              {/* Phase J shipped the athlete screen — self always gets data back from
+                  GET /athletes/:userId regardless of the privacy flag (see
+                  athletes.service.ts), so the current flag has to travel as a query param;
+                  PublicProfileResponse deliberately never includes privacy flags. */}
               <PermissionRow
                 icon="profile"
                 title="Preview my public profile"
                 subtitle="See exactly what other athletes see"
+                onPress={
+                  userId
+                    ? () =>
+                        router.replace({
+                          pathname: '/athlete/[userId]',
+                          params: { userId, publicProfile: String(flags.publicProfile) },
+                        })
+                    : undefined
+                }
               />
+              {/* Inert: POST /me/export does not exist. The prototype's "Export requested —
+                  we will email you" toast would be factually untrue. Same precedent as
+                  profile.tsx — a Pressable to nowhere is worse than no Pressable. */}
               <PermissionRow
                 icon="shield"
                 title="Download my data"

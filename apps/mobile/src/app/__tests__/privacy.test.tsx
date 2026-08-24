@@ -184,13 +184,31 @@ describe('PrivacyScreen', () => {
     ).toBeTruthy();
   });
 
-  it('the two inert permission rows do not navigate', async () => {
+  it('the Download my data row does not navigate', async () => {
     const { findByText } = await render(<PrivacyScreen />);
 
-    fireEvent.press(await findByText('Preview my public profile'));
     fireEvent.press(await findByText('Download my data'));
 
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  // Phase J. Self always gets data back from GET /athletes/:userId regardless of the privacy
+  // flag (see athletes.service.ts), so PublicProfileResponse deliberately carries no privacy
+  // flags — the current value has to travel as a query param, since it's the one piece of
+  // state privacy.tsx already holds that the athlete screen cannot otherwise learn.
+  it('Preview my public profile opens the athlete screen for the viewer, with the current flag', async () => {
+    (getMe as jest.Mock).mockResolvedValue({
+      ...ME,
+      privacy: { ...PRIVACY, publicProfile: true },
+    });
+
+    const { findByText } = await render(<PrivacyScreen />);
+    fireEvent.press(await findByText('Preview my public profile'));
+
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/athlete/[userId]',
+      params: { userId: 'u1', publicProfile: 'true' },
+    });
   });
 
   // react-reviewer, HIGH: rendering the inert rows with accessibilityRole="button" makes a

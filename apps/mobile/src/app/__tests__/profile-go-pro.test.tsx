@@ -31,6 +31,31 @@ jest.mock('@/auth/secureStorage', () => ({
   getCachedHasSession: jest.fn(() => true),
 }));
 
+// Phase J: profile.tsx now reads real getMe() data for its identity row.
+jest.mock('@/auth/apiClient', () => ({
+  getMe: jest.fn().mockResolvedValue({
+    id: 'u1',
+    email: 'a@example.com',
+    profile: {
+      userId: 'u1',
+      displayName: 'James Mitchell',
+      dateOfBirth: null,
+      sex: null,
+      heightCm: null,
+      unitSystem: 'metric',
+      weightUnit: 'kg',
+      distanceUnit: 'km',
+      energyUnit: 'kcal',
+      trainingGoals: [],
+      activities: [],
+      city: null,
+      avatarUrl: null,
+      plan: 'free',
+    },
+    privacy: null,
+  }),
+}));
+
 interface HostNode {
   type: string;
   props: Record<string, unknown>;

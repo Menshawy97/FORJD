@@ -337,4 +337,23 @@ describe('apiClient - profile reads and writes', () => {
       leaderboardOptIn: true,
     });
   });
+
+  it('getAthlete reads GET /athletes/:userId through the authenticated client', async () => {
+    const { getAthlete } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = {
+      userId: 'u2',
+      displayName: 'Ada Lovelace',
+      avatarUrl: null,
+      city: 'Alexandria',
+      trainingGoals: [],
+      activities: [],
+      isSelf: false,
+    };
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(getAthlete('u2')).resolves.toEqual(body);
+
+    expect(instance.get).toHaveBeenCalledWith('/athletes/u2');
+  });
 });

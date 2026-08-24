@@ -1,8 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import type { Activity, TrainingGoal } from '@forjd/domain';
 
+import { getMe } from '@/auth/apiClient';
+import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { clearSession } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
@@ -14,19 +17,57 @@ import { colors } from '@/theme/tokens';
 //        leading glyph 22 (#8b8b83) · title 600 14.5/1.25 · subtitle 400 12/1.3 (#6e6e66)
 //        trailing chevron 18 at opacity .5
 //
-// The identity values and every row subtitle below are the design's *static sample data* —
-// there is no backend for any of it yet, and the prototype hardcodes exactly these strings.
-// They become real reads in the profile/settings slices.
+// Phase J: the identity block and the Goals/Units subtitles below now read from real
+// `getMe()` data — roadmap.md flags these two subtitles as "backed by real saved values...
+// the natural first things Phase J wires". Every other row's destination (connected sources,
+// InBody history, workout history) is a later slice and does not exist, so those stay
+// rendered per the design but deliberately inert — a Pressable to nowhere is worse than no
+// Pressable.
 //
-// Every row's destination (edit profile, goals, units, connected sources, InBody history,
-// workout history, privacy, notifications) is a later slice and does not exist, so the rows
-// are rendered per the design but are deliberately inert — a Pressable to nowhere is worse
-// than no Pressable. Only "Log out" is wired, because it is the one destination that exists.
-const IDENTITY = {
-  name: 'James Mitchell',
-  plan: 'Free User',
-  handle: 'Alexandria',
-} as const;
+// `plan` stays the literal string "Free User": `PLANS` in @forjd/domain is a one-member
+// tuple (`['free']`, billing is Phase 10), so there is no second value to branch on yet —
+// this is an accurate read of a real guarantee, not stale sample data.
+const PLAN_LABEL = 'Free User';
+
+// Small local label maps, not imported from goals.tsx: that file's tables are the same shape
+// but private to an already-shipped, already-tested screen, and duplicating five and six
+// short string pairs is cheaper than coupling two independent screens over it.
+const GOAL_LABELS: Record<TrainingGoal, string> = {
+  get_stronger: 'Get stronger',
+  lose_fat: 'Lose fat',
+  build_muscle: 'Build muscle',
+  improve_endurance: 'Improve endurance',
+  feel_better: 'Feel better',
+};
+const ACTIVITY_LABELS: Record<Activity, string> = {
+  strength: 'Strength',
+  running: 'Running',
+  hyrox: 'HYROX',
+  pilates: 'Pilates',
+  cycling: 'Cycling',
+  swimming: 'Swimming',
+};
+
+interface Identity {
+  name: string;
+  city: string | null;
+  goalsSubtitle: string;
+  unitsSubtitle: string;
+}
+
+function goalsSubtitle(trainingGoals: TrainingGoal[], activities: Activity[]): string {
+  if (trainingGoals.length === 0) {
+    return 'No goal set';
+  }
+  const goal = GOAL_LABELS[trainingGoals[0]];
+  const activityNames = activities.map((activity) => ACTIVITY_LABELS[activity]);
+  return activityNames.length > 0 ? `${goal} · ${activityNames.join(', ')}` : goal;
+}
+
+function unitsSubtitle(unitSystem: 'metric' | 'imperial', weightUnit: string): string {
+  const systemLabel = unitSystem === 'metric' ? 'Metric' : 'Imperial';
+  return `${systemLabel} · ${weightUnit}`;
+}
 
 interface SettingsRow {
   icon: IconName;
@@ -36,14 +77,15 @@ interface SettingsRow {
   onPress?: () => void;
 }
 
-const GROUPS: Array<{ label: string; rows: SettingsRow[] }> = [
+function buildGroups(identity: Identity): Array<{ label: string; rows: SettingsRow[] }> {
+  return [
   {
     label: 'Training',
     rows: [
       {
         icon: 'target',
         title: 'Goals & Activities',
-        subtitle: 'Get stronger · Strength, Running',
+        subtitle: identity.goalsSubtitle,
         // Phase H. Same choice as Units: router.replace, not push (ADR-011) — a settings
         // destination, not a stack the user should accumulate entries on.
         onPress: () => router.replace('/goals'),
@@ -51,7 +93,7 @@ const GROUPS: Array<{ label: string; rows: SettingsRow[] }> = [
       {
         icon: 'bars',
         title: 'Units & Preferences',
-        subtitle: 'Metric · kg',
+        subtitle: identity.unitsSubtitle,
         // Phase G. router.replace, matching the prototype's go('units') and every other
         // navigation off this screen (login/signup use the same choice, ADR-011) — this is a
         // settings destination, not a stack the user should be able to accumulate entries on.
@@ -88,16 +130,54 @@ const GROUPS: Array<{ label: string; rows: SettingsRow[] }> = [
       },
     ],
   },
-];
+  ];
+}
 
 const ROW_ICON_SIZE = 22;
 const CHEVRON_SIZE = 18;
 
 const LOGOUT_ERROR = 'Could not log out. Please try again.';
+const EMPTY_IDENTITY: Identity = {
+  name: '—',
+  city: null,
+  goalsSubtitle: goalsSubtitle([], []),
+  unitsSubtitle: unitsSubtitle('metric', 'kg'),
+};
+
+function describeLoadFailure(error: unknown): string {
+  return classifyRequestFailure(error) === 'offline'
+    ? OFFLINE_MESSAGE
+    : 'Could not load your profile. Please try again.';
+}
 
 export default function ProfileScreen() {
+  const [identity, setIdentity] = useState<Identity>(EMPTY_IDENTITY);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMe()
+      .then((me) => {
+        if (cancelled || !me.profile) return;
+        const profile = me.profile;
+        setIdentity({
+          name: profile.displayName ?? '—',
+          city: profile.city,
+          goalsSubtitle: goalsSubtitle(profile.trainingGoals, profile.activities),
+          unitsSubtitle: unitsSubtitle(profile.unitSystem, profile.weightUnit),
+        });
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setLoadError(describeLoadFailure(cause));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Sign-out goes through the same seam the root layout already listens on: clearing the
   // session notifies `subscribeToSession`, the layout's `useSyncExternalStore` re-renders,
@@ -129,10 +209,16 @@ export default function ProfileScreen() {
         className="flex-1 px-screen-x"
         contentContainerStyle={{ paddingBottom: 26 }}
         showsVerticalScrollIndicator={false}>
-        <IdentityRow />
+        {loadError && (
+          <Text className="mt-3 font-archivo text-inline-error font-medium text-errorText">
+            {loadError}
+          </Text>
+        )}
+
+        <IdentityRow identity={identity} />
         <GoProBanner />
 
-        {GROUPS.map((group, groupIndex) => (
+        {buildGroups(identity).map((group, groupIndex) => (
           <View key={group.label}>
             <Text
               className={`${groupIndex === 0 ? 'mt-2' : 'mt-section-gap'} mb-[2px] font-archivo text-section-label font-semibold uppercase text-label`}>
@@ -199,30 +285,35 @@ function GoProBanner() {
   );
 }
 
-function IdentityRow() {
+function IdentityRow({ identity }: { identity: Identity }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`Edit profile, ${identity.name}`}
       // Phase G: this is `editProfile`'s one entry point, matching the prototype's
       // `onClick="{{ editProfile }}"` on this exact row.
       onPress={() => router.replace('/edit-profile')}
       className="mt-[10px] flex-row items-center pb-2 pt-3"
       style={{ gap: 14 }}>
-      <View className="h-[52px] w-[52px] items-center justify-center rounded-card bg-elevated2">
+      <View
+        accessible={false}
+        className="h-[52px] w-[52px] items-center justify-center rounded-card bg-elevated2">
         <Icon name="profile" size={26} color={colors.metadata} />
       </View>
       <View className="flex-1">
         <View className="flex-row items-center" style={{ gap: 8 }}>
           <Text className="font-archivo text-profile-name font-bold text-text">
-            {IDENTITY.name}
+            {identity.name}
           </Text>
           <Text className="rounded-[20px] border border-borderBadge bg-borderFaint px-[9px] py-1 font-archivo text-plan-badge font-bold text-metadata">
-            {IDENTITY.plan}
+            {PLAN_LABEL}
           </Text>
         </View>
-        <Text className="mt-[6px] font-archivo text-profile-handle text-dimmer">
-          {IDENTITY.handle}
-        </Text>
+        {identity.city && (
+          <Text className="mt-[6px] font-archivo text-profile-handle text-dimmer">
+            {identity.city}
+          </Text>
+        )}
       </View>
       <TrailingChevron />
     </Pressable>
