@@ -142,32 +142,50 @@ Each phase ends green and is independently mergeable: PR → full suite for the 
 Slice 2's Phase 0 exists because this spec was nearly lost to a scratchpad. Same risk here.
 Docs-only, so CI skips it — that absence is correct.
 
-### Phase A — Vendor the dataset and measure the media
+### Phase A — Vendor the dataset and measure the media — ✅ **DONE** ([PR #37](https://github.com/Menshawy97/FORJD/pull/37))
 
-- Pin an upstream commit of `yuhonas/free-exercise-db`, commit `dist/exercises.json`
-  (~1–2 MB) under `apps/api/src/exercises/ingest/data/`, with a `SOURCE.md` recording the
-  commit SHA, the Unlicense text, and the upstream image credit ADR-005 flags.
-- **Measure the real image count and byte total** before ADR-018 states any number, and do the
-  five-minute image-provenance re-check ADR-005 asks for (the images originate from
-  `wrkout/exercises.json`; free-exercise-db's LICENSE.md covers them, worth confirming).
-- **The images are not committed.** They are fetched at mirror time in Phase F.
+- ✅ Pinned `yuhonas/free-exercise-db` at commit `b0eed06`; `dist/exercises.json` vendored as
+  `apps/api/src/exercises/ingest/data/free-exercise-db.json` (~1.0 MB, pretty-printed), with
+  `SOURCE.md` recording the commit SHA, the Unlicense text (fetched at the pin, not quoted from
+  memory), and the upstream image provenance.
+- ✅ **Measured, not estimated:** 873 exercises, 1,746 image paths (exactly 2/exercise, none
+  missing), a 51-image sample averaging ~52 KB, projecting to **~88.6 MB total** — confirms
+  ADR-018's assumed range and updates its placeholder. The provenance re-check ADR-005 asked for
+  was done independently via the GitHub API's declared licence on `wrkout/exercises.json`
+  (`Unlicense`), not assumed from the credit line.
+- ✅ **The images are not committed.** They are fetched at mirror time in Phase F.
 
-No schema, no endpoints. This is the phase that turns estimates into facts.
+No schema, no endpoints — nothing yet reads this file. CI (full API + mobile suite, since this
+touches `apps/api/src` and `paths-ignore` doesn't apply) was green on the PR and confirmed green
+on `main` after merge.
 
-### Phase B — Domain vocabulary and canonical types
+### Phase B — Domain vocabulary and canonical types — ✅ **DONE**
 
-`packages/domain/src/index.ts` — following the existing `TRAINING_GOALS` pattern exactly:
-`MUSCLE_GROUPS`, `EQUIPMENT`, `EXERCISE_CATEGORIES`, `EXERCISE_GOALS`, `EXERCISE_MEASURES`,
-`FORCES`, `LEVELS`, `MECHANICS` as `as const` tuples with derived types, plus display-name maps
-and the `Exercise` interface. Contracts builds `z.enum()` from the tuples — never a second
-literal union, which is the drift that bit `Sex` once already.
+`packages/domain/src/exercise-vocabulary.ts` (re-exported from `index.ts`) — following the
+existing `TRAINING_GOALS` pattern exactly: `MUSCLE_GROUPS` (19), `EQUIPMENT` (16),
+`EXERCISE_CATEGORIES` (6), `EXERCISE_GOALS` (5), `EXERCISE_MEASURES` (3), `FORCES` (3),
+`LEVELS` (3), `MECHANICS` (2) as `as const` tuples with derived types, a display-name map for
+each, and the `Exercise` interface. Contracts will build `z.enum()` from the tuples in Phase E —
+never a second literal union, which is the drift that bit `Sex` once already.
 
 The categories are the design's chips (`Strength`, `Running`, `Cross Training`, `Calisthenics`,
-`Yoga`, `Mobility`), **not** free-exercise-db's (`strength`, `stretching`, `plyometrics`,
-`strongman`, `powerlifting`, `cardio`, `olympic weightlifting`). Mapping between them is the
-adapter's job, which is the whole point of the adapter.
+`Yoga`, `Mobility`), **not** free-exercise-db's seven source categories (`strength`,
+`stretching`, `plyometrics`, `strongman`, `powerlifting`, `cardio`, `olympic weightlifting`).
+Mapping between them is the adapter's job (Phase D), which is the whole point of the adapter.
 
-RED first: a test asserting every tuple member has a display name, before the maps exist.
+✅ **RED first, as planned:** `exercise-vocabulary.spec.ts` was written and run failing (missing
+exports) before the vocabulary existed, then the implementation made it pass — 17/17 tests,
+asserting every tuple member has a non-empty display name, no orphan map keys, and the category
+order matches the design's chip row exactly.
+
+**One addition beyond the plan's text, made because the package had none:** `packages/domain`
+had `"test": "echo \"no tests yet\""` — real RED→GREEN needed a real runner, so `jest` and
+`ts-jest` were added, mirroring the API's inline jest config exactly (same
+`moduleFileExtensions`, `testRegex`, `transform`, `testEnvironment`).
+
+Muscle groups and equipment are each a superset of the custom-exercise screen's own multi-select
+lists (`docs/design/phase2-screen-specs.md` §6.1) plus the values free-exercise-db's source data
+needs, so the Phase D adapter can map either direction without lossy collapsing.
 
 ### Phase C — Migration and repository *(no wire change)*
 
