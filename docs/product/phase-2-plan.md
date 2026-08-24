@@ -187,21 +187,42 @@ Muscle groups and equipment are each a superset of the custom-exercise screen's 
 lists (`docs/design/phase2-screen-specs.md` §6.1) plus the values free-exercise-db's source data
 needs, so the Phase D adapter can map either direction without lossy collapsing.
 
-### Phase C — Migration and repository *(no wire change)*
+### Phase C — Migration and repository *(no wire change)* — ✅ **DONE**
 
-- `exercises.schema.ts`: `id`, `ownerUserId` (nullable FK), `name`, `slug`, `category`, `goal`,
-  `measure`, `primaryMuscles`/`secondaryMuscles`/`equipment` (`text[]` NOT NULL default `'{}'`),
-  `force`/`level`/`mechanic` (nullable `text`), `instructions` (`text[]`), `imageKeys`
-  (`text[]`), `description`, `source`, `sourceId`, `deletedAt`, timestamps.
+- ✅ `exercises.schema.ts`: `id`, `ownerUserId` (nullable FK), `name`, `slug`, `category`,
+  `goal`, `measure`, `primaryMuscles`/`secondaryMuscles`/`equipment` (`text[]` NOT NULL
+  default `'{}'`), `force`/`level`/`mechanic` (nullable `text`), `instructions` (`text[]`),
+  `imageKeys` (`text[]`), `description`, `source`, `sourceId`, `deletedAt`, timestamps.
   **`text`, never `pgEnum`** — the house rule, and what made the `sex` narrowing free.
-- `exercise-favourites.schema.ts`: `(userId, exerciseId)` composite PK, `createdAt`.
-- Migration adds: a generated `search_vector` tsvector column + GIN index; the `pg_trgm`
-  extension and a GIN trigram index on `lower(name)`; a partial unique index on
-  `(source, source_id) WHERE owner_user_id IS NULL` and another on
-  `(owner_user_id, lower(name)) WHERE owner_user_id IS NOT NULL AND deleted_at IS NULL`.
-- `ExercisesRepository` with specs against **real Postgres**, per the `UsersRepository`
-  precedent — the behaviour under test is index and conflict resolution, which lives in the
-  database, and a mock would only prove the test author's assumptions about it.
+  `exerciseFavourites` lives in the same file (a join table, not a boolean column on
+  `exercises` — a favourite is a fact about a (user, exercise) pair, and catalogue rows are
+  shared across every user).
+- ✅ Migration `0005` (generated) adds both tables and two partial unique indexes —
+  `(source, source_id) WHERE owner_user_id IS NULL` and
+  `(owner_user_id, lower(name)) WHERE owner_user_id IS NOT NULL AND deleted_at IS NULL` —
+  expressed directly in the typed schema DSL via `.where()`, no hand-written SQL needed for
+  either. Migration `0006` (hand-written `--custom`, same precedent as `0004`) adds the
+  generated `search_vector` tsvector column + GIN index and the `pg_trgm` extension + GIN
+  trigram index — deliberately **not** reflected in `exercises.schema.ts`, since doing so
+  would make a future `db:generate` believe it needs to (re)create what `0006` already did by
+  hand, colliding with it. Both migrations applied cleanly to local Postgres and verified
+  against `information_schema`/`pg_indexes` directly; a follow-up `db:generate` confirmed
+  zero drift.
+- ✅ `ExercisesRepository` (14 tests, real Postgres, matching the `UsersRepository`
+  precedent): `upsertCatalogueExercise` (idempotent via `onConflictDoUpdate` targeting the
+  partial index), `findById`, `createCustomExercise`/`updateCustomExercise` (case-insensitive
+  duplicate-name rejection, enforced by the database, not only a read-then-write check —
+  `ConflictException`), `softDeleteCustomExercise`, and `addFavourite`/`removeFavourite`/
+  `isFavourite`. Never throws `NotFoundException` and never distinguishes "no such row" from
+  "not yours" — both return `null`/`false`, matching `AthletesService`'s repo-returns-null /
+  service-throws-404 split, which Phase G's controller will apply.
+- **One real bug found and fixed along the way:** `isUniqueViolation` (the
+  `UsersRepository`-style helper) only checked `error.code`, but this drizzle-orm version
+  wraps every query failure in a `DrizzleQueryError` with the real pg error attached as
+  `.cause`, confirmed by reading `drizzle-orm/errors.cjs`. Fixed to check both. **The
+  equivalent helper in `UsersRepository` almost certainly has the same latent bug** — flagged
+  as its own follow-up task rather than fixed here (out of this phase's scope), since it's a
+  pre-existing file this phase didn't otherwise touch.
 
 *Why first:* the only phase with a migration, so pausing here leaves the DB ahead of the API —
 the safe direction. Same reasoning as slice 2's Phase A.
