@@ -9,11 +9,10 @@ the quick-reference for "what phase are we in and what's next."
 
 ## Current status (last updated 2026-08-24)
 
-**We are inside Phase 1.** Phase 0 is complete except Spike B, which is open but
-does not gate Phase 1 (see "Spike status" below). Read this section first when
-resuming — it says exactly what's done, what's blocked on a manual step, and what
-to do next. Don't re-derive this from scratch; verify it's still accurate and
-continue.
+**Phase 1 is complete; Phase 2 has not started.** Phase 0 is complete except Spike B, which
+is still open and does not gate anything in Phase 1 (see "Spike status" below). Read this
+section first when resuming — it says exactly what's done and what to do next. Don't
+re-derive this from scratch; verify it's still accurate and continue.
 
 ### Mobile framework pivot: Flutter → Expo React Native
 
@@ -123,13 +122,24 @@ critical re-read of the roadmap that found the highest-leverage work in the repo
 unblocked and undone, while slices 12-14 were blocked on decisions rather than only on
 accounts.
 
-**Slices 12 and 13 are now done and merged.** EAS Build profiles exist and EAS is linked;
-the API is **deployed and live on Cloud Run staging**
+**PHASE 1 IS COMPLETE (2026-08-24).** Slices 12, 13 and 14 are done and merged. EAS Build
+profiles exist and EAS is linked; the API is **deployed and live on Cloud Run staging**
 (`https://forjd-api-staging-772363715082.us-central1.run.app`, health check green, database
-reachable). All manual GCP/Supabase/EAS account setup is complete. **Slice 14 — the
-definition-of-done device walk against deployed staging — is the only remaining Phase 1
-work, and it is unblocked.** See "Next, in order" below, including the five deployment
-failure modes recorded under slice 13 that will recur when production is set up.
+reachable via the session pooler); and the definition-of-done walk — register → login →
+refresh → logout → view/edit profile, **against deployed staging from a physical device** —
+passed end to end, including the 401 → refresh → replay path that no previous walk had ever
+been able to exercise. The other half of the definition of done was already mechanically
+true and enforced by CI: nothing outside `apps/api/src/auth/providers/` imports the Supabase
+SDK.
+
+**The next action is to re-plan Phase 2 (exercise database) and write that plan into this
+file before writing any Phase 2 code.**
+
+Two things carry forward and are easy to lose: the five deployment failure modes recorded
+under slice 13 (every one will recur when production is set up, and two prod secrets are
+already known-wrong), and the requirement for **custom SMTP before beta** — Supabase's
+built-in mailer caps a project at ~2-4 emails/hour, which with confirmation on is the signup
+ceiling, and was hit within minutes during the walk.
 
 Half of the phase's definition of done is already mechanically true: exactly one
 file imports the Supabase SDK for auth, one for storage, and nothing else —
@@ -357,7 +367,7 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 | 11 — Mobile auth UI | ⬜ **Superseded** | Was merged as Flutter (PRs #2, #3): design tokens + Archivo, widget library, 401→refresh→replay network layer, auth screens, 5-tab shell, profile/edit-profile, ADR-010/011. Walked on an emulator; four findings fixed; 60 Flutter tests; debug APK builds. **The Flutter app this built no longer exists** — see "Mobile framework pivot" above. Its replacement is the Expo rebuild's **Slice 1** (auth + 5-tab shell, wired to the real backend, test-first, 35 tests), done under ADR-013. |
 | 12 — Build flavors | ✅ Done | Re-scoped for Expo: `apps/mobile/eas.json` with `development`/`staging`/`production` EAS Build profiles setting `API_BASE_URL`, consumed via `app.config.ts`'s `extra.apiBaseUrl`. EAS project linked under the `forjd` org. |
 | 13 — Staging deploy | ✅ Done | Live at `https://forjd-api-staging-772363715082.us-central1.run.app` (health green, DB reachable). `apps/api/Dockerfile` (3-stage, prod deps only) + `.github/workflows/deploy-api.yml`, auto-deploying on green CI on `main`. Five recurring failure modes recorded under "Next, in order" — read them before setting up production. |
-| 14 — Device DoD walk | 🟡 In progress | 12/13 done; dev server running against deployed staging. Note `forjd-dev` now requires **email confirmation** (ADR-015), so register needs a real inbox. |
+| 14 — Device DoD walk | ✅ Done | Walked on a physical iPhone via Expo Go against **deployed staging**, 2026-08-24. Every DoD step passed, including the 401 → refresh → replay path exercised for real by waiting out the 900 s token — untested in every prior walk. Two findings fixed and merged (PR #33). **Phase 1 closed.** |
 
 Phase 1's definition of done is unchanged: register → login → refresh → logout →
 view/edit profile against the deployed staging API from the physical device, with
@@ -774,27 +784,41 @@ A-D batch.
    The workflow's `check` job verifies all four repo variables are present and **skips the
    deploy job cleanly when they are not**, so a repo without GCP configured gets a green
    skip rather than a red failure on every push to `main`.
-4. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
-   staging. **This is the next thing to do, and it is unblocked.** This is what actually
-   closes Phase 1.
+4. ✅ **Slice 14 — the definition-of-done walk on the physical device. DONE — Phase 1 is
+   closed.** Walked on a physical iPhone via Expo Go against **deployed staging** (not a
+   local API), 2026-08-24. Every step of Phase 1's definition of done passed:
+   cold start → `/welcome`; register → "check your inbox" → confirm via the real email link;
+   login → `/home`; all five tabs holding their own scroll position; profile showing the
+   registered name; edit → save → persisted; units/goals/privacy/notifs all opening and
+   saving; `privacy` → "Preview my public profile" → athlete screen; kill-and-relaunch while
+   signed in → straight to `/home`; logout → `/welcome`; relaunch after logout → stays on
+   `/welcome`.
 
-   Everything it depends on is now in place: staging is live and healthy, `eas.json`'s
-   `staging` profile points at it, and EAS is linked. Two things to know going in:
-   - **forjd-dev now has email confirmation ON** (ADR-015 — it serves as staging, so it must
-     behave like production). The register → login round-trip therefore requires a real
-     inbox; the "check your inbox" panel appearing is *correct behaviour now*, not a bug.
-     The older note further down this file about confirmation being off is superseded.
-   - **The 401 → refresh → replay path can finally be exercised on device.** Access-token
-     lifetime is now 900 s in both projects (ADR-012), so it can simply be waited out — the
-     thing the slice B walk could not test by hand.
+   **The refresh path was exercised for real, and this is the first time that has ever been
+   true.** Left signed in and idle past the 900 s access-token lifetime (ADR-012), then
+   reopened Profile: it loaded normally, no bounce to `/welcome` — the silent
+   401 → refresh → replay working on a device. Both the slice 11 and slice B walks had to
+   record this as untested, because with a 3600 s token there was no way to produce a
+   rejected access token by hand.
+
+   **Two findings came out of the walk, both fixed and merged (PR #33):** a Supabase mail
+   rate limit reaching the user as "Please try again" when retrying could not work for an
+   hour (now a 429 with a wait message), and the mobile client discarding the server's
+   message for every non-offline failure (now surfaced for 400/429, never for 401). A third
+   change rode along: `@expo/ui` and `@expo/log-box` — SDK-57 packages in an SDK-54 app,
+   imported by nothing — were removed. They pulled a second `react-native` (0.86.2) into the
+   store that Metro crawled into and reported as
+   `Unable to determine event arguments for "onModeChange"`. **That error was noise, not
+   breakage** — the bundle built fine throughout (verified HTTP 200, 9.8 MB) — worth knowing
+   before anyone chases it again.
 
 **All manual account/credential setup is done** — both Supabase projects, the Google Cloud
 project, the deploy service account, Workload Identity Federation, Secret Manager, Artifact
-Registry, and EAS. There is unblocked Phase 1 work (slice 14); Phase 2 should not be started
-before it closes.
+Registry, and EAS.
 
-Before starting the next slice, re-read this file and the plan's Phase 1 outline, as the working
-method below requires. Phase 2 (exercise database) should be re-planned rather than executed
+**Phase 1 is complete. The next action is to re-plan Phase 2 (exercise database) and write
+that plan into this file before writing any Phase 2 code** — that sequencing is a standing
+rule here, not a formality. Phase 2 should be re-planned rather than executed
 from the outline — later phases were deliberately left thin so earlier ones could teach their
 lessons, and slice 11 taught several worth carrying forward: mirror provider-side constraints
 in the contract, walk a flow live before believing it, and prefer a test that has been shown
@@ -873,8 +897,8 @@ failure).
 | Phase | Weeks | Focus | Status |
 |---|---|---|---|
 | 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
-| 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **In progress** |
-| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | Not started |
+| 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
+| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **Next — needs re-planning first** |
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Programs | 18-21 | Program/week/day, enrollment, progression | Not started |
