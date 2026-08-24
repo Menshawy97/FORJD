@@ -1,10 +1,13 @@
 # FORJD — fidelity/navigation remediation, then slice 2 Phase I (`privacy` + `notifs`)
 
-**Status: Part 1 is done, merged, and green on `main`. Part 2 (Phase I) has not been
-started.** See `docs/product/roadmap.md`'s "Next, in order" section for the current summary
-and any deltas picked up from live device testing during Part 1 (a birthday-row tap
-affordance and a defensive `ScrollView` wrap on `editProfile`/`units`, neither in the
-original written plan below).
+**Status: both parts are done, merged, and green on `main`.** This plan's two PRs are
+closed; slice 2's mobile work continued past it into Phase J (`athlete` screen + wiring
+`profile` to real data), which this document does not cover — see
+`docs/product/roadmap.md`'s "Next, in order" section and `docs/product/slice-2-plan.md`'s
+Phase J entry for that. See roadmap.md too for deltas picked up from live device testing
+during Part 1 (a birthday-row tap affordance and a defensive `ScrollView` wrap on
+`editProfile`/`units`, neither in the original written plan below) and a live crash found
+and fixed after Phase I shipped (an RN Fabric transform-validator crash on toggle press).
 
 ## Orientation for a fresh session
 

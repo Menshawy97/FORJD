@@ -192,6 +192,9 @@ is mobile (G–J).
 
 ## Mobile (phases G–J) — strict TDD, RED before GREEN, per phase
 
+**All done.** Phases G, H, I and J are merged and green on `main` — slice 2 is closed. See
+each phase's entry below for what it produced.
+
 Reuse what slice 1 built rather than re-deriving: `src/components/icon.tsx` (27 verified
 glyphs), `screen-background.tsx` (ember gradient + safe-area), `toast.tsx`,
 `press-feedback.ts`, `src/theme/tokens.ts` + `tailwind.config.ts`, and the
