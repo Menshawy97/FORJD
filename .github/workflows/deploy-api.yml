@@ -1,0 +1,90 @@
+name: Deploy API to Cloud Run
+
+# Runs after "CI" finishes on main (workflow_run gates this on a green run of the same
+# commit, not just a green PR — see the "post-merge CI" standing rule in CLAUDE.md/roadmap).
+# workflow_dispatch exists for a manual staging/production redeploy without a new commit.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Cloud Run environment to deploy
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  group: deploy-api-${{ inputs.target || 'staging' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for google-github-actions/auth's Workload Identity Federation
+
+env:
+  TARGET: ${{ inputs.target || 'staging' }}
+
+jobs:
+  deploy:
+    name: Build, migrate, deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    environment: ${{ inputs.target || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Workload Identity Federation, not a long-lived JSON service-account key — no GCP
+      # credential is ever stored as a GitHub secret. GCP_WORKLOAD_IDENTITY_PROVIDER and
+      # GCP_DEPLOY_SERVICE_ACCOUNT are repo/environment *variables* (not secrets): they name
+      # a provider and principal, not a credential.
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - run: gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/forjd/api:${{ github.sha }}"
+          docker build -f apps/api/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Run database migrations
+        # Pulled from Secret Manager (forjd-<target>-database-url), not a GitHub secret, so
+        # the hosted DB credential lives in exactly one place. Must be the Supabase *session
+        # pooler* connection string — the direct connection string fails over IPv6 from
+        # GitHub-hosted runners (see docs/product/roadmap.md's IPv6 finding).
+        run: |
+          pnpm install --frozen-lockfile
+          export DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
+          pnpm --filter @forjd/api db:migrate
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "forjd-api-${TARGET}" \
+            --image "$IMAGE" \
+            --region "${{ vars.GCP_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest"

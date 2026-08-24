@@ -6,5 +6,9 @@ packages:
 # drizzle-kit ships its CLI as an esbuild bundle and needs esbuild's postinstall to
 # place the platform binary. pnpm blocks build scripts by default; this allows that
 # one package rather than disabling the protection wholesale.
+# dtrace-provider (a transitive dep of eas-cli's bunyan logger) only builds DTrace probes
+# for macOS/Solaris; its install script is a no-op everywhere this project runs (Windows
+# dev, Linux CI), so it's left unapproved rather than granted script execution.
 allowBuilds:
+  dtrace-provider: false
   esbuild: true
