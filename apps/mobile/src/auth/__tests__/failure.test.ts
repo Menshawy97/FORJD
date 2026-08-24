@@ -9,15 +9,15 @@
 // password" is not a thing signup can say), so the wording stays at the call site.
 import { AxiosError, AxiosHeaders } from 'axios';
 
-import { classifyRequestFailure } from '../failure';
+import { actionableServerMessage, classifyRequestFailure } from '../failure';
 
 /** A rejection shaped the way axios shapes one, for a response that did arrive. */
-function withStatus(status: number): AxiosError {
+function withStatus(status: number, data: unknown = {}): AxiosError {
   const error = new AxiosError('Request failed');
   error.response = {
     status,
     statusText: '',
-    data: {},
+    data,
     headers: {},
     config: { headers: new AxiosHeaders() },
   };
@@ -57,5 +57,60 @@ describe('classifyRequestFailure', () => {
     expect(classifyRequestFailure(new TypeError('x is not a function'))).toBe('unknown');
     expect(classifyRequestFailure(undefined)).toBe('unknown');
     expect(classifyRequestFailure('boom')).toBe('unknown');
+  });
+});
+
+/**
+ * RED first, from the slice 14 device walk: signup showed "Could not create your account.
+ * Please try again." when the real reason was Supabase's hourly mail quota. "Try again" was
+ * advice that could not work for an hour, because the screen threw the server's message away
+ * and substituted its own for every non-offline failure.
+ *
+ * The server writes user-facing copy for exactly two signup rejections — a weak password
+ * (400) and the mail rate limit (429). Both are safe to show: neither says anything about
+ * whether an address already holds an account. 401 stays excluded on purpose; that is the
+ * status the API collapses every enumerable failure into.
+ */
+describe('actionableServerMessage', () => {
+  it('surfaces the message on a 429 so the user knows to wait rather than retry', () => {
+    const error = withStatus(429, {
+      message: 'Too many sign-up emails have been sent recently. Please try again later.',
+      statusCode: 429,
+    });
+
+    expect(actionableServerMessage(error)).toBe(
+      'Too many sign-up emails have been sent recently. Please try again later.',
+    );
+  });
+
+  it('surfaces the message on a 400 so a rejected password names the rule', () => {
+    const error = withStatus(400, {
+      message: 'Password must be at least 8 characters and include an uppercase letter, ...',
+      statusCode: 400,
+    });
+
+    expect(actionableServerMessage(error)).toMatch(/at least 8 characters/);
+  });
+
+  // The enumeration guard. The API answers every enumerable signup failure with a constant
+  // 401 string; forwarding whatever it happens to say would put the client one server-side
+  // wording change away from leaking which addresses hold accounts.
+  it('never surfaces a 401 message, however harmless it looks', () => {
+    const error = withStatus(401, { message: 'User already registered', statusCode: 401 });
+
+    expect(actionableServerMessage(error)).toBeUndefined();
+  });
+
+  it('ignores statuses the server does not write user copy for', () => {
+    expect(actionableServerMessage(withStatus(500, { message: 'boom' }))).toBeUndefined();
+    expect(actionableServerMessage(withStatus(409, { message: 'conflict' }))).toBeUndefined();
+  });
+
+  it('returns undefined when there is no usable message to show', () => {
+    expect(actionableServerMessage(withStatus(429))).toBeUndefined();
+    expect(actionableServerMessage(withStatus(429, { message: '   ' }))).toBeUndefined();
+    expect(actionableServerMessage(withStatus(429, { message: 42 }))).toBeUndefined();
+    expect(actionableServerMessage(new AxiosError('Network Error'))).toBeUndefined();
+    expect(actionableServerMessage(undefined)).toBeUndefined();
   });
 });

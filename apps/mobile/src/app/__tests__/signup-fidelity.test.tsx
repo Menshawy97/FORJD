@@ -35,7 +35,13 @@ describe('signup screen - design fidelity', () => {
   it('renders the password requirements hint under the password field', async () => {
     const { findByText } = await renderRouter('src/app', { initialUrl: '/signup' });
 
-    await findByText('Must be at least 8 characters, with a number and a letter.');
+    // Deliberate deviation from the prototype (see PASSWORD_HINT in signup.tsx): the
+    // prototype's wording omits the uppercase and symbol requirements that the contract and
+    // the Supabase policy actually enforce, so following it verbatim guarantees a rejected
+    // submission. Approved during the slice 14 device walk.
+    await findByText(
+      'Must be at least 8 characters, with an uppercase and a lowercase letter, a number, and a symbol.',
+    );
   });
 
   it('labels the fields the way the prototype does', async () => {

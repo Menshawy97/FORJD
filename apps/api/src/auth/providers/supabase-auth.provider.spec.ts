@@ -92,6 +92,47 @@ describe('SupabaseAuthProvider', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    /**
+     * Found during the slice 14 device walk: signup started failing with the generic
+     * "Please try again", which invites an immediate retry that cannot succeed for an hour.
+     * Unlike "User already registered", a mail-send rate limit says nothing about whether an
+     * address holds an account — it is keyed on the project's mail quota, not the address —
+     * so forwarding it leaks nothing and is the difference between a user retrying uselessly
+     * and knowing to wait.
+     */
+    it('forwards a mail rate limit as a 429 telling the caller to wait', async () => {
+      auth.signUp.mockResolvedValue({
+        data: { user: null, session: null },
+        error: authError('email rate limit exceeded', 'over_email_send_rate_limit'),
+      });
+
+      await expect(
+        provider.signUp({ email: 'a@example.com', password: 'Str0ng!Pass1' }),
+      ).rejects.toMatchObject({ status: 429 });
+    });
+
+    it('recognises a mail rate limit from the message when no code is present', async () => {
+      auth.signUp.mockResolvedValue({
+        data: { user: null, session: null },
+        error: authError('email rate limit exceeded'),
+      });
+
+      await expect(
+        provider.signUp({ email: 'a@example.com', password: 'Str0ng!Pass1' }),
+      ).rejects.toMatchObject({ status: 429 });
+    });
+
+    it('does not name the address or its account status in the rate-limit message', async () => {
+      auth.signUp.mockResolvedValue({
+        data: { user: null, session: null },
+        error: authError('email rate limit exceeded', 'over_email_send_rate_limit'),
+      });
+
+      await expect(
+        provider.signUp({ email: 'a@example.com', password: 'Str0ng!Pass1' }),
+      ).rejects.not.toThrow(/a@example\.com|registered|exists/);
+    });
+
     it('collapses an already-registered address into the generic failure', async () => {
       auth.signUp.mockResolvedValue({
         data: { user: null, session: null },

@@ -4,7 +4,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { registerRequestSchema } from '@forjd/contracts';
 
 import { signup } from '@/auth/apiClient';
-import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { actionableServerMessage, classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { saveSession } from '@/auth/secureStorage';
 import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
@@ -26,7 +26,20 @@ import { colors } from '@/theme/tokens';
 // deliberately looser than what is enforced — that mismatch is the design's, not a bug here.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const PASSWORD_HINT = 'Must be at least 8 characters, with a number and a letter.';
+/**
+ * **Deliberate deviation from the prototype**, approved during the slice 14 device walk.
+ *
+ * The prototype says "Must be at least 8 characters, with a number and a letter." That is a
+ * weaker rule than the one actually enforced: `newPasswordSchema` in `@forjd/contracts`
+ * mirrors the Supabase project's policy and also requires an uppercase letter and a symbol.
+ * A hint that describes a weaker policy than the one enforced does not just fail to help —
+ * it actively produces rejected submissions from users who followed it exactly.
+ *
+ * Third documented deviation, alongside the whole-row toggles in `privacy`/`notifs`. The
+ * wording deliberately matches the API's own weak-password message so the two cannot drift.
+ */
+const PASSWORD_HINT =
+  'Must be at least 8 characters, with an uppercase and a lowercase letter, a number, and a symbol.';
 
 type FieldName = 'name' | 'email' | 'password';
 
@@ -53,9 +66,15 @@ interface SubmitError {
  * has no credentials to reject — so only the offline branch is distinguished.
  */
 function describeSignupFailure(cause: unknown): string {
-  return classifyRequestFailure(cause) === 'offline'
-    ? OFFLINE_MESSAGE
-    : 'Could not create your account. Please try again.';
+  if (classifyRequestFailure(cause) === 'offline') {
+    return OFFLINE_MESSAGE;
+  }
+
+  // The API writes real copy for the two signup rejections a user can act on — a rejected
+  // password (400) and the provider's mail rate limit (429). Preferring it keeps the generic
+  // sentence for what it is actually true of, and stops "Please try again" being the advice
+  // for a quota that will not refill for an hour (slice 14 device walk).
+  return actionableServerMessage(cause) ?? 'Could not create your account. Please try again.';
 }
 
 export default function SignupScreen() {
