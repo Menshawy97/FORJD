@@ -355,9 +355,9 @@ constructor-injectable client, which is a small refactor nobody has needed yet.
 | 9 — Flutter shell | ✅ Done | `flutter create` scaffold + go_router routes, Riverpod, Dio client, theme. Analyzer clean, tests pass. |
 | 10 — Drift scaffold | ✅ Done | `AppDatabase` with a `CachedProfiles` table. Timestamps stored as **ISO-8601 text**, not Unix seconds — the default returns local time and silently shifts any instant that crossed a timezone. See `apps/mobile/build.yaml`. |
 | 11 — Mobile auth UI | ⬜ **Superseded** | Was merged as Flutter (PRs #2, #3): design tokens + Archivo, widget library, 401→refresh→replay network layer, auth screens, 5-tab shell, profile/edit-profile, ADR-010/011. Walked on an emulator; four findings fixed; 60 Flutter tests; debug APK builds. **The Flutter app this built no longer exists** — see "Mobile framework pivot" above. Its replacement is the Expo rebuild's **Slice 1** (auth + 5-tab shell, wired to the real backend, test-first, 35 tests), done under ADR-013. |
-| 12 — Build flavors | ⬜ Blocked on an account | Written against the Flutter app; needs re-scoping for Expo (EAS Build profiles rather than Flutter flavors). Topology decided ([ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md)); blocked only on creating `forjd-prod` and reconfiguring `forjd-dev` to confirmation-on. |
-| 13 — Staging deploy | ⬜ Blocked on an account | Host decided — Google Cloud Run ([ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md), supersedes ADR-009's Railway choice). Blocked only on creating the Google Cloud project and writing `apps/api/Dockerfile`. |
-| 14 — Device DoD walk | ⬜ Not started | Needs 12/13 plus the physical Android device. |
+| 12 — Build flavors | ✅ Done | Re-scoped for Expo: `apps/mobile/eas.json` with `development`/`staging`/`production` EAS Build profiles setting `API_BASE_URL`, consumed via `app.config.ts`'s `extra.apiBaseUrl`. EAS project linked under the `forjd` org. |
+| 13 — Staging deploy | ✅ Done | Live at `https://forjd-api-staging-772363715082.us-central1.run.app` (health green, DB reachable). `apps/api/Dockerfile` (3-stage, prod deps only) + `.github/workflows/deploy-api.yml`, auto-deploying on green CI on `main`. Five recurring failure modes recorded under "Next, in order" — read them before setting up production. |
+| 14 — Device DoD walk | 🟡 In progress | 12/13 done; dev server running against deployed staging. Note `forjd-dev` now requires **email confirmation** (ADR-015), so register needs a real inbox. |
 
 Phase 1's definition of done is unchanged: register → login → refresh → logout →
 view/edit profile against the deployed staging API from the physical device, with
@@ -722,6 +722,16 @@ A-D batch.
       and `gcloud secrets versions add --data-file=$path`. **Development on this project
       happens on Windows/PowerShell — any manual command handed to the operator must be
       PowerShell syntax, not bash.**
+
+   **Custom SMTP is required before beta, and is not optional.** Supabase's built-in mailer
+   is a development convenience capped at roughly **2-4 emails per hour per project**. With
+   email confirmation on (ADR-015), every signup sends mail, so the cap *is* the signup
+   ceiling. This was hit within minutes during the slice 14 walk: registration began failing
+   with `email rate limit exceeded` after three accounts. For real users this is
+   indistinguishable from the app being broken — the third person to sign up in an hour never
+   receives their confirmation link. Connect a real provider (Resend, SendGrid, Postmark —
+   all have free tiers in the thousands/month) in **Authentication → Emails → SMTP Settings**,
+   for `forjd-dev`/staging and `forjd-prod` alike. It is a project setting, not a code change.
 
    **What production still needs** (deliberately not done yet — staging first, then the
    slice 14 device walk, then prod as its own careful step):

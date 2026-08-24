@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
@@ -28,6 +30,18 @@ import {
  */
 function isWeakPasswordError(error: AuthError): boolean {
   return error.code === 'weak_password' || error.message.startsWith('Password should');
+}
+
+/**
+ * GoTrue throttles outbound mail per project, not per address, so this fires on a signup for
+ * an address that has never been seen. Same belt-and-braces shape as `isWeakPasswordError`:
+ * the code is the real signal, the message match is the backstop for when it is absent.
+ */
+function isMailRateLimitError(error: AuthError): boolean {
+  return (
+    error.code === 'over_email_send_rate_limit' ||
+    error.message.toLowerCase().includes('email rate limit exceeded')
+  );
 }
 
 /**
@@ -98,6 +112,20 @@ export class SupabaseAuthProvider implements AuthProvider {
         throw new BadRequestException(
           'Password must be at least 8 characters and include an uppercase letter, ' +
             'a lowercase letter, a number, and a symbol.',
+        );
+      }
+
+      // Safe to forward for the same reason the weak-password branch above is: GoTrue counts
+      // this against the project's mail quota, not against the address, so it fires
+      // identically for a brand-new address and one that already has an account. Collapsing it into the
+      // generic failure protects nobody and tells the user to "try again" when retrying
+      // cannot succeed until the quota refills. Found on the slice 14 device walk.
+      if (error && isMailRateLimitError(error)) {
+        this.logger.warn(`signUp hit the provider mail rate limit: ${error.message}`);
+
+        throw new HttpException(
+          'Too many sign-up emails have been sent recently. Please try again later.',
+          HttpStatus.TOO_MANY_REQUESTS,
         );
       }
 

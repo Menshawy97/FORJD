@@ -34,6 +34,49 @@ function responseStatus(error: unknown): number | undefined {
  */
 export const OFFLINE_MESSAGE = 'Cannot reach FORJD. Check your connection and try again.';
 
+/**
+ * Statuses whose response body carries copy the API wrote *for the user*, and which is
+ * therefore safe to render verbatim.
+ *
+ * 401 is excluded deliberately, and that exclusion is the point of the allowlist rather than
+ * an oversight: the API collapses every enumerable auth failure — "user already registered",
+ * "invalid login credentials", "email not confirmed" — into one constant 401 string
+ * precisely so a caller cannot probe which addresses hold accounts. Forwarding 401 bodies
+ * would leave this app one server-side wording change away from undoing that.
+ */
+const ACTIONABLE_STATUSES: readonly number[] = [400, 429];
+
+/**
+ * The server's own message, when the server meant it to be read by a person.
+ *
+ * Signup previously replaced every non-offline failure with one generic sentence, which made
+ * "Please try again" the advice for a mail-quota rejection that could not succeed for an
+ * hour (found on the slice 14 device walk). Preferring the server's message where one exists
+ * also stops the weak-password rule from being written carefully in the API and then thrown
+ * away by the client.
+ */
+export function actionableServerMessage(error: unknown): string | undefined {
+  const status = responseStatus(error);
+  if (status === undefined || !ACTIONABLE_STATUSES.includes(status)) {
+    return undefined;
+  }
+
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  const response = (error as { response?: unknown }).response;
+  if (typeof response !== 'object' || response === null) {
+    return undefined;
+  }
+  const data = (response as { data?: unknown }).data;
+  if (typeof data !== 'object' || data === null) {
+    return undefined;
+  }
+  const message = (data as { message?: unknown }).message;
+
+  return typeof message === 'string' && message.trim().length > 0 ? message : undefined;
+}
+
 export function classifyRequestFailure(error: unknown): RequestFailure {
   const status = responseStatus(error);
 
