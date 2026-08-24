@@ -86,6 +86,49 @@ describe('UsersRepository', () => {
     expect(row?.email).toBe(email);
   });
 
+  /**
+   * `isUniqueViolation` only checked `error.code`, but this project's drizzle-orm (0.45.2)
+   * wraps every node-postgres failure in a `DrizzleQueryError`, with the real pg error (and
+   * its `.code`) attached as `.cause`, not as a top-level property. That made the guard never
+   * match a real unique_violation, so the `ConflictException` branch it exists to reach was
+   * unreachable — a concurrent registration would surface a raw `DrizzleQueryError` instead.
+   *
+   * This reproduces the exact race the code comment on `upsertFromIdentity` describes: a
+   * second identity's pre-checks (`findByExternalId`, then the `claimedByAnother` select)
+   * both clear before a first identity's insert for the same email commits, so the second
+   * call's own insert collides with the real `users_email_unique` constraint (the
+   * `onConflictDoUpdate` target is `supabaseUserId`, not `email`, so ON CONFLICT does not
+   * swallow it). Two merely-concurrent calls only hit that window nondeterministically, so
+   * the winning insert is driven from inside a `db.transaction` spy — triggered only after
+   * the losing call's own pre-checks have already cleared — to make the collision certain
+   * every run instead of hoping two promises interleave the right way.
+   */
+  it('turns a concurrent-insert email race into a ConflictException, not a raw driver error', async () => {
+    const email = uniqueEmail('race');
+    const winnerExternalId = crypto.randomUUID();
+    const loserExternalId = crypto.randomUUID();
+
+    const originalTransaction = db.transaction.bind(db);
+    const transactionSpy = jest
+      .spyOn(db, 'transaction')
+      .mockImplementationOnce(async (callback: Parameters<typeof db.transaction>[0]) => {
+        await repository.upsertFromIdentity(winnerExternalId, email);
+        return originalTransaction(callback);
+      });
+
+    try {
+      await expect(
+        repository.upsertFromIdentity(loserExternalId, email),
+      ).rejects.toBeInstanceOf(ConflictException);
+    } finally {
+      transactionSpy.mockRestore();
+    }
+
+    const rows = await db.select().from(users).where(eq(users.email, email));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.supabaseUserId).toBe(winnerExternalId);
+  });
+
   it('finds a user by external id and returns null for an unknown one', async () => {
     const email = uniqueEmail('lookup');
     const externalId = crypto.randomUUID();

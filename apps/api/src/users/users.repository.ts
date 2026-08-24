@@ -23,9 +23,15 @@ import { privacySettings } from '../database/schema/privacy-settings.schema';
 import { profiles, ProfileRow } from '../database/schema/profiles.schema';
 import { users, UserRow } from '../database/schema/users.schema';
 
-/** Postgres unique_violation. */
+/**
+ * Postgres unique_violation. drizzle-orm wraps every node-postgres query failure in a
+ * `DrizzleQueryError`, with the real pg error — and its `.code` — attached as `.cause` rather
+ * than as a top-level property, so both locations must be checked.
+ */
 function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
+  const code = (error as { code?: unknown } | null)?.code;
+  const causeCode = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
+  return code === '23505' || causeCode === '23505';
 }
 
 /**
