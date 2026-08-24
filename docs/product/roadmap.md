@@ -123,11 +123,13 @@ critical re-read of the roadmap that found the highest-leverage work in the repo
 unblocked and undone, while slices 12-14 were blocked on decisions rather than only on
 accounts.
 
-**The environment topology assumed by slice 12 no longer held**, and Railway (ADR-009) was
-rejected on cost. Both are now decided —
-[ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md) — so slices 12 and 13
-are back to being blocked only on the manual account-creation steps, not on a decision: see
-"Next, in order" below.
+**Slices 12 and 13 are now done and merged.** EAS Build profiles exist and EAS is linked;
+the API is **deployed and live on Cloud Run staging**
+(`https://forjd-api-staging-772363715082.us-central1.run.app`, health check green, database
+reachable). All manual GCP/Supabase/EAS account setup is complete. **Slice 14 — the
+definition-of-done device walk against deployed staging — is the only remaining Phase 1
+work, and it is unblocked.** See "Next, in order" below, including the five deployment
+failure modes recorded under slice 13 that will recur when production is set up.
 
 Half of the phase's definition of done is already mechanically true: exactly one
 file imports the Supabase SDK for auth, one for storage, and nothing else —
@@ -665,18 +667,74 @@ A-D batch.
    (`pnpm build:development` / `:staging` / `:production` scripts added to
    `apps/mobile/package.json`).
 
-   **Two placeholders left for slice 13 to fill in, not blockers for this slice:** the
-   `staging` and `production` profiles' `API_BASE_URL` values are literal
-   `REPLACE_WITH_CLOUD_RUN_URL` placeholders — the real Cloud Run URLs don't exist until
-   slice 13 deploys. Update `apps/mobile/eas.json` once each URL is known.
+   **The `staging` profile now points at the live deployed API** —
+   `https://forjd-api-staging-772363715082.us-central1.run.app`, verified serving
+   `{"status":"ok","database":"up"}`. **`production` is still a literal
+   `REPLACE_WITH_CLOUD_RUN_URL` placeholder**, because no production Cloud Run service
+   exists yet; fill it in when prod is deployed (the service will be named
+   `forjd-api-production`, so the URL follows the same
+   `https://<service>-<project-number>.<region>.run.app` shape).
 
-   **Genuinely blocking `eas build` itself, not part of this slice's scope:** no Expo
-   account/EAS project is linked yet (`eas login` + `eas init`, which stamps an
-   `extra.eas.projectId` into the app config). That's an interactive, credentialed step this
-   session cannot perform — same category as the account-creation steps ADR-015 already
-   flagged, just not one of the five confirmed this session. Run it manually before the first
-   `eas build` invocation.
-3. 🟡 **Slice 13 — deploy staging to Cloud Run. Pipeline written; not yet runnable.**
+   **EAS is linked.** `eas login` + `eas init` were run manually; `app.config.ts` now carries
+   `owner: 'forjd'` and `extra.eas.projectId`. The project lives under the **`forjd` org**
+   account, not a personal one.
+3. ✅ **Slice 13 — deploy staging to Cloud Run. DONE — staging is live.**
+   `https://forjd-api-staging-772363715082.us-central1.run.app/api/v1/health` returns
+   `{"status":"ok","database":"up"}`, which proves the container serves traffic *and* reaches
+   the forjd-dev Postgres through the session pooler. GCP project `forjd-506508`
+   (number `772363715082`), region `us-central1`.
+
+   **Confirmed Supabase project refs** (from the management API, so these are authoritative —
+   they were mixed up once during setup and cost real time):
+   - `wzjireraquxtyhbzvkfw` = **forjd-dev** → serves as **staging**, region `eu-west-1`
+   - `lzhwyvrtkmgtjruvjins` = **forjd-prod**, region `eu-west-1`
+
+   **Five failures stood between "pipeline written" and "staging live." Every one of them
+   will recur when production is set up — read this list before doing prod:**
+   1. **The direct connection string is IPv6-only and unusable.** `db.<ref>.supabase.co`
+      fails with `getaddrinfo ENOENT` from both a Windows dev machine and GitHub runners.
+      Supabase's paid IPv4 add-on is *not* needed and *not* the answer — the **session
+      pooler** (`postgres.<ref>@aws-1-<region>.pooler.supabase.com:5432`) is IPv4 and free.
+      Use the dashboard's copy button on the Session pooler tab; do not hand-assemble it.
+   2. **`drizzle-kit migrate` swallows every connection error.** Its spinner overwrites the
+      error text with `\r`, so CI logs and local terminals alike show a bare exit 1 with no
+      message. Three separate debugging attempts learned nothing from it. A ten-line script
+      using `pg`'s `Client` directly prints the real error (`ENOENT`, `28P01`, etc.) and is
+      the fastest way to diagnose any future connection problem — write one, use it, delete it.
+   3. **Supavisor caches credentials after a password reset.** A correct password can fail
+      with `28P01 password authentication failed` for a minute or two afterwards. Retry
+      before concluding the password is wrong — this cost an entire debugging detour into
+      project refs, regions, and URL-encoding that were all fine.
+   4. **The Cloud Run *runtime* service account is not the deploy service account.** Granting
+      `roles/secretmanager.secretAccessor` to `forjd-deployer` is not enough; the revision
+      runs as the default compute SA (`<project-number>-compute@developer.gserviceaccount.com`)
+      and needs its own grant on each secret. Done per-secret rather than project-wide to keep
+      the grant scoped. *(Hardening left undone: a dedicated minimal runtime SA via
+      `gcloud run deploy --service-account` would be better than reusing the default compute
+      SA. Not blocking; worth doing before production carries real user data.)*
+   5. **PowerShell is not bash, and `--set-secrets` mounts raw bytes.** Secrets created with
+      bash idioms (`echo -n "..." | gcloud ...`) in a PowerShell session get a literal `-n`
+      and/or a trailing `CRLF` baked into the value. This stayed invisible through the
+      migration step — which reads secrets via bash `$(...)`, stripping trailing newlines —
+      and only surfaced at container start as
+      `Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL`. Write secret values with
+      `[System.IO.File]::WriteAllText($path, $value, [System.Text.UTF8Encoding]::new($false))`
+      and `gcloud secrets versions add --data-file=$path`. **Development on this project
+      happens on Windows/PowerShell — any manual command handed to the operator must be
+      PowerShell syntax, not bash.**
+
+   **What production still needs** (deliberately not done yet — staging first, then the
+   slice 14 device walk, then prod as its own careful step):
+   - `forjd-production-database-url` **is currently wrong**: it was seeded by copying the
+     staging secret back when that held prod's values, so it carries forjd-prod's *direct*
+     (IPv6) connection string. It needs forjd-prod's **session pooler** string
+     (`postgres.lzhwyvrtkmgtjruvjins@aws-1-eu-west-1.pooler.supabase.com:5432`).
+   - The same three `secretAccessor` grants to the runtime SA, on the `forjd-production-*`
+     secrets.
+   - A `production` GitHub environment, and `apps/mobile/eas.json`'s `production`
+     `API_BASE_URL` filled in once the service exists.
+
+   **How the pipeline is built:**
    `apps/api/Dockerfile` is a three-stage build — `pnpm fetch` (lockfile-only, cacheable),
    `build` (`pnpm --filter @forjd/api... run build` then `pnpm --filter @forjd/api deploy
    --prod --legacy /workspace/deploy`, isolating just `@forjd/api`'s production dependency
@@ -694,31 +752,38 @@ A-D batch.
    goes green on `main` (same "green run, not green PR" discipline as the standing post-merge
    rule) or manually via `workflow_dispatch` with a `staging`/`production` target.
 
-   **Genuinely blocking, and out of scope for this session to create — GCP/GitHub
-   credentials, not code:**
-   - A GCP service account for deploys, with Workload Identity Federation configured so
-     GitHub Actions authenticates without a stored long-lived key.
-   - Repo/environment variables `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER`,
-     `GCP_DEPLOY_SERVICE_ACCOUNT`.
-   - Three GCP Secret Manager secrets per target environment, named `forjd-<target>-database-url`,
-     `forjd-<target>-supabase-url`, `forjd-<target>-supabase-service-role-key` (`<target>` is
-     `staging` or `production`) — `database-url` must hold the **session pooler** string.
-   - An Artifact Registry Docker repo named `forjd` in the target GCP project/region.
+   **The GCP/GitHub setup behind it, all now done for staging:**
+   - `forjd-deployer@forjd-506508.iam.gserviceaccount.com`, authenticating from GitHub
+     Actions via Workload Identity Federation — no long-lived JSON key is stored anywhere.
+   - Repo *variables* (not secrets — none of these is a credential): `GCP_PROJECT_ID`,
+     `GCP_REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT`.
+   - Three Secret Manager secrets per target: `forjd-<target>-database-url`,
+     `forjd-<target>-supabase-url`, `forjd-<target>-supabase-service-role-key`.
+   - An Artifact Registry Docker repo named `forjd` in `us-central1`.
 
-   None of these were among the five manual steps confirmed at the start of this session —
-   they're a distinct, later layer (CI/CD credentials, not account creation), and the right
-   next move once this session ends is running them by hand before the workflow's first
-   real trigger. Once the staging Cloud Run URL exists, update `apps/mobile/eas.json`'s
-   `staging.env.API_BASE_URL` placeholder (see slice 12 above).
+   The workflow's `check` job verifies all four repo variables are present and **skips the
+   deploy job cleanly when they are not**, so a repo without GCP configured gets a green
+   skip rather than a red failure on every push to `main`.
 4. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
-   staging. This is what actually closes Phase 1.
+   staging. **This is the next thing to do, and it is unblocked.** This is what actually
+   closes Phase 1.
 
-**If the manual account-creation steps (creating `forjd-prod`, the Google Cloud project)
-have not been done when a session resumes**, there is no unblocked Phase 1 work left, and
-the useful default is Phase 2 — transcribe its re-plan into this file first, per the note
-above, rather than starting from a blank slice.
+   Everything it depends on is now in place: staging is live and healthy, `eas.json`'s
+   `staging` profile points at it, and EAS is linked. Two things to know going in:
+   - **forjd-dev now has email confirmation ON** (ADR-015 — it serves as staging, so it must
+     behave like production). The register → login round-trip therefore requires a real
+     inbox; the "check your inbox" panel appearing is *correct behaviour now*, not a bug.
+     The older note further down this file about confirmation being off is superseded.
+   - **The 401 → refresh → replay path can finally be exercised on device.** Access-token
+     lifetime is now 900 s in both projects (ADR-012), so it can simply be waited out — the
+     thing the slice B walk could not test by hand.
 
-Before starting slice 12, re-read this file and the plan's Phase 1 outline, as the working
+**All manual account/credential setup is done** — both Supabase projects, the Google Cloud
+project, the deploy service account, Workload Identity Federation, Secret Manager, Artifact
+Registry, and EAS. There is unblocked Phase 1 work (slice 14); Phase 2 should not be started
+before it closes.
+
+Before starting the next slice, re-read this file and the plan's Phase 1 outline, as the working
 method below requires. Phase 2 (exercise database) should be re-planned rather than executed
 from the outline — later phases were deliberately left thin so earlier ones could teach their
 lessons, and slice 11 taught several worth carrying forward: mirror provider-side constraints
@@ -775,12 +840,12 @@ token, open the profile screen, and confirm **exactly one** `/auth/refresh` in t
 followed by a successful `/users/me`. Then corrupt the refresh token and confirm the app
 lands back on `/welcome`.
 
-**Email confirmation is currently OFF in `forjd-dev`**, which is what lets register → login
-be walked without a real inbox. If a walk ever shows the "check your inbox" panel instead
-of signing straight in, that setting has been turned back on (Authentication → Providers →
-Email) rather than something being broken. The `AuthNeedsEmailConfirmation` state and its
-tests stay regardless — that is production behaviour, and staging/prod should keep
-confirmation on.
+**SUPERSEDED (2026-08-24): email confirmation is now ON in `forjd-dev`.** It was off while
+`forjd-dev` served as the dev project, which is what let register → login be walked without
+a real inbox. Under ADR-015 `forjd-dev` is **staging** and must behave like production, so
+confirmation was turned on deliberately. The "check your inbox" panel is now the *expected*
+result of a register walk — not a sign something broke. Local development runs against the
+Supabase CLI's Docker stack instead, which is where a no-inbox round-trip belongs now.
 
 Passwords must satisfy the policy: 8+ characters with an uppercase, a lowercase, a digit,
 and a symbol from Supabase's set — a space does not count. `Str0ng!Pass1` works.
