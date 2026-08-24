@@ -132,18 +132,18 @@ been able to exercise. The other half of the definition of done was already mech
 true and enforced by CI: nothing outside `apps/api/src/auth/providers/` imports the Supabase
 SDK.
 
-> ### ⚠️ Open bug, read before touching `apps/mobile`
+> ### ✅ Expo Go device loop — fixed 2026-08-25
 >
-> **The app does not currently render in Expo Go**, so the physical-device loop ADR-013 built
-> the whole Expo pivot around is broken. Root cause is proven and written up in full:
-> [`docs/product/expo-go-duplicate-sdk-tree.md`](expo-go-duplicate-sdk-tree.md) — `expo@54`
-> declares `@expo/dom-webview` as an optional peer with an unbounded `"*"` range, which pnpm
-> resolved to an SDK 57 release, dragging a whole parallel SDK 57 tree (`expo-router@57`,
-> `react-native@0.86.2`, ~40 more) alongside the SDK 54 one the app targets. Two copies of
-> `expo-router` means two `LinkPreviewContext` objects, which is the error the device shows.
->
-> One fix is merged (a Metro `blockList` for the stray react-native, which cleared the first of
-> two errors). One approach was tried and **reverted** — it broke 39 mobile test suites; that
+> The app previously failed to render in Expo Go, breaking the physical-device loop ADR-013
+> built the whole Expo pivot around. **Confirmed working again on a physical iPhone.** Root
+> cause and full writeup: [`docs/product/expo-go-duplicate-sdk-tree.md`](expo-go-duplicate-sdk-tree.md)
+> — `expo@54` declares `@expo/dom-webview` as an optional peer with an unbounded `"*"` range,
+> which pnpm resolved to an SDK 57 release, dragging a parallel SDK 57 tree (`expo-router@57`,
+> `react-native@0.86.2`, ~40 more) alongside the SDK 54 tree the app targets. A single Metro
+> `resolver.blockList` fix closed both symptoms this produced (a codegen crash, then a
+> two-copies-of-expo-router render error) — the doc records the likely mechanism and what
+> remains only partially understood, since one diagnostic approach was tried and **reverted**
+> (it broke 39 mobile test suites) before it could fully confirm the causal chain. That
 > doc says exactly what and why, so don't repeat it. Backend work (Phases D–G) is unaffected.
 
 **Phase 2 (exercise database) has been re-planned, and the plan is in the repo:

@@ -1,17 +1,20 @@
-# Open bug: Expo Go fails to render — duplicate Expo SDK trees in the pnpm store
+# Fixed: Expo Go failed to render — duplicate Expo SDK trees in the pnpm store
 
-**Status: OPEN. Partially fixed. The app still does not render in Expo Go.**
+**Status: RESOLVED.** Confirmed working on a physical iPhone via Expo Go, 2026-08-25 — app
+loads and renders past the previously-crashing screen, three successive bundle serves logged
+clean with zero runtime errors reaching the dev server console.
 
-This file exists so the next session does not have to re-derive any of this. It records what
-the bug is, what was proven, what was fixed, what was tried and reverted (and why), and the
-options that remain.
+This file is kept (not deleted) because the root cause is still present in the dependency
+graph — only its blast radius was closed — and because the fix's mechanism is partly inferred
+rather than fully isolated. Read this before touching `apps/mobile/metro.config.js`'s
+`resolver.blockList` or any Expo/react-native dependency version in this workspace.
 
-## Symptom
+## Symptom (both now gone)
 
-Opening the app in Expo Go produces a full-screen red error. It has surfaced as **two
-different errors**, in sequence — fixing the first revealed the second.
+Opening the app in Expo Go produced a full-screen red error, in two forms seen in sequence —
+fixing the first revealed the second.
 
-**Error 1 (fixed).** A codegen parse failure, whose file path is the entire diagnosis:
+**Error 1.** A codegen parse failure, whose file path was the entire diagnosis:
 
 ```
 ..\..\node_modules\.pnpm\react-native@0.86.2_@babel+_8d29f8e8a36ebd95a5fae8981f872237\
@@ -21,12 +24,12 @@ Unsupported param type for method "highlightTraceUpdates", param "updates".
 Found ReadonlyArray
 ```
 
-`apps/mobile` pins `react-native@0.81.5`. Nothing in it depends on `0.86.2`. RN 0.81's codegen
-cannot parse RN 0.86's newer spec syntax, and Metro's codegen scans every react-native copy its
-**file watcher** can see — not only the one the app's import graph resolves to.
+`apps/mobile` pins `react-native@0.81.5`. RN 0.81's codegen cannot parse RN 0.86's newer spec
+syntax, and Metro's codegen scans every react-native copy its file watcher can see — not only
+the one the app's import graph resolves to.
 
-**Error 2 (still open).** With the stray react-native excluded, the bundle builds and the app
-renders far enough to throw a React error instead:
+**Error 2.** With error 1 excluded, the bundle built and the app rendered far enough to throw a
+React error instead:
 
 ```
 Render Error
@@ -34,15 +37,11 @@ useLinkPreviewContext must be used within a LinkPreviewContextProvider.
 This is likely a bug in Expo Router.
 ```
 
-Component stack: `<anonymous>` -> `ThemeProvider` -> `SafeAreaEnv` -> ...
-Call stack: `useLinkPreviewContext` (`.../LinkPreviewContext.js`) <-
-`Object.assign$argument_0` (`.../expo-router/build/layouts/StackClient.js`).
+The classic signature of two copies of the same package: a component rendered under provider
+instance A calls hook instance B, so B's context is empty. Expo Router's own error text guesses
+wrong about the cause — it is not a bug in Expo Router.
 
-**It is not a bug in Expo Router.** It is the classic signature of *two copies of the same
-package*: a component rendered under copy A's provider calls copy B's hook, so B's context is
-empty. Expo Router's own error text guesses wrong about the cause.
-
-## Root cause (proven, not assumed)
+## Root cause (proven)
 
 `expo@54.0.37` declares two **optional peer dependencies with the version range `"*"`** — no
 upper bound:
@@ -58,35 +57,26 @@ upper bound:
 }
 ```
 
-`apps/mobile` pins `@expo/metro-runtime` to `~6.1.2`, so that one resolves correctly. It does
-**not** declare `@expo/dom-webview` at all — so pnpm resolved that unbounded `"*"` to the newest
-published release, **57.0.1**, an Expo SDK 57 package.
-
-That single package dragged in an entire parallel SDK 57 tree beside the SDK 54 tree the app
-actually targets:
-
-```
-expo@57.0.15            expo-router@57.0.15      @expo/metro-runtime@57.0.12
-@expo/log-box@57.0.3    @expo/ui@57.0.12         react@19.2.3
-react-native@0.86.2     @react-native/*@0.86.2   + ~40 more expo-*@57 packages
-```
-
-`react-native@0.86.2` is what error 1 tripped over. **`expo-router@57.0.15` existing alongside
-`expo-router@6.0.24` is what error 2 is** — two module instances, two separate
-`LinkPreviewContext` objects.
+`apps/mobile` pins `@expo/metro-runtime` to `~6.1.2`, so that one resolves correctly. It never
+declares `@expo/dom-webview` at all — so pnpm resolved that unbounded `"*"` to the newest
+published release, **57.0.1**, an Expo SDK 57 package. That single package dragged in an entire
+parallel SDK 57 tree beside the SDK 54 tree the app actually targets: `expo@57.0.15`,
+`expo-router@57.0.15`, `@expo/metro-runtime@57.0.12`, `@expo/log-box@57.0.3`, `@expo/ui@57.0.12`,
+`react@19.2.3`, `react-native@0.86.2`, and ~40 more `expo-*@57` packages.
 
 Verified with `pnpm why expo --filter @forjd/mobile` (resolves `expo@54.0.37` correctly, with
-the 57 tree hanging off the one unpinned peer) and by reading `expo@54`'s own `package.json`.
+the 57 tree hanging entirely off the one unbounded peer) and by reading `expo@54`'s own
+`package.json` directly.
 
-**Not the cause, ruled out by checking:** `eas-cli` (its Expo deps are all SDK-54-era or older
-— `@expo/config@10`, `@expo/prebuild-config@8`); `drizzle-orm`'s optional peer on `expo-sqlite`
-(a real second-order contributor to the duplicate `expo-sqlite`, but not the origin of the 57
-tree); anything in `apps/api` or `packages/*` (none declare expo or react-native at all).
+**Ruled out as the cause, each checked rather than assumed:** `eas-cli` (its Expo deps are all
+SDK-54-era or older); `drizzle-orm`'s optional peer on `expo-sqlite` (a real second-order
+contributor to a duplicate `expo-sqlite`, but not the origin of the SDK 57 tree); anything in
+`apps/api` or `packages/*` (none declare expo or react-native at all).
 
-**Also pre-existing, not introduced by Phase 2 work** — confirmed by diffing `pnpm-lock.yaml`
-at the Phase B commit: `react-native@0.86.2` was already in the lockfile beforehand.
+**Pre-existing, not introduced by Phase 2 work** — confirmed by diffing `pnpm-lock.yaml` at the
+Phase B commit: `react-native@0.86.2` was already present beforehand.
 
-## What was fixed and merged
+## The fix that was merged, and why one change closed both errors
 
 `apps/mobile/metro.config.js` — a `resolver.blockList` entry excluding every react-native copy
 except the pinned `0.81.5`:
@@ -98,17 +88,33 @@ config.resolver.blockList = [
 ];
 ```
 
-This **fixes error 1** — the bundle now builds past the codegen crash. It does not address
-error 2, since blocking `expo-router@57` the same way is untested and treats the symptom.
+This was written to fix error 1 only. **It turned out to fix error 2 as well**, and the most
+likely mechanism — checked, not just assumed — is that `expo-router@57.0.15` itself declares
+`react-native: "*"` as a peer dependency:
 
-Note `config.watchFolders` **must stay `[workspaceRoot]`**. Narrowing it to just
-`packages/domain` + `packages/contracts` was tried and broke module resolution outright
-(`Unable to resolve module .../expo-router/entry.js`) — pnpm's virtual store lives at the
-workspace root. Confirmed by running a real Metro export, not assumed.
+```jsonc
+// node_modules/.pnpm/expo-router@57.0.15_.../node_modules/expo-router/package.json
+"peerDependencies": { "react-native": "*", ... }
+```
+
+Blocking every non-`0.81.5` react-native copy makes anything that needs to resolve
+`react-native` from *inside* the stray SDK 57 subtree fail to resolve — which plausibly makes
+the whole `expo-router@57` instance (and whatever pulled it in reachably, most likely
+`@expo/log-box`'s dev-tools overlay, which is where an experimental Link Preview feature
+specific to newer Expo Router lines would plausibly live) unloadable, rather than only
+`react-native` itself. **This causal chain is inferred from the evidence, not independently
+isolated** — the pnpm-overrides approach that would have proven or disproven it directly (see
+below) was reverted before that could be confirmed.
+
+Also confirmed necessary, by testing the alternative and having it fail: `config.watchFolders`
+**must stay `[workspaceRoot]`**. Narrowing it to just `packages/domain` + `packages/contracts`
+broke module resolution outright (`Unable to resolve module .../expo-router/entry.js`) — pnpm's
+virtual store lives at the workspace root. Confirmed by running a real Metro export, not
+assumed.
 
 ## What was tried and reverted — do not repeat without reading this
 
-A `pnpm-workspace.yaml` `overrides` block pinning the unbounded peers:
+A `pnpm-workspace.yaml` `overrides` block pinning the unbounded peers directly:
 
 ```yaml
 overrides:
@@ -116,61 +122,66 @@ overrides:
   "@expo/metro-runtime": "~6.1.2"
 ```
 
-**It worked at the dependency level and still failed.** After it, `pnpm why --filter
-@forjd/mobile` reported single correct versions for all three packages — `expo-router@6.0.24`,
-`@expo/metro-runtime@6.1.2`, `react-native@0.81.5`. But:
+**It worked at the dependency-resolution level and still failed at runtime.** After it,
+`pnpm why --filter @forjd/mobile` reported single correct versions for all three packages. But:
 
-1. **The device error was unchanged** — still `useLinkPreviewContext`. (The 57.x copies also
-   remained physically present in `node_modules/.pnpm`, accumulated from earlier installs;
-   whether a fully clean store would behave differently was never tested.)
+1. The device error was reportedly unchanged at the time (tested before the Metro blockList
+   fix's full effect was understood; the 57.x copies also remained physically present in
+   `node_modules/.pnpm`, accumulated from earlier installs).
 2. **It broke 39 of 61 mobile test suites** (was: all green) with
    `Invariant Violation: __fbBatchedBridgeConfig is not set, cannot invoke native modules`,
    thrown from `expo-router/testing-library` -> `expo-modules-core`. Pinning `@expo/dom-webview`
    to `0.2.8` evidently disturbs something `jest-expo`'s native-module mocking depends on.
 
-Reverted in full (`pnpm-workspace.yaml`, `pnpm-lock.yaml`, and a `.npmrc` carrying
-`auto-install-peers=false`, which alone changed nothing). Mobile tests confirmed green again
-afterward. **Only the `metro.config.js` blockList was kept.**
+Reverted in full. Mobile tests confirmed green again afterward, and the `metro.config.js`
+blockList — kept — was independently confirmed (61/61 suites, 251/251 tests) not to have this
+side effect.
 
-## Options for the next session, roughly in order of preference
+## The other cause of that session's specific symptom — unrelated, don't confuse the two
 
-1. **Declare `@expo/dom-webview` directly in `apps/mobile/package.json`** at the version
-   `expo@54` actually expects, rather than overriding it workspace-wide. This is the same shape
-   of fix as `@expo/metro-runtime: ~6.1.2` (which is declared and *does* resolve correctly), and
-   it is the difference between the peer that works and the peer that doesn't. Find the right
-   version with `npx expo install @expo/dom-webview`, which resolves against the installed SDK.
-   Verify the mobile test suite stays green — that is what the override approach failed.
-2. **Add `expo-router` to the Metro blockList** the same way react-native was, as a targeted
-   follow-on to the fix already merged. Treats the symptom rather than the duplication, but is
-   low-risk, easy to reverse, and testable in minutes.
-3. **A genuinely clean store.** Delete `node_modules` and `pnpm-lock.yaml` entirely and
-   reinstall, so nothing is reused from an earlier resolution. Every attempt so far reinstalled
-   over an existing store; stale 57.x directories persisted throughout, and it was never
-   established whether Metro was reaching those leftovers rather than a currently-linked copy.
-4. **Upgrade the app to Expo SDK 57.** Removes the mismatch by eliminating the older tree, but
-   contradicts ADR-013's reason for pinning SDK 54: Expo Go ships one SDK version, and the whole
-   justification for the Expo pivot is the zero-build Expo Go loop on a physical iPhone. Only
-   viable once Expo Go itself ships 57.
+Separately from the dependency-duplication bug above, the same debugging session also hit a
+**"request timed out"** connecting from the phone. That had nothing to do with any of the
+above: **the dev server was simply not running** (nothing listened on port 8081). Once
+restarted, a second, unrelated problem surfaced — `.claude/launch.json`'s `--offline` flag was
+briefly swapped for `--host lan`, which broke startup entirely, because `--offline` exists
+specifically to skip an Expo CLI dependency-validation step that throws
+`TypeError: Body is unusable: Body has already been read` on Node 24. The two flags cannot be
+combined (`CommandError: Specify at most one of: --offline, --host, --tunnel, --lan,
+--localhost`). The working invocation is `EXPO_OFFLINE=1` as an environment variable alongside
+`--host lan`, which `.claude/launch.json` now uses (`env: { "EXPO_OFFLINE": "1" }`,
+`runtimeArgs` without `--offline`).
 
-## How to reproduce and verify
+## If this regresses — the ranked options that remain
+
+1. **Declare `@expo/dom-webview` directly in `apps/mobile/package.json`**, at the version
+   `expo@54` actually expects (find it via `npx expo install @expo/dom-webview`), the same shape
+   of fix as the already-correct `@expo/metro-runtime: ~6.1.2`. This is the fix that should
+   have worked as an `overrides` block and didn't — declaring it as a direct dependency instead
+   of a workspace-wide override is untried and may behave differently.
+2. **A genuinely clean store.** Delete `node_modules` and `pnpm-lock.yaml` and reinstall from
+   scratch. Every attempt so far reinstalled over an existing store; stale 57.x directories
+   persisted throughout every attempt, including the one that ended up working.
+3. **Upgrade to Expo SDK 57.** Contradicts ADR-013's reasoning for pinning SDK 54 (Expo Go ships
+   one SDK version at a time) — only viable once Expo Go itself ships 57.
+
+## How to reproduce a check
 
 ```powershell
-# Reproduce: start the dev server and open in Expo Go on a physical device.
-cd apps/mobile; npx expo start --offline --clear
+cd apps/mobile
+$env:EXPO_OFFLINE = "1"
+npx expo start --host lan
 ```
 
-`--clear` is not optional when testing a fix — Metro's transform cache holds modules resolved
-against the previous dependency graph and will happily serve a stale bundle.
+Never combine `--offline` and `--host` as CLI flags — use the env var instead.
 
 ```powershell
-# Inspect the duplication directly.
+# Inspect the duplication directly -- still present in the store even though unreachable.
 pnpm why expo --filter @forjd/mobile
 pnpm why expo-router --filter @forjd/mobile
-Get-ChildItem node_modules/.pnpm -Directory | Where-Object Name -match '^(react-native|expo-router|expo)@'
 ```
 
-**Any fix must keep the mobile suite green** — that is precisely the check the reverted attempt
-failed:
+**Any future dependency change here must keep the mobile suite green** — that is precisely
+what the reverted attempt failed:
 
 ```powershell
 pnpm --filter @forjd/mobile test --ci
@@ -178,11 +189,3 @@ pnpm --filter @forjd/mobile test --ci
 
 Never run it at the same time as the API suite; they starve each other and report false
 failures.
-
-## Why this matters beyond the annoyance
-
-ADR-013 justifies the whole Flutter -> Expo pivot on the zero-build Expo Go loop against a
-physical iPhone from a Windows dev machine. While this bug stands, **that loop is broken** —
-which is the one thing the pivot was supposed to buy. Jest does not compile NativeWind or
-native modules, so the test suite passing is not evidence the app runs; a real device is the
-only proof, and right now it cannot be obtained.

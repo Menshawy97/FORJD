@@ -193,10 +193,12 @@ needs, so the Phase D adapter can map either direction without lossy collapsing.
 > Nothing in Phase C is half-finished. The `UsersRepository` follow-up this phase discovered was
 > also fixed and merged separately ([PR #39](https://github.com/Menshawy97/FORJD/pull/39)).
 >
-> Phases D–G are backend-only and **unaffected by the open Expo Go bug** — see the roadmap's
-> callout and `docs/product/expo-go-duplicate-sdk-tree.md`. That bug only blocks the mobile
-> phases (I–K), and it is worth fixing before those start, since Jest cannot prove a screen
-> actually renders on a device.
+> The Expo Go device-rendering bug flagged in an earlier version of this note is **fixed** —
+> confirmed working on a physical iPhone 2026-08-25. See the roadmap's callout and
+> `docs/product/expo-go-duplicate-sdk-tree.md` for what was fixed and what remains only
+> partially understood about the mechanism. The mobile phases (I–K) are unblocked. Jest still
+> cannot prove a screen actually renders on a device — the device walk each mobile phase ends
+> with remains the real check, not a substitute for one.
 
 - ✅ `exercises.schema.ts`: `id`, `ownerUserId` (nullable FK), `name`, `slug`, `category`,
   `goal`, `measure`, `primaryMuscles`/`secondaryMuscles`/`equipment` (`text[]` NOT NULL
