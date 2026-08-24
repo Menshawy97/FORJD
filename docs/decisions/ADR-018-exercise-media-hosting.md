@@ -112,11 +112,12 @@ explicit rather than removing it.
 ## Consequences
 
 - **Free-tier ceilings that apply, and when they bite.** Supabase's free plan allows roughly
-  1 GB of storage and ~5 GB of egress per month. The mirrored set is on the order of tens of
-  megabytes (Phase A measures the exact figure and this line is updated with it), so storage is
-  not close to the limit. Egress is the one to watch — mitigated substantially by `expo-image`'s
-  on-disk cache, which means a given device pays for each image roughly once rather than once
-  per view.
+  1 GB of storage and ~5 GB of egress per month. **Measured at Phase A** (see
+  `apps/api/src/exercises/ingest/data/SOURCE.md`): 873 exercises, 1,746 image paths, a 51-image
+  sample averaging ~52 KB each, projecting to **~88.6 MB total** — about 9% of the free storage
+  ceiling, not close to the limit. Egress is the one to watch — mitigated substantially by
+  `expo-image`'s on-disk cache, which means a given device pays for each image roughly once
+  rather than once per view.
 - **A CDN decision is deferred, not forgotten.** If egress becomes real money, putting
   Cloudflare's free unmetered-egress tier in front of the bucket is a DNS and config change,
   because of decision (2) above. Revisit before public launch.
