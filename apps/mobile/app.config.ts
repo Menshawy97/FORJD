@@ -4,6 +4,7 @@ import type { ExpoConfig } from 'expo/config';
 // Store / Play Store registration to preserve, so these are placeholders, not a migration
 // from a real listing.
 const config: ExpoConfig = {
+  owner: 'forjd',
   name: 'FORJD',
   slug: 'forjd-mobile',
   version: '1.0.0',
@@ -56,6 +57,9 @@ const config: ExpoConfig = {
     // OpenAI/WHOOP/Supabase secrets stay server-side; the mobile app only ever talks to
     // apps/api, never a third-party API directly.
     apiBaseUrl: process.env.API_BASE_URL ?? 'http://localhost:3000',
+    eas: {
+      projectId: '971ed96d-2f88-42e2-bcbf-1643ba5d8fa2',
+    },
   },
 };
 
