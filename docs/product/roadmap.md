@@ -654,16 +654,62 @@ A-D batch.
 1. ✅ **Supabase topology and free host — decided, [ADR-015](../decisions/ADR-015-supabase-topology-and-free-host.md).**
    `forjd-prod` + Cloud Run + local Docker dev, `forjd-dev` repurposed as staging. Not yet
    *created* — see next steps.
-2. **Slice 12 — build flavors.** Blocked only on actually creating `forjd-prod` (manual
-   Supabase step) and reconfiguring `forjd-dev` to confirmation-on per ADR-015 — the
-   decision itself is no longer the blocker. `API_BASE_URL` is now an Expo `app.config.ts`
-   `extra` value rather than a Dart `String.fromEnvironment`, so this becomes EAS Build
-   profiles rather than Flutter flavors.
-3. **Slice 13 — deploy staging to Cloud Run.** Superseding ADR-009 (now done via ADR-015)
-   requires `apps/api/Dockerfile`, which does not exist yet and needs writing (multi-stage,
-   production dependencies only), plus a Google Cloud project (manual step, ADR-015).
-   Note the IPv6 finding below: use the **session pooler** connection string when the
-   hosted database is first migrated, not the direct one.
+2. ✅ **Slice 12 — build flavors.** `apps/mobile/eas.json` now defines three EAS Build
+   profiles — `development` (internal, `developmentClient: true`, `API_BASE_URL` defaults to
+   the local Docker API at `http://localhost:3000`), `staging` (internal distribution,
+   `staging` update channel, points at the not-yet-deployed Cloud Run staging URL), and
+   `production` (`autoIncrement`, `production` channel, points at the not-yet-deployed Cloud
+   Run production URL). `app.config.ts` already read `process.env.API_BASE_URL` into
+   `extra.apiBaseUrl` before this slice (Slice 1); the only gap was the EAS profiles that set
+   that env var per build target, which this closes. `eas-cli` is now a devDependency
+   (`pnpm build:development` / `:staging` / `:production` scripts added to
+   `apps/mobile/package.json`).
+
+   **Two placeholders left for slice 13 to fill in, not blockers for this slice:** the
+   `staging` and `production` profiles' `API_BASE_URL` values are literal
+   `REPLACE_WITH_CLOUD_RUN_URL` placeholders — the real Cloud Run URLs don't exist until
+   slice 13 deploys. Update `apps/mobile/eas.json` once each URL is known.
+
+   **Genuinely blocking `eas build` itself, not part of this slice's scope:** no Expo
+   account/EAS project is linked yet (`eas login` + `eas init`, which stamps an
+   `extra.eas.projectId` into the app config). That's an interactive, credentialed step this
+   session cannot perform — same category as the account-creation steps ADR-015 already
+   flagged, just not one of the five confirmed this session. Run it manually before the first
+   `eas build` invocation.
+3. 🟡 **Slice 13 — deploy staging to Cloud Run. Pipeline written; not yet runnable.**
+   `apps/api/Dockerfile` is a three-stage build — `pnpm fetch` (lockfile-only, cacheable),
+   `build` (`pnpm --filter @forjd/api... run build` then `pnpm --filter @forjd/api deploy
+   --prod --legacy /workspace/deploy`, isolating just `@forjd/api`'s production dependency
+   tree — none of `apps/mobile`'s React Native deps reach the image), and a `node:22-slim`
+   `runtime` stage that copies only `dist/`, `node_modules/`, and `package.json` out of the
+   deploy bundle. **Built and run locally this session** (`docker build` succeeded; the
+   container booted Nest cleanly and failed only on the expected missing `SUPABASE_URL` —
+   proof the image resolves modules correctly, not proof it's deployed). `pnpm deploy`
+   needed `--legacy`: pnpm v10+ defaults to requiring `inject-workspace-packages=true`,
+   which this workspace doesn't set.
+
+   `.github/workflows/deploy-api.yml` builds the image, runs `pnpm --filter @forjd/api
+   db:migrate` against the **session pooler** connection string (not the direct one — the
+   IPv6 finding below), and `gcloud run deploy`s it. It triggers on `workflow_run` after `CI`
+   goes green on `main` (same "green run, not green PR" discipline as the standing post-merge
+   rule) or manually via `workflow_dispatch` with a `staging`/`production` target.
+
+   **Genuinely blocking, and out of scope for this session to create — GCP/GitHub
+   credentials, not code:**
+   - A GCP service account for deploys, with Workload Identity Federation configured so
+     GitHub Actions authenticates without a stored long-lived key.
+   - Repo/environment variables `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER`,
+     `GCP_DEPLOY_SERVICE_ACCOUNT`.
+   - Three GCP Secret Manager secrets per target environment, named `forjd-<target>-database-url`,
+     `forjd-<target>-supabase-url`, `forjd-<target>-supabase-service-role-key` (`<target>` is
+     `staging` or `production`) — `database-url` must hold the **session pooler** string.
+   - An Artifact Registry Docker repo named `forjd` in the target GCP project/region.
+
+   None of these were among the five manual steps confirmed at the start of this session —
+   they're a distinct, later layer (CI/CD credentials, not account creation), and the right
+   next move once this session ends is running them by hand before the workflow's first
+   real trigger. Once the staging Cloud Run URL exists, update `apps/mobile/eas.json`'s
+   `staging.env.API_BASE_URL` placeholder (see slice 12 above).
 4. **Slice 14 — the definition-of-done walk on the physical device**, against deployed
    staging. This is what actually closes Phase 1.
 

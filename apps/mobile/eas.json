@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "API_BASE_URL": "http://localhost:3000"
+      }
+    },
+    "staging": {
+      "distribution": "internal",
+      "channel": "staging",
+      "env": {
+        "API_BASE_URL": "https://forjd-api-staging.REPLACE_WITH_CLOUD_RUN_URL.run.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "API_BASE_URL": "https://forjd-api.REPLACE_WITH_CLOUD_RUN_URL.run.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
