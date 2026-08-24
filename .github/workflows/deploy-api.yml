@@ -29,10 +29,32 @@ env:
   TARGET: ${{ inputs.target || 'staging' }}
 
 jobs:
+  # Splits the readiness check into its own job so a missing GCP setup shows as a skipped
+  # `deploy` job (green) rather than a hard-failing `google-github-actions/auth` step (red)
+  # on every push to main until the manual GCP credential setup — GCP_WORKLOAD_IDENTITY_PROVIDER,
+  # GCP_DEPLOY_SERVICE_ACCOUNT, GCP_PROJECT_ID, GCP_REGION (docs/product/roadmap.md slice 13)
+  # — is done.
+  check:
+    name: Check deploy prerequisites
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && [ -n "${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}" ] && [ -n "${{ vars.GCP_PROJECT_ID }}" ] && [ -n "${{ vars.GCP_REGION }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GCP deploy config not set yet (GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOY_SERVICE_ACCOUNT, GCP_PROJECT_ID, GCP_REGION) — skipping deploy. See docs/product/roadmap.md slice 13."
+          fi
+
   deploy:
     name: Build, migrate, deploy
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    needs: check
+    if: needs.check.outputs.ready == 'true'
     environment: ${{ inputs.target || 'staging' }}
 
     steps:
