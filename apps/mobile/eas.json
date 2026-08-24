@@ -15,7 +15,7 @@
       "distribution": "internal",
       "channel": "staging",
       "env": {
-        "API_BASE_URL": "https://forjd-api-staging.REPLACE_WITH_CLOUD_RUN_URL.run.app"
+        "API_BASE_URL": "https://forjd-api-staging-772363715082.us-central1.run.app"
       }
     },
     "production": {
