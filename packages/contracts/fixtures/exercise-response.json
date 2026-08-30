@@ -1,0 +1,32 @@
+{
+  "id": "11111111-1111-4111-8111-111111111111",
+  "name": "Barbell Bench Press",
+  "slug": "barbell-bench-press",
+  "category": "strength",
+  "goal": "hypertrophy",
+  "measure": "weight",
+  "primaryMuscles": [
+    "chest"
+  ],
+  "secondaryMuscles": [
+    "triceps",
+    "shoulders"
+  ],
+  "equipment": [
+    "barbell"
+  ],
+  "force": "push",
+  "level": "beginner",
+  "mechanic": "compound",
+  "instructions": [
+    "Lie back on a flat bench holding the bar at shoulder width.",
+    "Lower the bar to the middle of your chest, then press it back up."
+  ],
+  "imageUrls": [
+    "https://media.example.com/exercises/bench-0.jpg",
+    "https://media.example.com/exercises/bench-1.jpg"
+  ],
+  "description": null,
+  "isCustom": false,
+  "isFavourite": false
+}

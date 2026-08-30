@@ -14,7 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "test:cov": "jest --coverage",
-    "exercises:normalize": "ts-node src/exercises/ingest/normalize.ts"
+    "exercises:normalize": "ts-node src/exercises/ingest/normalize.ts",
+    "exercises:load": "ts-node src/exercises/ingest/load.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",
@@ -100,6 +101,18 @@
         "lines": 100
       },
       "./src/athletes/athletes.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/exercises/exercises.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/exercises/exercise-cursor.ts": {
         "statements": 100,
         "branches": 100,
         "functions": 100,

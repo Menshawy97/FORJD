@@ -102,6 +102,20 @@ jobs:
       # would never actually execute in CI.
       - run: pnpm --filter @forjd/domain test
 
+      # @forjd/contracts gained a real jest suite in Phase E (exercises.spec.ts) where its
+      # `test` script had been an `echo "no tests yet"` stub. Same reasoning as the domain
+      # step above: `pnpm -r build` only type-checks these files, so without this step the
+      # 29 tests pinning the list envelope and the query coercions would never run in CI —
+      # and the query schema is exactly where `?favourite=false` silently becoming `true`
+      # would hide.
+      - run: pnpm --filter @forjd/contracts test
+
+      # Its `lint` script existed but nothing ran it, and the very first spec added to the
+      # package shipped an eslint error that only a local run caught. `@forjd/domain` has the
+      # same unrun `lint` script and is currently clean — worth adding, but out of this
+      # phase's scope; it is recorded as a follow-up in docs/product/phase-2-plan.md.
+      - run: pnpm --filter @forjd/contracts lint
+
       - run: pnpm --filter @forjd/api lint
 
       # Regenerating the contract fixtures must be a no-op. When it is not, a wire contract

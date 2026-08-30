@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import {
+  exerciseListResponseSchema,
+  exerciseResponseSchema,
   meResponseSchema,
   profileResponseSchema,
   publicProfileResponseSchema,
@@ -182,6 +184,90 @@ export const responseFixtures = {
       trainingGoals: [],
       activities: [],
       isSelf: false,
+    },
+  },
+
+  /**
+   * The list envelope, pinned once so every list endpoint that adopts it inherits a fixture
+   * of the shape rather than each inventing its own.
+   *
+   * Deliberately a *full* page with a non-null `nextCursor`: the interesting case is the one
+   * where more results exist, because a client that stops paging on a truthy-check rather
+   * than a null-check is only wrong here. The two rows differ in `isCustom` and `imageUrl`
+   * together, which is the real correlation — a user-authored exercise has no media.
+   */
+  'exercise-list-response': {
+    schema: exerciseListResponseSchema,
+    sample: {
+      items: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Barbell Bench Press',
+          slug: 'barbell-bench-press',
+          category: 'strength' as const,
+          measure: 'weight' as const,
+          primaryMuscles: ['chest' as const],
+          equipment: ['barbell' as const],
+          imageUrl: 'https://media.example.com/exercises/bench-0.jpg',
+          isCustom: false,
+          isFavourite: true,
+        },
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          name: 'Sandbag Carry',
+          slug: 'sandbag-carry',
+          category: 'cross_training' as const,
+          measure: 'distance' as const,
+          primaryMuscles: ['forearms' as const, 'traps' as const],
+          equipment: [],
+          imageUrl: null,
+          isCustom: true,
+          isFavourite: false,
+        },
+      ],
+      nextCursor: 'eyJuYW1lIjoiU2FuZGJhZyBDYXJyeSIsImlkIjoiMjIyIn0',
+    },
+  },
+
+  /**
+   * No results — a search that matched nothing, or the Favourites chip before anything is
+   * starred. `nextCursor` is null rather than absent: end-of-list is stated, never implied.
+   */
+  'exercise-list-response-empty': {
+    schema: exerciseListResponseSchema,
+    sample: { items: [], nextCursor: null },
+  },
+
+  /**
+   * A catalogue exercise in full. `imageUrls` carries resolved URLs and no storage key
+   * appears anywhere, which is the property ADR-018's cheap-media-swap depends on.
+   */
+  'exercise-response': {
+    schema: exerciseResponseSchema,
+    sample: {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Barbell Bench Press',
+      slug: 'barbell-bench-press',
+      category: 'strength' as const,
+      goal: 'hypertrophy' as const,
+      measure: 'weight' as const,
+      primaryMuscles: ['chest' as const],
+      secondaryMuscles: ['triceps' as const, 'shoulders' as const],
+      equipment: ['barbell' as const],
+      force: 'push' as const,
+      level: 'beginner' as const,
+      mechanic: 'compound' as const,
+      instructions: [
+        'Lie back on a flat bench holding the bar at shoulder width.',
+        'Lower the bar to the middle of your chest, then press it back up.',
+      ],
+      imageUrls: [
+        'https://media.example.com/exercises/bench-0.jpg',
+        'https://media.example.com/exercises/bench-1.jpg',
+      ],
+      description: null,
+      isCustom: false,
+      isFavourite: false,
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;

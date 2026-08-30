@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "echo \"no tests yet\" && exit 0",
+    "test": "jest",
     "fixtures": "ts-node scripts/write-fixtures.ts"
   },
   "dependencies": {
@@ -17,6 +17,22 @@
   "devDependencies": {
     "typescript": "^5.7.3",
     "ts-node": "^10.9.2",
-    "@types/node": "^22.10.7"
+    "@types/node": "^22.10.7",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "@types/jest": "^29.5.14"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "testEnvironment": "node"
   }
 }

@@ -92,15 +92,24 @@ jobs:
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
-      - name: Run database migrations
+      - name: Run database migrations and load the exercise catalogue
         # Pulled from Secret Manager (forjd-<target>-database-url), not a GitHub secret, so
         # the hosted DB credential lives in exactly one place. Must be the Supabase *session
         # pooler* connection string — the direct connection string fails over IPv6 from
         # GitHub-hosted runners (see docs/product/roadmap.md's IPv6 finding).
+        #
+        # `exercises:load` runs after `db:migrate` and before the deploy, so a new revision
+        # never comes up serving an empty library. It is a script rather than a migration
+        # because 873 content rows are not schema, and it is safe on every deploy because it
+        # is idempotent: the upsert is keyed on `(source, source_id)` and backed by a partial
+        # unique index, so a re-run updates in place and cannot duplicate the catalogue. It
+        # reads the committed snapshot, never the raw dataset — enforced by
+        # scripts/ci/check-architecture-conformance.sh.
         run: |
           pnpm install --frozen-lockfile
           export DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
           pnpm --filter @forjd/api db:migrate
+          pnpm --filter @forjd/api exercises:load
 
       - name: Deploy to Cloud Run
         run: |
