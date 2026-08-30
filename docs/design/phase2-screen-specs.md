@@ -1,5 +1,25 @@
 # Phase 2 screen specs — exercise library, detail, and custom exercise
 
+> ## ⚠ STALE LINE NUMBERS — the prototype was regenerated on 2026-08-30
+>
+> **Every prototype line number in this file is wrong.** `FORJD Mobile.dc.html` grew
+> 234 KB → 365 KB (~1,400 lines), so all the `s_library` / `s_exercise` / `s_newExercise` /
+> `s_favorites` / `s_train` anchors below have shifted. Re-anchor before using any of them:
+> `grep -nE "^\s*s_[A-Za-z0-9_]+\s*\(" "FORJD mobile app design/FORJD Mobile.dc.html"`.
+> The **copy, structure and behaviour** transcribed here were not invalidated — only the
+> citations.
+>
+> Two screens this file treats as marginal are now real, and are specced fresh in
+> [`design-revision-screen-specs.md`](design-revision-screen-specs.md):
+>
+> - **`newExercise`** (§3 there) — a full screen with six fields, four validation messages and
+>   a `Measured by` control that feeds the new `setTimer` screen.
+> - **`favorites`** (§2 there) — §7.4 below calls `s_favorites()` dead code. It is **no longer
+>   dead**: it is reachable, and ships two sections (programs, workouts). Its
+>   favourite-*exercises* list, however, genuinely is dead code — defined and never rendered.
+>
+> Delta record: [`design-revision-2026-08-30.md`](design-revision-2026-08-30.md).
+
 > **Source of truth: the runnable prototype**, `FORJD mobile app design/FORJD Mobile.dc.html`.
 > Every value below was extracted with a brace-matching script over the prototype's own render
 > methods, not read off a screenshot and not paraphrased from

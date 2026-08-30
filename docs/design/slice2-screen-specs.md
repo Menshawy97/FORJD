@@ -1,5 +1,29 @@
 # Slice 2 — Screen Specifications (extracted from the prototype)
 
+> ## ⚠ STALE LINE NUMBERS + two decisions overturned — 2026-08-30
+>
+> **Every prototype line number in this file is wrong.** `FORJD Mobile.dc.html` was
+> regenerated and grew by ~1,400 lines. Re-anchor with
+> `grep -nE "^\s*s_[A-Za-z0-9_]+\s*\(" "FORJD mobile app design/FORJD Mobile.dc.html"`.
+> The copy and geometry transcribed here were not invalidated — only the citations.
+>
+> **Two of this document's decisions are overturned** by
+> [ADR-019](../decisions/ADR-019-username-and-avatar.md):
+>
+> - The decisions box's **"drop the handle concept entirely"** — the revision adds a
+>   `pickUsername` onboarding screen, a Username field on `editProfile`, and `@handle` on the
+>   public profile. Username is a real column now.
+> - **Avatar has no control** — the revision adds upload affordances in two places.
+>
+> **Not overturned:** the athlete stat tiles stay omitted (the Phase 10 data still does not
+> exist), and the generic-404 error state stays generic (the backend deliberately makes
+> "private" and "no such user" indistinguishable, and reproducing the prototype's
+> stranger-specific copy would leak exactly that).
+>
+> `editProfile` and `athlete` both gain content in the revision; specs for the new parts are
+> in [`design-revision-screen-specs.md`](design-revision-screen-specs.md). Delta record:
+> [`design-revision-2026-08-30.md`](design-revision-2026-08-30.md).
+
 > ## Decisions since extraction — read before §8, §10 and §11
 >
 > This document was written during planning. Several of the questions it raises have since
@@ -13,8 +37,8 @@
 > | §11 Q3 — are Weight/Distance/Energy independent? | **Yes, three real preferences.** `unitSystem` is retained but redefined as a *preset*, marked `@deprecated`, removed in `/api/v2`. |
 > | §11 Q4 — public profile / `athlete` screen | **Being built.** `GET /api/v1/athletes/:userId`, authenticated-only, refusal is 404 (never 403). Ships **identity only** — the stat tiles need Phase 10 leaderboard/analytics data and are omitted. |
 > | §11 Q7 — toggle tap targets | **Whole row is tappable**, deviating from the prototype. `05-interactions.md` requires a 44px minimum; this changes behaviour, not appearance. |
-> | §12 — the `@jmitch` handle | **Dropped.** No `handle` column, no username concept. That line shows city alone. |
-> | §2.9 — the `editProfile` Plan row | Hardcoded `Free plan` / `Go Pro`, non-navigating. Billing is Phase 10. |
+> | §12 — the `@jmitch` handle | ~~**Dropped.** No `handle` column, no username concept. That line shows city alone.~~ **OVERTURNED 2026-08-30 — [ADR-019](../decisions/ADR-019-username-and-avatar.md).** `username` becomes a real, case-insensitively unique column, and the handle returns to `profile`, `editProfile` and `athlete`. |
+> | §2.9 — the `editProfile` Plan row | Hardcoded `Free plan` / `Go Pro`, non-navigating. Billing is Phase 10. **Amended 2026-08-30 — [ADR-021](../decisions/ADR-021-subscription-ui-without-billing.md):** the row gains a Pro variant and a working `Manage` destination. Still no billing — UI only, nothing gated or charged. |
 >
 > Still genuinely open: §11 Q5 (data export), §11 Q6 (British vs US spelling), and whether
 > `city` should be public whenever the profile is public or need its own flag.

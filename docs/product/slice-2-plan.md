@@ -8,7 +8,10 @@ both bundles compiling, and the auth screens verified against the design by read
 computed styles from a real web render rather than by reading code.
 
 Slice 2 builds the six profile/settings screens: `editProfile`, `units`, `goals`,
-`notifs`, `privacy`, `location`, plus the `athlete` (public profile) screen. Four of
+`notifs`, `privacy`, `location`, plus the `athlete` (public profile) screen.
+**This screen list is the slice-2 set as scoped in 2026-08; the 2026-08-30 design revision
+added `pickUsername` and expanded `editProfile` and `athlete` — that work is Phase 2.4, not
+a reopening of this slice.** Four of
 these are blocked on backend fields that do not exist, and **the user chose to include
 that backend work in this slice** rather than build screens against a partial contract.
 
@@ -20,14 +23,19 @@ because it currently lives in session scratchpad and will be lost otherwise.
 
 ### Decisions already made (do not re-litigate)
 
+> **Two of these were overturned on 2026-08-30 by the design revision** — see the rows marked
+> OVERTURNED below and [ADR-019](../decisions/ADR-019-username-and-avatar.md). They are marked
+> rather than deleted: a locked decision that silently vanishes is worse than one recorded as
+> reversed, because the next session cannot tell whether it was considered or forgotten.
+
 | Decision | Choice |
 |---|---|
 | Slice scope | Backend fields **and** all screens, in one slice |
 | Push notifications | **None in Phase 1** — `notifs` is device-local only |
 | Units model | **Three independent preferences** (weight/distance/energy), not derived |
 | Public profile | **Build the endpoint** and the `athlete` screen |
-| Handles (`@jmitch`) | **Dropped** — no `handle` column; show city, or nothing |
-| Athlete stat tiles | **Omitted** — they need Phase 10 leaderboard/analytics data |
+| Handles (`@jmitch`) | ~~**Dropped** — no `handle` column; show city, or nothing~~ **OVERTURNED 2026-08-30 ([ADR-019](../decisions/ADR-019-username-and-avatar.md))** — the revised design adds a `pickUsername` onboarding screen, an Edit Profile field and `@handle` on the public profile. Username becomes a real column with case-insensitive uniqueness |
+| Athlete stat tiles | **Omitted** — they need Phase 10 leaderboard/analytics data. **Still correct after the 2026-08-30 revision**, which draws them: the data does not exist, so they stay omitted rather than faked |
 | Auth-code coverage | **100% required** on `athletes.service.ts` + `privacy.service.ts` |
 | Crash diagnostics | **Off by default** — every privacy flag is opt-in |
 | `sex` enum | Already narrowed to `male\|female\|prefer_not_to_say` (done in slice 1) |
@@ -239,8 +247,9 @@ glyphs), `screen-background.tsx` (ember gradient + safe-area), `toast.tsx`,
   `components/toggle.tsx` (presentational; the row owns the tap) and
   `components/toggle-row.tsx`.
 - **J — `athlete`** + wire `profile` to real `/users/me` data, replacing hardcoded
-  "James Mitchell". Handle line shows city alone (handles dropped). Include the private/
-  hidden state the prototype renders.
+  "James Mitchell". Handle line shows city alone (handles dropped — **overturned 2026-08-30 by
+  [ADR-019](../decisions/ADR-019-username-and-avatar.md); the handle returns in Phase 2.4**).
+  Include the private/hidden state the prototype renders.
 
 **One deliberate deviation from the prototype:** in `notifs`/`privacy` only the 46×27
 toggle track is tappable. `05-interactions.md`'s own accessibility section requires a 44px
@@ -312,11 +321,14 @@ the merge commit is green.
 5. **Resolved in Phase F.** `preferences.notifications_enabled` is annotated in
    `apps/api/src/database/schema/preferences.schema.ts` explaining it is unwired by design
    this phase, so a future session does not mistake its presence for a working feature.
-6. **Still open — a design-scope question, not a backend one.** `heightCm` has no screen and
-   `avatarUrl` has no control anywhere in the current design. Neither blocks phases G-J, since
-   both fields already round-trip correctly through the API for whichever future screen adds
-   them; flagging here so their absence from the design isn't mistaken for an oversight in the
-   backend.
+6. **Partly resolved by the 2026-08-30 design revision.** `avatarUrl` **now has a control** —
+   the revision added upload affordances to `pickUsername` and `editProfile`, and
+   [ADR-019](../decisions/ADR-019-username-and-avatar.md) makes avatar upload real, routed
+   through `StorageProvider`. Note the field's current contract accepts only an external
+   `http(s)` URL and there is still no upload endpoint, so the app cannot yet produce a value
+   for it. **`heightCm` remains screenless** and still round-trips correctly through the API
+   for whichever future screen adds it; flagging here so its absence from the design isn't
+   mistaken for an oversight in the backend.
 7. **Resolved.** `eslint-plugin-react-hooks`'s rules are registered and verified active
    (`react-hooks/rules-of-hooks: error`, `exhaustive-deps: warn`) —
    [PR #14](https://github.com/Menshawy97/FORJD/pull/14), merged and green on `main` before

@@ -18,6 +18,17 @@ set in `@forjd/domain` costs nothing, which is what let the earlier `sex`
 narrowing happen without a migration. `unit_system` survives alongside the three
 real units as a `@deprecated` preset — see ADR-016.
 
+`profiles` (2026-08-30 design revision, not yet migrated): a `username` column,
+separate from `display_name` — the design renders both at once, so they are two
+fields rather than one field shown twice. Format `/^[a-z0-9_]{3,20}$/`, nullable
+because every existing account predates it, and **case-insensitively unique** via
+a unique index on `lower(username)` — the same shape `exercises_owner_name_unique`
+already uses. `avatar_url` exists already but has no producer: it accepts only an
+external `http(s)` URL and there is no upload endpoint, so the upload work has to
+settle whether it becomes a storage *key* the way ADR-018 did for exercise media.
+See [ADR-019](../decisions/ADR-019-username-and-avatar.md), which overturns the
+slice-2 decision that the product has no handle concept.
+
 `privacy_settings` is a table of its own, not columns on `profiles`, because it
 answers a different question: `profiles` is what the app displays,
 `privacy_settings` is what the server is *permitted to do*. Every flag is
@@ -73,10 +84,28 @@ from `workout_sessions` → `workout_session_exercises` → `workout_sets`. See
 - **Source preserved, never overwritten**, wherever multiple external
   systems can report the same fact (`health_observations.source`).
 
+**Nutrition** (Phase 2.5, no schema yet) — foods with per-100 g macros and named
+servings, per-user custom foods, a dated food log across four fixed meal slots
+(`Breakfast`, `Lunch`, `Snack`, `Dinner`), saved meals with their items, and
+per-user macro goals. Two shapes carry over from the exercise domain rather than
+being invented: custom foods live in the **same table** as catalogue foods with a
+nullable `owner_user_id` (null = catalogue), and food-name search uses the
+generated `search_vector` + GIN + `pg_trgm` pattern from migration `0006`.
+Logging a saved meal **copies** its items into the day rather than referencing it,
+so editing a saved meal never rewrites history; items logged together share a
+`group_id` so the dashboard can collapse and delete them as one. Nutrition is
+health data under CLAUDE.md rule 15. See
+[ADR-020](../decisions/ADR-020-nutrition-in-mvp.md) and
+`docs/product/nutrition-plan.md`.
+
 ## What's deliberately not modeled yet
 
-Nutrition, social/friends, achievements/gamification, and an admin CMS are
-named in the source planning docs as future domains but have no schema yet
-— see `docs/product/roadmap.md` for when each is planned. Don't add
-placeholder tables for them; add the schema when the phase that needs it
-starts, informed by what's been learned by then.
+Social/friends, achievements/gamification, and an admin CMS are named in the
+source planning docs as future domains but have no schema yet — see
+`docs/product/roadmap.md` for when each is planned. Don't add placeholder tables
+for them; add the schema when the phase that needs it starts, informed by what's
+been learned by then.
+
+Nutrition was on this list until the 2026-08-30 design revision moved it into MVP
+scope (ADR-020). It still has no schema, but it now has a plan and a phase, so it
+is described above rather than deferred here.
