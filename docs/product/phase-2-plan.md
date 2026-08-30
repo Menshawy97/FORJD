@@ -189,7 +189,8 @@ needs, so the Phase D adapter can map either direction without lossy collapsing.
 
 ### Phase C — Migration and repository *(no wire change)* — ✅ **DONE & MERGED** ([PR #40](https://github.com/Menshawy97/FORJD/pull/40), CI green on `main`)
 
-> **Next session starts here → Phase D.** Phases 0, A, B and C are merged and `main` is green.
+> **Phases 0, A, B and C are merged and `main` is green.** (The "next session starts here"
+> pointer has moved to Phase E, below — Phase D is done.)
 > Nothing in Phase C is half-finished. The `UsersRepository` follow-up this phase discovered was
 > also fixed and merged separately ([PR #39](https://github.com/Menshawy97/FORJD/pull/39)).
 >
@@ -238,7 +239,7 @@ needs, so the Phase D adapter can map either direction without lossy collapsing.
 *Why first:* the only phase with a migration, so pausing here leaves the DB ahead of the API —
 the safe direction. Same reasoning as slice 2's Phase A.
 
-### Phase D — `ExerciseSourceAdapter` and the normalized snapshot
+### Phase D — `ExerciseSourceAdapter` and the normalized snapshot — ✅ **DONE**
 
 - `apps/api/src/exercises/ingest/`: the `ExerciseSourceAdapter` interface (the fourth use of
   the adapter pattern, alongside `AuthProvider` / `StorageProvider` / `HealthProvider`) and
@@ -255,6 +256,67 @@ the safe direction. Same reasoning as slice 2's Phase A.
 - **Add a fifth conformance check** to `scripts/ci/check-architecture-conformance.sh`: the raw
   dataset may only be read from the ingest directory. Watch it fail against a planted violation
   before committing it — that is the standing rule for every gate in this repo.
+
+#### What Phase D produced
+
+- `ingest/exercise-source-adapter.interface.ts` — `ExerciseSourceAdapter`, plus
+  `NormalizedExercise` aliased to the repository's existing `UpsertCatalogueExerciseInput`
+  rather than declared as a second shape, so the loader has nothing to translate.
+- `ingest/mappings.ts` — the deterministic tables (7 source categories, 12 equipment strings,
+  17 muscle names), the `goal`/`measure` derivations, and pass-through validation of
+  `force`/`level`/`mechanic` against the canonical tuples. **Every lookup throws on a miss.**
+  There is no fallback anywhere, on purpose: a default would let a re-vendor's new value be
+  absorbed silently, and nobody would find out until a squat showed up under mobility.
+- `ingest/free-exercise-db.adapter.ts` — **pure**: rows and overrides are constructor
+  arguments and the class does no I/O. That is what lets the golden fixtures assert an exact
+  record for a hand-built input, and it keeps a filesystem path out of what Phase E calls.
+- `packages/domain/data/exercise-overrides.json` — 8 overrides, each with a written reason.
+- `ingest/normalize.ts` + `pnpm --filter @forjd/api exercises:normalize` → the committed
+  snapshot `ingest/data/normalized-exercises.json` (873 records, 1.15 MB, sorted by
+  `sourceId` so a re-vendor that merely reorders produces no diff).
+- **Golden-fixture tests**, all passing. Two are meta-tests that enforce the plan's own
+  wording — one fails if a source category is added without a mapping test, the other if an
+  override is added without a fixture assertion.
+- CI gate: `exercises:normalize` then `git diff --exit-code` on the snapshot, mirroring the
+  contracts-fixtures gate.
+- **Fifth conformance check** in `scripts/ci/check-architecture-conformance.sh`: the raw
+  dataset is readable only from `apps/api/src/exercises/ingest/`. Verified by planting a
+  violating import and watching the check exit 1, then removing it.
+
+#### Normalization outcome, and one finding Phase I needs
+
+873 exercises in, 873 out. Distribution:
+
+| | |
+|---|---|
+| category | strength 675, mobility 123, cross_training 71, running 4 |
+| goal | strength 369, hypertrophy 250, mobility 123, power 117, muscular_endurance 14 |
+| measure | weight 736, time 127, distance 10 |
+
+**Two canonical categories end up with zero catalogue exercises: `yoga` and `calisthenics`.**
+free-exercise-db has no source category that maps to either. The design's exercise library
+draws a filter chip for both, so on a freshly ingested catalogue **those two chips would show
+an empty list** — a real, visible product problem, not a cosmetic one.
+
+This was left as a finding rather than papered over with a mapping, because every available
+fix is a product decision, not a mechanical one:
+
+- Reclassify the 111 `body only` strength exercises as `calisthenics` — defensible (pull-ups
+  and push-ups genuinely are), but it silently moves an eighth of the catalogue on a guess,
+  and it still leaves `yoga` empty.
+- Source yoga and calisthenics content separately — a second adapter, which is exactly what
+  the adapter pattern is for, but it is scope Phase 2 does not have.
+- Hide chips with no results, or drop the two categories from the library's chip row.
+
+**Phase I must pick one.** Do not let the chips ship pointing at nothing.
+
+Also worth knowing: **4 of the 16 canonical `EQUIPMENT` values never appear** (`bench`,
+`rack`, `trx`, `sled`) and **2 of the 19 `MUSCLE_GROUPS` never appear as a primary muscle**
+(`hips`, `full_body`). Custom exercises can produce all of them, so these are gaps in the
+seed data, not in the vocabulary. 122 exercises carry equipment `other` and 77 carry none at
+all — the source's own limitation, transcribed rather than guessed at.
+
+> **Next session starts here → Phase E.**
 
 ### Phase E — Loader and the browse/search endpoint
 

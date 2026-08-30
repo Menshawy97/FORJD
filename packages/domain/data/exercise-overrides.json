@@ -1,0 +1,44 @@
+{
+  "readme": [
+    "Per-exercise corrections applied on top of the deterministic mapping tables in",
+    "apps/api/src/exercises/ingest/mappings.ts, keyed by the source dataset's own id.",
+    "",
+    "This file exists because a mapping table can only be as precise as the source",
+    "vocabulary allows. free-exercise-db has one 'cardio' category covering everything from",
+    "a treadmill run to a stairmaster, so a table can map it to exactly one canonical",
+    "category and one measure -- and will be wrong for the rest. Overrides fix the",
+    "individual rows without turning the table into a pile of special cases.",
+    "",
+    "Rules: an override may only set 'category', 'goal' or 'measure'; a value outside the",
+    "canonical vocabulary in @forjd/domain is rejected; and an override naming a source id",
+    "the dataset does not contain is rejected rather than ignored, so a re-vendor that drops",
+    "an exercise fails loudly instead of leaving dead config behind. Every id here must also",
+    "have a golden-fixture assertion in free-exercise-db.adapter.spec.ts -- that too is",
+    "enforced by a test.",
+    "",
+    "Adding one is a product decision, not a mechanical fix. Say why in this file."
+  ],
+  "why": {
+    "running-split": [
+      "The base table maps source category 'cardio' to canonical 'cross_training'. Four of",
+      "the fourteen cardio entries are literally running or walking, and the design's",
+      "exercise library draws a 'Running' filter chip. Without these four the chip would be",
+      "empty on a freshly ingested catalogue."
+    ],
+    "time-not-distance": [
+      "The base table measures 'cardio' by distance, which is right for a treadmill, a bike",
+      "or a rower -- all of which report metres. It is wrong for a fixed-position machine or",
+      "for skipping, where the only thing a user logs is how long they kept going."
+    ]
+  },
+  "overrides": {
+    "Jogging_Treadmill": { "category": "running", "measure": "distance" },
+    "Running_Treadmill": { "category": "running", "measure": "distance" },
+    "Walking_Treadmill": { "category": "running", "measure": "distance" },
+    "Trail_Running_Walking": { "category": "running", "measure": "distance" },
+    "Rope_Jumping": { "measure": "time" },
+    "Elliptical_Trainer": { "measure": "time" },
+    "Stairmaster": { "measure": "time" },
+    "Step_Mill": { "measure": "time" }
+  }
+}
