@@ -14,6 +14,36 @@ is still open and does not gate anything in Phase 1 (see "Spike status" below). 
 section first when resuming — it says exactly what's done and what to do next. Don't
 re-derive this from scratch; verify it's still accurate and continue.
 
+### ⚠ Design revision — 2026-08-30 (read this before building any screen)
+
+**The design was regenerated and 11 screens were added.** `FORJD mobile app design/FORJD
+Mobile.dc.html` grew 234 KB → 365 KB. Verified delta, tokens, and what did *not* change:
+[`docs/design/design-revision-2026-08-30.md`](../design/design-revision-2026-08-30.md).
+
+- **New feature area — nutrition (6 screens)**, plus a "Nutrition Today" card on Home.
+  Now **in MVP scope**, built as **Phase 2.5, immediately after Phase 2**
+  — [ADR-020](../decisions/ADR-020-nutrition-in-mvp.md), plan in
+  [`nutrition-plan.md`](nutrition-plan.md), screens in
+  [`../design/nutrition-screen-specs.md`](../design/nutrition-screen-specs.md).
+- **Five other new screens** — `pickUsername`, `favorites`, `newExercise`, `setTimer`,
+  `athlete` — plus a Support group and Delete-account flow on `profile`. Specs in
+  [`../design/design-revision-screen-specs.md`](../design/design-revision-screen-specs.md).
+- **Two shipped decisions are overturned.** The handle/`@username` and the avatar upload are
+  both back, by [ADR-019](../decisions/ADR-019-username-and-avatar.md). Where this file below
+  records *removing* the `@jmitch` handle as a fidelity fix, that fix is now itself reverted.
+- **Subscription screens ship as UI with no billing**
+  — [ADR-021](../decisions/ADR-021-subscription-ui-without-billing.md).
+- **Unchanged, checked rather than assumed:** design tokens are byte-identical, fonts and the
+  `fj-atm-ember` atmosphere are unchanged, and the five-tab bar keeps its labels and order.
+  Only the tab bar's *chrome* changed (safe-area padding, 44 px minimum targets, opaque
+  background, icon 22→20, label 10→9.5).
+- **The `design_handoff_forjd_mobile/*.md` bundle did NOT change** — `git diff
+  --ignore-all-space` over it is empty. It is a frozen pre-revision snapshot that now omits an
+  entire feature area. Do not build from it.
+
+**Phase 2 is unaffected and continues from Phase D.** The revision adds to Phase 2's scope
+(`favorites`, `newExercise`) rather than redirecting it.
+
 ### Mobile framework pivot: Flutter → Expo React Native
 
 **`apps/mobile` is Expo (React Native) + TypeScript, not Flutter.** The Flutter
@@ -288,12 +318,19 @@ gym. Rule 16 and ADR-007 both assume real hardware for health work.
 The design shows things the API cannot yet support. Each was a deliberate call, not an
 oversight, and each is a follow-up rather than a silent omission:
 
-- **`@username`** — no column, no uniqueness policy, no availability endpoint. Omitted; the
-  profile screen renders the user's email in the handle slot instead.
+- **`@username`** — ~~omitted~~ **REVERSED 2026-08-30 by
+  [ADR-019](../decisions/ADR-019-username-and-avatar.md).** The design revision makes the
+  handle load-bearing (a dedicated onboarding screen, an Edit Profile field, and the public
+  profile), so it becomes a real column with case-insensitive uniqueness. Still absent from
+  the backend at the time of writing — scheduled as Phase 2.4.
 - **Profile stat tiles** (147 Workouts / 9 This Month / #47 City Rank) — no data source until
   Phases 3 and 6. Omitted entirely rather than rendered as zeros, which would read as a bug.
-- **Avatar upload** — `avatarUrl` is in the contract but `StorageProvider` stays unconsumed
-  until Phase 5. Initials in the tile, no upload affordance that does nothing.
+  **Still correct after the 2026-08-30 revision**, which added the same tiles to the public
+  `athlete` screen: the data still does not exist, so they stay omitted rather than faked.
+- **Avatar upload** — ~~deferred to Phase 5~~ **REVERSED 2026-08-30 by
+  [ADR-019](../decisions/ADR-019-username-and-avatar.md).** The revision puts an upload
+  control in two places (`pickUsername` and `editProfile`), so `StorageProvider` gets its
+  first consumer ahead of InBody. Scheduled as Phase 2.4.
 - **`heightCm` and `unitSystem`** — editable in the API, absent from the design's edit screen.
   Left out for now, which means `unitSystem` stays `metric` until the first Phase 3 screen
   that shows a weight forces the conversation.
@@ -633,8 +670,11 @@ A-D batch.
      rule 12's docs) — unrelated to slice 2 and not something a mobile phase should resolve.
    - Energy default (`kcal`) and the `Analyse`/`programs` copy-locale inconsistency are both
      open product/content calls, not backend gaps — see `slice-2-plan.md`'s still-open list.
-   - `heightCm` has no screen and `avatarUrl` has no control anywhere in the current design;
-     both already round-trip through the API correctly for whichever future screen adds them.
+   - `heightCm` has no screen and already round-trips through the API correctly for whichever
+     future screen adds it. **`avatarUrl` now DOES have a control** — the 2026-08-30 revision
+     added upload affordances to `pickUsername` and `editProfile` (ADR-019). Note the field's
+     current contract accepts only an external `http(s)` URL and there is no upload endpoint,
+     so the app cannot yet produce a value for it.
 
    **`docs/product/ui-remediation-and-phase-i-plan.md`** — a written, approved,
    self-contained plan covering two PRs, in order. **Both parts are done, merged, and green
@@ -652,7 +692,8 @@ A-D batch.
       inferring one from blur radius), the ghost-button pressed transform the design does
       not have, the missing Google/Apple social auth row on `login`/`signup` (new
       `components/social-auth-row.tsx`, inert — no OAuth backend yet), the `@jmitch` handle
-      that contradicted a shipped decision (now shows city alone), and three `goals.tsx`
+      that contradicted a shipped decision (now shows city alone — **this particular fix is
+      itself reverted by the 2026-08-30 design revision; see ADR-019**), and three `goals.tsx`
       token/color deltas. Also picked up from live device testing mid-PR: the Birthday row
       on `editProfile` had no visual tap affordance (added the same trailing `chevron` icon
       `profile.tsx`'s settings rows already use), and `editProfile`/`units` are now
@@ -677,8 +718,11 @@ A-D batch.
 
    **DONE — Phase J — `athlete` screen + wire `profile` to real `/users/me` data.** New
    dynamic `app/athlete/[userId].tsx`, backed by the already-built `GET /athletes/:userId`.
-   Ships identity only (no stat tiles/records/sessions — Phase 10 data), no handle line
-   (dropped project-wide), and one generic error state for any load failure rather than the
+   Ships identity only (no stat tiles/records/sessions — Phase 10 data; **still correct after
+   the 2026-08-30 revision, which draws them — the data genuinely does not exist, so they stay
+   omitted rather than faked**), no handle line (**this part is overturned: ADR-019 brings the
+   handle back, and the screen's header comment saying otherwise must be rewritten when it is
+   next touched**), and one generic error state for any load failure rather than the
    prototype's stranger-specific "this profile is private" copy — the backend deliberately
    makes a private profile and a nonexistent one return byte-identical 404s (accounts hold
    health data; a distinguishable refusal is an enumeration oracle), so reproducing that copy
@@ -690,7 +734,8 @@ A-D batch.
    `(tabs)/profile.tsx`'s identity block and its Goals/Units row subtitles now read
    `getMe()` instead of the hardcoded `IDENTITY` object — the "James Mitchell" placeholder
    flagged since Phase G is gone. `plan` stays the literal "Free User": `PLANS` is a
-   one-member tuple until billing (Phase 10). Unlike every sub-screen in this app, the render
+   one-member tuple until billing (Phase 10). **ADR-021 adds a second member** so the Pro
+   badge the design draws is representable — UI only, nothing gated or charged. Unlike every sub-screen in this app, the render
    is not gated behind a `loaded` flag — profile is a persistent bottom tab, so static/inert
    rows and sign-out stay usable immediately while only the dynamic identity bits show a
    `'—'` fallback until the fetch resolves.
@@ -933,6 +978,7 @@ failure).
 | 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
 | 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
 | 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **In progress — [re-planned](phase-2-plan.md); Phase 0 done** |
+| 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | Not started — [planned](nutrition-plan.md), added by the 2026-08-30 design revision |
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Programs | 18-21 | Program/week/day, enrollment, progression | Not started |

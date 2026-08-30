@@ -130,9 +130,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
           <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
             <div style="flex:1;min-height:0;display:flex;flex-direction:column">
               <div style="flex:none;padding:0 22px 8px;display:flex;align-items:flex-start;justify-content:space-between">
-                <div style="display:flex;flex-direction:column;gap:4px">
-                  <span style="font:800 21px/1 Archivo;letter-spacing:.02em">FORJD</span>
-                  <span style="font:500 12.5px/1 Archivo;color:#8b8b83">Hi, {{ firstName }}</span>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="flex:none"><path d="M4 20V8M9 20V4M14 20v-9M19 20V10" stroke="#e9712f" stroke-width="2.4" stroke-linecap="round"></path></svg>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span style="font:800 21px/1 Archivo;letter-spacing:.02em">FORJD</span>
+                    <span style="font:500 12.5px/1 Archivo;color:#8b8b83">Hi, {{ firstName }}</span>
+                  </div>
                 </div>
                 <div onClick="{{ goNotifsFeed }}" style="position:relative;cursor:pointer;display:flex;margin-top:2px">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 10a5 5 0 0 1 10 0c0 4 1.4 5.4 1.4 5.4H5.6S7 14 7 10zM10.4 18.4a1.8 1.8 0 0 0 3.2 0" stroke="#c8c8c0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
@@ -141,19 +144,49 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
               </div>
               <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:0 22px 26px">
                 <div style="font:500 12.5px/1 Archivo;color:#6e6e66;margin:6px 0 14px">Tuesday, 19 Aug</div>
+                
                 <div style="background:linear-gradient(160deg,#16221a,#141a16);border:1px solid rgba(121,185,138,.22);border-radius:16px;padding:16px 17px 18px">
-                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-                    <div>
-                      <div style="font:600 9.5px/1 Archivo;letter-spacing:.14em;text-transform:uppercase;color:#8bbf96;margin-bottom:8px">Readiness</div>
-                      <div style="font:700 40px/1 Archivo;letter-spacing:-.03em;color:#79b98a;font-variant-numeric:tabular-nums">87</div>
+                  
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0">
+                      <div style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:20px;background:rgba(121,185,138,.12);width:fit-content"><span style="width:5px;height:5px;border-radius:50%;background:#79b98a;flex:none"></span><span style="font:600 10.5px/1 Archivo;color:#a8d1b0;white-space:nowrap">HRV stable</span></div>
+                      <div style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:20px;background:rgba(121,185,138,.12);width:fit-content"><span style="width:5px;height:5px;border-radius:50%;background:#79b98a;flex:none"></span><span style="font:600 10.5px/1 Archivo;color:#a8d1b0;white-space:nowrap">Sleep 7h 42m</span></div>
+                      <div style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:20px;background:rgba(121,185,138,.12);width:fit-content"><span style="width:5px;height:5px;border-radius:50%;background:#79b98a;flex:none"></span><span style="font:600 10.5px/1 Archivo;color:#a8d1b0;white-space:nowrap">RHR normal</span></div>
                     </div>
-                    <div style="text-align:right;white-space:nowrap">
+                    <div style="position:relative;width:78px;height:78px;flex:none">
+                      <svg width="78" height="78" viewBox="0 0 78 78" style="transform:rotate(-90deg)">
+                        <circle cx="39" cy="39" r="34" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"></circle>
+                        <circle cx="39" cy="39" r="34" fill="none" stroke="#79b98a" stroke-width="7" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="27.8" style="animation:fj-grow .8s ease-out"></circle>
+                      </svg>
+                      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                        <div style="font:700 22px/1 Archivo;letter-spacing:-.02em;color:#79b98a;font-variant-numeric:tabular-nums">87</div>
+                        <div style="font:600 8px/1 Archivo;letter-spacing:.1em;text-transform:uppercase;color:#8bbf96;margin-top:2px">Ready</div>
+                      </div>
+                    </div>
+                    <div style="flex:1;text-align:right;min-width:0">
+                      <div style="font:600 9.5px/1 Archivo;letter-spacing:.14em;text-transform:uppercase;color:#8bbf96;margin-bottom:8px">Readiness</div>
                       <div style="font:700 14px/1 Archivo;color:#f6f5f3">Good</div>
                       <div style="margin-top:6px;font:400 11px/1.3 Archivo;color:#88a88f">Ready to train hard</div>
                     </div>
                   </div>
-                  <div style="height:3px;border-radius:2px;background:rgba(255,255,255,.08);margin:15px 0 12px;overflow:hidden"><div style="width:87%;height:3px;background:#79b98a;transform-origin:left;animation:fj-grow .8s ease-out"></div></div>
-                  <div style="font:400 11.5px/1 Archivo;color:#7e9a85">HRV stable · Sleep 7h 42m · Resting HR normal</div>
+                </div>
+                <div onClick="{{ goNutrition }}" style="margin:12px 0;background:#17181a;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer" style-hover="background:#1b1c1e">
+                  <div style="position:relative;width:52px;height:52px;flex:none">
+                    <svg width="52" height="52" viewBox="0 0 52 52" style="transform:rotate(-90deg)">
+                      <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"></circle>
+                      <circle cx="26" cy="26" r="22" fill="none" stroke="#e9712f" stroke-width="6" stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="{{ homeCalDashOffset }}"></circle>
+                    </svg>
+                  </div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font:600 9.5px/1 Archivo;letter-spacing:.14em;text-transform:uppercase;color:#77776f;margin-bottom:6px">Nutrition today</div>
+                    <div style="font:700 15px/1 Archivo;color:#f6f5f3;white-space:nowrap">{{ homeCalLabel }}</div>
+                    <div style="display:flex;gap:10px;margin-top:6px">
+                      <sc-for list="{{ homeMacros }}" as="m" hint-placeholder-count="3">
+                        <div style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;flex:none;background:{{ m.color }}"></span><span style="font:500 10.5px/1 Archivo;color:#9a9a92;white-space:nowrap">{{ m.text }}</span></div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="flex:none;opacity:.5"><path d="M7.5 4 13.5 10l-6 6" stroke="#8b8b83" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 </div>
                 <div style="background:#17181a;border:1px solid rgba(255,255,255,.07);border-radius:16px;overflow:hidden;margin:12px 0">
                   <div style="display:flex">
@@ -211,7 +244,6 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
                 </div>
                 <div onClick="{{ goSuggested }}" style="margin:12px 0;background:#e9712f;border-radius:15px;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;box-shadow:0 8px 26px rgba(233,113,47,.2)" style-hover="filter:brightness(1.06)">
                   <div>
-                    <div style="font:600 9.5px/1 Archivo;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72);margin-bottom:7px">Suggested today</div>
                     <div style="font:700 19px/1 Archivo;color:#fff;letter-spacing:-.01em">Start Workout</div>
                   </div>
                   <div style="width:38px;height:38px;border-radius:10px;background:rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center">
@@ -249,28 +281,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
                   </div>
                 </div>
               </div>
-              <div style="flex:none;height:76px;border-top:1px solid rgba(255,255,255,.07);background:rgba(14,14,15,.96);display:flex;padding:10px 6px 0">
-                <div onClick="{{ goHome }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 10.6 12 4.4l8 6.2V20h-5.4v-5.2H9.4V20H4z" stroke="#e9712f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:600 10px/1 Archivo;color:#e9712f">Home</span>
-                </div>
-                <div onClick="{{ goTrain }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2.2" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><rect x="18.6" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><path d="M5.4 12h13.2" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Train</span>
-                </div>
-                <div onClick="{{ goProgress }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.5 16.5 9 10.8l3.6 3.4 7.4-7.2M15.2 6.8H20v4.6" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Progress</span>
-                </div>
-                <div onClick="{{ goRank }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7.4 4.6h9.2v3.6a4.6 4.6 0 0 1-9.2 0zM12 12.8v3.4M8.4 19.4h7.2" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Rank</span>
-                </div>
-                <div onClick="{{ goProfile }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.3" stroke="#6b6b64" stroke-width="1.6"></circle><path d="M5.4 19.6c0-3.7 3-5.6 6.6-5.6s6.6 1.9 6.6 5.6" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Profile</span>
-                </div>
-              </div>
+              {{ tabbarHome }}
             </div>
           </sc-if>
 
@@ -477,28 +488,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
                 </sc-if>
 
               </div>
-              <div style="flex:none;height:76px;border-top:1px solid rgba(255,255,255,.07);background:rgba(14,14,15,.96);display:flex;padding:10px 6px 0">
-                <div onClick="{{ goHome }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 10.6 12 4.4l8 6.2V20h-5.4v-5.2H9.4V20H4z" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Home</span>
-                </div>
-                <div onClick="{{ goTrain }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2.2" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><rect x="18.6" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><path d="M5.4 12h13.2" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Train</span>
-                </div>
-                <div onClick="{{ goProgress }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.5 16.5 9 10.8l3.6 3.4 7.4-7.2M15.2 6.8H20v4.6" stroke="#e9712f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:600 10px/1 Archivo;color:#e9712f">Progress</span>
-                </div>
-                <div onClick="{{ goRank }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7.4 4.6h9.2v3.6a4.6 4.6 0 0 1-9.2 0zM12 12.8v3.4M8.4 19.4h7.2" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Rank</span>
-                </div>
-                <div onClick="{{ goProfile }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.3" stroke="#6b6b64" stroke-width="1.6"></circle><path d="M5.4 19.6c0-3.7 3-5.6 6.6-5.6s6.6 1.9 6.6 5.6" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Profile</span>
-                </div>
-              </div>
+              {{ tabbarProgress }}
               <sc-if value="{{ widgetPickerOpen }}" hint-placeholder-val="{{ false }}">
                 <div onClick="{{ closeWidgetPicker }}" style="position:absolute;inset:0;background:rgba(10,10,11,.72);display:flex;align-items:flex-end;z-index:20">
                   <div style="width:100%;background:#17181a;border-top:1px solid rgba(255,255,255,.07);border-radius:18px 18px 0 0;padding:20px 22px 24px;display:flex;flex-direction:column;gap:8px">
@@ -522,10 +512,10 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
                 <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:8px">
                   <div style="font:700 28px/1 Archivo;color:#f6f5f3;letter-spacing:-.02em;font-variant-numeric:tabular-nums;flex:none">{{ elapsedText }}</div>
                   <div style="display:flex;align-items:center;gap:6px;flex:none">
-                    <div onClick="{{ cancelWorkout }}" style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none" style-hover="background:rgba(201,80,60,.18)">
+                    <div onClick="{{ cancelWorkout }}" style="width:44px;height:44px;margin:-5px 0;border-radius:12px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none" style-hover="background:rgba(201,80,60,.18)">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6" stroke="#c9503c" stroke-width="1.8" stroke-linecap="round"></path></svg>
                     </div>
-                    <div onClick="{{ togglePause }}" style="height:34px;padding:0 12px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;font:700 12px/1 Archivo;color:#f6f5f3;cursor:pointer;white-space:nowrap;flex:none" style-hover="background:rgba(255,255,255,.12)">{{ pauseLabel }}</div>
+                    <div onClick="{{ togglePause }}" style="height:44px;padding:0 14px;border-radius:12px;background:rgba(255,255,255,.06);display:flex;align-items:center;font:700 12px/1 Archivo;color:#f6f5f3;cursor:pointer;white-space:nowrap;flex:none" style-hover="background:rgba(255,255,255,.12)">{{ pauseLabel }}</div>
                     <div onClick="{{ goDone }}" style="height:34px;padding:0 14px;border-radius:10px;background:#e9712f;display:flex;align-items:center;font:700 12px/1 Archivo;color:#fff;cursor:pointer;white-space:nowrap;flex:none" style-hover="filter:brightness(1.07)">Finish</div>
                   </div>
                 </div>
@@ -767,28 +757,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
                   </div>
                 </sc-for>
               </div>
-              <div style="flex:none;height:76px;border-top:1px solid rgba(255,255,255,.07);background:rgba(14,14,15,.96);display:flex;padding:10px 6px 0">
-                <div onClick="{{ goHome }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 10.6 12 4.4l8 6.2V20h-5.4v-5.2H9.4V20H4z" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Home</span>
-                </div>
-                <div onClick="{{ goTrain }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2.2" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><rect x="18.6" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><path d="M5.4 12h13.2" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Train</span>
-                </div>
-                <div onClick="{{ goProgress }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.5 16.5 9 10.8l3.6 3.4 7.4-7.2M15.2 6.8H20v4.6" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Progress</span>
-                </div>
-                <div onClick="{{ goRank }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7.4 4.6h9.2v3.6a4.6 4.6 0 0 1-9.2 0zM12 12.8v3.4M8.4 19.4h7.2" stroke="#e9712f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:600 10px/1 Archivo;color:#e9712f">Rank</span>
-                </div>
-                <div onClick="{{ goProfile }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.3" stroke="#6b6b64" stroke-width="1.6"></circle><path d="M5.4 19.6c0-3.7 3-5.6 6.6-5.6s6.6 1.9 6.6 5.6" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Profile</span>
-                </div>
-              </div>
+              {{ tabbarRank }}
             </div>
           </sc-if>
 
@@ -870,30 +839,41 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
                   </div>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="opacity:.5"><path d="m9.6 6.4 5 5.6-5 5.6" stroke="#8b8b83" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 </div>
-                <div onClick="{{ goWelcome }}" style="margin:26px 0 4px;font:600 13px/1 Archivo;color:#c9503c;cursor:pointer">Log out</div>
+                <div style="font:600 9.5px/1 Archivo;letter-spacing:.14em;text-transform:uppercase;color:#77776f;margin:24px 0 2px">Support</div>
+                <div onClick="{{ goPrivacyPolicy }}" style="display:flex;align-items:center;gap:14px;padding:15px 2px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05)" style-hover="background:rgba(255,255,255,.025)">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3.6 5.6 6v6c0 4 6.4 8.4 6.4 8.4s6.4-4.4 6.4-8.4V6z" stroke="#8b8b83" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+                  <div style="flex:1;min-width:0"><div style="font:600 14.5px/1.25 Archivo;color:#f6f5f3">Privacy Policy</div></div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="opacity:.5"><path d="m9.6 6.4 5 5.6-5 5.6" stroke="#8b8b83" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+                <div onClick="{{ goAboutApp }}" style="display:flex;align-items:center;gap:14px;padding:15px 2px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05)" style-hover="background:rgba(255,255,255,.025)">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.8" stroke="#8b8b83" stroke-width="1.6"></circle><path d="M12 11v5M12 8.2v.1" stroke="#8b8b83" stroke-width="1.6" stroke-linecap="round"></path></svg>
+                  <div style="flex:1;min-width:0"><div style="font:600 14.5px/1.25 Archivo;color:#f6f5f3">About App</div></div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="opacity:.5"><path d="m9.6 6.4 5 5.6-5 5.6" stroke="#8b8b83" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+                <div onClick="{{ goContactUs }}" style="display:flex;align-items:center;gap:14px;padding:15px 2px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05)" style-hover="background:rgba(255,255,255,.025)">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 6.6h16v10.8H4z" stroke="#8b8b83" stroke-width="1.6" stroke-linejoin="round"></path><path d="m4.4 7 7.6 6 7.6-6" stroke="#8b8b83" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <div style="flex:1;min-width:0"><div style="font:600 14.5px/1.25 Archivo;color:#f6f5f3">Contact Us</div></div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="opacity:.5"><path d="m9.6 6.4 5 5.6-5 5.6" stroke="#8b8b83" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+                <div onClick="{{ goWelcome }}" style="display:flex;align-items:center;gap:14px;padding:15px 2px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);margin-top:14px" style-hover="background:rgba(255,255,255,.025)">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9.6 4.6H6.4A1.4 1.4 0 0 0 5 6v12a1.4 1.4 0 0 0 1.4 1.4h3.2" stroke="#c9503c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.6 15.6 19 12l-4.4-3.6M19 12H9.4" stroke="#c9503c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <div style="flex:1;min-width:0"><div style="font:600 14.5px/1.25 Archivo;color:#c9503c">Log out</div></div>
+                </div>
+                <div onClick="{{ openDeleteAccount }}" style="margin:14px 0 4px;font:600 13px/1 Archivo;color:#6e6e66;cursor:pointer">Delete account</div>
               </div>
-              <div style="flex:none;height:76px;border-top:1px solid rgba(255,255,255,.07);background:rgba(14,14,15,.96);display:flex;padding:10px 6px 0">
-                <div onClick="{{ goHome }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 10.6 12 4.4l8 6.2V20h-5.4v-5.2H9.4V20H4z" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Home</span>
+              <sc-if value="{{ deleteAccountConfirm }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;inset:0;background:rgba(10,10,11,.72);display:flex;align-items:flex-end;z-index:20">
+                  <div style="width:100%;background:#17181a;border-top:1px solid rgba(255,255,255,.07);border-radius:18px 18px 0 0;padding:22px 22px 26px;display:flex;flex-direction:column;gap:14px">
+                    <div style="font:700 17px/1.2 Archivo;color:#f6f5f3">Delete account?</div>
+                    <div style="font:400 13px/1.5 Archivo;color:#a9a9a1">This permanently deletes your account, workout history, and progress data. This can't be undone.</div>
+                    <div style="display:flex;gap:9px;margin-top:6px">
+                      <div onClick="{{ confirmDeleteAccount }}" style="flex:1;height:52px;border-radius:12px;background:#c9503c;display:flex;align-items:center;justify-content:center;cursor:pointer;font:700 14px/1 Archivo;color:#fff">Delete account</div>
+                      <div onClick="{{ closeDeleteAccount }}" style="flex:1;height:52px;border-radius:12px;background:#e9712f;display:flex;align-items:center;justify-content:center;cursor:pointer;font:700 14px/1 Archivo;color:#0e0e0f">Keep account</div>
+                    </div>
+                  </div>
                 </div>
-                <div onClick="{{ goTrain }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2.2" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><rect x="18.6" y="9" width="3.2" height="6" rx="1" stroke="#6b6b64" stroke-width="1.6"></rect><path d="M5.4 12h13.2" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Train</span>
-                </div>
-                <div onClick="{{ goProgress }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.5 16.5 9 10.8l3.6 3.4 7.4-7.2M15.2 6.8H20v4.6" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Progress</span>
-                </div>
-                <div onClick="{{ goRank }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7.4 4.6h9.2v3.6a4.6 4.6 0 0 1-9.2 0zM12 12.8v3.4M8.4 19.4h7.2" stroke="#6b6b64" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                  <span style="font:500 10px/1 Archivo;color:#6b6b64">Rank</span>
-                </div>
-                <div onClick="{{ goProfile }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.3" stroke="#e9712f" stroke-width="1.6"></circle><path d="M5.4 19.6c0-3.7 3-5.6 6.6-5.6s6.6 1.9 6.6 5.6" stroke="#e9712f" stroke-width="1.6" stroke-linecap="round"></path></svg>
-                  <span style="font:600 10px/1 Archivo;color:#e9712f">Profile</span>
-                </div>
-              </div>
+              </sc-if>
+              {{ tabbarProfile }}
             </div>
           </sc-if>
 
@@ -915,7 +895,51 @@ const h=React.createElement;
 const SCREENS_A=[['welcome','Welcome'],['login','Log in'],['signup','Create account'],['home','Home — dashboard'],['library','Exercise library'],['progress','Progress — strength'],['progressBody','Progress — body'],['progressRec','Progress — health'],['rank','City leaderboard'],['location','Location permission'],['profile','Profile']];
 const SCREENS_B=[['train','Train — landing'],['catalog','Program catalogue'],['builder','Workout builder'],['run','Live run'],['brand','Logo directions'],['goals','Onboarding · goals'],['connect','Connect health sources'],['exercise','Exercise detail'],['live','Live workout'],['rest','Live · rest timer'],['done','Workout complete'],['inbody','InBody scan upload'],['inbodyConfirm','InBody · confirm scan'],['weekly','Weekly summary'],['notifs','Notifications'],['privacy','Privacy settings'],['athlete','Public athlete profile'],['favorites','Favourites'],['setTimer','Live · timed set'],['newExercise','Custom exercise']];
 const CAPTIONS={welcome:'Existing · Welcome',login:'Existing · Log in',signup:'Existing · Create account (try submitting empty)',home:'Existing · Home dashboard — scrolls',library:'Existing · Exercise library — filters live',progress:'Existing · Progress',progressBody:'Existing · Progress',progressRec:'Existing · Progress',rank:'Existing · City leaderboard',location:'Existing · Location permission',profile:'Existing · Profile',goals:'New · Onboarding goals & activities',connect:'New · Connect health sources',exercise:'New · Exercise detail + set logging',live:'New · Live workout — tap sets to log',rest:'New · Rest timer',done:'New · Workout complete',inbody:'New · InBody upload',inbodyConfirm:'New · Extracted values, user confirms',weekly:'New · Weekly summary',notifs:'New · Notification settings',privacy:'New · Privacy toggles',athlete:'New · Public profile — tap a leaderboard row',favorites:'New · Favourites — workouts, programs & exercises',newExercise:'New · Create a custom exercise',setTimer:'New · Timed set — timer completes the set',
-train:'New · Train landing — programs, previous, my workouts',catalog:'New · Preset program catalogue',builder:'New · Custom workout',run:'New · Live running workout',brand:'New · Alternative logo directions'};
+train:'New · Train landing — programs, previous, my workouts',catalog:'New · Preset program catalogue',builder:'New · Custom workout',run:'New · Live running workout',brand:'New · Alternative logo directions',
+nutrition:'New · Nutrition dashboard — calories & macros',foodSearch:'New · Nutrition · search foods',foodDetail:'New · Nutrition · serving & macros',savedMeals:'New · Nutrition · saved meals'};
+const FOODS=[
+['Banana','Fruits',89,1.1,22.8,0.3,[['1 medium (118g)',118],['100 g',100]]],
+['Apple','Fruits',52,0.3,13.8,0.2,[['1 medium (182g)',182],['100 g',100]]],
+['Blueberries','Fruits',57,0.7,14.5,0.3,[['1 cup (148g)',148],['100 g',100]]],
+['Strawberries','Fruits',32,0.7,7.7,0.3,[['1 cup (152g)',152],['100 g',100]]],
+['Avocado','Fruits',160,2,8.5,14.7,[['1/2 avocado (100g)',100],['100 g',100]]],
+['Orange','Fruits',47,0.9,11.8,0.1,[['1 medium (131g)',131],['100 g',100]]],
+['Chicken Breast (grilled)','Protein',165,31,0,3.6,[['1 breast (172g)',172],['100 g',100]]],
+['Salmon (cooked)','Protein',208,20,0,13,[['1 fillet (154g)',154],['100 g',100]]],
+['Ground Beef 90/10 (cooked)','Protein',217,26,0,12,[['1 patty (85g)',85],['100 g',100]]],
+['Egg (whole, boiled)','Protein',155,13,1.1,11,[['1 large egg (50g)',50],['2 eggs (100g)',100]]],
+['Egg Whites','Protein',52,11,0.7,0.2,[['1 cup (243g)',243],['100 g',100]]],
+['Tofu (firm)','Protein',144,15.8,2.8,8.7,[['1/2 block (126g)',126],['100 g',100]]],
+['Shrimp (cooked)','Protein',99,24,0.2,0.3,[['100 g',100],['6 large (90g)',90]]],
+['Turkey Breast (deli)','Protein',104,17.4,3.4,1.7,[['3 slices (85g)',85],['100 g',100]]],
+['Greek Yogurt (plain, 2%)','Dairy',73,10,3.9,2,[['1 cup (245g)',245],['100 g',100]]],
+['Cottage Cheese','Dairy',98,11,3.4,4.3,[['1 cup (226g)',226],['100 g',100]]],
+['Milk (2%)','Dairy',50,3.4,4.9,2,[['1 cup (244g)',244],['100 g',100]]],
+['Cheddar Cheese','Dairy',403,25,1.3,33,[['1 slice (28g)',28],['100 g',100]]],
+['Almonds','Snacks',579,21,22,50,[['1 oz · 23 nuts (28g)',28],['100 g',100]]],
+['Peanut Butter','Snacks',588,25,20,50,[['2 tbsp (32g)',32],['100 g',100]]],
+['Protein Bar','Snacks',380,30,35,12,[['1 bar (60g)',60]]],
+['Dark Chocolate (70%)','Snacks',598,7.8,45.9,42.6,[['1 square (10g)',10],['100 g',100]]],
+['Protein Shake (whey + water)','Beverages',400,80,10,5,[['1 scoop (33g)',33]]],
+['White Rice (cooked)','Grains',130,2.7,28,0.3,[['1 cup (158g)',158],['100 g',100]]],
+['Brown Rice (cooked)','Grains',123,2.7,26,1,[['1 cup (195g)',195],['100 g',100]]],
+['Quinoa (cooked)','Grains',120,4.4,21,1.9,[['1 cup (185g)',185],['100 g',100]]],
+['Oats (dry)','Grains',389,16.9,66,6.9,[['1/2 cup (40g)',40],['100 g',100]]],
+['Whole Wheat Bread','Grains',247,13,41,3.4,[['1 slice (28g)',28]]],
+['Pasta (cooked)','Grains',158,5.8,31,0.9,[['1 cup (140g)',140],['100 g',100]]],
+['Black Beans (cooked)','Grains',132,8.9,23.7,0.5,[['1 cup (172g)',172],['100 g',100]]],
+['Sweet Potato (baked)','Vegetables',90,2,20.7,0.2,[['1 medium (150g)',150],['100 g',100]]],
+['Broccoli (steamed)','Vegetables',35,2.4,7.2,0.4,[['1 cup (156g)',156],['100 g',100]]],
+['Spinach (raw)','Vegetables',23,2.9,3.6,0.4,[['1 cup (30g)',30],['100 g',100]]],
+['Mixed Salad Greens','Vegetables',15,1.4,2.9,0.2,[['2 cups (60g)',60]]],
+['Olive Oil','Fats',884,0,0,100,[['1 tbsp (14g)',14]]],
+['Butter','Fats',717,0.9,0.1,81,[['1 tbsp (14g)',14]]],
+['Coffee (black)','Beverages',2,0.3,0,0,[['1 cup (240ml)',240]]],
+['Orange Juice','Beverages',45,0.7,10.4,0.2,[['1 cup (248ml)',248]]]
+];
+const FOOD_CATS=['All','Protein','Grains','Fruits','Vegetables','Dairy','Snacks','Fats','Beverages'];
+const SLOTS=['Breakfast','Lunch','Snack','Dinner'];
+const MACRO_GOALS={kcal:2400,protein:180,carbs:240,fat:80};
 
 class Component extends DCLogic {
   state = {
@@ -951,9 +975,14 @@ class Component extends DCLogic {
     customExercises:[], newEx:{name:'',muscles:[],tools:[],desc:'',cat:'Strength',measure:'weight'},
     progDone:{'Upper / Lower':['Upper Body A']},
     restPrefs:{}, unitPrefs:{}, measureOverride:{},
+    nutritionLog:{Breakfast:[],Lunch:[],Snack:[],Dinner:[]}, savedMeals:[], nutriShareLayout:null,
+    foodSearchQuery:'', foodSearchSlot:'Breakfast', foodCategory:'All', foodTarget:'log', editingMealDraft:null,
+    foodDetailName:null, foodDetailSlot:'Breakfast', foodServingIdx:0, foodQty:1, editingFoodId:null,
+    saveMealSheet:null, saveMealName:'', logMealSheet:null, logMealSlot:'Breakfast', foodCustomGrams:'', expandedGroups:{},
+    macroGoals:{kcal:2400,protein:180,carbs:240,fat:80}, editGoalsSheet:false, editGoalsVals:{kcal:'2400',protein:'180',carbs:'240',fat:'80'}, customFoods:[], customFoodSheet:false, customFoodVals:{name:'',kcal:'',protein:'',carbs:'',fat:''},
     bodyWidgets:['weight','bodyfat'], recoveryWidgets:['hrv','sleep','rhr'], widgetPicker:null,
     saveModal:false, saveName:'', builderReturnTo:'train', newProgram:{name:'',weeks:4,assign:{}}, libraryPickMode:false,
-    profile:{name:'James Mitchell',handle:'jmitch',city:'Alexandria',birthday:'1998-04-12',sex:'Male'}, rpe:null, paused:false,
+    profile:{name:'James Mitchell',username:'jmitch',handle:'jmitch',city:'Alexandria',birthday:'1998-04-12',sex:'Male'}, rpe:null, paused:false,
     routine:{name:'Upper Push — my version',base:'Push Pull Legs',type:'Customised preset',
       ex:[{name:'Bench Press',sets:4,reps:8},{name:'Incline DB Press',sets:3,reps:10},{name:'Cable Fly',sets:3,reps:12}],
       days:['Mon','Thu']},
@@ -1124,13 +1153,132 @@ class Component extends DCLogic {
   };
 
   fmt(t){const m=Math.floor(t/60),s=t%60;return m+':'+String(s).padStart(2,'0')}
+  allFoods(){return FOODS.concat(this.state.customFoods)}
+  macroOf(name,grams){const f=this.allFoods().find(x=>x[0]===name);if(!f)return{kcal:0,protein:0,carbs:0,fat:0};const[,,k,p,c,ft]=f,m=grams/100;return{kcal:k*m,protein:p*m,carbs:c*m,fat:ft*m}}
+  totalsForItems(items){return items.reduce((a,i)=>({kcal:a.kcal+i.kcal,protein:a.protein+i.protein,carbs:a.carbs+i.carbs,fat:a.fat+i.fat}),{kcal:0,protein:0,carbs:0,fat:0})}
+  openFoodSearch=(slot)=>()=>{this.setState({screen:'foodSearch',foodSearchSlot:slot,foodSearchQuery:'',foodCategory:'All',foodTarget:'log'})};
+  openFoodSearchForMeal=()=>{this.setState({screen:'foodSearch',foodSearchQuery:'',foodCategory:'All',foodTarget:'meal'})};
+  openFoodDetail=(name,slot,existing)=>()=>{
+    const food=this.allFoods().find(x=>x[0]===name);
+    const servings=food?food[6]:[['100 g',100]];
+    let idx=0,qty=1;
+    if(existing){const fi=servings.findIndex(s=>s[0]===existing.servingLabel);idx=fi<0?0:fi;qty=existing.qty;}
+    this.setState({screen:'foodDetail',foodDetailName:name,foodDetailSlot:slot||this.state.foodSearchSlot,foodServingIdx:idx,foodQty:qty,foodCustomGrams:'',editingFoodId:existing?existing.id:null});
+  };
+  openFoodDetailForMeal=(name,existing)=>()=>{
+    const food=this.allFoods().find(x=>x[0]===name);
+    const servings=food?food[6]:[['100 g',100]];
+    let idx=0,qty=1;
+    if(existing){const fi=servings.findIndex(s=>s[0]===existing.servingLabel);idx=fi<0?0:fi;qty=existing.qty;}
+    this.setState({screen:'foodDetail',foodDetailName:name,foodServingIdx:idx,foodQty:qty,foodCustomGrams:'',editingFoodId:existing?existing.id:null,foodTarget:'meal'});
+  };
+  addOrUpdateLogItem(){
+    const{foodDetailName,foodDetailSlot,foodServingIdx,foodQty,foodCustomGrams,editingFoodId,foodTarget}=this.state;
+    const food=this.allFoods().find(x=>x[0]===foodDetailName); if(!food) return;
+    const custom=foodServingIdx===-1;
+    const grams=custom?(parseFloat(foodCustomGrams)||0):(food[6][foodServingIdx]||food[6][0])[1]*foodQty;
+    const label=custom?(Math.round(grams)+' g (custom)'):(food[6][foodServingIdx]||food[6][0])[0];
+    const macro=this.macroOf(foodDetailName,grams);
+    const item={id:editingFoodId||('f'+Date.now()+Math.random().toString(36).slice(2,6)),name:foodDetailName,servingLabel:label,qty:custom?1:foodQty,grams:Math.round(grams),...macro};
+    if(foodTarget==='meal'){
+      const draft=this.state.editingMealDraft; if(!draft) return;
+      const items=editingFoodId?draft.items.map(i=>i.id===editingFoodId?item:i):[...draft.items,item];
+      this.setState({editingMealDraft:{...draft,items},screen:'editMeal'});
+      this.flash((editingFoodId?'Updated ':'Added ')+foodDetailName);
+      return;
+    }
+    const log=this.state.nutritionLog, next={...log};
+    SLOTS.forEach(s=>{next[s]=(log[s]||[]).filter(i=>i.id!==item.id);});
+    next[foodDetailSlot]=[...(next[foodDetailSlot]||[]),item];
+    this.setState({nutritionLog:next,screen:'nutrition'});
+    this.flash((editingFoodId?'Updated ':'Logged ')+foodDetailName+' — '+foodDetailSlot);
+  }
+  deleteLogItem(slot,id){
+    this.setState({nutritionLog:{...this.state.nutritionLog,[slot]:this.state.nutritionLog[slot].filter(i=>i.id!==id)}});
+    this.flash('Removed from '+slot);
+  }
+  deleteLogGroup(slot,groupId){
+    this.setState({nutritionLog:{...this.state.nutritionLog,[slot]:this.state.nutritionLog[slot].filter(i=>i.groupId!==groupId)}});
+    this.flash('Removed from '+slot);
+  }
+  toggleGroup(groupId){this.setState({expandedGroups:{...this.state.expandedGroups,[groupId]:!this.state.expandedGroups[groupId]}});}
+  deleteFromDetail(){
+    if(this.state.foodTarget==='meal'){
+      const draft=this.state.editingMealDraft, id=this.state.editingFoodId; if(!draft||!id) return;
+      this.setState({editingMealDraft:{...draft,items:draft.items.filter(i=>i.id!==id)},screen:'editMeal'});
+      return;
+    }
+    const{foodDetailSlot,editingFoodId}=this.state; if(!editingFoodId) return;
+    this.deleteLogItem(foodDetailSlot,editingFoodId);
+    this.setState({screen:'nutrition'});
+  }
+  openEditMeal=(meal)=>()=>this.setState({screen:'editMeal',editingMealDraft:{id:meal.id,name:meal.name,items:meal.items.map(i=>({...i}))}});
+  mealItemGrams(id,grams){
+    const draft=this.state.editingMealDraft; if(!draft) return;
+    const g=Math.max(1,grams);
+    const items=draft.items.map(i=>{
+      if(i.id!==id) return i;
+      const macro=this.macroOf(i.name,g);
+      return {...i,grams:g,qty:1,servingLabel:Math.round(g)+' g (custom)',...macro};
+    });
+    this.setState({editingMealDraft:{...draft,items}});
+  }
+  removeMealItem(id){const draft=this.state.editingMealDraft;this.setState({editingMealDraft:{...draft,items:draft.items.filter(i=>i.id!==id)}});}
+  saveMealDraft(){
+    const draft=this.state.editingMealDraft; if(!draft) return;
+    this.setState({savedMeals:this.state.savedMeals.map(m=>m.id===draft.id?{...m,name:draft.name,items:draft.items}:m),screen:'savedMeals',editingMealDraft:null});
+    this.flash('Saved meal updated');
+  }
+  openSaveMeal=(slot)=>()=>this.setState({saveMealSheet:slot,saveMealName:slot+' — usual'});
+  closeSaveMeal=()=>this.setState({saveMealSheet:null});
+  confirmSaveMeal(){
+    const slot=this.state.saveMealSheet, items=this.state.nutritionLog[slot]||[];
+    if(!items.length) return;
+    const meal={id:'m'+Date.now(),name:this.state.saveMealName.trim()||slot+' meal',items:items.map(i=>({...i}))};
+    this.setState({savedMeals:[meal,...this.state.savedMeals],saveMealSheet:null});
+    this.flash('Saved “'+meal.name+'”');
+  }
+  logSavedMeal=(meal,slot)=>{
+    const gid='g'+Date.now();
+    const fresh=meal.items.map(i=>({...i,id:'f'+Date.now()+Math.random().toString(36).slice(2,6),groupId:gid,groupName:meal.name}));
+    const log=this.state.nutritionLog;
+    this.setState({nutritionLog:{...log,[slot]:[...(log[slot]||[]),...fresh]},logMealSheet:null});
+    this.flash('Logged “'+meal.name+'” to '+slot);
+  };
+  deleteSavedMeal(id){this.setState({savedMeals:this.state.savedMeals.filter(m=>m.id!==id)});this.flash('Saved meal removed');}
+  openEditGoals=()=>{const g=this.state.macroGoals;this.setState({editGoalsSheet:true,editGoalsVals:{kcal:String(g.kcal),protein:String(g.protein),carbs:String(g.carbs),fat:String(g.fat)}});};
+  autoGoalsFromInbody(){
+    const sv=this.state.scanVals;
+    const weight=parseFloat(sv['Weight'])||80, bmr=parseFloat(sv['Basal metabolic rate'])||1800;
+    const tdee=bmr*1.45;
+    const goal=this.state.goals[0]||'Feel better';
+    const kcalAdj={'Lose fat':-500,'Build muscle':250,'Get stronger':100,'Improve endurance':150,'Feel better':0}[goal]||0;
+    const proteinPerKg={'Lose fat':2.2,'Build muscle':2.0,'Get stronger':2.0,'Improve endurance':1.7,'Feel better':1.6}[goal]||1.6;
+    const kcal=Math.round((tdee+kcalAdj)/10)*10;
+    const protein=Math.round(weight*proteinPerKg/5)*5;
+    const fat=Math.round((kcal*0.25/9)/5)*5;
+    const carbs=Math.max(50,Math.round(((kcal-protein*4-fat*9)/4)/5)*5);
+    return {kcal,protein,carbs,fat};
+  }
+  applyAutoGoals=()=>{
+    const g=this.autoGoalsFromInbody();
+    this.setState({editGoalsVals:{kcal:String(g.kcal),protein:String(g.protein),carbs:String(g.carbs),fat:String(g.fat)}});
+    this.flash('Calculated from your InBody scan + goals');
+  };
+  saveGoals(){
+    const v=this.state.editGoalsVals;
+    const n=(x,d)=>{const p=parseInt(x,10);return isNaN(p)||p<=0?d:p;};
+    const g=this.state.macroGoals;
+    this.setState({macroGoals:{kcal:n(v.kcal,g.kcal),protein:n(v.protein,g.protein),carbs:n(v.carbs,g.carbs),fat:n(v.fat,g.fat)},editGoalsSheet:false});
+    this.flash('Goals updated');
+  }
 
   // ---------- primitives ----------
   card(children,extra){return h('div',{style:{background:CARD,border:BRD,borderRadius:14,...extra}},children)}
   lbl(t,extra){return h('div',{style:{font:'600 9.5px/1 Archivo',letterSpacing:'.14em',textTransform:'uppercase',color:'#77776f',...extra}},t)}
   hdr(title,onBack,right){
     return h('div',{style:{flex:'none',padding:onBack?'2px 22px 14px':'2px 22px 12px'}},[
-      onBack&&h('div',{key:'b',onClick:onBack,style:{width:34,height:34,margin:'0 0 10px -8px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:10},'style-hover':'background:rgba(255,255,255,.06)'},
+      onBack&&h('div',{key:'b',onClick:onBack,style:{width:44,height:44,margin:'0 0 4px -13px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12},'style-hover':'background:rgba(255,255,255,.06)'},
         h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},h('path',{d:'M12.5 4 6.5 10l6 6',stroke:W,strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'}))),
       h('div',{key:'t',style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},[
         h('h1',{key:'h',style:{margin:0,font:'700 26px/1.15 Archivo',letterSpacing:'-.02em',color:W,whiteSpace:'nowrap'}},title),
@@ -1346,11 +1494,13 @@ class Component extends DCLogic {
   }
   icon(name,color,size){
     const st={stroke:color||DIM,strokeWidth:1.6,fill:'none',strokeLinecap:'round',strokeLinejoin:'round'},s=size||22;
-    const p={home:h('path',{d:'M4 10.6 12 4.4l8 6.2V20h-5.4v-5.2H9.4V20H4z',...st}),
-      train:h('g',{},[h('rect',{key:1,x:2.2,y:9,width:3.2,height:6,rx:1,...st}),h('rect',{key:2,x:18.6,y:9,width:3.2,height:6,rx:1,...st}),h('path',{key:3,d:'M5.4 12h13.2',...st})]),
-      progress:h('g',{},[h('path',{key:1,d:'M3.5 16.5 9 10.8l3.6 3.4 7.4-7.2',...st}),h('path',{key:2,d:'M15.2 6.8H20v4.6',...st})]),
-      rank:h('g',{},[h('path',{key:1,d:'M7.4 4.6h9.2v3.6a4.6 4.6 0 0 1-9.2 0z',...st}),h('path',{key:2,d:'M12 12.8v3.4M8.4 19.4h7.2',...st})]),
-      profile:h('g',{},[h('circle',{key:1,cx:12,cy:8,r:3.3,...st}),h('path',{key:2,d:'M5.4 19.6c0-3.7 3-5.6 6.6-5.6s6.6 1.9 6.6 5.6',...st})]),
+    const fst=color==='#0e0e0f'?{...st,fill:color,stroke:'none'}:st;
+    const p={home:h('path',{d:'M4 11.2 12 4.6l8 6.6V19a1 1 0 0 1-1 1h-4.4v-6.2H9.4V20H5a1 1 0 0 1-1-1z',...fst}),
+      train:h('g',{},[h('rect',{key:1,x:2,y:8.6,width:3.4,height:6.8,rx:1.4,...fst}),h('rect',{key:2,x:18.6,y:8.6,width:3.4,height:6.8,rx:1.4,...fst}),h('rect',{key:3,x:5.4,y:10.8,width:13.2,height:2.4,rx:1.2,...fst})]),
+      progress:h('g',{},[h('path',{key:1,d:'M3.5 16.5 9 10.8l3.6 3.4 7.4-7.2',...st}),h('circle',{key:2,cx:20,cy:6.4,r:1.6,fill:color==='#0e0e0f'?color:'none',stroke:st.stroke,strokeWidth:st.strokeWidth})]),
+      rank:h('g',{},[h('path',{key:1,d:'M7.4 4.4h9.2v3.6a4.6 4.6 0 0 1-9.2 0z',...fst}),h('rect',{key:2,x:10.6,y:12.4,width:2.8,height:3.6,rx:.6,...fst}),h('rect',{key:3,x:7.6,y:18,width:8.8,height:2,rx:1,...fst})]),
+      profile:h('g',{},[h('circle',{key:1,cx:12,cy:8,r:3.5,...fst}),h('path',{key:2,d:'M5.2 19.8c0-3.9 3-5.9 6.8-5.9s6.8 2 6.8 5.9',...fst})]),
+      camera:h('g',{},[h('path',{key:1,d:'M4 8.4A1.4 1.4 0 0 1 5.4 7h2.1l.9-1.6a1.2 1.2 0 0 1 1-.6h5.2a1.2 1.2 0 0 1 1 .6L16.5 7h2.1A1.4 1.4 0 0 1 20 8.4v9.2A1.4 1.4 0 0 1 18.6 19H5.4A1.4 1.4 0 0 1 4 17.6z',...fst}),h('circle',{key:2,cx:12,cy:13,r:3.3,fill:color==='#0e0e0f'?'#0e0e0f':'none',stroke:'#fff',strokeWidth:st.strokeWidth})]),
       bolt:h('path',{d:'M13.4 3.6 6.8 13h4.2l-.6 7.4L17.4 11h-4.4z',...st}),
       heart:h('path',{d:'M12 19.6S4.4 15 4.4 9.8A3.9 3.9 0 0 1 12 8.2a3.9 3.9 0 0 1 7.6 1.6c0 5.2-7.6 9.8-7.6 9.8z',...st}),
       pin:h('g',{},[h('path',{key:1,d:'M12 21s6-6 6-10.4A6 6 0 0 0 6 10.6C6 15 12 21 12 21z',...st}),h('circle',{key:2,cx:12,cy:10.4,r:2.2,...st})]),
@@ -1367,11 +1517,16 @@ class Component extends DCLogic {
       check:h('path',{d:'m5.6 12.4 4 4 8.8-9',...st}),
       clock:h('g',{},[h('circle',{key:1,cx:12,cy:12,r:7.8,...st}),h('path',{key:2,d:'M12 7.6V12l3 2',...st})]),
       x:h('path',{d:'M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6',...st}),
-      pencil:h('g',{},[h('path',{key:1,d:'M14.6 5.4 18.6 9.4 8.2 19.8 4 20.2l.4-4.2z',...st}),h('path',{key:2,d:'M13 7 17 11',...st})])};
+      pencil:h('g',{},[h('path',{key:1,d:'M14.6 5.4 18.6 9.4 8.2 19.8 4 20.2l.4-4.2z',...st}),h('path',{key:2,d:'M13 7 17 11',...st})]),
+      share:h('g',{},[h('path',{key:1,d:'M12 3v12M12 3l-4 4M12 3l4 4',...st}),h('path',{key:2,d:'M6 13v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6',...st})])};
     p.runner=h('g',{},[
       h('path',{key:1,d:'M3.2 16.4V9.9c0-.5.5-.9 1-.7l2.7 1.1 3.1-2.6c.5-.4 1.2-.3 1.6.2l1.6 2.2c.4.5 1 .9 1.7 1l3.4.6c1.8.3 3.1 1.6 3.5 3.3l.2 1.4',...st}),
       h('path',{key:2,d:'M3.2 16.4h17.7c0 1.4-1.1 2.5-2.5 2.5H5.7a2.5 2.5 0 0 1-2.5-2.5z',...st}),
       h('path',{key:3,d:'M8.3 11.4l2.2 2.1M11.4 9.1l2.1 2.3',strokeWidth:1.3,stroke:st.stroke,fill:'none',strokeLinecap:'round'})
+    ]);
+    p.nutrition=h('g',{},[
+      h('path',{key:1,d:'M8.2 3v6.4a1.8 1.8 0 0 0 3.6 0V3M10 9.4V21',...st}),
+      h('path',{key:2,d:'M16 3c-1.7 1.2-2.7 3.4-2.7 5.9 0 1.7 1 2.9 2.2 3.2V21',...st})
     ]);
     return h('svg',{width:s,height:s,viewBox:'0 0 24 24'},p[name])
   }
@@ -1391,11 +1546,11 @@ class Component extends DCLogic {
   }
   tabbar(active){
     const items=[['home','Home','home'],['train','Train','train'],['progress','Progress','progress'],['rank','Rank','rank'],['profile','Profile','profile']];
-    return h('div',{style:{flex:'none',height:76,borderTop:'1px solid rgba(255,255,255,.07)',background:'rgba(14,14,15,.96)',backdropFilter:'blur(12px)',display:'flex',padding:'10px 6px 0'}},
-      items.map(([id,label,scr])=>{const on=id===active;const c=on?O:'#6b6b64';
-        return h('div',{key:id,onClick:this.go(scr),style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:5,cursor:'pointer'}},[
-          this.icon(id,c,22),
-          h('span',{key:'l',style:{font:(on?'600':'500')+' 10px/1 Archivo',color:c}},label)
+    return h('div',{style:{flex:'none',display:'flex',alignItems:'stretch',borderTop:'1px solid rgba(255,255,255,.07)',background:'#101011',padding:'8px 8px calc(8px + env(safe-area-inset-bottom, 8px))'}},
+      items.map(([id,label,scr])=>{const on=id===active;
+        return h('div',{key:id,onClick:this.go(scr),style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,padding:'6px 0',cursor:'pointer',minHeight:44}},[
+          this.icon(id,on?O:'#6b6b64',20),
+          h('span',{key:'l',style:{font:(on?'600':'500')+' 9.5px/1 Archivo',color:on?O:'#6b6b64',whiteSpace:'nowrap'}},label)
         ])}))
   }
   sparkline(pts,color,w,hh,fill){
@@ -1411,7 +1566,7 @@ class Component extends DCLogic {
   s_login(){
     return h('div',{style:{flex:1,display:'flex',flexDirection:'column',animation:'fj-fade .3s'}},[
       h('div',{key:'d',style:{borderBottom:'1px solid rgba(255,255,255,.07)',padding:'0 22px'}},
-        h('div',{onClick:this.go('welcome'),style:{width:34,height:34,margin:'0 0 8px -8px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},this.icon('chevron',W,20).props?h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},h('path',{d:'M12.5 4 6.5 10l6 6',stroke:W,strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'})):null)),
+        h('div',{onClick:this.go('welcome'),style:{width:44,height:44,margin:'0 0 2px -13px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12}},this.icon('chevron',W,20).props?h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},h('path',{d:'M12.5 4 6.5 10l6 6',stroke:W,strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'})):null)),
       h('div',{key:'b',style:{padding:'26px 22px 0'}},[
         h('h1',{key:'h',style:{margin:0,font:'700 27px/1.15 Archivo',letterSpacing:'-.02em'}},'Welcome back'),
         h('p',{key:'p',style:{margin:'9px 0 26px',font:'400 13.5px/1.4 Archivo',color:DIM}},'Log in to continue your training.'),
@@ -1436,7 +1591,7 @@ class Component extends DCLogic {
     ]);
     return h('div',{style:{flex:1,display:'flex',flexDirection:'column',animation:'fj-fade .3s'}},[
       h('div',{key:'d',style:{borderBottom:'1px solid rgba(255,255,255,.07)',padding:'0 22px'}},
-        h('div',{onClick:this.go('welcome'),style:{width:34,height:34,margin:'0 0 8px -8px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},
+        h('div',{onClick:this.go('welcome'),style:{width:44,height:44,margin:'0 0 2px -13px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12}},
           h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},h('path',{d:'M12.5 4 6.5 10l6 6',stroke:W,strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'})))),
       h('div',{key:'b',style:{padding:'26px 22px 0'}},[
         h('h1',{key:'h',style:{margin:0,font:'700 27px/1.15 Archivo',letterSpacing:'-.02em'}},'Create account'),
@@ -1447,7 +1602,7 @@ class Component extends DCLogic {
           if(!su.name||!su.email||!su.pw){this.setState({signupErr:true,signupErrMsg:'All fields are required.'});return;}
           if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(su.email)){this.setState({signupErr:true,signupErrMsg:'Enter a valid email address.'});return;}
           if(su.pw.length<8){this.setState({signupErr:true,signupErrMsg:'Password must be at least 8 characters.'});return;}
-          this.setState({screen:'goals',signupErr:false,goalsReturnTo:'newAccount'});
+          this.setState({screen:'pickUsername',signupErr:false,goalsReturnTo:'newAccount'});
         },null)),
         this.socialRow(),
         h('p',{key:'t',style:{margin:'18px 0 0',textAlign:'center',font:'400 11.5px/1.5 Archivo',color:'#5c5c55'}},'By creating an account you agree to our Terms of Service and Privacy Policy.')
@@ -1704,7 +1859,7 @@ class Component extends DCLogic {
     const q=[['Why is location used?','To place you in the correct city leaderboard automatically.'],['When is it used?','Once during setup. Not tracked in the background.'],['What if you decline?','You will not appear on any city leaderboard. Everything else in FORJD still works normally.']];
     return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column'}},[
       h('div',{key:'d',style:{borderBottom:'1px solid rgba(255,255,255,.07)',padding:'0 22px'}},
-        h('div',{onClick:this.go(back),style:{width:34,height:34,margin:'0 0 8px -8px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},
+        h('div',{onClick:this.go(back),style:{width:44,height:44,margin:'0 0 2px -13px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12}},
           h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},h('path',{d:'M12.5 4 6.5 10l6 6',stroke:W,strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'})))),
       h('div',{key:'b',style:{flex:1,minHeight:0,overflowY:'auto',padding:'26px 22px 0',display:'flex',flexDirection:'column'}},[
         h('div',{key:'i',style:{width:44,height:44,borderRadius:12,background:'#1c1d20',display:'flex',alignItems:'center',justifyContent:'center'}},this.icon('pin','#c8c8c0',22)),
@@ -1725,6 +1880,39 @@ class Component extends DCLogic {
   }
 
   // ---------- new flows ----------
+  s_pickUsername(){
+    const st=this.state, u=st.pickUsernameVal||'', avatar=st.pickUsernameAvatar, err=st.pickUsernameErr;
+    const taken=['jmitch','admin','forjd','test'];
+    const valid=/^[a-z0-9_]{3,20}$/.test(u);
+    return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column'}},[
+      this.hdr('Your Profile',this.go('signup')),
+      this.scroll([
+        h('p',{key:'p',style:{margin:'0 0 22px',font:'400 13.5px/1.4 Archivo',color:DIM}},'Pick a unique username and add a photo so friends can find you.'),
+        h('div',{key:'av',style:{display:'flex',flexDirection:'column',alignItems:'center',gap:12,marginBottom:26}},[
+          h('div',{key:'w',style:{position:'relative',width:88,height:88}},[
+            avatar
+              ? h('img',{key:'i',src:avatar,style:{width:88,height:88,borderRadius:'50%',objectFit:'cover',border:BRD}})
+              : h('div',{key:'i',style:{width:88,height:88,borderRadius:'50%',background:'#1c1c1e',border:BRD,display:'flex',alignItems:'center',justifyContent:'center',font:'700 28px Archivo',color:'#8a8a84'}},(u||'?').charAt(0).toUpperCase()),
+            h('label',{key:'b',htmlFor:'pickAvatarUpload',style:{position:'absolute',right:-2,bottom:-2,width:30,height:30,borderRadius:'50%',background:O,border:'2px solid #0e0e0f',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},
+              this.icon('camera','#0e0e0f',15))
+          ]),
+          h('input',{key:'f',id:'pickAvatarUpload',type:'file',accept:'image/*',style:{display:'none'},onChange:e=>{
+            const file=e.target.files&&e.target.files[0]; if(!file) return;
+            const reader=new FileReader(); reader.onload=()=>this.setState({pickUsernameAvatar:reader.result}); reader.readAsDataURL(file);
+          }}),
+          h('label',{key:'l',htmlFor:'pickAvatarUpload',style:{font:'600 12.5px Archivo',color:O,cursor:'pointer'}},'Upload photo')
+        ]),
+        this.lbl('Username',{marginBottom:9}),
+        h('input',{key:'u',value:u,onChange:e=>this.setState({pickUsernameVal:e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,''),pickUsernameErr:false}),placeholder:'e.g. jsmith',style:{width:'100%',height:50,borderRadius:11,background:'#151517',border:BRD,padding:'0 15px',font:'600 14.5px Archivo',color:W,outline:'none'}}),
+        err?h('div',{key:'e',style:{marginTop:10,font:'500 12px/1 Archivo',color:'#e05a3c'}},err):h('div',{key:'h',style:{marginTop:10,font:'400 11.5px/1.4 Archivo',color:'#77776f'}},'3–20 characters: letters, numbers, underscores.'),
+        h('div',{key:'cta',style:{marginTop:26}},this.btn('Continue',()=>{
+          if(!valid){this.setState({pickUsernameErr:'Enter 3–20 letters, numbers, or underscores.'});return;}
+          if(taken.includes(u)){this.setState({pickUsernameErr:'That username is taken.'});return;}
+          this.setState(s=>({screen:'goals',goalsReturnTo:'newAccount',profile:{...s.profile,username:u,handle:u,avatar:avatar||s.profile.avatar}}));
+        },null))
+      ])
+    ]);
+  }
   s_goals(){
     const goals=['Get stronger','Lose fat','Build muscle','Improve endurance','Feel better'];
     const acts=['Strength','Running','HYROX','Pilates','Cycling','Swimming'];
@@ -1735,7 +1923,7 @@ class Component extends DCLogic {
     const ready=this.state.goals.length&&this.state.acts.length;
     return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column'}},[
       h('div',{key:'back',style:{flex:'none',padding:'14px 22px 0'}},
-        h('div',{onClick:()=>this.setState({screen:this.state.goalsReturnTo==='newAccount'?'signup':this.state.goalsReturnTo,goalsReturnTo:'profile'}),style:{width:34,height:34,margin:'0 0 0 -8px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:10},'style-hover':'background:rgba(255,255,255,.06)'},
+        h('div',{onClick:()=>this.setState({screen:this.state.goalsReturnTo==='newAccount'?'signup':this.state.goalsReturnTo,goalsReturnTo:'profile'}),style:{width:44,height:44,margin:'-5px 0 -5px -13px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12},'style-hover':'background:rgba(255,255,255,.06)'},
           h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},h('path',{d:'M12.5 4 6.5 10l6 6',stroke:W,strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'})))),
       this.scroll([
         h('h1',{key:'h',style:{margin:'18px 0 0',font:'700 26px/1.15 Archivo',letterSpacing:'-.02em'}},'What are you training for?'),
@@ -1758,7 +1946,7 @@ class Component extends DCLogic {
     const src=[['Apple Health','Steps, HR, sleep, workouts','heart'],['WHOOP','Recovery, strain, sleep','bolt'],['Health Connect','Android health aggregation','link']];
     return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column'}},[
       h('div',{key:'p',style:{flex:'none',padding:'14px 22px 0'}},
-        h('div',{onClick:this.go('profile'),style:{width:34,height:34,margin:'0 0 0 -8px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:10},'style-hover':'background:rgba(255,255,255,.06)'},
+        h('div',{onClick:this.go('profile'),style:{width:44,height:44,margin:'-5px 0 -5px -13px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12},'style-hover':'background:rgba(255,255,255,.06)'},
           h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},h('path',{d:'M12.5 4 6.5 10l6 6',stroke:W,strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'})))),
       this.scroll([
         h('h1',{key:'h',style:{margin:'18px 0 0',font:'700 26px/1.15 Archivo',letterSpacing:'-.02em'}},'Connect your data'),
@@ -1780,6 +1968,25 @@ class Component extends DCLogic {
       h('div',{key:'cta',style:{flex:'none',padding:'12px 22px 24px',borderTop:'1px solid rgba(255,255,255,.06)'}},this.btn('Save',()=>{this.flash('Connected sources updated');this.go('profile')();}))
     ])
   }
+  trainingTip(name,muscleStr){
+    const tips={
+      'Bench Press':'Keep shoulder blades pinned back and drive through your feet — a stable base lets you press harder without straining the shoulders.',
+      'Incline DB Press':'Set the bench to 30–45°. Too steep turns it into a shoulder press and takes tension off the upper chest.',
+      'Cable Fly':'Keep a slight bend in the elbows throughout and squeeze at the midline — let the cable stretch you back, don\'t chase range with a straight arm.',
+      'Deadlift':'Push the floor away rather than pulling the bar up. Keep the bar against your shins/thighs the whole way to protect your lower back.',
+      'Barbell Row':'Hinge at the hips, brace your core, and pull to your lower ribs — avoid jerking the weight up with momentum.',
+      'Squat':'Sit back and down with your chest up; drive your knees out over your toes on the way up.',
+      'Overhead Press':'Brace your glutes and abs to avoid over-arching your lower back as the bar passes your face.',
+      'Pull-Up':'Start from a dead hang and pull your elbows down and back — think about driving your chest to the bar.'
+    };
+    if(tips[name]) return tips[name];
+    const m=(muscleStr||'').toLowerCase();
+    if(m.includes('leg')||m.includes('glute')||m.includes('quad')||m.includes('hamstring')) return 'Control the eccentric (lowering) phase and drive through your whole foot — most leg gains come from time under tension, not just the top of the rep.';
+    if(m.includes('chest')||m.includes('shoulder')||m.includes('tricep')) return 'Warm the joint up with a lighter set first, and keep the movement smooth — jerky reps shift stress to the joint instead of the muscle.';
+    if(m.includes('back')||m.includes('lat')||m.includes('bicep')) return 'Focus on pulling with your elbows rather than your hands, and avoid using body momentum to move the weight.';
+    if(m.includes('core')||m.includes('ab')) return 'Move slowly and keep your ribs stacked over your hips — speed usually means momentum is doing the work instead of your core.';
+    return 'Prioritize full range of motion and a controlled tempo over adding weight — good form now means more progress later.';
+  }
   s_exercise(){
     const meta=this.libraryAll().find(x=>x[0]===this.state.ex)||['','Full Body','','Strength'];
     const tags=meta[1].split(' · ').filter(Boolean).concat(meta[4]?[meta[4]]:[]);
@@ -1800,6 +2007,10 @@ class Component extends DCLogic {
           h('div',{key:'l',style:{font:'600 9.5px/1 Archivo',letterSpacing:'.12em',textTransform:'uppercase',color:'#5c5c55',marginBottom:8}},'Equipment'),
           h('div',{key:'r',style:{display:'flex',gap:7,flexWrap:'wrap'}},this.toolsOf(this.state.ex).map(t=>h('span',{key:t,style:{display:'flex',alignItems:'center',gap:6,padding:'6px 11px',borderRadius:7,background:'rgba(233,113,47,.1)',border:'1px solid rgba(233,113,47,.25)',font:'600 11.5px/1 Archivo',color:O}},[this.icon('dumb',O,13),t])))
         ]):null,
+        h('div',{key:'tip',style:{marginBottom:14,padding:'13px 14px',borderRadius:12,background:'rgba(233,113,47,.08)',border:'1px solid rgba(233,113,47,.2)',display:'flex',gap:10}},[
+          h('div',{key:'i',style:{flex:'none',marginTop:1}},this.icon('bolt',O,16)),
+          h('div',{key:'t',style:{font:'400 12.5px/1.5 Archivo',color:'#d8b39a'}},[h('span',{key:'b',style:{fontWeight:700,color:O}},'How to train it: '),this.trainingTip(this.state.ex,meta[1])])
+        ]),
         h('div',{key:'s',style:{display:'flex',gap:10}},[this.stat('Best set','100','kg × 3'),this.stat('Est. 1RM','106','kg','+5 kg this month')]),
         this.card([this.lbl('Top set — last 8 sessions',{marginBottom:14}),
           h('div',{key:'c'},this.sparkline([88,90,90,92,95,95,97,100],O,300,80,true))
@@ -2239,8 +2450,24 @@ class Component extends DCLogic {
     return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column'}},[
       this.hdr('Edit Profile',this.go('profile')),
       this.scroll([
+        h('div',{key:'av',style:{display:'flex',flexDirection:'column',alignItems:'center',gap:12,marginBottom:22}},[
+          h('div',{key:'w',style:{position:'relative',width:88,height:88}},[
+            p.avatar
+              ? h('img',{key:'i',src:p.avatar,style:{width:88,height:88,borderRadius:'50%',objectFit:'cover',border:BRD}})
+              : h('div',{key:'i',style:{width:88,height:88,borderRadius:'50%',background:'#1c1c1e',border:BRD,display:'flex',alignItems:'center',justifyContent:'center',font:'700 28px Archivo',color:'#8a8a84'}},(p.name||'?').charAt(0).toUpperCase()),
+            h('label',{key:'b',htmlFor:'avatarUpload',style:{position:'absolute',right:-2,bottom:-2,width:30,height:30,borderRadius:'50%',background:O,border:'2px solid #0e0e0f',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},
+              this.icon('camera','#0e0e0f',15))
+          ]),
+          h('input',{key:'f',id:'avatarUpload',type:'file',accept:'image/*',style:{display:'none'},onChange:e=>{
+            const file=e.target.files&&e.target.files[0]; if(!file) return;
+            const reader=new FileReader(); reader.onload=()=>upd({avatar:reader.result}); reader.readAsDataURL(file);
+          }}),
+          h('label',{key:'l',htmlFor:'avatarUpload',style:{font:'600 12.5px Archivo',color:O,cursor:'pointer'}},'Change photo')
+        ]),
         this.lbl('Name',{marginBottom:9}),
         h('input',{key:'n',value:p.name,onChange:e=>upd({name:e.target.value}),style:inputStyle}),
+        this.lbl('Username',{margin:'18px 0 9px'}),
+        h('input',{key:'u',value:p.username,onChange:e=>upd({username:e.target.value}),style:inputStyle}),
         this.lbl('Birthday',{margin:'18px 0 9px'}),
         h('input',{key:'b',type:'date',value:p.birthday,onChange:e=>upd({birthday:e.target.value}),style:{...inputStyle,colorScheme:'dark'}}),
         this.lbl('Sex',{margin:'18px 0 9px'}),
@@ -2955,6 +3182,72 @@ class Component extends DCLogic {
     ]);
     const anvilLight=h('div',{style:{width:38,height:38,borderRadius:11,background:O,display:'flex',alignItems:'center',justifyContent:'center'}},
       h('div',{style:{width:17,height:17,background:'#f4f2ee',transform:'rotate(45deg)',borderRadius:3}}));
+
+    const flameIcon=(color,size)=>h('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:color},h('path',{fillRule:'evenodd',d:'M12 2c0 0-6 7-6 12a6 6 0 0 0 12 0c0-5-6-12-6-12z M12 20a3 3 0 0 1-3-3c0-2 3-5 3-7 0 2 3 5 3 7a3 3 0 0 1-3 3z'}));
+    const anvilIcon=(color,size)=>h('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:color},h('path',{d:'M2 9h6l2-4h10v4h-6v4h3v3H7v-3h3V9H2z'}));
+    const forgeF=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative'}},[
+      h('div',{key:1,style:{position:'absolute',left:13,top:7,width:5,height:24,borderRadius:1,background:O}}),
+      h('div',{key:2,style:{position:'absolute',left:13,top:7,width:16,height:5,borderRadius:1,background:O}}),
+      h('div',{key:3,style:{position:'absolute',left:13,top:16,width:11,height:5,borderRadius:1,background:O}}),
+      h('div',{key:4,style:{position:'absolute',right:4,top:1,transform:'rotate(18deg)'}},flameIcon('#ffb877',11)),
+      h('div',{key:5,style:{position:'absolute',left:9,bottom:5,width:13,height:4,borderRadius:2,background:'#8a8a82'}})
+    ]);
+    const anvilEmber=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('div',{key:1},anvilIcon(O,23)),
+      h('div',{key:2,style:{position:'absolute',left:5,top:3}},flameIcon('#a84d1d',11)),
+      h('span',{key:3,style:{position:'absolute',right:2,bottom:1,font:'800 11px/1 Archivo',color:W}},'F')
+    ]);
+    const moltenF=h('div',{style:{width:38,height:38,borderRadius:11,background:'linear-gradient(180deg,#e9712f,#a84d1d 62%,#101011)',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('span',{key:1,style:{font:'800 20px/1 Archivo',color:'#101011'}},'F'),
+      h('div',{key:2,style:{position:'absolute',left:8,right:8,bottom:6,height:2,borderRadius:1,background:'#101011'}})
+    ]);
+    const anvilStrike=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('div',{key:1},anvilIcon(O,24)),
+      h('div',{key:2,style:{position:'absolute',top:5,left:15}},flameIcon('#ffb877',10))
+    ]);
+    const anvilOutline=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('svg',{key:1,width:24,height:24,viewBox:'0 0 24 24',fill:'none'},h('path',{d:'M2 9h6l2-4h10v4h-6v4h3v3H7v-3h3V9H2z',stroke:O,strokeWidth:1.5,strokeLinejoin:'round',strokeLinecap:'round'})),
+      h('div',{key:2,style:{position:'absolute',right:4,top:2}},flameIcon('#a84d1d',10)),
+      h('span',{key:3,style:{position:'absolute',left:2,bottom:1,font:'800 10px/1 Archivo',color:'#8a8a82'}},'F')
+    ]);
+    const carvedAnvilF=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('div',{key:1},anvilIcon(O,26)),
+      h('span',{key:2,style:{position:'absolute',font:'800 14px/1 Archivo',color:'#1c1d20',top:14,left:14}},'F'),
+      h('div',{key:3,style:{position:'absolute',top:3,left:4}},flameIcon('#a84d1d',9))
+    ]);
+    const temperedBar=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('div',{key:1,style:{width:8,height:26,borderRadius:3,background:'linear-gradient(180deg,#8a8a82 0%,#8a8a82 38%,'+O+' 72%,#a84d1d 100%)'}}),
+      h('div',{key:2,style:{position:'absolute',bottom:5}},flameIcon('#a84d1d',9))
+    ]);
+    const struckRing=h('div',{style:{width:38,height:38,borderRadius:19,border:'4px solid '+O,borderRightColor:'#a84d1d',borderBottomColor:'transparent',position:'relative'}},
+      h('div',{style:{position:'absolute',right:-3,top:-6}},flameIcon('#ffb877',12)));
+    const emberPulse=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('svg',{key:1,width:24,height:13,viewBox:'0 0 26 14',fill:'none'},h('path',{d:'M0 7h5l2.5-6 3 12 2.5-9 2 3h9',stroke:O,strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round'})),
+      h('div',{key:2,style:{position:'absolute',right:5,top:2}},flameIcon('#a84d1d',9)),
+      h('div',{key:3,style:{position:'absolute',left:6,right:6,bottom:6,height:1.5,borderRadius:1,background:'#8a8a82'}})
+    ]);
+
+    const markWord=(label,note,wordNode)=>h('div',{key:label,style:{background:CARD,border:BRD,borderRadius:14,padding:'18px 16px'}},[
+      h('div',{key:'m',style:{display:'flex',alignItems:'center',minHeight:44}},wordNode),
+      h('div',{key:'l',style:{marginTop:16,font:'700 13px/1 Archivo',color:W}},label),
+      h('div',{key:'n',style:{marginTop:7,font:'400 12px/1.5 Archivo',color:DIMMER}},note)
+    ]);
+    const struckOWord=h('div',{style:{display:'flex',alignItems:'center',font:'800 22px/1 Archivo',letterSpacing:'.02em',color:W}},[
+      h('span',{key:1},'F'),
+      h('span',{key:2,style:{display:'inline-block',position:'relative',width:16,height:16,margin:'0 1px',borderRadius:'50%',border:'3px solid '+O}},
+        h('span',{style:{position:'absolute',left:-2,top:6,width:18,height:3,background:'#a84d1d',transform:'rotate(-32deg)',borderRadius:1}})),
+      h('span',{key:3},'RJD')
+    ]);
+    const fjMono=h('div',{style:{width:38,height:38,borderRadius:11,background:'#1c1d20',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}},[
+      h('span',{key:1,style:{position:'absolute',left:9,font:'800 22px/1 Archivo',color:'#6b6b64'}},'J'),
+      h('span',{key:2,style:{position:'absolute',left:6,font:'800 22px/1 Archivo',color:O}},'F')
+    ]);
+    const anvilOWord=h('div',{style:{display:'flex',alignItems:'center',font:'800 22px/1 Archivo',letterSpacing:'.02em',color:W}},[
+      h('span',{key:1},'F'),
+      h('span',{key:2,style:{display:'inline-flex',alignItems:'center',justifyContent:'center',width:17,height:17,margin:'0 1px'}},anvilIcon(O,15)),
+      h('span',{key:3},'RJD')
+    ]);
+
     return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column'}},[
       this.hdr('Logo directions',this.go('profile')),
       this.scroll([
@@ -2968,6 +3261,30 @@ class Component extends DCLogic {
           mark('E · Split tile','One tile, two halves: effort and recovery, load and rest. Simple enough to sit at 16 px next to a notification badge.',split),
           mark('F · Pulse mark','A single heartbeat trace — ties to the HRV and recovery data FORJD already surfaces, and doubles as a loading/live-session indicator.',pulse),
           markLight('G · Light mode','Direction A on a light surface — the orange tile and dark wordmark hold contrast either way, so the mark does not need a separate light-mode variant.',anvilLight)
+        ]),
+        h('p',{key:'p2',style:{margin:'22px 0 18px',font:'400 13px/1.55 Archivo',color:DIM}},'Below: directions that fold in all three source elements at once — anvil, fire and the F.'),
+        h('div',{key:'l2',style:{display:'flex',flexDirection:'column',gap:10}},[
+          mark('H · Forge F','The F built from struck orange bars, capped with a spark and resting on a steel-grey anvil base — the letterform doubles as the object.',forgeF),
+          mark('I · Anvil ember','A full anvil silhouette with a flame at the horn and a small F badge at the foot — reads as a lockup rather than a single glyph, better suited to a splash screen than a 16 px favicon.',anvilEmber),
+          mark('J · Molten F','An F cut from a tile that fades molten orange to cooled dark, with a thin anvil line at its base — the whole tile is the fire.',moltenF)
+        ]),
+        h('p',{key:'pI',style:{margin:'22px 0 18px',font:'400 13px/1.55 Archivo',color:DIM}},'More takes on I, without the corner badge feeling bolted on.'),
+        h('div',{key:'lI',style:{display:'flex',flexDirection:'column',gap:10}},[
+          mark('I2 · Anvil strike','Icon-only, like direction A — a spark where the hammer lands on the face, no letter attached. Cleanest at small sizes.',anvilStrike),
+          mark('I3 · Outline anvil','The anvil as a thin line instead of a solid block, so the flame and a small F sit lighter on top of it — quieter, less "stamped metal".',anvilOutline),
+          mark('I4 · Carved anvil F','The F carved as a dark cutout straight into the anvil face, flame at the horn — folds the letter into the object instead of tagging it on.',carvedAnvilF)
+        ]),
+        h('p',{key:'p3',style:{margin:'22px 0 18px',font:'400 13px/1.55 Archivo',color:DIM}},'These fold the forge into marks already close to the product\u2019s own visual language, so the icon stays consistent with the charts and metrics around it.'),
+        h('div',{key:'l3',style:{display:'flex',flexDirection:'column',gap:10}},[
+          mark('K · Tempered bar','A single bar cooling from steel at the top to ember at the base, tipped with a small flame — reads as one rep of the 1RM and pace charts already in the app, "tempered" into shape.',temperedBar),
+          mark('L · Struck ring','Direction B\u2019s recovery ring with a spark at the gap — the load-in / recovery-out ring, now struck like hot metal. Keeps the mark family visually related if the ring is chosen elsewhere.',struckRing),
+          mark('M · Ember pulse','Direction F\u2019s heartbeat trace, its peak flaring into a flame and its baseline resting on a steel line — ties the HRV pulse mark directly to the forge without adding a second motif.',emberPulse)
+        ]),
+        h('p',{key:'p4',style:{margin:'22px 0 18px',font:'400 13px/1.55 Archivo',color:DIM}},'These work the forge into the name itself, "FORJD" — a deliberate respelling of "forged" — rather than into a separate icon beside it.'),
+        h('div',{key:'l4',style:{display:'flex',flexDirection:'column',gap:10}},[
+          markWord('N · Struck O','The O in the wordmark becomes a rivet, marked with a single strike — the "forging" happens inside the name, no separate icon required at all.',struckOWord),
+          mark('O · FJ monogram','F over J, the two letters that survive when "forged" is cut down to "FORJD" — a compact monogram for an app icon or avatar, independent of the full wordmark.',fjMono),
+          markWord('P · Anvil O','The O is swapped for a flat-topped anvil glyph at letter scale — reads as a wordmark first, and only gives up the anvil on close look.',anvilOWord)
         ]),
         this.card([
           this.lbl('Recommendation',{color:O,marginBottom:9}),
@@ -3176,9 +3493,380 @@ class Component extends DCLogic {
           scoreStyle:{font:'700 14.5px/1 Archivo',color:me?O:W,fontVariantNumeric:'tabular-nums'},
           deltaStyle:{marginTop:4,font:'500 10.5px/1 Archivo',color:d[0]==='+'?GRN:(d[0]==='-'?'#c9503c':'#5c5c55')}}})};
   }
+  s_nutrition(){
+    const log=this.state.nutritionLog;
+    const totals=this.totalsForItems(SLOTS.flatMap(s=>log[s]||[]));
+    const g=this.state.macroGoals, pct=Math.min(1,totals.kcal/g.kcal), C=2*Math.PI*52;
+    const macroRow=(label,val,goal,color)=>h('div',{key:label,style:{marginTop:12}},[
+      h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:6}},[
+        h('span',{style:{font:'600 12px/1 Archivo',color:W}},label),
+        h('span',{style:{font:'500 11.5px/1 Archivo',color:DIMMER,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}},Math.round(val)+'g / '+goal+'g')
+      ]),
+      h('div',{style:{height:6,borderRadius:4,background:'rgba(255,255,255,.08)',overflow:'hidden'}},
+        h('div',{style:{width:Math.min(100,Math.round(val/goal*100))+'%',height:6,borderRadius:4,background:color}}))
+    ]);
+    const mealSection=(slot)=>{
+      const items=log[slot]||[], sub=Math.round(this.totalsForItems(items).kcal);
+      const groups={}, singles=[];
+      items.forEach(it=>{ if(it.groupId){ (groups[it.groupId]=groups[it.groupId]||{name:it.groupName,items:[]}).items.push(it); } else singles.push(it); });
+      const rows=[...Object.entries(groups).map(([gid,g])=>({group:true,gid,...g})),...singles.map(it=>({group:false,it}))];
+      return h('div',{key:slot,style:{marginTop:26}},[
+        h('div',{key:'h',style:{display:'flex',alignItems:'baseline',justifyContent:'space-between'}},[
+          this.lbl(slot),
+          h('div',{key:'r',style:{display:'flex',alignItems:'center',gap:12}},[
+            items.length?h('span',{key:'kc',style:{font:'500 11px/1 Archivo',color:DIMMER,fontVariantNumeric:'tabular-nums'}},sub+' kcal'):null,
+            items.length?h('span',{key:'sv',onClick:this.openSaveMeal(slot),style:{font:'600 11px/1 Archivo',color:O,cursor:'pointer'}},'Save as meal'):null
+          ])
+        ]),
+        rows.length?h('div',{key:'l',style:{marginTop:4}},rows.map(r=>{
+          if(!r.group){
+            const it=r.it;
+            return h('div',{key:it.id,onClick:this.openFoodDetail(it.name,slot,it),style:{display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:'1px solid rgba(255,255,255,.05)',cursor:'pointer'}},[
+              h('div',{key:'t',style:{flex:1,minWidth:0}},[
+                h('div',{style:{font:'600 14px/1.25 Archivo',color:W,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},it.name),
+                h('div',{style:{marginTop:3,font:'400 11.5px/1.3 Archivo',color:DIMMER}},it.servingLabel+(it.qty>1?' × '+it.qty:''))
+              ]),
+              h('div',{key:'k',style:{font:'600 13px/1 Archivo',color:W,fontVariantNumeric:'tabular-nums',flex:'none'}},Math.round(it.kcal)+' kcal'),
+              h('div',{key:'x',onClick:(e)=>{e.stopPropagation();this.deleteLogItem(slot,it.id);},style:{width:36,height:36,margin:'-8px -6px -8px 0',opacity:.6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'},'style-hover':'opacity:1'},this.icon('x',DIM,14))
+            ]);
+          }
+          const gt=this.totalsForItems(r.items), open=!!this.state.expandedGroups[r.gid];
+          return h('div',{key:r.gid,style:{borderBottom:'1px solid rgba(255,255,255,.05)'}},[
+            h('div',{key:'row',onClick:()=>this.toggleGroup(r.gid),style:{display:'flex',alignItems:'center',gap:12,padding:'12px 0',cursor:'pointer'}},[
+              h('div',{key:'t',style:{flex:1,minWidth:0}},[
+                h('div',{style:{font:'600 14px/1.25 Archivo',color:W,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},r.name),
+                h('div',{style:{marginTop:3,font:'400 11.5px/1.3 Archivo',color:DIMMER}},r.items.length+' items · tap to '+(open?'collapse':'view'))
+              ]),
+              h('div',{key:'k',style:{font:'600 13px/1 Archivo',color:W,fontVariantNumeric:'tabular-nums',flex:'none'}},Math.round(gt.kcal)+' kcal'),
+              h('div',{key:'x',onClick:(e)=>{e.stopPropagation();this.deleteLogGroup(slot,r.gid);},style:{width:36,height:36,margin:'-8px -6px -8px 0',opacity:.6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'},'style-hover':'opacity:1'},this.icon('x',DIM,14))
+            ]),
+            open?h('div',{key:'exp',style:{padding:'0 0 12px 14px',display:'flex',flexDirection:'column',gap:8}},r.items.map(it=>
+              h('div',{key:it.id,onClick:this.openFoodDetail(it.name,slot,it),style:{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}},[
+                h('div',{key:'t',style:{flex:1,minWidth:0}},[
+                  h('div',{style:{font:'500 12.5px/1.25 Archivo',color:'#c8c8c0',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},it.name),
+                  h('div',{style:{marginTop:2,font:'400 10.5px/1.3 Archivo',color:DIMMER}},it.servingLabel+(it.qty>1?' × '+it.qty:''))
+                ]),
+                h('div',{key:'k',style:{font:'500 11.5px/1 Archivo',color:DIMMER,fontVariantNumeric:'tabular-nums',flex:'none'}},Math.round(it.kcal)+' kcal')
+              ]))):null
+          ]);
+        })):null,
+        h('div',{key:'add',onClick:this.openFoodSearch(slot),style:{marginTop:items.length?6:8,display:'flex',alignItems:'center',gap:8,padding:'9px 0',cursor:'pointer'},'style-hover':'opacity:.8'},[
+          this.icon('plus',O,15),
+          h('span',{style:{font:'600 13px/1 Archivo',color:O,whiteSpace:'nowrap'}},'Add food')
+        ])
+      ]);
+    };
+    const mealSheet=(key,title,body)=>this.state[key]?h('div',{key:key+'ov',style:{position:'absolute',inset:0,background:'rgba(10,10,11,.72)',display:'flex',alignItems:'flex-end',zIndex:20}},
+      h('div',{style:{width:'100%',background:'#17181a',borderTop:BRD,borderRadius:'18px 18px 0 0',padding:'20px 22px 24px',display:'flex',flexDirection:'column',gap:14}},[h('h2',{key:'h',style:{margin:0,font:'700 18px/1.2 Archivo',color:W}},title),...body])):null;
+    return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column',animation:'fj-fade .3s',position:'relative'}},[
+      this.hdr('Nutrition',null,h('div',{style:{display:'flex',alignItems:'center',gap:2}},[
+        h('div',{key:'sh',onClick:this.go('nutritionShare'),style:{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12},'style-hover':'background:rgba(255,255,255,.06)'},this.icon('share',DIM,19)),
+        h('div',{key:'g',onClick:this.openEditGoals,style:{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12},'style-hover':'background:rgba(255,255,255,.06)'},this.icon('target',DIM,20)),
+        h('div',{key:'s',onClick:this.go('savedMeals'),style:{width:44,height:44,margin:'-5px -5px -5px 0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12},'style-hover':'background:rgba(255,255,255,.06)'},this.icon('star',DIM,20))
+      ])),
+      this.scroll([
+        this.card([
+          h('div',{key:'top',style:{display:'flex',alignItems:'center',gap:18}},[
+            h('div',{key:'ring',style:{position:'relative',width:120,height:120,flex:'none'}},[
+              h('svg',{width:120,height:120,viewBox:'0 0 120 120',style:{transform:'rotate(-90deg)'}},[
+                h('circle',{key:1,cx:60,cy:60,r:52,fill:'none',stroke:'#1e1f22',strokeWidth:9}),
+                h('circle',{key:2,cx:60,cy:60,r:52,fill:'none',stroke:O,strokeWidth:9,strokeLinecap:'round',strokeDasharray:C,strokeDashoffset:C*(1-pct)})
+              ]),
+              h('div',{key:'t',style:{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}},[
+                h('div',{style:{font:'700 22px/1 Archivo',color:W,fontVariantNumeric:'tabular-nums'}},Math.round(totals.kcal)),
+                h('div',{style:{marginTop:2,font:'500 10px/1 Archivo',color:DIMMER}},'/ '+g.kcal+' kcal')
+              ])
+            ]),
+            h('div',{key:'macros',style:{flex:1,minWidth:0}},[
+              macroRow('Protein',totals.protein,g.protein,O),
+              macroRow('Carbs',totals.carbs,g.carbs,'#6f9ac9'),
+              macroRow('Fat',totals.fat,g.fat,GRN)
+            ])
+          ])
+        ],{padding:'18px 16px'}),
+        ...SLOTS.map(mealSection),
+        this.state.savedMeals.length?h('div',{key:'sm',style:{marginTop:28}},[
+          h('div',{key:'h',style:{display:'flex',justifyContent:'space-between',alignItems:'baseline'}},[this.lbl('Saved meals'),h('span',{onClick:this.go('savedMeals'),style:{font:'600 11px/1 Archivo',color:O,cursor:'pointer'}},'See all')]),
+          h('div',{key:'l',style:{marginTop:8,display:'flex',flexDirection:'column',gap:8}},this.state.savedMeals.slice(0,3).map(m=>
+            h('div',{key:m.id,style:{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:12,background:CARD,border:BRD}},[
+              h('div',{key:'t',style:{flex:1,minWidth:0}},[
+                h('div',{style:{font:'600 13.5px/1.25 Archivo',color:W}},m.name),
+                h('div',{style:{marginTop:3,font:'400 11.5px/1.3 Archivo',color:DIMMER}},m.items.length+' items · '+Math.round(this.totalsForItems(m.items).kcal)+' kcal')
+              ]),
+              h('div',{key:'b',onClick:()=>this.setState({logMealSheet:m,logMealSlot:'Breakfast'}),style:{flex:'none',padding:'8px 14px',borderRadius:9,background:'rgba(233,113,47,.14)',border:'1px solid rgba(233,113,47,.4)',font:'700 12px/1 Archivo',color:O,cursor:'pointer'}},'Log')
+            ])))
+        ]):null
+      ]),
+      this.tabbar('nutrition'),
+      mealSheet('saveMealSheet','Save '+this.state.saveMealSheet+' as a meal',[
+        h('input',{key:'i',value:this.state.saveMealName,onChange:e=>this.setState({saveMealName:e.target.value}),style:{width:'100%',height:50,borderRadius:11,background:'#151517',border:BRD,padding:'0 15px',font:'600 14.5px Archivo',color:W,outline:'none'}}),
+        h('div',{key:'b',style:{display:'flex',gap:9}},[
+          h('div',{key:1,style:{flex:1}},this.btn('Save',()=>this.confirmSaveMeal())),
+          h('div',{key:2,onClick:()=>this.closeSaveMeal(),style:{width:96,height:52,borderRadius:12,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'700 14px/1 Archivo',color:DIM}},'Cancel')
+        ])
+      ]),
+      this.state.logMealSheet?mealSheet('logMealSheet','Log “'+this.state.logMealSheet.name+'”',[
+        h('p',{key:'p',style:{margin:0,font:'400 13px/1.5 Archivo',color:DIMMER}},'Add all items to which meal?'),
+        this.chips(SLOTS,this.state.logMealSlot,(v)=>()=>this.setState({logMealSlot:v})),
+        h('div',{key:'b',style:{display:'flex',gap:9,marginTop:6}},[
+          h('div',{key:1,style:{flex:1}},this.btn('Log',()=>this.logSavedMeal(this.state.logMealSheet,this.state.logMealSlot))),
+          h('div',{key:2,onClick:()=>this.setState({logMealSheet:null}),style:{width:96,height:52,borderRadius:12,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'700 14px/1 Archivo',color:DIM}},'Cancel')
+        ])
+      ]):null,
+      mealSheet('editGoalsSheet','Set daily goals',[
+        h('div',{key:'auto',onClick:this.applyAutoGoals,style:{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderRadius:11,background:'rgba(233,113,47,.1)',border:'1px solid rgba(233,113,47,.4)',cursor:'pointer'},'style-hover':'background:rgba(233,113,47,.16)'},[
+          this.icon('bolt',O,17),
+          h('div',{style:{flex:1,minWidth:0}},[
+            h('div',{style:{font:'700 13px/1 Archivo',color:O}},'Auto-calculate'),
+            h('div',{style:{marginTop:3,font:'400 11px/1.35 Archivo',color:'#c9906c'}},'From your InBody scan + training goals')
+          ])
+        ]),
+        ...['kcal','protein','carbs','fat'].map(k=>h('div',{key:k,style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}},[
+          h('span',{style:{font:'600 13px/1 Archivo',color:W,textTransform:'capitalize'}},k==='kcal'?'Calories':k),
+          h('div',{style:{display:'flex',alignItems:'center',gap:6,background:'#101011',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'6px 10px'}},[
+            h('input',{value:this.state.editGoalsVals[k],onChange:e=>this.setState({editGoalsVals:{...this.state.editGoalsVals,[k]:e.target.value.replace(/[^0-9]/g,'')}}),inputMode:'numeric',style:{width:52,textAlign:'right',background:'transparent',border:'none',outline:'none',font:'700 14px Archivo',color:W}}),
+            h('span',{style:{font:'500 12px/1 Archivo',color:DIMMER}},k==='kcal'?'kcal':'g')
+          ])
+        ])),
+        h('div',{key:'b',style:{display:'flex',gap:9,marginTop:6}},[
+          h('div',{key:1,style:{flex:1}},this.btn('Save',()=>this.saveGoals())),
+          h('div',{key:2,onClick:()=>this.setState({editGoalsSheet:false}),style:{width:96,height:52,borderRadius:12,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'700 14px/1 Archivo',color:DIM}},'Cancel')
+        ])
+      ])
+    ]);
+  }
+  openCustomFood=()=>this.setState({customFoodSheet:true,customFoodVals:{name:'',kcal:'',protein:'',carbs:'',fat:''}});
+  saveCustomFood(){
+    const v=this.state.customFoodVals, name=v.name.trim(); if(!name) return;
+    const n=x=>parseFloat(x)||0;
+    const row=[name,'Custom',n(v.kcal),n(v.protein),n(v.carbs),n(v.fat),[['100 g',100]]];
+    this.setState({customFoods:[...this.state.customFoods,row],customFoodSheet:false});
+    this.flash('Added '+name+' to your foods');
+  }
+  s_foodSearch(){
+    const q=this.state.foodSearchQuery.toLowerCase(), cat=this.state.foodCategory, forMeal=this.state.foodTarget==='meal';
+    const list=this.allFoods().filter(f=>(cat==='All'||f[1]===cat)&&f[0].toLowerCase().includes(q));
+    return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column',animation:'fj-fade .3s',position:'relative'}},[
+      this.hdr(forMeal?'Add ingredient':('Add to '+this.state.foodSearchSlot),this.go(forMeal?'editMeal':'nutrition'),h('div',{onClick:this.openCustomFood,style:{width:44,height:44,margin:'-5px -5px -5px 0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12},'style-hover':'background:rgba(255,255,255,.06)'},this.icon('plus',DIM,20))),
+      h('div',{key:'s',style:{padding:'0 22px 12px'}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:10,height:46,borderRadius:12,background:'#151517',border:BRD,padding:'0 14px'}},[
+          this.icon('search',DIM,17),
+          h('input',{value:this.state.foodSearchQuery,onChange:e=>this.setState({foodSearchQuery:e.target.value}),placeholder:'Search foods…',style:{flex:1,background:'transparent',border:'none',outline:'none',font:'500 14px Archivo',color:W}})
+        ])),
+      h('div',{key:'c',style:{padding:'0 22px 6px'}},this.chips(FOOD_CATS,cat,(v)=>()=>this.setState({foodCategory:v}))),
+      this.scroll(
+        list.length?list.map(f=>h('div',{key:f[0],onClick:forMeal?this.openFoodDetailForMeal(f[0],null):this.openFoodDetail(f[0],this.state.foodSearchSlot,null),style:{display:'flex',alignItems:'center',gap:12,padding:'13px 2px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.05)'},'style-hover':'background:rgba(255,255,255,.025)'},[
+          h('div',{key:'t',style:{flex:1,minWidth:0}},[
+            h('div',{style:{font:'600 14px/1.25 Archivo',color:W}},f[0]),
+            h('div',{style:{marginTop:3,font:'400 11.5px/1.3 Archivo',color:DIMMER}},f[1]+' · '+f[6][0][0])
+          ]),
+          h('div',{key:'k',style:{font:'600 12.5px/1 Archivo',color:DIM,fontVariantNumeric:'tabular-nums',flex:'none',whiteSpace:'nowrap'}},Math.round(f[2]*f[6][0][1]/100)+' kcal')
+        ])):h('div',{style:{padding:'30px 0',textAlign:'center',font:'400 13px Archivo',color:DIMMER}},'No foods match “'+this.state.foodSearchQuery+'”')
+      ),
+      this.state.customFoodSheet?h('div',{key:'cov',style:{position:'absolute',inset:0,background:'rgba(10,10,11,.72)',display:'flex',alignItems:'flex-end',zIndex:20}},
+        h('div',{style:{width:'100%',background:'#17181a',borderTop:BRD,borderRadius:'18px 18px 0 0',padding:'20px 22px 24px',display:'flex',flexDirection:'column',gap:14,maxHeight:'80vh',overflowY:'auto'}},[
+          h('h2',{key:'h',style:{margin:0,font:'700 18px/1.2 Archivo',color:W}},'Add custom food'),
+          h('input',{key:'name',value:this.state.customFoodVals.name,onChange:e=>this.setState({customFoodVals:{...this.state.customFoodVals,name:e.target.value}}),placeholder:'Food name',style:{width:'100%',height:50,borderRadius:11,background:'#151517',border:BRD,padding:'0 15px',font:'600 14.5px Archivo',color:W,outline:'none'}}),
+          h('div',{key:'hint',style:{font:'400 11.5px/1.4 Archivo',color:DIMMER,marginTop:-6}},'Enter values per 100 g'),
+          ...['kcal','protein','carbs','fat'].map(k=>h('div',{key:k,style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}},[
+            h('span',{style:{font:'600 13px/1 Archivo',color:W,textTransform:'capitalize'}},k==='kcal'?'Calories':k),
+            h('div',{style:{display:'flex',alignItems:'center',gap:6,background:'#101011',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'6px 10px'}},[
+              h('input',{value:this.state.customFoodVals[k],onChange:e=>this.setState({customFoodVals:{...this.state.customFoodVals,[k]:e.target.value.replace(/[^0-9.]/g,'')}}),inputMode:'decimal',style:{width:52,textAlign:'right',background:'transparent',border:'none',outline:'none',font:'700 14px Archivo',color:W}}),
+              h('span',{style:{font:'500 12px/1 Archivo',color:DIMMER}},k==='kcal'?'kcal':'g')
+            ])
+          ])),
+          h('div',{key:'b',style:{display:'flex',gap:9,marginTop:6}},[
+            h('div',{key:1,style:{flex:1}},this.btn('Add Food',()=>this.saveCustomFood())),
+            h('div',{key:2,onClick:()=>this.setState({customFoodSheet:false}),style:{width:96,height:52,borderRadius:12,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'700 14px/1 Archivo',color:DIM}},'Cancel')
+          ])
+        ])):null
+    ]);
+  }
+  s_foodDetail(){
+    const name=this.state.foodDetailName, food=this.allFoods().find(x=>x[0]===name), forMeal=this.state.foodTarget==='meal';
+    if(!food) return h('div',{style:{flex:1}});
+    const[,cat,k]=food, servings=food[6];
+    const idx=this.state.foodServingIdx, qty=this.state.foodQty, custom=idx===-1;
+    const grams=custom?(parseFloat(this.state.foodCustomGrams)||0):(servings[idx]||servings[0])[1]*qty;
+    const macro=this.macroOf(name,grams), editing=!!this.state.editingFoodId;
+    return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column',animation:'fj-fade .3s'}},[
+      this.hdr(name,forMeal?this.go('editMeal'):this.go(editing?'nutrition':'foodSearch')),
+      this.scroll([
+        h('div',{key:'cat',style:{font:'500 11.5px/1 Archivo',color:DIMMER,marginBottom:16}},cat),
+        this.card([
+          h('div',{key:'k',style:{textAlign:'center'}},[
+            h('div',{style:{font:'700 34px/1 Archivo',color:W,fontVariantNumeric:'tabular-nums'}},Math.round(macro.kcal)),
+            h('div',{style:{marginTop:4,font:'500 11px/1 Archivo',color:DIMMER}},'kcal')
+          ]),
+          h('div',{key:'m',style:{display:'flex',gap:18,marginTop:16,justifyContent:'center'}},
+            [['Protein',macro.protein,O],['Carbs',macro.carbs,'#6f9ac9'],['Fat',macro.fat,GRN]].map(([l,v,cl])=>
+              h('div',{key:l,style:{textAlign:'center'}},[
+                h('div',{style:{font:'700 15px/1 Archivo',color:cl,fontVariantNumeric:'tabular-nums'}},Math.round(v)+'g'),
+                h('div',{style:{marginTop:3,font:'500 10px/1 Archivo',color:DIMMER}},l)
+              ])))
+        ],{padding:'20px 16px',marginTop:2}),
+        this.lbl('Serving',{margin:'22px 0 9px'}),
+        h('div',{key:'sv',style:{display:'flex',flexDirection:'column',gap:8}},[
+          ...servings.map((sv,i)=>
+            h('div',{key:sv[0],onClick:()=>this.setState({foodServingIdx:i}),style:{padding:'13px 15px',borderRadius:11,cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',background:idx===i?'rgba(233,113,47,.14)':CARD,border:idx===i?'1px solid '+O:BRD}},[
+              h('span',{style:{font:'600 13.5px/1 Archivo',color:W,whiteSpace:'nowrap'}},sv[0]),
+              h('span',{style:{font:'500 11.5px/1 Archivo',color:DIMMER}},Math.round(k*sv[1]/100)+' kcal')
+            ])),
+          h('div',{key:'custom',onClick:()=>this.setState({foodServingIdx:-1}),style:{padding:'13px 15px',borderRadius:11,cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,background:custom?'rgba(233,113,47,.14)':CARD,border:custom?'1px solid '+O:BRD}},[
+            h('span',{key:'l',style:{font:'600 13.5px/1 Archivo',color:W,whiteSpace:'nowrap'}},'Custom amount'),
+            custom?h('div',{key:'i',style:{display:'flex',alignItems:'center',gap:8,background:'#101011',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'6px 10px'}},[
+              h('input',{value:this.state.foodCustomGrams,onChange:e=>this.setState({foodCustomGrams:e.target.value.replace(/[^0-9.]/g,'')}),onClick:e=>e.stopPropagation(),inputMode:'decimal',placeholder:'0',style:{width:52,textAlign:'right',background:'transparent',border:'none',outline:'none',font:'700 14px Archivo',color:W}}),
+              h('span',{style:{font:'500 12px/1 Archivo',color:DIMMER}},'g')
+            ]):h('span',{style:{font:'500 11.5px/1 Archivo',color:DIMMER,whiteSpace:'nowrap'}},'enter grams')
+          ])
+        ]),
+        custom?null:this.lbl('Quantity',{margin:'22px 0 9px'}),
+        custom?null:h('div',{key:'q',style:{display:'flex',alignItems:'center',gap:16}},[
+          h('div',{onClick:()=>this.setState({foodQty:Math.max(1,qty-1)}),style:{width:44,height:44,borderRadius:12,background:CARD,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'700 18px/1 Archivo',color:W}},'−'),
+          h('span',{style:{font:'700 17px/1 Archivo',color:W,minWidth:24,textAlign:'center',fontVariantNumeric:'tabular-nums'}},qty),
+          h('div',{onClick:()=>this.setState({foodQty:qty+1}),style:{width:44,height:44,borderRadius:12,background:CARD,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'700 18px/1 Archivo',color:W}},'+')
+        ]),
+        forMeal?null:this.lbl('Log as',{margin:'22px 0 9px'}),
+        forMeal?null:this.chips(SLOTS,this.state.foodDetailSlot,(v)=>()=>this.setState({foodDetailSlot:v}))
+      ]),
+      h('div',{key:'cta',style:{flex:'none',padding:'12px 22px 24px',borderTop:'1px solid rgba(255,255,255,.06)',display:'flex',flexDirection:'column',gap:10}},[
+        this.btn(editing?'Save Changes':(forMeal?'Add Ingredient':'Add to Log'),()=>this.addOrUpdateLogItem()),
+        editing?this.btn('Remove Entry',()=>this.deleteFromDetail(),'ghost'):null
+      ])
+    ]);
+  }
+  s_savedMeals(){
+    const meals=this.state.savedMeals;
+    return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column',animation:'fj-fade .3s',position:'relative'}},[
+      this.hdr('Saved Meals',this.go('nutrition')),
+      this.scroll(
+        meals.length?meals.map(m=>{
+          const t=this.totalsForItems(m.items);
+          return this.card([
+            h('div',{key:'h',style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},[
+              h('div',{key:'t',style:{minWidth:0}},[
+                h('div',{style:{font:'700 15px/1.25 Archivo',color:W}},m.name),
+                h('div',{style:{marginTop:4,font:'400 12px/1.3 Archivo',color:DIMMER}},m.items.length+' items · '+Math.round(t.kcal)+' kcal · P'+Math.round(t.protein)+' C'+Math.round(t.carbs)+' F'+Math.round(t.fat))
+              ]),
+              h('div',{key:'x',style:{display:'flex',alignItems:'center',gap:2}},[
+                h('div',{key:'e',onClick:this.openEditMeal(m),style:{width:36,height:36,margin:'-8px 0 -8px 0',opacity:.6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'},'style-hover':'opacity:1'},this.icon('pencil',DIM,15)),
+                h('div',{key:'d',onClick:()=>this.deleteSavedMeal(m.id),style:{width:36,height:36,margin:'-8px -6px -8px 0',opacity:.6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'},'style-hover':'opacity:1'},this.icon('x',DIM,15))
+              ])
+            ]),
+            h('div',{key:'items',style:{marginTop:12,display:'flex',flexDirection:'column',gap:6}},m.items.map(i=>
+              h('div',{key:i.id,style:{display:'flex',justifyContent:'space-between',font:'500 12px/1.3 Archivo',color:'#c8c8c0'}},[
+                h('span',{key:1},i.name+' · '+i.servingLabel+(i.qty>1?' × '+i.qty:'')),
+                h('span',{key:2,style:{color:DIMMER,flex:'none'}},Math.round(i.kcal)+' kcal')
+              ]))),
+            h('div',{key:'cta',style:{marginTop:14}},this.btn('Log this meal',()=>this.setState({logMealSheet:m,logMealSlot:'Breakfast'})))
+          ],{padding:'16px 16px',marginBottom:12,key:m.id});
+        }):h('div',{style:{padding:'40px 0',textAlign:'center',font:'400 13px Archivo',color:DIMMER}},'No saved meals yet — save one from a meal on the Nutrition tab.')
+      ),
+      this.state.logMealSheet?h('div',{key:'ov',style:{position:'absolute',inset:0,background:'rgba(10,10,11,.72)',display:'flex',alignItems:'flex-end',zIndex:20}},
+        h('div',{style:{width:'100%',background:'#17181a',borderTop:BRD,borderRadius:'18px 18px 0 0',padding:'20px 22px 24px',display:'flex',flexDirection:'column',gap:14}},[
+          h('h2',{key:'h',style:{margin:0,font:'700 18px/1.2 Archivo',color:W}},'Log “'+this.state.logMealSheet.name+'”'),
+          h('p',{key:'p',style:{margin:0,font:'400 13px/1.5 Archivo',color:DIMMER}},'Add all items to which meal?'),
+          this.chips(SLOTS,this.state.logMealSlot,(v)=>()=>this.setState({logMealSlot:v})),
+          h('div',{key:'b',style:{display:'flex',gap:9,marginTop:6}},[
+            h('div',{key:1,style:{flex:1}},this.btn('Log',()=>this.logSavedMeal(this.state.logMealSheet,this.state.logMealSlot))),
+            h('div',{key:2,onClick:()=>this.setState({logMealSheet:null}),style:{width:96,height:52,borderRadius:12,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'700 14px/1 Archivo',color:DIM}},'Cancel')
+          ])
+        ])):null
+    ]);
+  }
+  s_nutritionShare(){
+    const log=this.state.nutritionLog, g=this.state.macroGoals;
+    const totals=this.totalsForItems(SLOTS.flatMap(s=>log[s]||[]));
+    const items=SLOTS.flatMap(s=>(log[s]||[]).map(i=>({...i,slot:s})));
+    const layouts=[
+      {id:'summary',label:'Daily Summary',desc:'Calories vs goal, at a glance',bg:'linear-gradient(160deg,#1d1408,#101011)'},
+      {id:'macros',label:'Macro Split',desc:'Protein \u00b7 Carbs \u00b7 Fat breakdown',bg:'linear-gradient(160deg,#0d1710,#101011)'},
+      {id:'meals',label:'Meal Log',desc:'Everything logged today',bg:'linear-gradient(160deg,#14161d,#101011)'}
+    ];
+    const sel=layouts.some(l=>l.id===this.state.nutriShareLayout)?this.state.nutriShareLayout:layouts[0].id;
+    const pct=Math.min(1,totals.kcal/g.kcal), C=2*Math.PI*40;
+    return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column'}},[
+      this.hdr('Share Nutrition',this.go('nutrition')),
+      this.scroll([
+        h('div',{key:'prev',style:{borderRadius:18,background:layouts.find(l=>l.id===sel).bg,border:BRD,padding:'26px 20px',display:'flex',flexDirection:'column',gap:14,aspectRatio:'4/5'}},[
+          h('div',{key:'t',style:{font:'800 13px/1 Archivo',letterSpacing:'.06em',color:O}},'FORJD'),
+          sel==='summary'?h('div',{key:'b',style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:14}},[
+            h('div',{style:{position:'relative',width:110,height:110}},[
+              h('svg',{width:110,height:110,viewBox:'0 0 110 110',style:{transform:'rotate(-90deg)'}},[
+                h('circle',{key:1,cx:55,cy:55,r:40,fill:'none',stroke:'rgba(255,255,255,.1)',strokeWidth:8}),
+                h('circle',{key:2,cx:55,cy:55,r:40,fill:'none',stroke:O,strokeWidth:8,strokeLinecap:'round',strokeDasharray:C,strokeDashoffset:C*(1-pct)})
+              ]),
+              h('div',{style:{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}},[
+                h('div',{style:{font:'700 22px/1 Archivo',color:W}},Math.round(totals.kcal)),
+                h('div',{style:{marginTop:2,font:'500 10px/1 Archivo',color:DIM}},'/ '+g.kcal+' kcal')
+              ])
+            ]),
+            h('div',{style:{font:'700 15px/1.2 Archivo',color:W,textAlign:'center'}},'Today\u2019s intake')
+          ]):sel==='macros'?h('div',{key:'b',style:{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',gap:16}},[
+            h('div',{style:{font:'700 22px/1.2 Archivo',color:W}},Math.round(totals.kcal)+' kcal'),
+            ...[['Protein',totals.protein,g.protein,O],['Carbs',totals.carbs,g.carbs,'#6f9ac9'],['Fat',totals.fat,g.fat,GRN]].map(([l,v,go,c])=>
+              h('div',{key:l},[
+                h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:6,font:'600 12px/1 Archivo',color:W}},[h('span',{key:1},l),h('span',{key:2,style:{color:DIM}},Math.round(v)+'g / '+go+'g')]),
+                h('div',{style:{height:7,borderRadius:4,background:'rgba(255,255,255,.1)',overflow:'hidden'}},h('div',{style:{width:Math.min(100,Math.round(v/go*100))+'%',height:7,borderRadius:4,background:c}}))
+              ]))
+          ]):h('div',{key:'b',style:{flex:1,display:'flex',flexDirection:'column',gap:10,marginTop:4,overflow:'hidden'}},[
+            h('div',{key:'kc',style:{font:'700 17px/1 Archivo',color:W}},Math.round(totals.kcal)+' kcal total'),
+            ...items.slice(0,7).map(it=>h('div',{key:it.id,style:{display:'flex',alignItems:'center',gap:10}},[
+              h('span',{key:1,style:{flex:1,minWidth:0,font:'600 12.5px/1.3 Archivo',color:W,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},it.name),
+              h('span',{key:2,style:{flex:'none',font:'600 11.5px/1 Archivo',color:O,whiteSpace:'nowrap'}},Math.round(it.kcal)+' kcal')
+            ]))
+          ])
+        ]),
+        h('div',{key:'lh',style:{margin:'22px 0 10px'}},this.lbl('Choose a layout')),
+        h('div',{key:'layouts',style:{display:'flex',gap:10,overflowX:'auto'}},layouts.map(l=>
+          h('div',{key:l.id,onClick:()=>this.setState({nutriShareLayout:l.id}),style:{flex:'none',width:100,cursor:'pointer'}},[
+            h('div',{style:{width:100,height:125,borderRadius:12,background:l.bg,border:sel===l.id?'2px solid '+O:BRD}}),
+            h('div',{style:{marginTop:7,font:'600 11.5px/1.3 Archivo',color:sel===l.id?O:W}},l.label),
+            h('div',{style:{marginTop:3,font:'400 10px/1.3 Archivo',color:DIMMER}},l.desc)
+          ]))),
+        h('div',{key:'act',style:{display:'flex',flexDirection:'column',gap:10,marginTop:24}},[
+          this.btn('Save Image',()=>this.flash('Image saved to Photos')),
+          h('div',{key:'row',style:{display:'flex',gap:10}},[['Instagram'],['More']].map(([l])=>
+            h('div',{key:l,onClick:()=>this.flash('Sharing to '+l+'\u2026'),style:{flex:1,height:48,borderRadius:11,background:CARD,border:BRD,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',font:'600 12.5px/1 Archivo',color:W},'style-hover':'border-color:rgba(233,113,47,.4)'},l)))
+        ])
+      ])
+    ]);
+  }
+  s_editMeal(){
+    const draft=this.state.editingMealDraft;
+    if(!draft) return h('div',{style:{flex:1}});
+    const t=this.totalsForItems(draft.items);
+    return h('div',{style:{flex:1,minHeight:0,display:'flex',flexDirection:'column',animation:'fj-fade .3s'}},[
+      this.hdr('Edit Meal',this.go('savedMeals')),
+      this.scroll([
+        h('input',{key:'name',value:draft.name,onChange:e=>this.setState({editingMealDraft:{...draft,name:e.target.value}}),style:{width:'100%',height:50,borderRadius:11,background:'#151517',border:BRD,padding:'0 15px',font:'700 15px Archivo',color:W,outline:'none',marginBottom:6}}),
+        h('div',{key:'sum',style:{font:'500 12px/1 Archivo',color:DIMMER}},draft.items.length+' items · '+Math.round(t.kcal)+' kcal · P'+Math.round(t.protein)+' C'+Math.round(t.carbs)+' F'+Math.round(t.fat)),
+        h('div',{key:'items',style:{marginTop:18,display:'flex',flexDirection:'column',gap:8}},draft.items.length?draft.items.map(i=>{
+          const food=this.allFoods().find(x=>x[0]===i.name);
+          const grams=i.grams!=null?i.grams:(food&&food[2]>0?Math.round(i.kcal/food[2]*100):100);
+          return h('div',{key:i.id,style:{display:'flex',alignItems:'center',gap:10,padding:'11px 12px',borderRadius:12,background:CARD,border:BRD}},[
+            h('div',{key:'t',style:{flex:1,minWidth:0}},[
+              h('div',{style:{font:'600 13.5px/1.25 Archivo',color:W,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},i.name),
+              h('div',{style:{marginTop:3,font:'400 11px/1.3 Archivo',color:DIMMER}},Math.round(i.kcal)+' kcal')
+            ]),
+            h('div',{key:'g',style:{display:'flex',alignItems:'center',gap:6,flex:'none',background:'#101011',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'6px 9px'}},[
+              h('input',{value:String(grams),onChange:e=>this.mealItemGrams(i.id,parseFloat(e.target.value.replace(/[^0-9.]/g,''))||0),inputMode:'decimal',style:{width:42,textAlign:'right',background:'transparent',border:'none',outline:'none',font:'700 13px Archivo',color:W}}),
+              h('span',{style:{font:'500 11px/1 Archivo',color:DIMMER}},'g')
+            ]),
+            h('div',{key:'x',onClick:()=>this.removeMealItem(i.id),style:{width:32,height:32,margin:'0 -4px 0 0',opacity:.6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'},'style-hover':'opacity:1'},this.icon('x',DIM,14))
+          ]);
+        }):h('div',{style:{padding:'20px 0',textAlign:'center',font:'400 13px Archivo',color:DIMMER}},'No ingredients — add one below.')),
+        h('div',{key:'add',onClick:this.openFoodSearchForMeal,style:{marginTop:14,display:'flex',alignItems:'center',gap:8,padding:'9px 0',cursor:'pointer'},'style-hover':'opacity:.8'},[
+          this.icon('plus',O,15),
+          h('span',{style:{font:'600 13px/1 Archivo',color:O,whiteSpace:'nowrap'}},'Add ingredient')
+        ])
+      ]),
+      h('div',{key:'cta',style:{flex:'none',padding:'12px 22px 24px',borderTop:'1px solid rgba(255,255,255,.06)'}},this.btn('Save Meal',()=>this.saveMealDraft()))
+    ]);
+  }
   renderVals(){
     const s=this.state.screen;
-    const map={login:'s_login',signup:'s_signup',library:'s_library',pro:'s_pro',managePlan:'s_managePlan',units:'s_units',sessionShare:'s_sessionShare',location:'s_location',goals:'s_goals',connect:'s_connect',exercise:'s_exercise',rest:'s_rest',done:'s_done',inbody:'s_inbody',inbodyCompare:'s_inbodyCompare',scanDetail:'s_scanDetail',inbodyConfirm:'s_inbodyConfirm',weekly:'s_weekly',notifs:'s_notifs',privacy:'s_privacy',athlete:'s_athlete',favorites:'s_favorites',setTimer:'s_setTimer',newExercise:'s_newExercise',train:'s_train',catalog:'s_catalog',builder:'s_builder',run:'s_run',brand:'s_brand',programOverview:'s_programOverview',workoutDetail:'s_workoutDetail',programBuilder:'s_programBuilder',workoutHistory:'s_workoutHistory',workoutHistoryDetail:'s_workoutHistoryDetail',notifsFeed:'s_notifsFeed',editProfile:'s_editProfile',runDone:'s_runDone'};
+    const map={login:'s_login',signup:'s_signup',library:'s_library',pro:'s_pro',managePlan:'s_managePlan',units:'s_units',sessionShare:'s_sessionShare',location:'s_location',goals:'s_goals',connect:'s_connect',exercise:'s_exercise',rest:'s_rest',done:'s_done',inbody:'s_inbody',inbodyCompare:'s_inbodyCompare',scanDetail:'s_scanDetail',inbodyConfirm:'s_inbodyConfirm',weekly:'s_weekly',notifs:'s_notifs',privacy:'s_privacy',athlete:'s_athlete',favorites:'s_favorites',setTimer:'s_setTimer',newExercise:'s_newExercise',train:'s_train',catalog:'s_catalog',builder:'s_builder',run:'s_run',brand:'s_brand',programOverview:'s_programOverview',workoutDetail:'s_workoutDetail',programBuilder:'s_programBuilder',workoutHistory:'s_workoutHistory',workoutHistoryDetail:'s_workoutHistoryDetail',notifsFeed:'s_notifsFeed',editProfile:'s_editProfile',runDone:'s_runDone',pickUsername:'s_pickUsername',nutrition:'s_nutrition',foodSearch:'s_foodSearch',foodDetail:'s_foodDetail',savedMeals:'s_savedMeals',nutritionShare:'s_nutritionShare',editMeal:'s_editMeal'};
     const TMPL=['loading','welcome','home','progress','progressBody','progressRec','live','rank','profile'];
     const tmpl=TMPL.indexOf(s)>=0;
     const screen=h('div',{key:s,style:{flex:tmpl?'none':1,minHeight:0,display:'flex',flexDirection:'column',animation:'fj-fade .28s'}},[
@@ -3199,6 +3887,10 @@ class Component extends DCLogic {
       tipTitle:{sleep:'Sleep',hrv:'HRV',rhr:'Resting Heart Rate',steps:'Steps'}[this.state.metricTip]||'',
       tipText:{sleep:'Total time asleep last night, from your connected wearable.',hrv:'Heart rate variability — higher usually means better-recovered.',rhr:'Your heart rate at rest, measured overnight.',steps:'Steps counted so far today.'}[this.state.metricTip]||'',
       goGoals:this.go('goals'), goSignup:this.go('signup'), goLogin:this.go('login'), goNotifs:this.go('notifs'), goNotifsFeed:this.go('notifsFeed'), goWeekly:this.go('weekly'),
+      goPrivacyPolicy:()=>this.flash('Privacy Policy'), goAboutApp:()=>this.flash('About App'), goContactUs:()=>this.flash('Contact Us'),
+      openDeleteAccount:()=>this.setState({deleteAccountConfirm:true}), closeDeleteAccount:()=>this.setState({deleteAccountConfirm:false}),
+      confirmDeleteAccount:()=>{this.setState({deleteAccountConfirm:false});this.go('welcome')();},
+      deleteAccountConfirm:!!this.state.deleteAccountConfirm,
       goHome:this.go('home'), goTrain:this.go('train'), goSuggested:this.goSuggested,
       goProgress:this.go('progress'), goRank:this.go('rank'), goProfile:this.go('profile'),
       ...this.progressVals(s), ...this.liveVals(s), ...this.rankVals(s),
@@ -3214,7 +3906,12 @@ class Component extends DCLogic {
       profileName:this.state.profile.name, profileHandle:'@'+this.state.profile.handle+' · '+this.state.profile.city,
       profilePlanLabel:this.state.isPro?'Pro User':'Free User',
       profilePlanStyle:'font:700 10px/1 Archivo;letter-spacing:.03em;padding:4px 9px;border-radius:20px;white-space:nowrap;flex:none;'+(this.state.isPro?'color:#e9712f;background:rgba(233,113,47,.14);border:1px solid rgba(233,113,47,.4)':'color:#8b8b83;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)'),
-      frameClasses:this.frameClasses()};
+      frameClasses:this.frameClasses(),
+      tabbarHome:this.tabbar('home'), tabbarProgress:this.tabbar('progress'), tabbarRank:this.tabbar('rank'), tabbarProfile:this.tabbar('profile'),
+      goNutrition:this.go('nutrition'),
+      homeCalDashOffset:138.2*(1-Math.min(1,this.totalsForItems(SLOTS.flatMap(sl=>this.state.nutritionLog[sl]||[])).kcal/this.state.macroGoals.kcal)),
+      homeCalLabel:(()=>{const t=this.totalsForItems(SLOTS.flatMap(sl=>this.state.nutritionLog[sl]||[]));return Math.round(t.kcal)+' / '+this.state.macroGoals.kcal+' kcal';})(),
+      homeMacros:(()=>{const t=this.totalsForItems(SLOTS.flatMap(sl=>this.state.nutritionLog[sl]||[]));return [{color:O,text:'Protein '+Math.round(t.protein)+'g'},{color:'#6f9ac9',text:'Carbs '+Math.round(t.carbs)+'g'},{color:GRN,text:'Fat '+Math.round(t.fat)+'g'}];})()};
   }
   frameClasses(){
     const atm=this.props.atmosphere??'ember', shape=this.props.shape??'balanced', type=this.props.typeEnergy??'default';

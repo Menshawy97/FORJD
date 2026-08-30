@@ -102,7 +102,7 @@ stopgap a re-run of one script rather than a migration and a contract break.
 Three of these overturn or extend what `docs/architecture/domain-model.md` currently names, so
 each is written down rather than absorbed silently:
 
-- **ADR-017 — canonical exercise model.** Arrays over join tables; custom exercises in the same
+- **ADR-017 — canonical exercise model** *(number reserved; the file has not been written — the decision itself is recorded in this plan's locked-decisions table above, which is authoritative until it is)*. Arrays over join tables; custom exercises in the same
   table; `force`/`level`/`mechanic` kept as nullable canonical columns rather than adapter
   metadata; `goal` and `measure` **derived** by the adapter because free-exercise-db has
   neither; `exercise_variants` deliberately deferred.
@@ -305,6 +305,28 @@ This is `StorageProvider`'s first real consumer, a phase earlier than InBody nee
 - FTS5 virtual table over name + muscles + equipment; version-gated re-sync on launch.
 - **ADR-019.**
 
+> ### ⚠ Reconcile with the 2026-08-30 design revision before starting Phase I
+>
+> The prototype was regenerated after this plan was written. Three things changed for phases
+> I-K, and **every prototype line number cited in this file and in
+> `docs/design/phase2-screen-specs.md` is now wrong** — the file grew by ~1,400 lines.
+> Re-anchor with `grep -nE "^s*s_[A-Za-z0-9_]+s*("` rather than trusting a citation.
+>
+> 1. **`newExercise` is a real screen now** (`s_newExercise`, line 3065), not the sketch this
+>    plan's Phase K was written against. Full spec, including its four validation messages and
+>    the `Measured by` field: `docs/design/design-revision-screen-specs.md` §3.
+> 2. **`favorites` is a real screen now** (`s_favorites`, line 3007) — previously dead code
+>    reachable only from the prototype's screen index, which is why this plan folded favourites
+>    into the library's filter chip alone. It ships **two** sections (programs, workouts) and
+>    **not** the favourite-exercises section its own caption promises; that list is defined at
+>    lines 3017 and 3040-3048 and never rendered. Spec: §2 of the same file. The programs half
+>    depends on Phase 4, so Phase I can ship the chip and defer the screen.
+> 3. **The vocabulary subset question is now explicit.** `newExercise` offers 13 muscle chips
+>    against `MUSCLE_GROUPS`'s 19, and 12 equipment chips against `EQUIPMENT`'s 16. That is a
+>    subset, not a conflict — but Phase K must decide and record whether the picker shows the
+>    subset or the full enum. The category tuple still matches `EXERCISE_CATEGORIES` exactly,
+>    so `exercise-vocabulary.spec.ts` is unaffected.
+
 ### Phase I — Library screen and the Train entry point
 
 `/library` outside the `(tabs)` group with `<TabBar active="train" />`, following
@@ -344,8 +366,10 @@ the row survives for Phase 3 session history. Record it in the deviations list.
 New, in the order they appear:
 
 - `docs/product/phase-2-plan.md`, `docs/design/phase2-screen-specs.md`
-- `docs/decisions/ADR-017-canonical-exercise-model.md`,
-  `ADR-018-exercise-media-hosting.md`, `ADR-019-on-device-exercise-catalogue.md`
+- `docs/decisions/ADR-017-canonical-exercise-model.md` *(reserved, not yet written)*,
+  `ADR-018-exercise-media-hosting.md` *(written)*,
+  `ADR-022-on-device-exercise-catalogue.md` *(reserved — **renumbered from 019**, which the
+  2026-08-30 design revision took for username/avatar; see "Note on numbering" below)*
 - `apps/api/src/database/schema/exercises.schema.ts`, `exercise-favourites.schema.ts`
 - `apps/api/drizzle/0005_*.sql`
 - `apps/api/src/exercises/` — `exercises.module.ts`, `.controller.ts`, `.service.ts`,
@@ -425,3 +449,16 @@ Review agents (`code-reviewer`, `security-reviewer`, `typescript-reviewer`, `rea
    gating rule is "enable RLS before any client receives a Supabase credential." A *public*
    media bucket hands no client a credential, so this does not trip the rule — but it is the
    closest anything has come, and it remains a human decision.
+
+## Note on numbering
+
+This plan reserved **ADR-017** (canonical exercise model) and **ADR-019** (on-device exercise
+catalogue) before either was written. ADR-018 was written; the other two were not.
+
+The 2026-08-30 design revision then wrote **ADR-019 (username and avatar)**, **ADR-020**
+(nutrition in MVP) and **ADR-021** (subscription UI without billing) as real files. A written
+ADR outranks a reservation, so:
+
+- **ADR-017 stays reserved** for the canonical exercise model. Nothing else may take it.
+- **The on-device catalogue ADR moves to ADR-022.** Its old number is taken.
+- The next free number after this plan and the design revision together is **ADR-023**.

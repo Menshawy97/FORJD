@@ -1,5 +1,35 @@
 # Handoff: FORJD Mobile — full app design
 
+> # FROZEN — this bundle is a pre-revision snapshot. Do not build from it.
+>
+> **Two things make this bundle non-authoritative:**
+>
+> 1. **It predates the 2026-08-30 design revision.** The prototype was regenerated and gained
+>    **11 screens** — an entire nutrition feature area (`nutrition`, `foodSearch`,
+>    `foodDetail`, `savedMeals`, `editMeal`, `nutritionShare`) plus `pickUsername`,
+>    `favorites`, `newExercise`, `setTimer` and `athlete`, and a Support / Delete-account
+>    block on `profile`. **None of them are described anywhere in this bundle**
+>    (`grep -ril nutrition` over these files returns nothing). The copy of
+>    `FORJD Mobile.dc.html` sitting in *this* directory is the **old** prototype; the current
+>    one is the copy one level up.
+> 2. **It already contradicted the prototype in fifteen catalogued places before that** — ten
+>    recorded in `docs/design/slice2-screen-specs.md` §9, five in
+>    `docs/design/phase2-screen-specs.md` §7. It also still says the target is **Flutter**
+>    (line below), which ADR-013 superseded when the app moved to Expo React Native.
+>
+> **Where to look instead, in priority order:**
+>
+> 1. `FORJD mobile app design/FORJD Mobile.dc.html` — the current runnable prototype, one
+>    directory up. It outranks every summary, this one included.
+> 2. `docs/design/design-revision-2026-08-30.md` — the verified delta record
+> 3. `docs/design/nutrition-screen-specs.md` and `docs/design/design-revision-screen-specs.md`
+> 4. `docs/design/slice2-screen-specs.md` and `docs/design/phase2-screen-specs.md`
+>
+> **This bundle is kept, not updated.** Bringing it up to date would produce a second summary
+> competing with the prototype, which is the failure mode the discrepancy ledgers above exist
+> to record. Its lasting value is the correctness audit in `06-audit-log.md` — the reasoning
+> there is still worth reading.
+
 **Source design:** `FORJD Mobile.dc.html` (bundled here)
 **Target:** `apps/mobile` (Flutter) in the FORJD monorepo
 **Prepared:** 2026-08-21, after a full correctness audit of the prototype (see `06-audit-log.md`)

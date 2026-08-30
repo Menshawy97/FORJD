@@ -187,6 +187,13 @@ Mount after the primary CTA and before the trailing text on each screen: `signup
 
 ## 1.5 `profile.tsx` still shows sample data that contradicts a shipped decision
 
+> **⚠ This fix was itself reverted on 2026-08-30.** The design revision restores the handle —
+> `pickUsername` onboarding, a Username field on `editProfile`, and `@handle` on the public
+> profile — so `username` becomes a real column
+> ([ADR-019](../decisions/ADR-019-username-and-avatar.md)) and `profile.tsx` gets its handle
+> line back in Phase 2.4. The section below is kept as the record of why it was removed the
+> first time, not as current instruction.
+
 `(tabs)/profile.tsx:28` renders `handle: '@jmitch · Alexandria'`. `slice2-screen-specs.md`'s own
 decisions box records: *"§12 — the `@jmitch` handle | **Dropped.** No `handle` column, no username
 concept. That line shows city alone."* Fix that line to show the city alone.
