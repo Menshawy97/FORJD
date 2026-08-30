@@ -105,8 +105,18 @@ jobs:
         # unique index, so a re-run updates in place and cannot duplicate the catalogue. It
         # reads the committed snapshot, never the raw dataset — enforced by
         # scripts/ci/check-architecture-conformance.sh.
+        #
+        # The workspace packages must be BUILT before `exercises:load`, not merely installed.
+        # It runs under ts-node on the runner (not inside the image), and the loader's import
+        # graph reaches `@forjd/domain`, which resolves through its `dist/`. `db:migrate` gets
+        # away without this because drizzle-kit only reads the schema files, which import
+        # nothing from the workspace — so the first run of this step failed on
+        # `Cannot find module '@forjd/domain'` after the migration had already applied. A local
+        # run cannot reproduce that: a developer tree almost always has a stale `dist/` lying
+        # around. Same reasoning, same fix as the mobile job in ci.yml.
         run: |
           pnpm install --frozen-lockfile
+          pnpm --filter @forjd/domain --filter @forjd/contracts build
           export DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
           pnpm --filter @forjd/api db:migrate
           pnpm --filter @forjd/api exercises:load
