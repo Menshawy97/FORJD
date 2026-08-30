@@ -41,8 +41,13 @@ Mobile.dc.html` grew 234 KB → 365 KB. Verified delta, tokens, and what did *no
   --ignore-all-space` over it is empty. It is a frozen pre-revision snapshot that now omits an
   entire feature area. Do not build from it.
 
-**Phase 2 is unaffected and continues from Phase D.** The revision adds to Phase 2's scope
-(`favorites`, `newExercise`) rather than redirecting it.
+**Phase 2 is unaffected and continues from Phase E** (Phase D landed after the revision). The
+revision adds to Phase 2's scope (`favorites`, `newExercise`) rather than redirecting it.
+
+**One Phase D finding the design revision needs to hear about:** the ingested catalogue leaves
+the `yoga` and `calisthenics` categories **completely empty** — free-exercise-db has no source
+category that maps to either — yet the library screen draws a filter chip for both. Phase I has
+to decide what those chips do. See `phase-2-plan.md`'s Phase D outcome section.
 
 ### Mobile framework pivot: Flutter → Expo React Native
 
@@ -977,7 +982,7 @@ failure).
 |---|---|---|---|
 | 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
 | 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
-| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **In progress — [re-planned](phase-2-plan.md); Phase 0 done** |
+| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **In progress — [re-planned](phase-2-plan.md); Phases 0, A, B, C, D done — next is E** |
 | 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | Not started — [planned](nutrition-plan.md), added by the 2026-08-30 design revision |
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
 | Dogfood gate | 16-17 | Real training with the app | Not started |

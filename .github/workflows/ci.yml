@@ -111,6 +111,16 @@ jobs:
 
       - run: git diff --exit-code packages/contracts/fixtures
 
+      # Same gate, same reason, for the normalized exercise catalogue (Phase D). Regenerating
+      # the snapshot must be a no-op. When it is not, a mapping table or an override changed
+      # and the committed snapshot is stale — and the diff is the review: it shows exactly
+      # which of the 873 exercises changed category, goal or measure. A one-word edit to a
+      # mapping table can silently reclassify a hundred exercises, so that edit does not get
+      # to merge without the consequences visible beside it.
+      - run: pnpm --filter @forjd/api exercises:normalize
+
+      - run: git diff --exit-code apps/api/src/exercises/ingest/data/normalized-exercises.json
+
       # The Postgres service container starts empty. users.repository.spec.ts and the
       # e2e suite both need the real schema, not just a reachable server.
       - run: pnpm --filter @forjd/api db:migrate

@@ -56,6 +56,20 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# ADR-005 / Phase 2: the raw vendored dataset is readable only from the ingest directory.
+#
+# The point is that ingest stays a reviewable, single-entry pipeline. Anything else reading
+# free-exercise-db.json directly would be normalizing the source's vocabulary a second time,
+# somewhere the golden-fixture tests and the committed snapshot do not cover -- which is how
+# two slightly different ideas of what "cardio" maps to end up in one codebase. Downstream
+# code reads normalized-exercises.json, or goes through the repository.
+if [ -d apps/api/src ] || [ -d apps/mobile/src ]; then
+  hits=$(grep -rn --include='*.ts' --include='*.tsx' 'free-exercise-db.json'     apps/api/src apps/mobile/src 2>/dev/null     | grep -v '^apps/api/src/exercises/ingest/' || true)
+  if [ -n "$hits" ]; then
+    report "the raw free-exercise-db dataset is read outside apps/api/src/exercises/ingest/" "$hits"
+  fi
+fi
+
 # Rules 1-2: domain packages depend on neither UI nor provider SDKs.
 if [ -d packages/domain/src ]; then
   hits=$(grep -rn --include='*.ts' -E "from '(@supabase/|@nestjs/|react|flutter)" packages/domain/src || true)
