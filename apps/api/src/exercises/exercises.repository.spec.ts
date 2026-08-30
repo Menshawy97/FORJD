@@ -8,7 +8,7 @@ import { Equipment, MuscleGroup } from "@forjd/domain";
 
 import { exerciseFavourites, exercises } from "../database/schema/exercises.schema";
 import { users } from "../database/schema/users.schema";
-import { ExercisesRepository } from "./exercises.repository";
+import { ExercisesRepository, UpsertCatalogueExerciseInput } from "./exercises.repository";
 
 /**
  * Exercised against real Postgres, not a mock -- the behaviour under test is the database's
@@ -346,6 +346,540 @@ describe("ExercisesRepository", () => {
 
       await repository.removeFavourite(userId, exercise.id);
       await expect(repository.isFavourite(userId, exercise.id)).resolves.toBe(false);
+    });
+  });
+
+  /**
+   * Browse, search and paginate -- Phase E's read path.
+   *
+   * **Isolation.** These run against whatever is in the database, which is an empty
+   * `exercises` table in CI and a fully loaded 873-row catalogue on a developer machine that
+   * has run `exercises:load`. Every assertion therefore filters by a per-test marker token
+   * embedded in the seeded names, so a test asserting "three results, in this order" means
+   * three of *its own* rows rather than three of whatever happened to sort first. The one
+   * thing that cannot be isolated that way is `q` itself, which is why the search tests seed
+   * deliberately unusual names and search within the marker as well.
+   */
+  describe("listExercises", () => {
+    /**
+     * A token that appears in no real exercise name, so `q: marker` selects exactly the rows
+     * a single test seeded. New per test, not per suite -- two tests seeding into a shared
+     * marker would see each other's rows and the failure would look like a query bug.
+     */
+    const newMarker = (): string => `zqx${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+    const seedCatalogue = async (
+      marker: string,
+      name: string,
+      overrides: Partial<UpsertCatalogueExerciseInput> = {},
+    ) => {
+      const exercise = await repository.upsertCatalogueExercise({
+        ...catalogueInput(`list-${randomUUID()}`),
+        name: `${marker} ${name}`,
+        ...overrides,
+      });
+      createdExerciseIds.push(exercise.id);
+      return exercise;
+    };
+
+    const seedCustom = async (ownerUserId: string, marker: string, name: string) => {
+      const exercise = await repository.createCustomExercise(ownerUserId, {
+        name: `${marker} ${name}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(exercise.id);
+      return exercise;
+    };
+
+    const names = (rows: { exercise: { name: string } }[]): string[] =>
+      rows.map((row) => row.exercise.name);
+
+    describe("visibility", () => {
+      it("returns catalogue exercises", async () => {
+        const userId = await makeUser("list-catalogue");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+
+        const page = await repository.listExercises({ userId, q: marker, limit: 10 });
+
+        expect(names(page.rows)).toEqual([`${marker} Alpha`]);
+      });
+
+      it("returns the caller's own custom exercises alongside the catalogue", async () => {
+        const userId = await makeUser("list-own");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+        await seedCustom(userId, marker, "Bravo");
+
+        const page = await repository.listExercises({ userId, q: marker, limit: 10 });
+
+        expect(names(page.rows)).toEqual([`${marker} Alpha`, `${marker} Bravo`]);
+      });
+
+      /**
+       * The sharpest rule in the read path. A custom exercise is private to its author, and
+       * the list is the one place a stranger's row could leak in bulk rather than one id at
+       * a time.
+       */
+      it("never returns another user's custom exercise", async () => {
+        const owner = await makeUser("list-owner");
+        const stranger = await makeUser("list-stranger");
+        const marker = newMarker();
+        await seedCustom(owner, marker, "Private");
+
+        const page = await repository.listExercises({ userId: stranger, q: marker, limit: 10 });
+
+        expect(page.rows).toHaveLength(0);
+      });
+
+      it("excludes a soft-deleted exercise", async () => {
+        const userId = await makeUser("list-deleted");
+        const marker = newMarker();
+        const kept = await seedCustom(userId, marker, "Kept");
+        const removed = await seedCustom(userId, marker, "Removed");
+        await repository.softDeleteCustomExercise(removed.id, userId);
+
+        const page = await repository.listExercises({ userId, q: marker, limit: 10 });
+
+        expect(names(page.rows)).toEqual([kept.name]);
+      });
+    });
+
+    describe("favourites", () => {
+      it("reports isFavourite per row for the calling user", async () => {
+        const userId = await makeUser("list-fav");
+        const marker = newMarker();
+        const starred = await seedCatalogue(marker, "Alpha");
+        await seedCatalogue(marker, "Bravo");
+        await repository.addFavourite(userId, starred.id);
+
+        const page = await repository.listExercises({ userId, q: marker, limit: 10 });
+
+        expect(page.rows.map((row) => [row.exercise.name, row.isFavourite])).toEqual([
+          [`${marker} Alpha`, true],
+          [`${marker} Bravo`, false],
+        ]);
+      });
+
+      /** A favourite is a fact about a (user, exercise) pair, not about the exercise. */
+      it("does not report another user's favourite as the caller's", async () => {
+        const owner = await makeUser("list-fav-owner");
+        const other = await makeUser("list-fav-other");
+        const marker = newMarker();
+        const exercise = await seedCatalogue(marker, "Alpha");
+        await repository.addFavourite(other, exercise.id);
+
+        const page = await repository.listExercises({ userId: owner, q: marker, limit: 10 });
+
+        expect(page.rows[0]?.isFavourite).toBe(false);
+      });
+
+      it("narrows to favourites only when asked", async () => {
+        const userId = await makeUser("list-fav-only");
+        const marker = newMarker();
+        const starred = await seedCatalogue(marker, "Alpha");
+        await seedCatalogue(marker, "Bravo");
+        await repository.addFavourite(userId, starred.id);
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          favouriteOnly: true,
+          limit: 10,
+        });
+
+        expect(names(page.rows)).toEqual([`${marker} Alpha`]);
+      });
+
+      it("returns nothing for a favourites filter with nothing starred", async () => {
+        const userId = await makeUser("list-fav-empty");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          favouriteOnly: true,
+          limit: 10,
+        });
+
+        expect(page.rows).toHaveLength(0);
+      });
+    });
+
+    describe("filters", () => {
+      it("filters by category", async () => {
+        const userId = await makeUser("list-category");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha", { category: "strength" });
+        await seedCatalogue(marker, "Bravo", { category: "mobility" });
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          category: "mobility",
+          limit: 10,
+        });
+
+        expect(names(page.rows)).toEqual([`${marker} Bravo`]);
+      });
+
+      it("filters by equipment", async () => {
+        const userId = await makeUser("list-equipment");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha", { equipment: ["barbell"] });
+        await seedCatalogue(marker, "Bravo", { equipment: ["kettlebell", "dumbbell"] });
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          equipment: "kettlebell",
+          limit: 10,
+        });
+
+        expect(names(page.rows)).toEqual([`${marker} Bravo`]);
+      });
+
+      it("filters by primary muscle", async () => {
+        const userId = await makeUser("list-muscle");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha", { primaryMuscles: ["chest"] });
+        await seedCatalogue(marker, "Bravo", { primaryMuscles: ["quads", "glutes"] });
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          muscle: "glutes",
+          limit: 10,
+        });
+
+        expect(names(page.rows)).toEqual([`${marker} Bravo`]);
+      });
+
+      /**
+       * Primary only, deliberately. Almost every pressing movement lists triceps and
+       * shoulders as secondary, so including them would make the "Chest" chip return most of
+       * the upper-body catalogue and the chip would stop meaning anything.
+       */
+      it("does not match on a secondary muscle", async () => {
+        const userId = await makeUser("list-secondary");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha", {
+          primaryMuscles: ["chest"],
+          secondaryMuscles: ["triceps"],
+        });
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          muscle: "triceps",
+          limit: 10,
+        });
+
+        expect(page.rows).toHaveLength(0);
+      });
+
+      it("applies every filter together rather than any of them", async () => {
+        const userId = await makeUser("list-combined");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha", {
+          category: "strength",
+          primaryMuscles: ["chest"],
+          equipment: ["barbell"],
+        });
+        await seedCatalogue(marker, "Bravo", {
+          category: "strength",
+          primaryMuscles: ["chest"],
+          equipment: ["dumbbell"],
+        });
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          category: "strength",
+          muscle: "chest",
+          equipment: "dumbbell",
+          limit: 10,
+        });
+
+        expect(names(page.rows)).toEqual([`${marker} Bravo`]);
+      });
+    });
+
+    describe("search", () => {
+      it("matches a whole word in the name", async () => {
+        const userId = await makeUser("search-word");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Bulgarian Split Squat");
+        await seedCatalogue(marker, "Overhead Press");
+
+        const page = await repository.listExercises({
+          userId,
+          q: `${marker} squat`,
+          limit: 10,
+        });
+
+        expect(names(page.rows)).toEqual([`${marker} Bulgarian Split Squat`]);
+      });
+
+      /**
+       * The trigram index exists for exactly this: somebody types four letters into the
+       * search box and expects results before they finish the word. Full-text search alone
+       * matches lexemes, so a prefix fragment finds nothing.
+       */
+      it("matches a partial word, which full-text search alone would miss", async () => {
+        const userId = await makeUser("search-partial");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Bulgarian Split Squat");
+
+        const page = await repository.listExercises({ userId, q: "bulgar", limit: 100 });
+
+        expect(names(page.rows)).toContain(`${marker} Bulgarian Split Squat`);
+      });
+
+      it("is case-insensitive", async () => {
+        const userId = await makeUser("search-case");
+        const marker = newMarker();
+        await seedCatalogue(marker, `Bulgarian Split Squat`);
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker.toUpperCase(),
+          limit: 10,
+        });
+
+        expect(names(page.rows)).toContain(`${marker} Bulgarian Split Squat`);
+      });
+
+      /**
+       * `%` and `_` are wildcards to LIKE, and a search term reaches an ILIKE pattern. If the
+       * term were interpolated rather than bound and escaped, searching for `%` would return
+       * the entire catalogue.
+       */
+      it("treats a LIKE wildcard in the search term as a literal character", async () => {
+        const userId = await makeUser("search-wildcard");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+
+        const page = await repository.listExercises({ userId, q: "%", limit: 100 });
+
+        expect(names(page.rows)).not.toContain(`${marker} Alpha`);
+      });
+
+      it("finds nothing for a term that matches nothing", async () => {
+        const userId = await makeUser("search-miss");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+
+        const page = await repository.listExercises({
+          userId,
+          q: `${marker} nonexistentterm`,
+          limit: 10,
+        });
+
+        expect(page.rows).toHaveLength(0);
+      });
+    });
+
+    describe("ordering and pagination", () => {
+      it("orders by name", async () => {
+        const userId = await makeUser("list-order");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Charlie");
+        await seedCatalogue(marker, "Alpha");
+        await seedCatalogue(marker, "Bravo");
+
+        const page = await repository.listExercises({ userId, q: marker, limit: 10 });
+
+        expect(names(page.rows)).toEqual([
+          `${marker} Alpha`,
+          `${marker} Bravo`,
+          `${marker} Charlie`,
+        ]);
+      });
+
+      it("reports hasMore and returns exactly the requested number of rows", async () => {
+        const userId = await makeUser("list-hasmore");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+        await seedCatalogue(marker, "Bravo");
+        await seedCatalogue(marker, "Charlie");
+
+        const page = await repository.listExercises({ userId, q: marker, limit: 2 });
+
+        expect(names(page.rows)).toEqual([`${marker} Alpha`, `${marker} Bravo`]);
+        expect(page.hasMore).toBe(true);
+      });
+
+      it("reports hasMore false on the last page", async () => {
+        const userId = await makeUser("list-lastpage");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+        await seedCatalogue(marker, "Bravo");
+
+        const page = await repository.listExercises({ userId, q: marker, limit: 2 });
+
+        expect(page.rows).toHaveLength(2);
+        expect(page.hasMore).toBe(false);
+      });
+
+      it("resumes after the cursor row, with no repeat and no gap", async () => {
+        const userId = await makeUser("list-cursor");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Alpha");
+        const bravo = await seedCatalogue(marker, "Bravo");
+        await seedCatalogue(marker, "Charlie");
+
+        const second = await repository.listExercises({
+          userId,
+          q: marker,
+          limit: 2,
+          after: { name: bravo.name, id: bravo.id },
+        });
+
+        expect(names(second.rows)).toEqual([`${marker} Charlie`]);
+        expect(second.hasMore).toBe(false);
+      });
+
+      /**
+       * Two exercises can share a name -- a user is free to name a custom exercise exactly
+       * what a catalogue row is called. With `name` alone as the sort key the pair has no
+       * defined order, and a cursor pointing at the first of them would either skip the
+       * second or return it forever. The id tiebreaker is what makes the keyset total.
+       */
+      it("paginates deterministically through rows that share a name", async () => {
+        const userId = await makeUser("list-tie");
+        const marker = newMarker();
+        await seedCatalogue(marker, "Twin");
+        await seedCatalogue(marker, "Twin");
+        await seedCatalogue(marker, "Twin");
+
+        const first = await repository.listExercises({ userId, q: marker, limit: 2 });
+        const last = first.rows[first.rows.length - 1];
+        if (!last) {
+          throw new Error("expected a first page");
+        }
+        const second = await repository.listExercises({
+          userId,
+          q: marker,
+          limit: 2,
+          after: { name: last.exercise.name, id: last.exercise.id },
+        });
+
+        const seen = [...first.rows, ...second.rows].map((row) => row.exercise.id);
+        expect(seen).toHaveLength(3);
+        expect(new Set(seen).size).toBe(3);
+      });
+
+      it("keeps the filters applied across a cursor", async () => {
+        const userId = await makeUser("list-cursor-filter");
+        const marker = newMarker();
+        const alpha = await seedCatalogue(marker, "Alpha", { category: "mobility" });
+        await seedCatalogue(marker, "Bravo", { category: "strength" });
+        await seedCatalogue(marker, "Charlie", { category: "mobility" });
+
+        const page = await repository.listExercises({
+          userId,
+          q: marker,
+          category: "mobility",
+          limit: 10,
+          after: { name: alpha.name, id: alpha.id },
+        });
+
+        expect(names(page.rows)).toEqual([`${marker} Charlie`]);
+      });
+    });
+  });
+
+  describe("findByIdForUser", () => {
+    it("returns a catalogue exercise with its favourite state", async () => {
+      const userId = await makeUser("detail-catalogue");
+      const exercise = await repository.upsertCatalogueExercise(
+        catalogueInput(`detail-${randomUUID()}`),
+      );
+      createdExerciseIds.push(exercise.id);
+      await repository.addFavourite(userId, exercise.id);
+
+      const found = await repository.findByIdForUser(exercise.id, userId);
+
+      expect(found?.exercise.id).toBe(exercise.id);
+      expect(found?.isFavourite).toBe(true);
+    });
+
+    it("reports isFavourite false when the caller has not starred it", async () => {
+      const userId = await makeUser("detail-unstarred");
+      const exercise = await repository.upsertCatalogueExercise(
+        catalogueInput(`detail-${randomUUID()}`),
+      );
+      createdExerciseIds.push(exercise.id);
+
+      const found = await repository.findByIdForUser(exercise.id, userId);
+
+      expect(found?.isFavourite).toBe(false);
+    });
+
+    it("returns the caller's own custom exercise", async () => {
+      const userId = await makeUser("detail-own");
+      const created = await repository.createCustomExercise(userId, {
+        name: `Own Exercise ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(created.id);
+
+      await expect(repository.findByIdForUser(created.id, userId)).resolves.toMatchObject({
+        exercise: { id: created.id },
+      });
+    });
+
+    /** Null, not a row -- turning this into a 404 rather than a 403 is the service's job. */
+    it("returns null for another user's custom exercise", async () => {
+      const owner = await makeUser("detail-owner");
+      const stranger = await makeUser("detail-stranger");
+      const created = await repository.createCustomExercise(owner, {
+        name: `Private Exercise ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(created.id);
+
+      await expect(repository.findByIdForUser(created.id, stranger)).resolves.toBeNull();
+    });
+
+    it("returns null for a soft-deleted exercise", async () => {
+      const userId = await makeUser("detail-deleted");
+      const created = await repository.createCustomExercise(userId, {
+        name: `Deleted Detail ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(created.id);
+      await repository.softDeleteCustomExercise(created.id, userId);
+
+      await expect(repository.findByIdForUser(created.id, userId)).resolves.toBeNull();
+    });
+
+    it("returns null for an unknown id", async () => {
+      const userId = await makeUser("detail-unknown");
+
+      await expect(repository.findByIdForUser(randomUUID(), userId)).resolves.toBeNull();
     });
   });
 });

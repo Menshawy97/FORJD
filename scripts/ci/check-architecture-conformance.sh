@@ -56,17 +56,27 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
-# ADR-005 / Phase 2: the raw vendored dataset is readable only from the ingest directory.
+# ADR-005 / Phase 2: the raw vendored dataset is readable only by the normalizer.
 #
 # The point is that ingest stays a reviewable, single-entry pipeline. Anything else reading
 # free-exercise-db.json directly would be normalizing the source's vocabulary a second time,
 # somewhere the golden-fixture tests and the committed snapshot do not cover -- which is how
 # two slightly different ideas of what "cardio" maps to end up in one codebase. Downstream
 # code reads normalized-exercises.json, or goes through the repository.
+#
+# Narrowed in Phase E from "anything under ingest/" to "the normalizer, plus the adapter spec
+# that golden-tests against the real source rows". `exercises:load` lives in that same
+# directory and must read the committed snapshot rather than the source: a loader that
+# re-derived the mapping at deploy time would put the catalogue into the database in a shape
+# no reviewer ever saw in a diff, which is the entire thing Phase D's snapshot exists to
+# prevent -- and the old directory-wide exemption would not have caught it.
 if [ -d apps/api/src ] || [ -d apps/mobile/src ]; then
-  hits=$(grep -rn --include='*.ts' --include='*.tsx' 'free-exercise-db.json'     apps/api/src apps/mobile/src 2>/dev/null     | grep -v '^apps/api/src/exercises/ingest/' || true)
+  hits=$(grep -rn --include='*.ts' --include='*.tsx' 'free-exercise-db.json' \
+    apps/api/src apps/mobile/src 2>/dev/null \
+    | grep -v '^apps/api/src/exercises/ingest/normalize.ts:' \
+    | grep -v '^apps/api/src/exercises/ingest/free-exercise-db.adapter.spec.ts:' || true)
   if [ -n "$hits" ]; then
-    report "the raw free-exercise-db dataset is read outside apps/api/src/exercises/ingest/" "$hits"
+    report "the raw free-exercise-db dataset is read outside the normalizer (apps/api/src/exercises/ingest/normalize.ts)" "$hits"
   fi
 fi
 

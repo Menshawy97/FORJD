@@ -18,7 +18,8 @@ import {
   MUSCLE_GROUPS,
   MuscleGroup,
 } from "@forjd/domain";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, SQL, sql } from "drizzle-orm";
+import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 
 import { Database, DRIZZLE } from "../database/database.module";
 import { exerciseFavourites, ExerciseRow, exercises } from "../database/schema/exercises.schema";
@@ -81,6 +82,93 @@ export interface CreateCustomExerciseInput {
 
 /** Only the fields `s_newExercise`'s edit mode can change -- name, category, goal, measure, muscles, equipment, description. */
 export type UpdateCustomExerciseInput = Partial<CreateCustomExerciseInput>;
+
+/**
+ * The last row of the previous page, as the full sort key. Both halves are needed: `name`
+ * alone is not unique, and `id` alone does not match the ordering.
+ */
+export interface ExerciseCursor {
+  name: string;
+  id: string;
+}
+
+export interface ListExercisesFilter {
+  /** Whose list this is -- decides both visibility and whose favourites are reported. */
+  userId: string;
+  q?: string;
+  category?: ExerciseCategory;
+  muscle?: MuscleGroup;
+  equipment?: Equipment;
+  favouriteOnly?: boolean;
+  after?: ExerciseCursor;
+  limit: number;
+}
+
+/**
+ * `isFavourite` rides along with the row rather than being fetched per exercise afterwards.
+ * The obvious alternative -- list the ids, then ask `isFavourite` for each -- is an N+1 that
+ * would issue 51 queries for a 50-row page.
+ */
+export interface ExerciseWithFavourite {
+  exercise: Exercise;
+  isFavourite: boolean;
+}
+
+export interface ExercisePage {
+  rows: ExerciseWithFavourite[];
+  /** True when at least one further row matched, so the caller can mint a cursor. */
+  hasMore: boolean;
+}
+
+/**
+ * Catalogue rows (no owner) plus this user's own. Never anybody else's custom exercise --
+ * the single place that rule is expressed, so both the list and the detail read inherit it.
+ */
+function visibleTo(userId: string): SQL {
+  return sql`(${exercises.ownerUserId} is null or ${exercises.ownerUserId} = ${userId}::uuid)`;
+}
+
+/**
+ * A correlated EXISTS rather than a LEFT JOIN. A join against `exercise_favourites` would
+ * duplicate the exercise row per matching favourite -- harmless while the join is on
+ * `(user_id, exercise_id)` and that pair is unique, but only by coincidence, and a
+ * `hasMore`/`limit` computed over duplicated rows would page wrongly the day that stopped
+ * being true. EXISTS answers the boolean question directly and cannot change the row count.
+ */
+function favouriteExists(userId: string): SQL<boolean> {
+  return sql<boolean>`exists (
+    select 1 from ${exerciseFavourites}
+    where ${exerciseFavourites.exerciseId} = ${exercises.id}
+      and ${exerciseFavourites.userId} = ${userId}::uuid
+  )`;
+}
+
+/**
+ * Full-text search OR a trigram substring match, both over `name`.
+ *
+ * Each covers what the other cannot. `search_vector` (migration 0006, GIN-indexed) matches
+ * whole lexemes with stemming, so "squats" finds "Squat" -- but it cannot match "bulgar",
+ * because a partial word is not a lexeme. The `ILIKE %term%` arm is the one that answers
+ * while the user is still typing, and the `gin_trgm_ops` index on `name` is what keeps it
+ * from being a sequential scan of the catalogue.
+ *
+ * **The term is bound, never interpolated,** and the LIKE metacharacters are escaped before
+ * binding. Without the escape a search for `%` is not an injection but is still a bug: it
+ * would match every exercise in the database and quietly return the whole catalogue as if it
+ * were a search result.
+ */
+function searchCondition(term: string): SQL {
+  const pattern = `%${term.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+
+  // `search_vector` is deliberately absent from `exercises.schema.ts` -- modelling a generated
+  // column there would make a future `db:generate` try to re-create what migration 0006 already
+  // did by hand. That schema file's docblock says to reach it through a raw template, which is
+  // what this is; the table reference is still the schema object, so a rename stays honest.
+  return sql`(
+    ${exercises}.search_vector @@ plainto_tsquery('english', ${term})
+    or ${exercises.name} ilike ${pattern}
+  )`;
+}
 
 /**
  * Data access for both the ingested catalogue and user-authored custom exercises (ADR-017).
@@ -154,6 +242,85 @@ export class ExercisesRepository {
     return row ? this.toExercise(row) : null;
   }
 
+  /**
+   * The read used by `GET /exercises/:id`.
+   *
+   * Takes the caller's id rather than leaving visibility to the service, because "which rows
+   * exist for this user" is a property of the query: a service-side check would have to fetch
+   * a row it is not allowed to see in order to decide it may not see it. Returns `null` for
+   * missing, deleted and not-yours alike -- see the class docblock.
+   */
+  async findByIdForUser(id: string, userId: string): Promise<ExerciseWithFavourite | null> {
+    const [row] = await this.db
+      .select({ exercise: exercises, isFavourite: favouriteExists(userId) })
+      .from(exercises)
+      .where(and(eq(exercises.id, id), isNull(exercises.deletedAt), visibleTo(userId)));
+
+    return row ? { exercise: this.toExercise(row.exercise), isFavourite: row.isFavourite } : null;
+  }
+
+  /**
+   * The read behind `GET /exercises` -- browse, search, filter and paginate in one query.
+   *
+   * **Keyset, not offset.** `after` names the last row of the previous page as the tuple
+   * `(name, id)`, and the next page is everything sorting strictly after it. Offset would
+   * re-scan the skipped rows on every page and, worse, shift its window whenever a row was
+   * added or removed mid-scroll -- the reader silently sees a duplicate or misses an entry,
+   * and neither shows up as an error. Custom exercises are created and deleted by the same
+   * user who is scrolling, so that is not a hypothetical here.
+   *
+   * **The sort key must be total.** Two exercises can genuinely share a name, so `name` alone
+   * leaves their relative order undefined and a cursor at one of them would skip or repeat
+   * the other. `(name, id)` breaks every tie, and Postgres compares the row constructor with
+   * the same collation the ORDER BY uses, so the comparison and the ordering cannot disagree.
+   *
+   * **`hasMore` costs nothing.** One extra row is requested and discarded, rather than a
+   * second `count(*)` over the whole match set for a number that is stale on arrival.
+   */
+  async listExercises(filter: ListExercisesFilter): Promise<ExercisePage> {
+    const conditions: SQL[] = [isNull(exercises.deletedAt), visibleTo(filter.userId)];
+
+    if (filter.category) {
+      conditions.push(eq(exercises.category, filter.category));
+    }
+    // `= ANY(column)` rather than an `@>` array containment: the filter is a single value, and
+    // ANY reads as the question actually being asked ("is this muscle among the primary ones").
+    if (filter.muscle) {
+      conditions.push(sql`${filter.muscle} = any(${exercises.primaryMuscles})`);
+    }
+    if (filter.equipment) {
+      conditions.push(sql`${filter.equipment} = any(${exercises.equipment})`);
+    }
+    if (filter.q) {
+      conditions.push(searchCondition(filter.q));
+    }
+    if (filter.favouriteOnly) {
+      conditions.push(favouriteExists(filter.userId));
+    }
+    if (filter.after) {
+      conditions.push(
+        sql`(${exercises.name}, ${exercises.id}) > (${filter.after.name}, ${filter.after.id}::uuid)`,
+      );
+    }
+
+    const rows = await this.db
+      .select({ exercise: exercises, isFavourite: favouriteExists(filter.userId) })
+      .from(exercises)
+      .where(and(...conditions))
+      .orderBy(exercises.name, exercises.id)
+      .limit(filter.limit + 1);
+
+    const page = rows.slice(0, filter.limit);
+
+    return {
+      rows: page.map((row) => ({
+        exercise: this.toExercise(row.exercise),
+        isFavourite: row.isFavourite,
+      })),
+      hasMore: rows.length > filter.limit,
+    };
+  }
+
   async createCustomExercise(
     ownerUserId: string,
     input: CreateCustomExerciseInput,
@@ -200,7 +367,12 @@ export class ExercisesRepository {
     ownerUserId: string,
     patch: UpdateCustomExerciseInput,
   ): Promise<Exercise | null> {
-    const set: Partial<typeof exercises.$inferInsert> = { updatedAt: sql`now()` as unknown as Date };
+    // `PgUpdateSetSource`, not `Partial<$inferInsert>`. The latter accepts only real column
+    // values, so smuggling a `SQL` fragment through it needs an `as unknown as Date` -- a
+    // total type-check bypass, which would just as happily hide a fragment that genuinely did
+    // not match its column. Drizzle already publishes the type that allows a value *or* a SQL
+    // expression per column, which is exactly what an update set is.
+    const set: PgUpdateSetSource<typeof exercises> = { updatedAt: sql`now()` };
     if (patch.name !== undefined) {
       set.name = patch.name;
       set.slug = slugify(patch.name);
@@ -237,7 +409,7 @@ export class ExercisesRepository {
   async softDeleteCustomExercise(id: string, ownerUserId: string): Promise<boolean> {
     const rows = await this.db
       .update(exercises)
-      .set({ deletedAt: sql`now()` as unknown as Date })
+      .set({ deletedAt: sql`now()` })
       .where(
         and(
           eq(exercises.id, id),

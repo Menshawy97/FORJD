@@ -316,21 +316,156 @@ Also worth knowing: **4 of the 16 canonical `EQUIPMENT` values never appear** (`
 seed data, not in the vocabulary. 122 exercises carry equipment `other` and 77 carry none at
 all — the source's own limitation, transcribed rather than guessed at.
 
-> **Next session starts here → Phase E.**
+### Phase E — Loader and the browse/search endpoint — ✅ **DONE**
 
-### Phase E — Loader and the browse/search endpoint
-
-- `exercises:load` — idempotent upsert keyed on `(source, source_id)`, safe to re-run. Wired
+- ✅ `exercises:load` — idempotent upsert keyed on `(source, source_id)`, safe to re-run. Wired
   into `deploy-api.yml` after `db:migrate`, since idempotency is what makes that safe; **not**
   a migration, because 870 content rows are not schema.
-- `GET /api/v1/exercises` — `q`, `category`, `muscle`, `equipment`, `favourite`, cursor
+- ✅ `GET /api/v1/exercises` — `q`, `category`, `muscle`, `equipment`, `favourite`, cursor
   pagination. **The first `@Query(new ZodValidationPipe(...))` in the codebase**, so the schema
   needs `z.coerce` for numeric params.
-- `GET /api/v1/exercises/:id`.
-- Define the list envelope in `@forjd/contracts` — `{ items, nextCursor }` — deliberately,
-  since it becomes the house pattern for every list endpoint after this. Write every field out;
-  do not derive projections with `.pick()`, per the `publicProfileResponseSchema` comment.
-- Fixtures regenerated in the same commit. Unit + e2e tests.
+- ✅ `GET /api/v1/exercises/:id`.
+- ✅ The list envelope in `@forjd/contracts` — `{ items, nextCursor }` — written out in full,
+  no `.pick()`.
+- ✅ Fixtures regenerated in the same commit. Unit + e2e tests.
+
+#### What Phase E produced
+
+- **`ingest/load.ts` + `pnpm --filter @forjd/api exercises:load`.** Split the way Phase D's
+  adapter was: `parseSnapshot` and `loadCatalogue` are pure and take a `CatalogueTarget`
+  (structurally the one repository method they use), so they are tested against a fake with no
+  database; everything touching the filesystem or a connection lives in the CLI `main()`.
+  Idempotency is deliberately **not** re-tested there — it belongs to
+  `upsertCatalogueExercise`, which `exercises.repository.spec.ts` already proves against real
+  Postgres and a real partial unique index. Verified end to end anyway: two consecutive runs
+  against local Postgres left 873 rows and 873 distinct source ids, with the category
+  distribution matching Phase D's recorded numbers exactly.
+- **`parseSnapshot` refuses a snapshot that misdescribes itself.** The declared count is
+  checked against the array length, and both halves of the upsert key are checked per record.
+  The case that motivates it is a *truncated* file, not a hostile one: a partial checkout or a
+  mis-resolved merge still parses as valid JSON, and without the check the loader would upsert
+  the survivors, exit zero, and leave a catalogue silently missing rows.
+- **The `{ items, nextCursor }` envelope**, as `listResponseSchema(itemSchema)` in
+  `@forjd/contracts`, with the reasoning written into the file: cursor rather than offset;
+  `nextCursor` **required and nullable, never optional**, so end-of-list is a positive
+  statement rather than an absent key a paging loop would misread; no total count.
+- **`exerciseListQuerySchema`** — `q` (trimmed, and blank becomes "no search" rather than a
+  400, because clearing the search box sends `?q=`), `category`/`muscle`/`equipment` built
+  from the domain tuples, `favourite`, `cursor`, and `limit` (`z.coerce`, bounded at 100, and
+  **rejected** rather than clamped above it).
+- **`favourite` is a spelled-out `z.enum(['true','false'])`, never `z.coerce.boolean()`** —
+  the latter is `Boolean(value)`, and every non-empty string is truthy, so `?favourite=false`
+  would have returned exactly the opposite of what was asked, with no error anywhere. Pinned
+  by a unit test and again by an e2e test over real HTTP.
+- **Keyset pagination on `(name, id)`.** `name` alone is not unique — a user may name a custom
+  exercise exactly what a catalogue row is called — so a cursor at one of a pair would skip or
+  repeat the other. The id tiebreaker makes the sort key total, and Postgres compares the row
+  constructor with the same collation the `ORDER BY` uses. `hasMore` comes from fetching one
+  extra row and discarding it, not from a second `count(*)` over the match set.
+- **The cursor is opaque, base64url, and validated on the way back in.** Not signed: it names
+  a position in a list the caller may already read in full, so forging one buys nothing. It is
+  base64url specifically because a `+` in plain base64 comes back from a query string as a
+  space — an intermittent failure that would appear only for certain exercise names.
+  `exercise-cursor.ts` carries a 100% coverage pin alongside the service.
+- **Search is full-text OR trigram**, both over `name`. Each covers what the other cannot:
+  `search_vector` matches stemmed lexemes ("squats" finds "Squat") but cannot match the
+  fragment "bulgar" someone is still typing, which is what the `gin_trgm_ops` index is for.
+  The term is bound, and LIKE metacharacters are escaped before binding — otherwise a search
+  for `%` would quietly return the entire catalogue as though it were a result.
+- **Muscle filtering is primary-only**, recorded as a decision rather than an accident: nearly
+  every pressing movement lists triceps and shoulders as secondary, so including them would
+  make the "Chest" chip return most of the upper-body catalogue and the chip would stop
+  meaning anything.
+- **`favouriteExists` is a correlated `EXISTS`, not a `LEFT JOIN`.** A join would duplicate the
+  exercise row per matching favourite — harmless only while `(user_id, exercise_id)` is unique,
+  and a `limit`/`hasMore` computed over duplicated rows would page wrongly the day that
+  stopped being true.
+- **`ExercisesService` carries the refusal policy** and a 100% coverage pin: **404, never
+  403**, with one identical message for unknown id, malformed id and somebody else's custom
+  exercise, matching `AthletesService`. A malformed id is rejected before it reaches Postgres,
+  where it would raise a cast error and surface as a distinguishable 500.
+- **`imageUrls`, never `imageKeys`, on the wire.** The service resolves storage keys against a
+  configurable `EXERCISE_MEDIA_BASE_URL` and returns `null`/`[]` until Phase F sets it — a
+  half-built URL would render as a broken image in every row, and a client cannot tell "not
+  configured" from "404". This is what keeps ADR-018's media swap a config change; an e2e test
+  asserts no storage key appears in a response body.
+
+#### Two things Phase E had to change outside its own files
+
+- **`ZodValidationPipe` was typed `ZodSchema<T>`**, i.e. `ZodType<T, ZodTypeDef, T>` — a schema
+  whose parsed output has the same shape as its input. That held only because the pipe had
+  never been applied to anything but `@Body`, where JSON has already produced typed values. A
+  query string is all strings, so `exerciseListQuerySchema` has input `string | undefined`
+  where its output is `number`, and it would not compile. Widened to
+  `ZodValidationPipe<TOutput, TInput = unknown>`; runtime behaviour is unchanged and all six
+  existing `@Body` call sites infer `TInput` without edits.
+- **The dataset conformance check was too loose.** It exempted *the whole* `ingest/` directory
+  from the "raw dataset readable only here" rule, which would have let `load.ts` — which lives
+  in that directory — read `free-exercise-db.json` and re-derive the mapping at deploy time,
+  putting the catalogue into the database in a shape no reviewer ever saw in a diff. Narrowed
+  to `normalize.ts` plus the adapter's own golden-fixture spec, and **watched failing against
+  a violation planted in `load.ts`** before being committed, per the standing rule.
+
+#### What review caught — migration 0007
+
+`code-reviewer` found that **the keyset had no index behind it.** Migration 0006 added a GIN
+tsvector index and a GIN trigram index, neither of which can serve an `ORDER BY name, id`.
+So every page was a full sort of the match set — precisely the cost keyset pagination is
+chosen to avoid, and the endpoint would have looked fine in tests and degraded quietly as
+custom exercises accumulated.
+
+Fixed in **migration `0007_steep_betty_brant.sql`** — a plain btree on `(name, id)`. Unlike
+0006's generated column and extension indexes, a btree *is* expressible in the typed schema,
+so it was added to `exercises.schema.ts` and generated by drizzle-kit rather than hand-written
+(rule 14); a follow-up `db:generate` reports zero drift.
+
+Measured against the real 873-row catalogue rather than assumed:
+
+| query | before | after |
+|---|---|---|
+| first page, unfiltered | full sort | `Index Scan using exercises_name_id_idx`, no sort node |
+| cursor-resumed page | full sort | same index, and the row-constructor comparison becomes an **`Index Cond`** — a real seek, not a filter |
+
+That second row is the one that matters: it is the difference between a keyset that seeks and
+a keyset that merely looks like one.
+
+Also raised and deliberately not acted on: the `favouriteExists` correlated `EXISTS` is emitted
+twice when `favouriteOnly` is set — once in the `SELECT` list for `isFavourite`, once in the
+`WHERE` for the filter. It is correct either way, the planner may collapse it, and restructuring
+to share it would cost more clarity than the duplication costs.
+
+#### What review caught — two more, from `typescript-reviewer`
+
+- **The search term's length bound ran before the trim.** `q` was `z.string().max(80).optional()
+  .transform(trim)`, so the 80-character limit was checked against the *raw* string. A term
+  comfortably inside the limit would 400 purely because of surrounding whitespace the server
+  was about to discard — the same mistake as putting `min(1)` before the trim, in the opposite
+  direction, and in the same field that already had the empty-string case handled correctly.
+  Reproduced as a failing test first, then fixed by trimming and `.pipe()`-ing into the bound,
+  so the limit now applies to the term that actually reaches the tsquery and the trigram index.
+- **Two `as unknown as Date` casts** in `updateCustomExercise` and `softDeleteCustomExercise`
+  (Phase C code, in a file this phase was already changing). They existed only because the
+  `set` object was typed `Partial<typeof exercises.$inferInsert>`, which accepts column values
+  but not a `SQL` fragment — so `sql\`now()\`` had to be smuggled through a total type-check
+  bypass that would just as happily have hidden a fragment genuinely mismatched to its column.
+  Drizzle already publishes `PgUpdateSetSource<TTable>` for exactly this; switching to it drops
+  both casts and compiles clean.
+
+Everything else the two reviewers probed independently — SQL parameter binding, the LIKE escape,
+the tuple comparison's collation agreement with the `ORDER BY`, `EXISTS`-not-`JOIN` protecting
+the row count, the cursor's `unknown` narrowing, the pipe widening's effect on the six existing
+`@Body` call sites, and the field-by-field projections never touching `ownerUserId`/`imageKeys`/
+`sourceId` — held up.
+
+#### Follow-up this phase found but did not take
+
+`@forjd/contracts` and `@forjd/domain` each have a `lint` script that **nothing ran** — the CI
+`api` job lints only `apps/api`. The very first spec added to `@forjd/contracts` shipped an
+eslint error that only a local run caught. `pnpm --filter @forjd/contracts lint` is now a CI
+step, since this phase added source to that package; `@forjd/domain`'s equivalent is currently
+clean and is left as a one-line follow-up rather than widened into here.
+
+> **Next session starts here → Phase F.**
 
 ### Phase F — Media mirror *(the stopgap)*
 

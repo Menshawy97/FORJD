@@ -1,0 +1,1 @@
+CREATE INDEX "exercises_name_id_idx" ON "exercises" USING btree ("name","id");
