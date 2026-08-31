@@ -41,6 +41,7 @@ import { setExerciseFavourite } from '@/auth/apiClient';
 import {
   listCachedExercises,
   openExerciseCatalogueDb,
+  searchExercises,
   setLocalFavourite,
   syncExerciseCatalogue,
 } from '@/store/exercise-catalogue';
@@ -99,6 +100,37 @@ describe('library screen fidelity', () => {
     const { findByPlaceholderText } = await render(<LibraryScreen />);
 
     expect(await findByPlaceholderText('Search exercises…')).toBeTruthy();
+  });
+
+  /**
+   * `exercises_fts` indexes name, primary+secondary muscles, and equipment together (Phase
+   * H) -- one search box, one `searchExercises` call, matching across all three, exactly as
+   * the user asked for ("search by muscle... and also keep the search by exercise name").
+   * These lock that wiring in at the screen level; the FTS5 query construction itself is
+   * already covered store-side (`exercise-catalogue.test.ts`).
+   */
+  it('searching by exercise name calls searchExercises and renders the match', async () => {
+    (searchExercises as jest.Mock).mockResolvedValue([exercise({ name: 'Bench Press' })]);
+    const { findByPlaceholderText, findByText } = await render(<LibraryScreen />);
+
+    fireEvent.changeText(await findByPlaceholderText('Search exercises…'), 'bench');
+
+    await waitFor(() => expect(searchExercises).toHaveBeenCalledWith({}, 'bench'));
+    expect(await findByText('Bench Press')).toBeTruthy();
+  });
+
+  it('searching by a muscle name calls searchExercises and renders every exercise that targets it', async () => {
+    (searchExercises as jest.Mock).mockResolvedValue([
+      exercise({ id: 'ex1', name: 'Barbell Curl', primaryMuscles: ['biceps'] }),
+      exercise({ id: 'ex2', name: 'Preacher Curl', primaryMuscles: ['biceps'] }),
+    ]);
+    const { findByPlaceholderText, findByText } = await render(<LibraryScreen />);
+
+    fireEvent.changeText(await findByPlaceholderText('Search exercises…'), 'biceps');
+
+    await waitFor(() => expect(searchExercises).toHaveBeenCalledWith({}, 'biceps'));
+    expect(await findByText('Barbell Curl')).toBeTruthy();
+    expect(await findByText('Preacher Curl')).toBeTruthy();
   });
 
   /**
