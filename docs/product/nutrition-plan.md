@@ -175,9 +175,64 @@ and `FOOD_CATEGORIES`' exact order excluding `'All'`. Verified: `packages/domain
 lint, and build all clean; `apps/api` and `apps/mobile` both re-typechecked clean against the
 updated `@forjd/domain`, confirming the new exports don't collide with anything downstream.
 
-**Phase C — migration, schema and repository.** Tables for foods, servings, the daily log,
-saved meals and their items, and per-user macro goals. Search indexes on the food name from
-the start, per migration `0006`'s pattern. Repository with unit tests; no HTTP yet.
+**Phase C — migration, schema and repository. ✅ DONE.**
+`apps/api/src/database/schema/nutrition.schema.ts`: six tables, all mirroring `exercises.schema.ts`'s
+established patterns rather than inventing new ones --
+`foods` (one table for USDA catalogue + custom, `ownerUserId: null` marks a catalogue row, the
+same two partial unique indexes as `exercises` for `(source, sourceId)` and
+case-insensitive `(ownerUserId, lower(name))`), `food_servings` (a plain relational table, not
+JSONB, so every table in the schema stays ordinary-SQL-queryable), `macro_goals` (one row per
+user, **no seeded default** -- see below), `saved_meals` + `saved_meal_items`, and
+`nutrition_log_entries` (the day's food log).
+
+Migration `0008` (generated) adds all six tables. Migration `0009` (hand-written `--custom`,
+mirroring `0006_add-exercise-search-indexes.sql` exactly) adds `foods.search_vector`
+(generated `tsvector`, GIN-indexed) and a trigram GIN index on `foods.name` -- deliberately
+**not** reflected in the typed schema, same reasoning as `exercises.schema.ts`'s own note.
+Both migrations applied cleanly to local Postgres and verified directly against `\d foods`.
+
+**Two decisions settled by asking rather than assuming, since the design had no answer for
+either:**
+
+1. **Before a user ever saves macro goals, `macro_goals` has no row for them at all** --
+   confirmed with the user rather than guessed. `getMacroGoals` returns `null`, and the
+   dashboard's future read shows an honest "set your goals" prompt instead of a ring against a
+   fabricated default, the same honest-empty-state principle Phase J already applied to
+   exercise stat tiles. No seeded default, no fallback computation.
+2. **`nutrition_log_entries.loggedDate` is a plain `date`, supplied by the client's own local
+   calendar day, never derived from a server timestamp** -- a server-computed day boundary
+   would use the server's timezone, wrong for a user anywhere else. Not asked as a question
+   (a mechanical implementation detail with no real product trade-off), but documented in the
+   schema so the reasoning survives.
+
+**`NutritionRepository`** (`apps/api/src/nutrition/nutrition.repository.ts`, 16 tests, real
+Postgres, matching `ExercisesRepository`'s precedent exactly): `createCatalogueFood` (upsert on
+`(source, sourceId)`), `createCustomFood` (case-insensitive duplicate-name → `ConflictException`),
+`findFoodById`, `searchFoods` (FTS + trigram, same `searchCondition` shape as exercises),
+`softDeleteCustomFood`; `getMacroGoals`/`setMacroGoals` (upsert); `createSavedMeal`/
+`listSavedMeals`/`deleteSavedMeal`; and `logEntry`/`logSavedMeal`/`listLogForDate`/
+`deleteLogEntry`/`deleteLogGroup`. **The macro snapshot on a log entry is computed by the
+repository itself** from the food's current per-100g values and the logged grams, then stored
+-- never looked up live at read time, so a later correction to a food's data can never silently
+rewrite what a user is told they ate on a past day (the same "preserve source, do not
+overwrite" instinct CLAUDE.md rule 10 states for health observations). `logSavedMeal` copies a
+saved meal's items into the log sharing one `groupId`, never a live reference, so editing a
+saved meal afterwards cannot rewrite already-logged history.
+
+**RED confirmed before GREEN.** `nutrition.repository.spec.ts` was written and run failing
+(module not found) before the repository existed, then implemented to pass. Verified: 16/16
+new tests green, `tsc --noEmit` clean, `eslint` clean, `nest build` clean, architecture
+conformance clean. **One flake found and diagnosed, not fixed:** the full 24-suite API test
+run intermittently fails one Postgres-backed spec (a different one each run) under Jest's
+default ~7-worker local parallelism -- confirmed to be pre-existing resource contention against
+the shared Postgres pool (417/417 pass reliably with `--runInBand`, in less wall-clock time
+than the flaky parallel run), not a regression from this phase's code. Every repository spec
+file, including this one, opens its own `Pool()`, the same pattern `exercises.repository.spec.ts`
+already used; adding a 24th such file made existing contention more likely to surface locally.
+Out of this phase's scope to fix (CLAUDE.md: implement the requested vertical slice, not
+adjacent test-infrastructure work) -- CI runs on far fewer cores than the 8-core dev machine
+this was found on, so it is the authoritative check, watched per the standing rule rather than
+assumed fine.
 
 **Phase D — contracts and endpoints.** Zod schemas in `packages/contracts` with pinned
 fixtures, then the NestJS module, service and controller behind `JwtAuthGuard`. Food search,
