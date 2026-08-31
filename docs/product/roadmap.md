@@ -139,8 +139,17 @@ exercise's tip is its own `Description` field instead, since that field already 
 by moving every layout margin in `new-exercise.tsx` from a NativeWind arbitrary-className
 value to an explicit numeric `style`, re-derived from the prototype's literal CSS rather than
 approximated — the user confirmed the corrected layout live afterward. Verified: 362/362
-mobile Jest tests green, typecheck/lint clean, real bundle compile succeeded. Full detail in
-`phase-2-plan.md`'s Phase K outcome section. **Phase 2's screen work is complete.**
+mobile Jest tests green, typecheck/lint clean, real bundle compile succeeded.
+
+**Same-session follow-up** (merged in the same PR, [#50](https://github.com/Menshawy97/FORJD/pull/50)):
+the exercise detail screen now shows **both category and goal** as tag pills, not goal alone —
+the prototype's own logic and the reference screenshots both confirmed goal-only was the
+shipped design, but the user asked for both since they're distinct classifications; plus a
+**`Custom` tag** on a user-authored exercise's own detail screen, and a **`Custom` filter
+chip** on the library (after `Favourites`, same cross-category kind), backed by a new
+`customOnly` option on `listCachedExercises`. Verified: 367/367 mobile Jest tests green.
+Full detail in `phase-2-plan.md`'s Phase K outcome section. **Phase 2's screen work is
+complete.**
 
 **One Phase D finding the design revision needs to hear about:** the ingested catalogue leaves
 the `yoga` and `calisthenics` categories **completely empty** — free-exercise-db has no source

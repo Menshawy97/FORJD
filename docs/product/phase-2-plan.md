@@ -465,15 +465,17 @@ eslint error that only a local run caught. `pnpm --filter @forjd/contracts lint`
 step, since this phase added source to that package; `@forjd/domain`'s equivalent is currently
 clean and is left as a one-line follow-up rather than widened into here.
 
-> **Phases 0 through K are implemented and their non-device checks are all green** (F, G and H
-> via [PR #46](https://github.com/Menshawy97/FORJD/pull/46); I via
+> **Phases 0 through K are merged and `main` is confirmed green** (F, G and H via
+> [PR #46](https://github.com/Menshawy97/FORJD/pull/46); I via
 > [PR #47](https://github.com/Menshawy97/FORJD/pull/47); J via
 > [PR #48](https://github.com/Menshawy97/FORJD/pull/48) +
-> [PR #49](https://github.com/Menshawy97/FORJD/pull/49); K pending its own PR/merge — see this
-> file's Verification section for what's already confirmed on-device and what a Phase 2.5
-> session should still walk). **Phase 2's screen work is now complete** — next session starts
-> with Phase 2.5 (nutrition, `docs/product/nutrition-plan.md`) per the roadmap's design-revision
-> note, unless a Phase 2 follow-up (the Open Items list below) takes priority first.
+> [PR #49](https://github.com/Menshawy97/FORJD/pull/49); K via
+> [PR #50](https://github.com/Menshawy97/FORJD/pull/50), including the category/goal/Custom
+> tag and Custom-filter follow-up — see Phase K's own section for what's already confirmed
+> on-device and what a Phase 2.5 session should still walk). **Phase 2's screen work is
+> complete** — next session starts with Phase 2.5 (nutrition,
+> `docs/product/nutrition-plan.md`) per the roadmap's design-revision note, unless a Phase 2
+> follow-up (the Open Items list below) takes priority first.
 
 ### Phase F — Media mirror *(the stopgap)* — ✅ **DONE**
 
@@ -846,6 +848,30 @@ that copy would be false — already reworded in Phase J; recorded in the deviat
   stat tiles/sparkline/history, and the corrected spacing were all confirmed on a physical
   iPhone via Expo Go during this same session, closing out the "still unconfirmed on-device"
   items Phase J's own section had flagged for the honest-empty-state work.
+
+#### Follow-up landed the same session: both category and goal, a `Custom` tag, a `Custom` filter chip
+
+Two more deliberate deviations from the shipped design, both directed by the user after
+seeing the live device walk, both TDD'd and merged in the same PR:
+
+- **The exercise detail screen now shows both category and goal as tag pills**, not goal
+  alone. The prototype's own JS (`tags = muscles.concat([meta[4]])`, where `meta[4]` is goal)
+  and the reference screenshots both confirmed goal-only was the *shipped* design, not a bug —
+  the user was shown this evidence and asked for both anyway, since they are two distinct,
+  independently useful classifications. The running variant's old category-only special case
+  (`isRunning ? ['Running'] : []`) is gone: every exercise's category tag renders through the
+  same path now, and a running exercise's category tag reads "Running" on its own.
+- **A `Custom` tag pill** marks a user-authored exercise on its own detail screen, appended
+  after category/goal.
+- **A `Custom` filter chip** on the library screen, positioned right after `Favourites` (the
+  same kind of cross-category filter), backed by a new `customOnly` option on
+  `listCachedExercises`. `Recent` is suppressed under it, matching `Favourites`'s own
+  suppression, and it has its own empty-state copy: `No custom exercises yet — tap New to
+  create one.`
+
+Verified: 367/367 mobile Jest tests green, typecheck/lint clean, real bundle compile
+succeeded. Not yet re-confirmed on a physical device — the next device walk should cover
+this alongside Phase J's still-open items (running variant, favouriting, delete flow).
 
 ---
 
