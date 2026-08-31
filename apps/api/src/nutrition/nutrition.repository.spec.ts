@@ -165,10 +165,44 @@ describe("NutritionRepository", () => {
       const unique = randomUUID().replace(/-/g, "");
       const food = await repository.createCatalogueFood(catalogueInput(unique));
       createdFoodIds.push(food.id);
+      const viewer = await makeUser("search-viewer");
 
-      const results = await repository.searchFoods(`Test Banana ${unique}`, 10);
+      const results = await repository.searchFoods(viewer, `Test Banana ${unique}`, 10);
 
       expect(results.some((result) => result.id === food.id)).toBe(true);
+    });
+
+    it("finds the viewer's own custom food", async () => {
+      const owner = await makeUser("search-own-custom");
+      const unique = randomUUID().replace(/-/g, "");
+      const food = await repository.createCustomFood(owner, {
+        name: `My Own Snack ${unique}`,
+        category: "snacks",
+        macrosPer100g: { kcal: 1, protein: 1, carbs: 1, fat: 1 },
+        servings: [],
+      });
+      createdFoodIds.push(food.id);
+
+      const results = await repository.searchFoods(owner, `My Own Snack ${unique}`, 10);
+
+      expect(results.some((result) => result.id === food.id)).toBe(true);
+    });
+
+    it("never returns another user's custom food -- a food's name is not something a stranger should see", async () => {
+      const owner = await makeUser("search-isolation-owner");
+      const stranger = await makeUser("search-isolation-stranger");
+      const unique = randomUUID().replace(/-/g, "");
+      const food = await repository.createCustomFood(owner, {
+        name: `Private Recipe ${unique}`,
+        category: "snacks",
+        macrosPer100g: { kcal: 1, protein: 1, carbs: 1, fat: 1 },
+        servings: [],
+      });
+      createdFoodIds.push(food.id);
+
+      const results = await repository.searchFoods(stranger, `Private Recipe ${unique}`, 10);
+
+      expect(results.some((result) => result.id === food.id)).toBe(false);
     });
   });
 

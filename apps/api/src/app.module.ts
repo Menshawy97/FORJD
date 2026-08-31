@@ -8,6 +8,7 @@ import { HealthModule } from './common/health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { AthletesModule } from './athletes/athletes.module';
 import { ExercisesModule } from './exercises/exercises.module';
+import { NutritionModule } from './nutrition/nutrition.module';
 import { UsersModule } from './users/users.module';
 import { StorageModule } from './storage/storage.module';
 
@@ -37,6 +38,7 @@ import { StorageModule } from './storage/storage.module';
     UsersModule,
     AthletesModule,
     ExercisesModule,
+    NutritionModule,
     StorageModule,
   ],
   // Registering ThrottlerModule alone does nothing — the guard has to be bound, or the

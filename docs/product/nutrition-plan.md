@@ -326,10 +326,70 @@ against the *real* vendored data (the `nutrition:normalize`/`nutrition:load` run
 correctness gate for this phase, which a synthetic RED test could not have provided anyway
 (the risk here was "does the mapping match reality", not "does the code path get exercised").
 
-**Phase E — contracts and endpoints** *(renumbered from the original "Phase D" — see above)*.
-Zod schemas in `packages/contracts` with pinned fixtures, then the NestJS module, service and
-controller behind `JwtAuthGuard`. Food search, log read/write/delete, saved-meal CRUD,
-macro-goal read/write.
+**Phase E — contracts and endpoints — ✅ DONE** *(renumbered from the original "Phase D" — see
+above)*.
+
+- **`packages/contracts`**: `mealSlotSchema`/`foodCategorySchema` from the domain tuples;
+  `foodResponseSchema` (one shape for both search rows and the detail screen -- nothing in
+  `Food` is heavy enough to need a separate lean summary the way exercises' `imageUrls`/
+  `instructions` did); `foodSearchQuerySchema` (bounded `limit`, no cursor -- the design's
+  food-search screen is narrow-as-you-type, not infinite-scroll, and
+  `NutritionRepository.searchFoods` truncates at `limit` without reporting whether more exist,
+  so `listResponseSchema`'s "positive end-of-list statement" contract would be meaningless
+  here); `createCustomFoodRequestSchema`; `macroGoalsResponseSchema`/
+  `setMacroGoalsRequestSchema`; `nutritionLogEntryResponseSchema` (no food name/category --
+  joining that in is a later phase's job) and its list envelope; `logFoodRequestSchema`
+  (exactly `foodId`/`slot`/`loggedDate`/`servingLabel`/`grams`, no macro field at all -- the
+  server computes and snapshots macros, never trusts a client-sent value, per the plan's
+  carried-forward decision) and `logSavedMealRequestSchema`; `createSavedMealRequestSchema`/
+  `savedMealResponseSchema`. 8 new fixtures, all schema-validated before being written. 34 new
+  contract unit tests (`nutrition.spec.ts`) pinning every deliberate decision above.
+- **A real data-isolation bug found and fixed before it ever reached the wire**:
+  `NutritionRepository.searchFoods` (Phase C) had no owner scoping at all -- every signed-in
+  user's search would have surfaced every *other* user's custom foods, since `foods` has no
+  RLS of its own and Phase C's "no wire change" scope never exercised this path over HTTP.
+  Fixed by adding a `viewerUserId` parameter, filtering to `ownerUserId IS NULL OR
+  ownerUserId = viewerUserId` in SQL (category filtering was added to the same query, not
+  applied afterward in the service -- filtering post-`limit` would under-return). Three new
+  repository tests lock this in, including one that plants another user's custom food and
+  asserts it never appears.
+- **`NutritionService`** mirrors `ExercisesService`'s policy shape exactly: the repository
+  never distinguishes "no such row" from "not yours" (`null`/`false`), and the service is where
+  that becomes **404, never 403** (`AthletesService`'s anti-enumeration reasoning, extended to
+  food/log/saved-meal data). `getMacroGoals` throws 404 rather than returning a fabricated
+  default, per the locked decision. `logSavedMeal` checks the meal belongs to the caller before
+  calling the repository at all -- `NutritionRepository.logSavedMeal` itself has no owner
+  filter, so a stranger's saved-meal id would otherwise silently log zero items with a 200
+  instead of a clear refusal. 21 unit tests against a fake repository.
+- **`NutritionController`**, one controller for the whole vertical (`/nutrition/foods`,
+  `/nutrition/macro-goals`, `/nutrition/meals`, `/nutrition/log`), `JwtAuthGuard` +
+  `ZodValidationPipe` throughout, matching `ExercisesController`'s shape. `log/group/:groupId`
+  declared before `log/:id` for the same route-ordering discipline `ExercisesController`'s
+  `catalogue` route documents (the two never actually collide here, since they're a different
+  number of path segments, but the habit is kept anyway).
+- **`NutritionModule`** registered in `AppModule`, mirroring `ExercisesModule`'s DI wiring
+  exactly.
+- **6 new e2e tests** (`nutrition.e2e-spec.ts`) over real HTTP and real Postgres: auth
+  required on every route; search returns a contract-valid shape; macro goals 404 before any
+  save then round-trip a real one; logging a food computes kcal server-side even when the
+  request body tries to smuggle its own (`kcal: 999999` never reaches the stored row); a
+  duplicate custom-food name 409s and a stranger's view of it 404s identically to an unknown
+  id (the same anti-oracle property the athlete endpoint already guarantees), and never
+  appears in the stranger's own search; a saved meal logs as one group and the whole group
+  deletes in one call, and a stranger can never log someone else's saved-meal id even after
+  it's deleted.
+- **A second gap found and fixed while checking Supabase readiness** (asked for explicitly):
+  `.github/workflows/deploy-api.yml`'s deploy step ran `exercises:load` after `db:migrate` but
+  never `nutrition:load` -- meaning the real deployed Supabase Postgres would have the
+  nutrition tables (from Phase C's migrations) but an **empty `foods` table**, forever, since
+  nothing else populates it. Added `pnpm --filter @forjd/api nutrition:load` right after
+  `exercises:load`, same idempotent-upsert reasoning and the same "packages must be built
+  first" fix already documented for the exercises loader.
+
+**Verified**: `tsc --noEmit` and `eslint` clean across `apps/api`, `packages/contracts`,
+`packages/domain`; full API suite green (**457 unit tests / 26 suites**, **84 e2e tests / 7
+suites**, `--runInBand`); full mobile suite green (**369 tests / 67 suites** — unaffected, but
+confirmed since `@forjd/contracts` is a shared dependency); architecture conformance clean.
 
 **Phase E — the dashboard screen.** `nutrition` plus its three bottom sheets, wired to real
 data. Build the **empty state first** — first-run state is an empty log and zero saved meals,
