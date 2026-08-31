@@ -77,6 +77,16 @@ export function actionableServerMessage(error: unknown): string | undefined {
   return typeof message === 'string' && message.trim().length > 0 ? message : undefined;
 }
 
+/**
+ * `POST`/`PATCH /exercises` answer `409 Conflict` for a duplicate name, backed by a partial
+ * unique index rather than a client-side check against the whole library
+ * (`exercises.service.ts`'s `isUniqueViolation` translation). The custom-exercise screen
+ * reads this to show the same duplicate-name copy the prototype's own client-side check drew.
+ */
+export function isConflict(error: unknown): boolean {
+  return responseStatus(error) === 409;
+}
+
 export function classifyRequestFailure(error: unknown): RequestFailure {
   const status = responseStatus(error);
 

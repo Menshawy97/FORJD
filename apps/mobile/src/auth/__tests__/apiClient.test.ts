@@ -391,6 +391,35 @@ describe('apiClient - profile reads and writes', () => {
     });
   });
 
+  it('createExercise sends POST /exercises through the authenticated client', async () => {
+    const { createExercise } = loadApiClient();
+    const instance = apiClientInstance() as unknown as { post: jest.Mock };
+    const body = {
+      name: 'Landmine Press',
+      category: 'strength' as const,
+      measure: 'weight' as const,
+      primaryMuscles: ['chest' as const],
+      equipment: ['barbell' as const],
+    };
+    const created = { id: 'ex9', ...body };
+    instance.post.mockResolvedValue({ data: created });
+
+    await expect(createExercise(body)).resolves.toEqual(created);
+
+    expect(instance.post).toHaveBeenCalledWith('/exercises', body);
+  });
+
+  it('updateExercise sends PATCH /exercises/:id through the authenticated client', async () => {
+    const { updateExercise } = loadApiClient();
+    const instance = apiClientInstance() as unknown as { patch: jest.Mock };
+    const updated = { id: 'ex9', name: 'Landmine Press v2' };
+    instance.patch.mockResolvedValue({ data: updated });
+
+    await expect(updateExercise('ex9', { name: 'Landmine Press v2' })).resolves.toEqual(updated);
+
+    expect(instance.patch).toHaveBeenCalledWith('/exercises/ex9', { name: 'Landmine Press v2' });
+  });
+
   it('deleteExercise sends DELETE /exercises/:id through the authenticated client', async () => {
     const { deleteExercise } = loadApiClient();
     const instance = apiClientInstance() as unknown as { request: jest.Mock };

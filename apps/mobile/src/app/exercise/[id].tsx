@@ -184,6 +184,14 @@ export default function ExerciseDetailScreen() {
     ...(isRunning ? ['Running'] : []),
   ];
   const equipmentLabels = exercise.equipment.map((item) => EQUIPMENT_DISPLAY_NAMES[item]);
+  // A custom exercise's tip is whatever the user wrote in its own Description field
+  // (new-exercise.tsx's "cues, setup or form notes") -- never `trainingTip`'s generated
+  // fallback, which has no way to know what a made-up exercise actually needs. No
+  // description means no tip box at all, the same "real content or omit" rule the equipment
+  // block and Instructions section already follow.
+  const tipText = exercise.isCustom
+    ? exercise.description
+    : trainingTip(exercise.name, exercise.primaryMuscles);
 
   return (
     <ScreenBackground>
@@ -261,7 +269,7 @@ export default function ExerciseDetailScreen() {
           </View>
         )}
 
-        {!isRunning && (
+        {!isRunning && tipText && (
           <View
             className="flex-row rounded-[12px] border border-trainingTipBorder bg-trainingTipBg px-[14px] py-[13px]"
             style={{ gap: 10, marginBottom: 14 }}>
@@ -270,7 +278,7 @@ export default function ExerciseDetailScreen() {
             </View>
             <Text className="flex-1 font-archivo text-[12.5px] text-trainingTipText" style={{ lineHeight: 18.75 }}>
               <Text className="font-archivo text-[12.5px] font-bold text-accent">How to train it: </Text>
-              <Text>{trainingTip(exercise.name, exercise.primaryMuscles)}</Text>
+              <Text>{tipText}</Text>
             </Text>
           </View>
         )}

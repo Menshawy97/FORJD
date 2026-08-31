@@ -19,7 +19,9 @@ import axios, {
 } from 'axios';
 import Constants from 'expo-constants';
 import type {
+  CreateExerciseRequest,
   ExerciseCatalogueResponse,
+  ExerciseResponse,
   LoginRequest,
   MeResponse,
   PrivacySettingsResponse,
@@ -28,6 +30,7 @@ import type {
   RegisterRequest,
   RegisterResponse,
   SessionResponse,
+  UpdateExerciseRequest,
   UpdatePrivacyRequest,
   UpdateProfileRequest,
 } from '@forjd/contracts';
@@ -155,6 +158,19 @@ export async function getAthlete(userId: string): Promise<PublicProfileResponse>
 
 export async function getExerciseCatalogue(): Promise<ExerciseCatalogueResponse> {
   const response = await apiClient.get<ExerciseCatalogueResponse>('/exercises/catalogue');
+  return response.data;
+}
+
+export async function createExercise(body: CreateExerciseRequest): Promise<ExerciseResponse> {
+  const response = await apiClient.post<ExerciseResponse>('/exercises', body);
+  return response.data;
+}
+
+export async function updateExercise(
+  id: string,
+  body: UpdateExerciseRequest,
+): Promise<ExerciseResponse> {
+  const response = await apiClient.patch<ExerciseResponse>(`/exercises/${id}`, body);
   return response.data;
 }
 

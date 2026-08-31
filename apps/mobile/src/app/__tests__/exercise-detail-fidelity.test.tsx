@@ -158,6 +158,28 @@ describe('exercise detail screen fidelity', () => {
     ).toBeTruthy();
   });
 
+  it('uses a custom exercise\'s own description as its tip, never a generated fallback', async () => {
+    (getCachedExercise as jest.Mock).mockResolvedValue(
+      exercise({ isCustom: true, description: 'Brace hard and keep the bar path dead vertical.' }),
+    );
+
+    const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByText('How to train it: ')).toBeTruthy();
+    expect(await findByText('Brace hard and keep the bar path dead vertical.')).toBeTruthy();
+    // Bench Press would otherwise draw the curated catalogue tip -- it must not leak through.
+    expect(queryByText(/shoulder blades pinned back/)).toBeNull();
+  });
+
+  it('omits the tip entirely for a custom exercise with no description, rather than a generic fallback', async () => {
+    (getCachedExercise as jest.Mock).mockResolvedValue(exercise({ isCustom: true, description: null }));
+
+    const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
+
+    await findByText('Bench Press');
+    expect(queryByText('How to train it: ')).toBeNull();
+  });
+
   it('renders the Best set / Est. 1RM stat tiles with an honest empty state, not fake numbers', async () => {
     const { findByText, findAllByText } = await render(<ExerciseDetailScreen />);
 
