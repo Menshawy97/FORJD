@@ -62,8 +62,21 @@ Each phase is a vertical slice, test-first, RED confirmed before GREEN, per CLAU
 project's standing TDD rule. Each is its own checkpoint: docs updated, PR opened, CI green,
 merged, then CI confirmed on `main`.
 
-**Phase A — food database source.** Write the ADR (see open questions), then vendor or wire
-the chosen source. This is the decision the rest of the phase depends on and it goes first.
+**Phase A — food database source.** ✅ ADR written ([ADR-023](../decisions/ADR-023-food-database-source.md)):
+USDA FoodData Central, ingested and owned in our own table, not proxied live — matching the
+`exercises` precedent (custom foods share the catalogue table, so the catalogue needs its own
+stable internal IDs a food-log entry can reference safely). Scoped to the **Foundation, SR
+Legacy, and Survey (FNDDS)** data types — together roughly 15k rows of generic/whole foods,
+the exact coverage ADR-023 already prioritized — excluding **Branded** (~300k+ rows of
+packaged products), the coverage gap ADR-023 already accepted. This phase vendors a pinned
+USDA **bulk data release** (FoodData Central publishes dated full-download CSV/JSON sets
+specifically for this use case, the same "static release, not a live call" shape as
+free-exercise-db/ADR-005), writes a source adapter + normalizer + load script mirroring
+`apps/api/src/exercises/ingest/`'s structure (`*-adapter.ts`, `normalize.ts`, `load.ts`, a
+`data/SOURCE.md` pin record), and does **not** require `USDA_FDC_API_KEY` for the ingest
+itself — bulk downloads are unauthenticated. The key stays reserved for a possible future
+live-lookup use (e.g. resolving a specific FDC id outside the vendored subset), not for
+Phase A.
 
 **Phase B — domain vocabulary.** `packages/domain`: meal slots, macro nutrients, the food and
 serving types. Pure types and `as const` tuples, no dependencies — the same shape as
@@ -104,27 +117,20 @@ Device walk at the end of the phase, on a physical device via Expo Go: set goals
 food, log it to Lunch, edit its serving, save a meal, log that meal, delete a grouped entry,
 and confirm Home's card matches the dashboard total.
 
-## Open questions — settle before Phase A
+## Open questions
 
-1. **Which food database?** The prototype ships 38 hardcoded rows, which is a demo. This
-   needs its own ADR, the way ADR-005 handled the exercise dataset. The two realistic
-   candidates:
+1. ✅ **Which food database? Settled — [ADR-023](../decisions/ADR-023-food-database-source.md).**
+   **USDA FoodData Central**, public domain, no share-alike obligation — the same clean legal
+   footing free-exercise-db gave the exercise catalogue (ADR-005), and it adds nothing to the
+   queue already waiting on legal engagement for wger and Everkinetic's share-alike licences.
+   Open Food Facts (ODbL) and the hybrid option were both rejected for raising that same
+   unresolved question a third time. Needs `USDA_FDC_API_KEY`, server-side only (rule 5).
 
-   - **Open Food Facts** — free, no API key, huge packaged-food coverage with barcodes,
-     licensed **ODbL**. ODbL is a share-alike licence for the *database*, which raises exactly
-     the question ADR-005 already queued for wger and ADR-018 for Everkinetic. It is the same
-     legal read, so asking once covers all three.
-   - **USDA FoodData Central** — public domain, far better data quality for whole foods,
-     much weaker for packaged and non-US products, needs a free API key.
-
-   A hybrid (USDA for whole foods, Open Food Facts for barcodes) is plausible but doubles the
-   normalisation surface. Recommendation is to start with one.
-
-2. **Does food search need to work offline?** Phase 2 built `expo-sqlite` + FTS5 for the
-   exercise catalogue precisely because offline workout execution needs it. Food logging has
-   no equivalent hard requirement — but a food database is far larger than 870 exercises, so
-   a full on-device sync is a different proposition. Decide deliberately rather than
-   inheriting Phase 2's answer.
+2. ✅ **Does food search need to work offline? Settled — same ADR.** **Server-side only, no
+   on-device sync.** Food logging has no equivalent to workout execution's hard offline
+   requirement (CLAUDE.md rule 6), and FoodData Central's full dataset (300k+ rows) is a
+   different proposition from the 870-exercise catalogue Phase 2 mirrored in full. Custom
+   foods are still searched the same server-side way, alongside FoodData Central results.
 
 3. **Barcode scanning.** Not in the design and not in scope here, but it is the single
    feature that most determines which database is worth choosing. Worth a moment's thought at
