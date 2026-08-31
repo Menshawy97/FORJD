@@ -730,16 +730,20 @@ screen's stat tiles were handled.
   `npx expo export --platform android` bundle compile succeeded (1524 modules, no errors) —
   the check Jest cannot perform, since it compiles neither NativeWind nor native modules.
 
-**Open: the physical-device walk is not done.** This session started the Expo dev server
-(`mobile-expo`, LAN host) but has no way to drive a physical iPhone or Android device from
-here. Per this project's own standing lesson ("Jest and the web preview both proved
-insufficient to catch real bugs in Phase I" — the schema-ordering bug and the `Pressable`
-style-callback bug were both invisible to Jest), **Phase J should not be treated as fully done
-until someone with device access walks it**: open an exercise from the library, confirm tag
-pills and equipment render, confirm instructions render for a catalogue exercise that has
-them, open a Running exercise and confirm the run variant (tags only, no edit controls even
-if it were custom), create-then-open a custom exercise and confirm pencil/delete appear, and
-delete it — confirming the toast appears back on `/library` and the row is actually gone.
+**Physical-device walk: partially confirmed.** This session started the Expo dev server
+(`mobile-expo`, LAN host) and had no way to drive a physical device itself; the user then
+walked a real catalogue exercise (Barbell Bench Press) on a physical iPhone via Expo Go and
+shared a screenshot. **Confirmed working on-device:** header (title, back chevron, unfilled
+star for a non-favourite), tag pills (`Chest` muscle + `Strength` goal), the `Equipment` block
+with its `dumb`-glyph pill, and the numbered `Instructions` list — all rendering real
+catalogue data exactly per §4.1/§4.2, with no device-only bugs surfaced (unlike Phase I's
+schema-ordering and `Pressable` style-callback bugs, both invisible to Jest).
+
+**Still unconfirmed on-device:** the running variant (§5 — tags-only body, no edit controls),
+favouriting (optimistic toggle + revert-on-failure), and the full delete flow (confirmation
+sheet copy, the API call, local-cache removal, and the toast landing back on `/library`).
+Whoever picks up Phase K should fold these into that phase's own device walk rather than
+treating Phase J as fully closed until they're checked.
 
 ### Phase K — Custom exercise create / edit / delete screen
 

@@ -112,11 +112,11 @@ library immediately rather than waiting for the next catalogue sync. `library.ts
 back, since the screen that triggers it unmounts first. Full detail in `phase-2-plan.md`'s
 Phase J outcome section. Verified: 321/321 mobile Jest tests green, typecheck and lint clean,
 architecture conformance clean, and a real `expo export` bundle compile (1524 modules, no
-errors) — NativeWind and native-module code Jest cannot compile. **Physical-device walk via
-Expo Go is still outstanding** — this session started the dev server
-(`exp://192.168.1.24:8081`, LAN mode) but has no way to drive a physical phone; someone with
-device access needs to do the golden-path walk from `phase-2-plan.md`'s Verification section
-before Phase J is called fully done.
+errors) — NativeWind and native-module code Jest cannot compile. **Physical-device walk:
+partially confirmed** — the user walked a real catalogue exercise on a physical iPhone via
+Expo Go (header, tag pills, equipment block and instructions all correct, no device-only bugs
+like Phase I's). The running variant, favouriting, and the delete flow are still unconfirmed
+on-device; see `phase-2-plan.md`'s Phase J section.
 
 **One Phase D finding the design revision needs to hear about:** the ingested catalogue leaves
 the `yoga` and `calisthenics` categories **completely empty** — free-exercise-db has no source
