@@ -462,16 +462,30 @@ iPhone via Expo Go against a locally-running API server with the real Phase D/E 
 staging deploy for Phase E was still mid-flight during this session — see the open item
 below).
 
-**Open item carried forward, not fixed in this phase**: the post-merge staging deploy for
-Phase E's PR (`Deploy API to Cloud Run` run 33440388423) hung for 60+ minutes on the "Run
-database migrations and load the exercise and nutrition catalogues" step, versus ~2 minutes
-measured locally for the equivalent `nutrition:load` run. Left running rather than cancelled,
-per the user's explicit choice. Needs investigation before the next deploy is trusted blindly
-— likely candidates: a connection-pool or timeout difference between the GitHub-hosted
-runner's route to Supabase's session pooler and a local direct connection, or a
-`nutrition:load` behaviour that only manifests against a cold/empty remote `foods` table
-(13,694 sequential inserts, vs. mostly-updates locally where the table was already
-populated).
+**Follow-up, fixed the same session**: the deploy for Phase E's PR took **1h42m56s** on the
+"Run database migrations and load the exercise and nutrition catalogues" step — not hung,
+confirmed by watching the Supabase dashboard live during the run (rows genuinely accumulating
+the whole time), just far slower than local. Root cause, found by reading `createCatalogueFood`
+again with fresh eyes: it does **3 sequential round trips per food** (insert, delete-servings,
+insert-servings), so loading 13,694 foods was ~41,000 round trips. Locally, round-trip latency
+to Postgres is near zero, so this was invisible; against a hosted Supabase instance from a
+GitHub-hosted runner, each round trip pays real network latency, and it compounds.
+
+**Fixed with `NutritionRepository.bulkUpsertCatalogueFoods`**: chunks the catalogue into
+500-food multi-row `INSERT ... ON CONFLICT DO UPDATE` statements (referencing Postgres's
+`excluded` pseudo-table for the per-row update values, since a bulk upsert has no single JS
+value to fall back to), paired with a chunked delete-then-insert for servings. This cuts the
+whole load to **~90 round trips total**, independent of network latency — measured locally at
+25.8 seconds end-to-end for all 13,694 foods (previously several minutes even locally, though
+the difference only became disqualifying once multiplied by real network latency). 500
+rows/chunk keeps each statement's bind-parameter count (4,000) safely under Postgres's 65,535
+limit — a single unchunked statement for the whole catalogue would have exceeded it.
+`load.ts`'s `loadCatalogue` and its `FoodCatalogueTarget` interface were updated to call the
+new bulk method instead of looping `createCatalogueFood` one row at a time;
+`createCatalogueFood` itself is untouched and still used by nothing else that needs to iterate.
+4 new repository tests against real Postgres (batch creation, idempotency, servings-replace,
+empty-batch no-op). The stuck-looking deploy that prompted this was cancelled once the fix was
+ready, rather than left to finish slowly a second time.
 
 **Phase G — food search and detail.** `foodSearch`, `foodDetail`, and the custom-food sheet.
 

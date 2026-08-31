@@ -7,7 +7,7 @@ import {
   MealSlot,
   Serving,
 } from "@forjd/domain";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { Database, DRIZZLE } from "../database/database.module";
 import {
@@ -148,6 +148,91 @@ export class NutritionRepository {
     if (!row) throw new Error("createCatalogueFood: insert returned no row");
     await this.replaceServings(row.id, input.servings);
     return this.toFood(row, input.servings.map((serving) => ({ ...serving })));
+  }
+
+  private static readonly BULK_UPSERT_CHUNK_SIZE = 500;
+
+  /**
+   * Bulk upsert for the ingest loader (`nutrition:load`) only. `createCatalogueFood` one row
+   * at a time means 3 round trips per food (insert, delete-servings, insert-servings) --
+   * harmless for exercises' 873 rows, but measured at ~1h40m in CI for nutrition's 13,694,
+   * because each round trip pays the full network latency to a hosted Postgres rather than a
+   * local one. Chunking into multi-row statements cuts that to ~3 round trips per 500-food
+   * chunk -- about 90 total for the whole catalogue, independent of network latency.
+   *
+   * 500 rows/chunk keeps each statement's bind-parameter count (500 * 8 columns = 4,000) well
+   * under Postgres's 65,535 limit, which a single unchunked statement for all 13,694 rows
+   * would have blown through.
+   */
+  async bulkUpsertCatalogueFoods(inputs: CreateCatalogueFoodInput[]): Promise<void> {
+    for (let i = 0; i < inputs.length; i += NutritionRepository.BULK_UPSERT_CHUNK_SIZE) {
+      await this.upsertCatalogueFoodChunk(inputs.slice(i, i + NutritionRepository.BULK_UPSERT_CHUNK_SIZE));
+    }
+  }
+
+  private async upsertCatalogueFoodChunk(inputs: CreateCatalogueFoodInput[]): Promise<void> {
+    if (inputs.length === 0) return;
+
+    const rows = await this.db
+      .insert(foods)
+      .values(
+        inputs.map((input) => ({
+          ownerUserId: null,
+          name: input.name,
+          category: input.category,
+          kcalPer100g: input.macrosPer100g.kcal.toString(),
+          proteinPer100g: input.macrosPer100g.protein.toString(),
+          carbsPer100g: input.macrosPer100g.carbs.toString(),
+          fatPer100g: input.macrosPer100g.fat.toString(),
+          source: input.source,
+          sourceId: input.sourceId,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [foods.source, foods.sourceId],
+        targetWhere: isNull(foods.ownerUserId),
+        // Multi-row upsert: each row's new value comes from Postgres's own `excluded`
+        // pseudo-table, since (unlike the single-row upsert above) there is no single JS
+        // value to reference here -- every row in the chunk needs its own.
+        set: {
+          name: sql`excluded.name`,
+          category: sql`excluded.category`,
+          kcalPer100g: sql`excluded.kcal_per_100g`,
+          proteinPer100g: sql`excluded.protein_per_100g`,
+          carbsPer100g: sql`excluded.carbs_per_100g`,
+          fatPer100g: sql`excluded.fat_per_100g`,
+          updatedAt: sql`now()`,
+        },
+      })
+      .returning({ id: foods.id, sourceId: foods.sourceId });
+
+    const idBySourceId = new Map(rows.map((row) => [row.sourceId, row.id]));
+
+    // Replace-all-servings-for-these-foods, batched the same way `replaceServings` does for a
+    // single food: delete every existing serving for the chunk's food ids, then insert the
+    // current set. Never a partial update, so a food's servings can't end up as a stale mix of
+    // old and new rows.
+    await this.db.delete(foodServings).where(
+      inArray(
+        foodServings.foodId,
+        rows.map((row) => row.id),
+      ),
+    );
+
+    const servingRows = inputs.flatMap((input) => {
+      const foodId = idBySourceId.get(input.sourceId);
+      if (!foodId) return [];
+      return input.servings.map((serving, index) => ({
+        foodId,
+        label: serving.label,
+        grams: serving.grams.toString(),
+        sortOrder: index,
+      }));
+    });
+
+    if (servingRows.length > 0) {
+      await this.db.insert(foodServings).values(servingRows);
+    }
   }
 
   async createCustomFood(ownerUserId: string, input: CreateCustomFoodInput): Promise<Food> {

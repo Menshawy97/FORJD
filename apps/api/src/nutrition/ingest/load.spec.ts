@@ -44,23 +44,24 @@ describe("parseSnapshot", () => {
 });
 
 describe("loadCatalogue", () => {
-  it("upserts every food sequentially and reports the count loaded", async () => {
-    const calls: NormalizedFood[] = [];
+  it("bulk-upserts the whole catalogue in one call and reports the count loaded", async () => {
+    let received: NormalizedFood[] | null = null;
     const target: FoodCatalogueTarget = {
-      createCatalogueFood: async (input) => {
-        calls.push(input);
+      bulkUpsertCatalogueFoods: async (inputs) => {
+        received = inputs;
       },
     };
 
-    const result = await loadCatalogue(target, [food("1"), food("2"), food("3")]);
+    const foodsToLoad = [food("1"), food("2"), food("3")];
+    const result = await loadCatalogue(target, foodsToLoad);
 
     expect(result).toEqual({ loaded: 3 });
-    expect(calls.map((call) => call.sourceId)).toEqual(["1", "2", "3"]);
+    expect(received).toEqual(foodsToLoad);
   });
 
-  it("rejects on the first failure without swallowing the error", async () => {
+  it("rejects without swallowing the error", async () => {
     const target: FoodCatalogueTarget = {
-      createCatalogueFood: async () => {
+      bulkUpsertCatalogueFoods: async () => {
         throw new Error("boom");
       },
     };

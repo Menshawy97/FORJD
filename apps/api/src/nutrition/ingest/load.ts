@@ -25,7 +25,7 @@ export const SNAPSHOT_PATH = join(__dirname, "data", "normalized-foods.json");
 
 /** The slice of `NutritionRepository` the loader uses, named structurally for testing against a fake without a database. */
 export interface FoodCatalogueTarget {
-  createCatalogueFood(input: CreateCatalogueFoodInput): Promise<unknown>;
+  bulkUpsertCatalogueFoods(inputs: CreateCatalogueFoodInput[]): Promise<void>;
 }
 
 interface SnapshotShape {
@@ -70,23 +70,17 @@ export function parseSnapshot(raw: unknown): NormalizedFood[] {
 }
 
 /**
- * Upserts every record sequentially and rejects on the first failure -- the same reasoning as
- * `exercises/ingest/load.ts`'s `loadCatalogue`: this runs once per deploy, each upsert is
- * independently idempotent, and a run that dies halfway leaves a partially updated catalogue
- * that the next run completes rather than an all-or-nothing rollback.
+ * Bulk-upserts the whole catalogue in one call, delegating the chunking (and its idempotency)
+ * to `NutritionRepository.bulkUpsertCatalogueFoods` -- see that method's own docblock for why
+ * this replaced a one-row-at-a-time loop (measured at ~1h40m in CI against a hosted Postgres,
+ * versus ~90 round trips for the chunked version).
  */
 export async function loadCatalogue(
   target: FoodCatalogueTarget,
   foods: NormalizedFood[],
 ): Promise<{ loaded: number }> {
-  let loaded = 0;
-
-  for (const food of foods) {
-    await target.createCatalogueFood(food);
-    loaded += 1;
-  }
-
-  return { loaded };
+  await target.bulkUpsertCatalogueFoods(foods);
+  return { loaded: foods.length };
 }
 
 async function main(): Promise<void> {
