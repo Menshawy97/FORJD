@@ -1,5 +1,6 @@
 import {
   EQUIPMENT_DISPLAY_NAMES,
+  EXERCISE_CATEGORY_DISPLAY_NAMES,
   EXERCISE_GOAL_DISPLAY_NAMES,
   MUSCLE_GROUP_DISPLAY_NAMES,
 } from '@forjd/domain';
@@ -178,10 +179,15 @@ export default function ExerciseDetailScreen() {
   const isRunning = exercise.category === 'running';
   const showEditControls = exercise.isCustom && !isRunning;
 
+  // Muscles, then category, then goal, then a Custom badge for a user-authored exercise --
+  // both category and goal show (the running variant's category tag reads "Running" on its
+  // own now, so the old category-only special case for it is gone) at the user's explicit
+  // request: both are real, distinct classifications, and showing only one hid the other.
   const tagLabels = [
     ...exercise.primaryMuscles.map((muscle) => MUSCLE_GROUP_DISPLAY_NAMES[muscle]),
+    EXERCISE_CATEGORY_DISPLAY_NAMES[exercise.category],
     EXERCISE_GOAL_DISPLAY_NAMES[exercise.goal],
-    ...(isRunning ? ['Running'] : []),
+    ...(exercise.isCustom ? ['Custom'] : []),
   ];
   const equipmentLabels = exercise.equipment.map((item) => EQUIPMENT_DISPLAY_NAMES[item]);
   // A custom exercise's tip is whatever the user wrote in its own Description field

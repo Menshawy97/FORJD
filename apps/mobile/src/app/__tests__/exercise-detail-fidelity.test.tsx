@@ -108,12 +108,24 @@ describe('exercise detail screen fidelity', () => {
     expect(mockReplace).toHaveBeenCalledWith('/library');
   });
 
-  it('renders a tag pill for each primary muscle plus the goal', async () => {
+  it('renders a tag pill for each primary muscle, the category, and the goal', async () => {
     const { findByText } = await render(<ExerciseDetailScreen />);
 
     expect(await findByText('Chest')).toBeTruthy();
     expect(await findByText('Triceps')).toBeTruthy();
+    expect(await findByText('Strength')).toBeTruthy();
     expect(await findByText('Hypertrophy')).toBeTruthy();
+  });
+
+  it('renders a Custom tag pill for a custom exercise, and omits it for a catalogue one', async () => {
+    const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
+    await findByText('Bench Press');
+    expect(queryByText('Custom')).toBeNull();
+
+    (getCachedExercise as jest.Mock).mockResolvedValue(exercise({ isCustom: true }));
+    const { findByText: findByTextCustom } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByTextCustom('Custom')).toBeTruthy();
   });
 
   it('renders the Equipment block with a pill per item when equipment is present', async () => {
@@ -316,7 +328,7 @@ describe('exercise detail screen fidelity', () => {
         instructions: [],
       });
 
-    it('appends a Running tag to the muscle and goal pills', async () => {
+    it('shows Running as the category tag, same as every other exercise\'s category tag', async () => {
       (getCachedExercise as jest.Mock).mockResolvedValue(runningExercise());
       const { findByText } = await render(<ExerciseDetailScreen />);
 
