@@ -234,9 +234,102 @@ adjacent test-infrastructure work) -- CI runs on far fewer cores than the 8-core
 this was found on, so it is the authoritative check, watched per the standing rule rather than
 assumed fine.
 
-**Phase D — contracts and endpoints.** Zod schemas in `packages/contracts` with pinned
-fixtures, then the NestJS module, service and controller behind `JwtAuthGuard`. Food search,
-log read/write/delete, saved-meal CRUD, macro-goal read/write.
+**Phase D — `UsdaFoodAdapter`, normalizer, and loader — ✅ DONE.**
+
+**Correction to this plan, found while starting the phase:** the "Build order" originally
+labelled this phase "contracts and endpoints" — that was wrong. The Phase A section above
+(written earlier, and correct) already said Phase D is the source adapter/normalizer/loader,
+mirroring exercises' own Phase D (adapter+normalizer) plus the loader half of exercises' Phase
+E (writing into Postgres) — because nothing had read the vendored USDA CSVs into the `foods`
+table yet, and building search/log endpoints against an empty catalogue would mean testing
+against fixtures only, not real data. Confirmed with the user rather than guessed (2026-08-31).
+**Contracts and endpoints are Phase E.**
+
+- **Category lookup files, vendored.** `food.csv.food_category_id` needed a name to map
+  against `FOOD_CATEGORIES`' 8 values; `food_category.csv` (Foundation/SR Legacy's shared
+  ~25-row SR-legacy-style taxonomy) and `wweia_food_category.csv` (Survey's much larger WWEIA
+  taxonomy) were deliberately left unvendored in Phase A pending this decision. `fetch-usda.ts`
+  gained a `categoryFile` field on `ReleaseSpec` and now vendors both, unchanged counts on
+  re-run (469/7,793/5,432 foods) confirming nothing else broke. **Measured:** Foundation uses
+  19 distinct category ids, SR Legacy 25 (44 total, all named, in `apps/api/src/nutrition/
+  ingest/data/{foundation,sr_legacy}/food_category.csv`), Survey (WWEIA) **172** distinct ids
+  (`survey/wweia_food_category.csv`) — the WWEIA taxonomy is far more granular than the
+  8-bucket design needs.
+- **`packages/domain` was not touched.** A shared `csv.ts` util (`parseCsv`/`writeCsv`/`col`)
+  was extracted from `fetch-usda.ts` once `usda-food.adapter.ts` needed the same row splitter,
+  mirroring how the exercises ingest files share small helpers without a `packages/` dependency.
+- **`ingest/mappings.ts`** — two deterministic tables, `SR_LEGACY_CATEGORY_NAMES` (keyed by
+  category *description*, since `food_category.csv`'s own ids are release-local integers with
+  no cross-release meaning) and `WWEIA_CATEGORY_IDS` (keyed by the stable WWEIA id directly),
+  covering exactly the categories real vendored foods reference. `'snacks'` is the deliberate
+  catch-all for SR Legacy's own "Soups, Sauces, and Gravies", "Fast Foods", "Meals, Entrees, and
+  Side Dishes" and "Baby Foods", and for WWEIA's mixed-dish mid-range (burgers, sandwiches,
+  pizza, ethnic combo dishes) — matching how the prototype's own `FOODS` table already puts
+  Protein Bar and Dark Chocolate under Snacks rather than inventing a ninth bucket, and matching
+  `NutritionRepository.keepCategory`'s own runtime fallback. One judgement call worth flagging:
+  "Nuts and seeds" (SR Legacy id 12, WWEIA `2804`) maps to `snacks`, matching the design's own
+  Almonds → Snacks, not to `fats` despite nuts' fat content. Also carries `KCAL_NUTRIENT_
+  PRECEDENCE` (Atwater General → Atwater Specific → plain Energy, `SOURCE.md`'s trap 2) and the
+  protein/fat/carbs nutrient names.
+- **`ingest/usda-food.adapter.ts`** — `UsdaFoodAdapter implements UsdaFoodSourceAdapter`
+  (`NormalizedFood = CreateCatalogueFoodInput`, the fifth adapter-pattern use in the codebase).
+  Pure by construction: takes already-parsed `CsvTable`s per release, does no I/O. Resolves
+  nutrient ids to names per-release (fixing the same "Foundation/SR Legacy use `nutrient.id`,
+  Survey uses `nutrient_nbr`" trap `fetch-usda.ts` already found), builds a serving label from
+  `food_portion.csv`'s `amount` + `measure_unit_id` (resolved via `measure_unit.csv`) +
+  `modifier`, falling back to `portion_description` when the unit is `"undetermined"` (id
+  `9999`). `resolveCategoryMap` **deliberately does not throw** for a category present in
+  USDA's own lookup file but never referenced by a real food (e.g. id 26, "Branded Food
+  Products Database" — present because Foundation's zip ships the full lookup even though
+  Branded foods themselves are excluded per ADR-023); it throws only when an actual food row's
+  category id resolves to nothing, which is where "every lookup throws on a miss" needs to bite.
+  A food with no matching `food_portion` rows normalizes with an empty `servings` array
+  (gram-only, per Phase A's decision) rather than being dropped or synthesizing a fake "100 g"
+  entry.
+- **`ingest/normalize.ts`** (`nutrition:normalize`) and **`ingest/load.ts`**
+  (`nutrition:load`), mirroring `exercises/ingest/normalize.ts`/`load.ts` exactly, including
+  `load.ts`'s `parseSnapshot` truncated-file defence (declared count vs. actual array length,
+  every record checked for both halves of the `(source, sourceId)` upsert key) and
+  `loadCatalogue`'s sequential, individually-idempotent upserts.
+- **9 golden-fixture tests** (`usda-food.adapter.spec.ts`, hand-built `CsvTable`s, not the real
+  13,694-food dataset) covering category resolution (both schemes), kcal precedence, the
+  zero-nutrients and zero-servings cases, the `"undetermined"` unit fallback, the unmapped-vs-
+  used-category distinction, and multi-release aggregation. **8 more** (`load.spec.ts`) for
+  `parseSnapshot`'s validation and `loadCatalogue`'s sequencing/failure behaviour, against a
+  fake target, no database.
+- **Architecture conformance extended**: the raw vendored USDA CSVs are readable only from
+  `normalize.ts` (`fetch-usda.ts` is exempt — it writes them, not reads for normalization),
+  mirroring the existing `free-exercise-db.json` rule. Watched failing against a planted
+  violation before being committed, per the standing rule.
+- **Run for real, not just unit-tested**: `nutrition:normalize` produced 13,694 foods (protein
+  4,271, snacks 3,790, grains 1,773, vegetables 1,548, beverages 893, fruits 550, dairy 531,
+  fats 338; 650 with no servings, gram-only) with zero unresolved-category throws across the
+  entire real dataset. `nutrition:load` then upserted all 13,694 into the local dev Postgres
+  (confirmed via a direct `\d`/`select count(*)` check) with exit code 0. One real-data
+  observation worth carrying forward, not a bug: a handful of catalogue entries (e.g. one of
+  several "Banana, raw" records) have zero recorded values for these four macros in USDA's own
+  data — the adapter correctly reports `0` for a food with no matching `food_nutrient` rows
+  rather than guessing, but Phase E or F's search-result design should consider whether a
+  catalogue food with all-zero macros needs a visual treatment (a real USDA data gap, not
+  something normalization can fix).
+
+**Verified:** `tsc --noEmit` clean, `eslint` clean, the full API suite green (**434/434 tests,
+25/25 suites**, `--runInBand` per Phase C's flake note), and the conformance check both passes
+clean and fails correctly against a planted violation.
+
+**Deviation from the standing TDD rule, noted rather than hidden:** given this phase's scope
+(a real external dataset, discovered column shapes, and a category taxonomy that needed
+measuring against live data before it could be mapped), the golden-fixture tests were written
+and run green immediately after the adapter rather than confirmed RED first against a
+not-yet-existing adapter. The mapping tables and column-shape assumptions were instead verified
+against the *real* vendored data (the `nutrition:normalize`/`nutrition:load` runs above) as the
+correctness gate for this phase, which a synthetic RED test could not have provided anyway
+(the risk here was "does the mapping match reality", not "does the code path get exercised").
+
+**Phase E — contracts and endpoints** *(renumbered from the original "Phase D" — see above)*.
+Zod schemas in `packages/contracts` with pinned fixtures, then the NestJS module, service and
+controller behind `JwtAuthGuard`. Food search, log read/write/delete, saved-meal CRUD,
+macro-goal read/write.
 
 **Phase E — the dashboard screen.** `nutrition` plus its three bottom sheets, wired to real
 data. Build the **empty state first** — first-run state is an empty log and zero saved meals,

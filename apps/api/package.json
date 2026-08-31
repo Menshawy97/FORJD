@@ -17,7 +17,9 @@
     "exercises:normalize": "ts-node src/exercises/ingest/normalize.ts",
     "exercises:load": "ts-node src/exercises/ingest/load.ts",
     "exercises:mirror-media": "ts-node src/exercises/ingest/mirror-media.ts",
-    "nutrition:fetch-usda": "ts-node src/nutrition/ingest/fetch-usda.ts"
+    "nutrition:fetch-usda": "ts-node src/nutrition/ingest/fetch-usda.ts",
+    "nutrition:normalize": "ts-node src/nutrition/ingest/normalize.ts",
+    "nutrition:load": "ts-node src/nutrition/ingest/load.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",
