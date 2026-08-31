@@ -18,27 +18,34 @@ import { Icon } from './icon';
  * end, `justify-content: space-between`. Every slice-2 screen omitted it, which is why it
  * was not modelled until a screen actually needed it — `library`'s **New** pill is the
  * first.
+ *
+ * `onBack` is optional, added for `nutrition.tsx` (Phase F/2.5): the nutrition dashboard is
+ * reached from Home but is "a destination, not a sub-screen" (`nutrition-screen-specs.md` §2)
+ * and renders no back chevron at all, confirmed against the real screenshot
+ * (`nutrition dashboard.png`). Every other screen still passes `onBack`, so this is additive.
  */
 interface HeaderProps {
   title: string;
-  onBack: () => void;
+  onBack?: () => void;
   right?: ReactNode;
 }
 
 export function Header({ title, onBack, right }: HeaderProps) {
   return (
     <View className="flex-none px-screen-x pb-[14px] pt-[2px]">
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        onPress={onBack}
-        className="h-[34px] w-[34px] items-center justify-center rounded-[10px]"
-        style={({ pressed }) => [
-          { marginBottom: 10, marginLeft: -8 },
-          pressed && { backgroundColor: colors.pressedGhost },
-        ]}>
-        <Icon name="back" />
-      </Pressable>
+      {onBack ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={onBack}
+          className="h-[34px] w-[34px] items-center justify-center rounded-[10px]"
+          style={({ pressed }) => [
+            { marginBottom: 10, marginLeft: -8 },
+            pressed && { backgroundColor: colors.pressedGhost },
+          ]}>
+          <Icon name="back" />
+        </Pressable>
+      ) : null}
       <View className="flex-row items-center justify-between">
         <Text
           className="flex-1 font-archivo text-screen-header font-bold text-text"

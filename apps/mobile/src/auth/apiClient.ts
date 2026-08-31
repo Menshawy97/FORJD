@@ -19,17 +19,29 @@ import axios, {
 } from 'axios';
 import Constants from 'expo-constants';
 import type {
+  CreateCustomFoodRequest,
   CreateExerciseRequest,
+  CreateSavedMealRequest,
   ExerciseCatalogueResponse,
   ExerciseResponse,
+  FoodListResponse,
+  FoodResponse,
   LoginRequest,
+  LogFoodRequest,
+  LogSavedMealRequest,
+  MacroGoalsResponse,
   MeResponse,
+  NutritionLogEntryResponse,
+  NutritionLogListResponse,
   PrivacySettingsResponse,
   ProfileResponse,
   PublicProfileResponse,
   RegisterRequest,
   RegisterResponse,
+  SavedMealListResponse,
+  SavedMealResponse,
   SessionResponse,
+  SetMacroGoalsRequest,
   UpdateExerciseRequest,
   UpdatePrivacyRequest,
   UpdateProfileRequest,
@@ -185,4 +197,76 @@ export async function setExerciseFavourite(id: string, favourite: boolean): Prom
 /** `DELETE /exercises/:id` answers `204 No Content` — a soft delete on the server. */
 export async function deleteExercise(id: string): Promise<void> {
   await apiClient.request({ method: 'delete', url: `/exercises/${id}` });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Nutrition (Phase 2.5, ADR-023)
+// ---------------------------------------------------------------------------------------------
+
+export async function searchFoods(q: string, category?: string): Promise<FoodListResponse> {
+  const response = await apiClient.get<FoodListResponse>('/nutrition/foods', { params: { q, category } });
+  return response.data;
+}
+
+export async function getFood(id: string): Promise<FoodResponse> {
+  const response = await apiClient.get<FoodResponse>(`/nutrition/foods/${id}`);
+  return response.data;
+}
+
+export async function createCustomFood(body: CreateCustomFoodRequest): Promise<FoodResponse> {
+  const response = await apiClient.post<FoodResponse>('/nutrition/foods', body);
+  return response.data;
+}
+
+/** `204 No Content` — a soft delete on the server. */
+export async function deleteCustomFood(id: string): Promise<void> {
+  await apiClient.request({ method: 'delete', url: `/nutrition/foods/${id}` });
+}
+
+/** Rejects with a 404 `AxiosError` before any goals have ever been saved -- the caller shows an honest "set your goals" prompt rather than treating a caught error as a network failure. */
+export async function getMacroGoals(): Promise<MacroGoalsResponse> {
+  const response = await apiClient.get<MacroGoalsResponse>('/nutrition/macro-goals');
+  return response.data;
+}
+
+export async function setMacroGoals(body: SetMacroGoalsRequest): Promise<MacroGoalsResponse> {
+  const response = await apiClient.put<MacroGoalsResponse>('/nutrition/macro-goals', body);
+  return response.data;
+}
+
+export async function listSavedMeals(): Promise<SavedMealListResponse> {
+  const response = await apiClient.get<SavedMealListResponse>('/nutrition/meals');
+  return response.data;
+}
+
+export async function createSavedMeal(body: CreateSavedMealRequest): Promise<SavedMealResponse> {
+  const response = await apiClient.post<SavedMealResponse>('/nutrition/meals', body);
+  return response.data;
+}
+
+export async function deleteSavedMeal(id: string): Promise<void> {
+  await apiClient.request({ method: 'delete', url: `/nutrition/meals/${id}` });
+}
+
+export async function listNutritionLog(date: string): Promise<NutritionLogListResponse> {
+  const response = await apiClient.get<NutritionLogListResponse>('/nutrition/log', { params: { date } });
+  return response.data;
+}
+
+export async function logFood(body: LogFoodRequest): Promise<NutritionLogEntryResponse> {
+  const response = await apiClient.post<NutritionLogEntryResponse>('/nutrition/log', body);
+  return response.data;
+}
+
+export async function logSavedMeal(body: LogSavedMealRequest): Promise<NutritionLogListResponse> {
+  const response = await apiClient.post<NutritionLogListResponse>('/nutrition/log/meal', body);
+  return response.data;
+}
+
+export async function deleteLogEntry(id: string): Promise<void> {
+  await apiClient.request({ method: 'delete', url: `/nutrition/log/${id}` });
+}
+
+export async function deleteLogGroup(groupId: string): Promise<void> {
+  await apiClient.request({ method: 'delete', url: `/nutrition/log/group/${groupId}` });
 }
