@@ -1,6 +1,27 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
-import type { ExerciseListQuery, ExerciseListResponse, ExerciseResponse } from "@forjd/contracts";
-import { exerciseListQuerySchema } from "@forjd/contracts";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
+import type {
+  CreateExerciseRequest,
+  ExerciseCatalogueResponse,
+  ExerciseListQuery,
+  ExerciseListResponse,
+  ExerciseResponse,
+  UpdateExerciseRequest,
+} from "@forjd/contracts";
+import { createExerciseRequestSchema, exerciseListQuerySchema, updateExerciseRequestSchema } from "@forjd/contracts";
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
@@ -31,6 +52,17 @@ export class ExercisesController {
   }
 
   /**
+   * Declared before `:id`, on purpose, for the same reason `:id` is declared after the
+   * collection route: Nest matches in declaration order, and a `:id` route declared first
+   * would swallow this one, treating "catalogue" as an exercise id rather than the literal
+   * path segment it is.
+   */
+  @Get("catalogue")
+  getCatalogue(@Req() request: AuthenticatedRequest): Promise<ExerciseCatalogueResponse> {
+    return this.exercisesService.getCatalogue(request.user);
+  }
+
+  /**
    * Declared after the collection route on purpose: Nest matches in declaration order, and a
    * `:id` route declared first would swallow `GET /exercises` as an exercise whose id is the
    * empty string.
@@ -38,5 +70,40 @@ export class ExercisesController {
   @Get(":id")
   getById(@Req() request: AuthenticatedRequest, @Param("id") id: string): Promise<ExerciseResponse> {
     return this.exercisesService.getById(request.user, id);
+  }
+
+  @Post()
+  create(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(createExerciseRequestSchema)) body: CreateExerciseRequest,
+  ): Promise<ExerciseResponse> {
+    return this.exercisesService.create(request.user, body);
+  }
+
+  @Patch(":id")
+  update(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(updateExerciseRequestSchema)) body: UpdateExerciseRequest,
+  ): Promise<ExerciseResponse> {
+    return this.exercisesService.update(request.user, id, body);
+  }
+
+  @Delete(":id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  delete(@Req() request: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    return this.exercisesService.delete(request.user, id);
+  }
+
+  @Put(":id/favourite")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  addFavourite(@Req() request: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    return this.exercisesService.setFavourite(request.user, id, true);
+  }
+
+  @Delete(":id/favourite")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeFavourite(@Req() request: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    return this.exercisesService.setFavourite(request.user, id, false);
   }
 }

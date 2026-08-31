@@ -15,7 +15,8 @@
     "db:studio": "drizzle-kit studio",
     "test:cov": "jest --coverage",
     "exercises:normalize": "ts-node src/exercises/ingest/normalize.ts",
-    "exercises:load": "ts-node src/exercises/ingest/load.ts"
+    "exercises:load": "ts-node src/exercises/ingest/load.ts",
+    "exercises:mirror-media": "ts-node src/exercises/ingest/mirror-media.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",

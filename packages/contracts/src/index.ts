@@ -511,3 +511,74 @@ export const exerciseResponseSchema = z.object({
   isFavourite: z.boolean(),
 });
 export type ExerciseResponse = z.infer<typeof exerciseResponseSchema>;
+
+/**
+ * Body for `POST /exercises`. **`goal` is deliberately absent.** The design's own comment
+ * calls it "derived, not chosen" (`docs/design/phase2-screen-specs.md` §6.1) — computed from
+ * `measure` alone (`weight` -> hypertrophy, everything else -> muscular endurance) — so
+ * accepting it as a client-supplied field would let a buggy or malicious caller send a pair
+ * like `measure: 'distance'` with a hypertrophy goal that nothing downstream expects to see.
+ * `ExercisesService` derives it the same way the prototype's JS does, not from wire input.
+ *
+ * `secondaryMuscles`, `force`, `level`, `mechanic`, `instructions`, `imageKeys`, `source` and
+ * `sourceId` have no field here at all: none of them are on the create/edit screen
+ * (`docs/design/phase2-screen-specs.md` §6.1's field list is exhaustive), and
+ * `ExercisesRepository.createCustomExercise` already fixes each to its custom-exercise
+ * default (`[]`, `null`, `[]`, `[]`, `null`, `null`) rather than reading it from the input.
+ */
+export const createExerciseRequestSchema = z.object({
+  /** Trim first, then bound -- same reasoning as `exerciseListQuerySchema.q`. */
+  name: z.string().trim().min(1).max(80),
+  category: exerciseCategorySchema,
+  measure: exerciseMeasureSchema,
+  /** "Pick at least one muscle worked" — the screen's own validation order, item 2. */
+  primaryMuscles: z.array(muscleGroupSchema).min(1),
+  /** "Pick at least one piece of equipment" — the screen's own validation order, item 3. */
+  equipment: z.array(equipmentSchema).min(1),
+  /**
+   * Optional on the screen ("cues, setup or form notes"); absent, `null` and a
+   * whitespace-only string are all "none". `.trim()` alone only strips edges — it does not
+   * collapse `""` to nothing, so the transform below does that explicitly, the same
+   * "blank means absent" idea `exerciseListQuerySchema.q` already applies to search terms.
+   */
+  description: z
+    .string()
+    .trim()
+    .max(2000)
+    .nullable()
+    .optional()
+    .transform((value) => (typeof value === "string" && value.length === 0 ? undefined : value)),
+});
+export type CreateExerciseRequest = z.infer<typeof createExerciseRequestSchema>;
+
+/**
+ * Body for `PATCH /exercises/:id`. Every field the create screen's edit mode can change, all
+ * optional -- an update sends only what changed, matching `updateProfileRequestSchema`'s and
+ * `updatePrivacyRequestSchema`'s own partial shape.
+ */
+export const updateExerciseRequestSchema = createExerciseRequestSchema.partial();
+export type UpdateExerciseRequest = z.infer<typeof updateExerciseRequestSchema>;
+
+/**
+ * Body for `GET /exercises/catalogue` (Phase H) — the whole visible set (catalogue rows plus
+ * the caller's own custom exercises) in one unpaginated response, for the on-device store to
+ * mirror into SQLite. Each row is the full `exerciseResponseSchema` shape, not the leaner
+ * `exerciseSummarySchema` the browse list uses: workout execution reads exercises from the
+ * device offline (CLAUDE.md rule 6 — the network is never in the critical path of a live
+ * session), so the local mirror needs everything a detail screen would ever show, not just a
+ * list row's worth.
+ *
+ * `catalogueVersion` is a content hash (`ExercisesService` derives it, never the client), not
+ * a counter or a timestamp — it changes if and only if the set of rows or any row's content
+ * actually changed, which a monotonic counter would also need but a `MAX(updatedAt))`
+ * timestamp alone would not: a soft-deleted row removes itself from the visible set without
+ * bumping any surviving row's `updatedAt`, and a timestamp-only version would miss that.
+ * `apps/mobile/src/store/exercise-catalogue.ts` compares this against its own last-synced
+ * value and skips the (comparatively expensive) SQLite rebuild and FTS5 reindex when they
+ * match — not the network call itself, which every launch still makes.
+ */
+export const exerciseCatalogueResponseSchema = z.object({
+  exercises: z.array(exerciseResponseSchema),
+  catalogueVersion: z.string(),
+});
+export type ExerciseCatalogueResponse = z.infer<typeof exerciseCatalogueResponseSchema>;

@@ -1,9 +1,16 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { CreateExerciseRequest } from "@forjd/contracts";
 import { Exercise, User } from "@forjd/domain";
 
 import { encodeExerciseCursor } from "./exercise-cursor";
-import { ExercisePage, ExercisesRepository, ListExercisesFilter } from "./exercises.repository";
+import {
+  CreateCustomExerciseInput,
+  ExercisePage,
+  ExercisesRepository,
+  ListExercisesFilter,
+  UpdateCustomExerciseInput,
+} from "./exercises.repository";
 import { ExercisesService } from "./exercises.service";
 
 /**
@@ -237,6 +244,81 @@ describe("ExercisesService", () => {
     });
   });
 
+  describe("getCatalogue", () => {
+    const makeSyncRepository = (rows: ReturnType<typeof exercise>[]) => {
+      const withFavourite = rows.map((row) => ({ exercise: row, isFavourite: false }));
+      return {
+        listForSync: () => Promise.resolve(withFavourite),
+      } as unknown as ExercisesRepository;
+    };
+
+    it("returns every row as a full detail, not a summary", async () => {
+      const repository = makeSyncRepository([exercise()]);
+
+      const result = await makeService(repository).getCatalogue(viewer);
+
+      expect(result.exercises[0]).toHaveProperty("instructions");
+      expect(result.exercises[0]).toHaveProperty("imageUrls");
+    });
+
+    it("returns an empty catalogue with a version rather than throwing", async () => {
+      const repository = makeSyncRepository([]);
+
+      const result = await makeService(repository).getCatalogue(viewer);
+
+      expect(result.exercises).toEqual([]);
+      expect(typeof result.catalogueVersion).toBe("string");
+      expect(result.catalogueVersion.length).toBeGreaterThan(0);
+    });
+
+    it("returns the same version for the same set of rows, called twice", async () => {
+      const rows = [exercise()];
+      const repository = makeSyncRepository(rows);
+      const service = makeService(repository);
+
+      const first = await service.getCatalogue(viewer);
+      const second = await service.getCatalogue(viewer);
+
+      expect(first.catalogueVersion).toBe(second.catalogueVersion);
+    });
+
+    it("changes the version when a row's updatedAt changes", async () => {
+      const repositoryBefore = makeSyncRepository([exercise({ updatedAt: new Date("2026-01-01") })]);
+      const repositoryAfter = makeSyncRepository([exercise({ updatedAt: new Date("2026-06-01") })]);
+
+      const before = await makeService(repositoryBefore).getCatalogue(viewer);
+      const after = await makeService(repositoryAfter).getCatalogue(viewer);
+
+      expect(before.catalogueVersion).not.toBe(after.catalogueVersion);
+    });
+
+    it("changes the version when a row is added or removed", async () => {
+      const one = exercise({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" });
+      const two = exercise({ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
+
+      const withOne = await makeService(makeSyncRepository([one])).getCatalogue(viewer);
+      const withBoth = await makeService(makeSyncRepository([one, two])).getCatalogue(viewer);
+
+      expect(withOne.catalogueVersion).not.toBe(withBoth.catalogueVersion);
+    });
+
+    /**
+     * Deliberate: hashing `isFavourite` in would force a full re-sync of the whole catalogue
+     * on every star tap. The mobile store is expected to write a favourite toggle into its
+     * own local mirror directly after the favourite endpoint succeeds, not wait for this.
+     */
+    it("does not change the version when only favourite status differs", async () => {
+      const row = exercise();
+      const favourited = { listForSync: () => Promise.resolve([{ exercise: row, isFavourite: true }]) } as unknown as ExercisesRepository;
+      const unfavourited = { listForSync: () => Promise.resolve([{ exercise: row, isFavourite: false }]) } as unknown as ExercisesRepository;
+
+      const a = await makeService(favourited).getCatalogue(viewer);
+      const b = await makeService(unfavourited).getCatalogue(viewer);
+
+      expect(a.catalogueVersion).toBe(b.catalogueVersion);
+    });
+  });
+
   describe("getById", () => {
     it("returns the full exercise with every image resolved", async () => {
       const repository = makeRepository(undefined, {
@@ -328,6 +410,292 @@ describe("ExercisesService", () => {
       const malformed = await service.getById(viewer, "not-a-uuid").catch((error: Error) => error);
 
       expect((missing as Error).message).toBe((malformed as Error).message);
+    });
+  });
+
+  describe("create", () => {
+    const body: CreateExerciseRequest = {
+      name: "Landmine Press",
+      category: "strength",
+      measure: "weight",
+      primaryMuscles: ["shoulders"],
+      equipment: ["barbell"],
+      description: "Brace the core.",
+    };
+
+    /** Records the exact input passed through, so the goal-derivation call can be asserted. */
+    const makeCreateRepository = (created: Exercise) => {
+      const calls: Array<{ ownerUserId: string; input: CreateCustomExerciseInput }> = [];
+      const repository = {
+        calls,
+        createCustomExercise: (ownerUserId: string, input: CreateCustomExerciseInput) => {
+          calls.push({ ownerUserId, input });
+          return Promise.resolve(created);
+        },
+      };
+      return repository as unknown as ExercisesRepository & { calls: typeof calls };
+    };
+
+    it("derives hypertrophy for a weight-measured exercise, never trusting a client-sent goal", async () => {
+      const repository = makeCreateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).create(viewer, body);
+
+      expect(repository.calls[0]?.input.goal).toBe("hypertrophy");
+    });
+
+    it("derives muscular_endurance for a non-weight measure", async () => {
+      const repository = makeCreateRepository(exercise({ ownerUserId: userId, measure: "time" }));
+
+      await makeService(repository).create(viewer, { ...body, measure: "time" });
+
+      expect(repository.calls[0]?.input.goal).toBe("muscular_endurance");
+    });
+
+    it("passes ownerUserId as the viewer's own id", async () => {
+      const repository = makeCreateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).create(viewer, body);
+
+      expect(repository.calls[0]?.ownerUserId).toBe(userId);
+    });
+
+    it("defaults an absent description to null", async () => {
+      const repository = makeCreateRepository(exercise({ ownerUserId: userId }));
+      const withoutDescription: CreateExerciseRequest = {
+        name: body.name,
+        category: body.category,
+        measure: body.measure,
+        primaryMuscles: body.primaryMuscles,
+        equipment: body.equipment,
+      };
+
+      await makeService(repository).create(viewer, withoutDescription);
+
+      expect(repository.calls[0]?.input.description).toBeNull();
+    });
+
+    it("returns the created exercise as never-yet-favourited, without querying for it", async () => {
+      const created = exercise({ ownerUserId: userId });
+      const repository = makeCreateRepository(created);
+
+      const result = await makeService(repository).create(viewer, body);
+
+      expect(result.isFavourite).toBe(false);
+      expect(result.isCustom).toBe(true);
+    });
+
+    /** A duplicate name is the repository's job (the partial unique index); the service just relays it. */
+    it("propagates a duplicate-name rejection from the repository", async () => {
+      const repository = {
+        createCustomExercise: () => Promise.reject(new ConflictException("An exercise with that name already exists")),
+      } as unknown as ExercisesRepository;
+
+      await expect(makeService(repository).create(viewer, body)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+  });
+
+  describe("update", () => {
+    const makeUpdateRepository = (
+      updated: Exercise | null,
+      favourite = false,
+    ) => {
+      const calls: Array<{ id: string; ownerUserId: string; patch: UpdateCustomExerciseInput }> = [];
+      const repository = {
+        calls,
+        updateCustomExercise: (id: string, ownerUserId: string, patch: UpdateCustomExerciseInput) => {
+          calls.push({ id, ownerUserId, patch });
+          return Promise.resolve(updated);
+        },
+        isFavourite: () => Promise.resolve(favourite),
+      };
+      return repository as unknown as ExercisesRepository & { calls: typeof calls };
+    };
+
+    it("refuses a malformed id without querying the repository", async () => {
+      let called = false;
+      const repository = {
+        updateCustomExercise: () => {
+          called = true;
+          return Promise.resolve(null);
+        },
+      } as unknown as ExercisesRepository;
+
+      await expect(makeService(repository).update(viewer, "not-a-uuid", {})).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(called).toBe(false);
+    });
+
+    it("refuses when the repository finds nothing to update -- unknown id or someone else's exercise", async () => {
+      const repository = makeUpdateRepository(null);
+
+      await expect(
+        makeService(repository).update(viewer, exercise().id, { name: "New Name" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("only sends the fields present in the patch", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).update(viewer, exercise().id, { name: "New Name" });
+
+      expect(repository.calls[0]?.patch).toEqual({ name: "New Name" });
+    });
+
+    it("passes category through when present in the patch", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).update(viewer, exercise().id, { category: "mobility" });
+
+      expect(repository.calls[0]?.patch).toEqual({ category: "mobility" });
+    });
+
+    it("passes primaryMuscles through when present in the patch", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).update(viewer, exercise().id, { primaryMuscles: ["core"] });
+
+      expect(repository.calls[0]?.patch).toEqual({ primaryMuscles: ["core"] });
+    });
+
+    it("passes equipment through when present in the patch", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).update(viewer, exercise().id, { equipment: ["kettlebell"] });
+
+      expect(repository.calls[0]?.patch).toEqual({ equipment: ["kettlebell"] });
+    });
+
+    it("re-derives goal when measure changes", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).update(viewer, exercise().id, { measure: "distance" });
+
+      expect(repository.calls[0]?.patch).toEqual({ measure: "distance", goal: "muscular_endurance" });
+    });
+
+    it("leaves goal untouched when measure is not part of the patch", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).update(viewer, exercise().id, { name: "New Name" });
+
+      expect(repository.calls[0]?.patch).not.toHaveProperty("goal");
+    });
+
+    it("converts an explicit null description in the patch to null, not undefined", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }));
+
+      await makeService(repository).update(viewer, exercise().id, { description: null });
+
+      expect(repository.calls[0]?.patch).toEqual({ description: null });
+    });
+
+    it("looks up the current favourite status rather than assuming it", async () => {
+      const repository = makeUpdateRepository(exercise({ ownerUserId: userId }), true);
+
+      const result = await makeService(repository).update(viewer, exercise().id, { name: "New Name" });
+
+      expect(result.isFavourite).toBe(true);
+    });
+  });
+
+  describe("delete", () => {
+    it("refuses a malformed id without querying the repository", async () => {
+      let called = false;
+      const repository = {
+        softDeleteCustomExercise: () => {
+          called = true;
+          return Promise.resolve(false);
+        },
+      } as unknown as ExercisesRepository;
+
+      await expect(makeService(repository).delete(viewer, "not-a-uuid")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(called).toBe(false);
+    });
+
+    it("refuses when the repository deleted nothing -- unknown id or someone else's exercise", async () => {
+      const repository = {
+        softDeleteCustomExercise: () => Promise.resolve(false),
+      } as unknown as ExercisesRepository;
+
+      await expect(
+        makeService(repository).delete(viewer, exercise().id),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("resolves with no value when the repository confirms a delete", async () => {
+      const repository = {
+        softDeleteCustomExercise: () => Promise.resolve(true),
+      } as unknown as ExercisesRepository;
+
+      await expect(makeService(repository).delete(viewer, exercise().id)).resolves.toBeUndefined();
+    });
+  });
+
+  describe("setFavourite", () => {
+    it("refuses a malformed id without querying the repository", async () => {
+      let called = false;
+      const repository = {
+        findByIdForUser: () => {
+          called = true;
+          return Promise.resolve(null);
+        },
+      } as unknown as ExercisesRepository;
+
+      await expect(
+        makeService(repository).setFavourite(viewer, "not-a-uuid", true),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(called).toBe(false);
+    });
+
+    /**
+     * The existence-and-visibility check every other write in this file relies on -- skipping
+     * it would let a bogus id reach the `exercise_favourites` foreign key and surface as a
+     * raw 500 instead of this clean 404.
+     */
+    it("refuses a favourite on an exercise the viewer cannot see", async () => {
+      const repository = {
+        findByIdForUser: () => Promise.resolve(null),
+      } as unknown as ExercisesRepository;
+
+      await expect(
+        makeService(repository).setFavourite(viewer, exercise().id, true),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("calls addFavourite when favouriting", async () => {
+      let called: [string, string] | null = null;
+      const repository = {
+        findByIdForUser: () => Promise.resolve({ exercise: exercise(), isFavourite: false }),
+        addFavourite: (userId2: string, exerciseId: string) => {
+          called = [userId2, exerciseId];
+          return Promise.resolve();
+        },
+      } as unknown as ExercisesRepository;
+
+      await makeService(repository).setFavourite(viewer, exercise().id, true);
+
+      expect(called).toEqual([userId, exercise().id]);
+    });
+
+    it("calls removeFavourite when unfavouriting", async () => {
+      let called: [string, string] | null = null;
+      const repository = {
+        findByIdForUser: () => Promise.resolve({ exercise: exercise(), isFavourite: true }),
+        removeFavourite: (userId2: string, exerciseId: string) => {
+          called = [userId2, exerciseId];
+          return Promise.resolve();
+        },
+      } as unknown as ExercisesRepository;
+
+      await makeService(repository).setFavourite(viewer, exercise().id, false);
+
+      expect(called).toEqual([userId, exercise().id]);
     });
   });
 });

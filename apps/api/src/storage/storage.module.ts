@@ -1,14 +1,18 @@
 import { Module } from '@nestjs/common';
 
 import { STORAGE_PROVIDER } from './providers/storage-provider.interface';
+import { supabaseStorageClientProvider } from './providers/supabase-storage-client';
 import { SupabaseStorageProvider } from './providers/supabase-storage.provider';
 
 /**
- * Exported but unconsumed until Phase 5 (InBody upload). Registering the binding now keeps
- * the adapter honest — it has to compile and resolve, not sit as dead code.
+ * The exercise-media mirror (Phase F) is the first real consumer — InBody upload (Phase 5)
+ * was the one originally anticipated when this module was written under Phase 1.
  */
 @Module({
-  providers: [{ provide: STORAGE_PROVIDER, useClass: SupabaseStorageProvider }],
+  providers: [
+    supabaseStorageClientProvider,
+    { provide: STORAGE_PROVIDER, useClass: SupabaseStorageProvider },
+  ],
   exports: [STORAGE_PROVIDER],
 })
 export class StorageModule {}

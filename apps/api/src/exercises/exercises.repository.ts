@@ -321,6 +321,33 @@ export class ExercisesRepository {
     };
   }
 
+  /**
+   * The read behind `GET /exercises/catalogue` (Phase H) -- the whole visible set in one
+   * unpaginated query, for the on-device store to mirror. Deliberately not `listExercises`
+   * with `limit: Infinity`: that method's contract is a page plus a lookahead row, and this
+   * one's is "give me everything so I can walk offline," a different enough shape that
+   * forcing them through one method would mean an unused `hasMore` here or an unused
+   * unpaginated mode there.
+   *
+   * **`(name, id)` order, always** -- not for pagination (there is none), but so
+   * `ExercisesService`'s version hash sees a stable row order across two calls with an
+   * identical underlying set. An unordered `SELECT` would let Postgres return the same rows
+   * in a different sequence between two otherwise-identical queries, which would change the
+   * hash and force a pointless re-sync.
+   */
+  async listForSync(userId: string): Promise<ExerciseWithFavourite[]> {
+    const rows = await this.db
+      .select({ exercise: exercises, isFavourite: favouriteExists(userId) })
+      .from(exercises)
+      .where(and(isNull(exercises.deletedAt), visibleTo(userId)))
+      .orderBy(exercises.name, exercises.id);
+
+    return rows.map((row) => ({
+      exercise: this.toExercise(row.exercise),
+      isFavourite: row.isFavourite,
+    }));
+  }
+
   async createCustomExercise(
     ownerUserId: string,
     input: CreateCustomExerciseInput,

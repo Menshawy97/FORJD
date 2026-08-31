@@ -1,11 +1,14 @@
 import { z } from 'zod';
 
 import {
+  createExerciseRequestSchema,
+  exerciseCatalogueResponseSchema,
   exerciseListQuerySchema,
   exerciseListResponseSchema,
   exerciseResponseSchema,
   exerciseSummarySchema,
   listResponseSchema,
+  updateExerciseRequestSchema,
 } from './index';
 
 /**
@@ -262,6 +265,131 @@ describe('exercise contracts', () => {
 
       expect(parsed).not.toHaveProperty('imageKeys');
       expect(parsed).toHaveProperty('imageUrls');
+    });
+  });
+
+  describe('createExerciseRequestSchema', () => {
+    const body = {
+      name: 'Landmine Press',
+      category: 'strength' as const,
+      measure: 'weight' as const,
+      primaryMuscles: ['shoulders'] as const,
+      equipment: ['barbell'] as const,
+      description: 'Brace the core.',
+    };
+
+    it('accepts a full body', () => {
+      expect(createExerciseRequestSchema.parse(body)).toEqual(body);
+    });
+
+    it('accepts an absent description as undefined, and null as null', () => {
+      const withoutDescription = {
+        name: body.name,
+        category: body.category,
+        measure: body.measure,
+        primaryMuscles: body.primaryMuscles,
+        equipment: body.equipment,
+      };
+
+      expect(createExerciseRequestSchema.parse(withoutDescription).description).toBeUndefined();
+      expect(createExerciseRequestSchema.parse({ ...body, description: null }).description).toBeNull();
+    });
+
+    /**
+     * Found by review: `.trim()` alone strips edges but does not collapse `""` to nothing, so
+     * a whitespace-only description (a cleared form field) would otherwise parse to `""`
+     * rather than being treated as absent -- contradicting this schema's own "absent and
+     * blank are both none" intent.
+     */
+    it('treats a whitespace-only description the same as an absent one', () => {
+      expect(createExerciseRequestSchema.parse({ ...body, description: '   ' }).description).toBeUndefined();
+    });
+
+    /** Trim first, then bound — same reasoning as `exerciseListQuerySchema.q`. */
+    it('trims the name before checking it is non-empty', () => {
+      expect(createExerciseRequestSchema.parse({ ...body, name: '  Landmine Press  ' }).name).toBe(
+        'Landmine Press',
+      );
+      expect(createExerciseRequestSchema.safeParse({ ...body, name: '   ' }).success).toBe(false);
+    });
+
+    it('rejects an empty primaryMuscles array, matching the screen\'s own validation', () => {
+      expect(createExerciseRequestSchema.safeParse({ ...body, primaryMuscles: [] }).success).toBe(
+        false,
+      );
+    });
+
+    it('rejects an empty equipment array, matching the screen\'s own validation', () => {
+      expect(createExerciseRequestSchema.safeParse({ ...body, equipment: [] }).success).toBe(false);
+    });
+
+    /**
+     * `goal` is derived server-side from `measure` (the design's own "derived, not chosen"
+     * comment), never a client-supplied field — sending one anyway is silently dropped by
+     * Zod's default strip behaviour, not rejected, which this pins so a future switch to
+     * `.strict()` is a deliberate decision rather than an accidental behaviour change.
+     */
+    it('has no goal field, even when one is sent', () => {
+      const parsed = createExerciseRequestSchema.parse({ ...body, goal: 'hypertrophy' });
+
+      expect(parsed).not.toHaveProperty('goal');
+    });
+  });
+
+  describe('updateExerciseRequestSchema', () => {
+    it('accepts an empty object -- every field is optional', () => {
+      expect(updateExerciseRequestSchema.parse({})).toEqual({});
+    });
+
+    it('accepts a single changed field without requiring the rest', () => {
+      expect(updateExerciseRequestSchema.parse({ name: 'New Name' })).toEqual({ name: 'New Name' });
+    });
+
+    /** A patch that changes muscles must still send at least one -- partial does not mean empty. */
+    it('still rejects an empty primaryMuscles array when the field is sent', () => {
+      expect(updateExerciseRequestSchema.safeParse({ primaryMuscles: [] }).success).toBe(false);
+    });
+  });
+
+  describe('exerciseCatalogueResponseSchema', () => {
+    const row = {
+      id: '22222222-2222-4222-8222-222222222222',
+      name: 'Barbell Bench Press',
+      slug: 'barbell-bench-press',
+      category: 'strength' as const,
+      goal: 'hypertrophy' as const,
+      measure: 'weight' as const,
+      primaryMuscles: ['chest'] as const,
+      secondaryMuscles: ['triceps'] as const,
+      equipment: ['barbell'] as const,
+      force: 'push' as const,
+      level: 'beginner' as const,
+      mechanic: 'compound' as const,
+      instructions: ['Lie on the bench.'],
+      imageUrls: [],
+      description: null,
+      isCustom: false,
+      isFavourite: false,
+    };
+
+    it('accepts an empty catalogue with a version', () => {
+      expect(exerciseCatalogueResponseSchema.parse({ exercises: [], catalogueVersion: 'v1' })).toEqual(
+        { exercises: [], catalogueVersion: 'v1' },
+      );
+    });
+
+    it('accepts full exercise rows, the detail shape rather than the summary shape', () => {
+      const parsed = exerciseCatalogueResponseSchema.parse({
+        exercises: [row],
+        catalogueVersion: 'v1',
+      });
+
+      expect(parsed.exercises[0]).toHaveProperty('instructions');
+      expect(parsed.exercises[0]).toHaveProperty('imageUrls');
+    });
+
+    it('requires catalogueVersion', () => {
+      expect(exerciseCatalogueResponseSchema.safeParse({ exercises: [] }).success).toBe(false);
     });
   });
 });

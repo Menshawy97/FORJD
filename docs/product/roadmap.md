@@ -41,19 +41,49 @@ Mobile.dc.html` grew 234 KB → 365 KB. Verified delta, tokens, and what did *no
   --ignore-all-space` over it is empty. It is a frozen pre-revision snapshot that now omits an
   entire feature area. Do not build from it.
 
-**Phase 2 is unaffected and continues from Phase F** (Phases D and E both landed after the
-revision). The revision adds to Phase 2's scope (`favorites`, `newExercise`) rather than
-redirecting it.
+**Phase 2 is unaffected and continues from Phase I** (Phases D, E, F, G and H all landed
+after the revision). The revision adds to Phase 2's scope (`favorites`, `newExercise`) rather
+than redirecting it.
 
 **Phase E is done and merged.** The exercise library is readable over the wire now:
 `exercises:load` (idempotent, wired into `deploy-api.yml` after `db:migrate`),
 `GET /api/v1/exercises` with `q`/`category`/`muscle`/`equipment`/`favourite` and cursor
 pagination, `GET /api/v1/exercises/:id`, and the `{ items, nextCursor }` envelope in
 `@forjd/contracts` that **every list endpoint after this one should reuse** — look at
-`listResponseSchema` there before inventing a second pagination shape. Media is not mirrored
-yet, so `imageUrl`/`imageUrls` come back `null`/`[]` until Phase F sets
-`EXERCISE_MEDIA_BASE_URL`; that is by design, not a gap. Full detail in `phase-2-plan.md`'s
-Phase E outcome section.
+`listResponseSchema` there before inventing a second pagination shape.
+
+**Phase F is done (implemented and tested locally; PR/merge pending).** `imageUrl`/
+`imageUrls` now resolve to real URLs once `EXERCISE_MEDIA_BASE_URL` is set —
+`exercises:mirror-media` mirrors the catalogue's images into a public `exercise-media`
+Supabase Storage bucket, wired into `deploy-api.yml` after `exercises:load`. One finding from
+running it for real against the dev project, not just unit tests: a meaningful minority of
+image paths get a bare `400` from `raw.githubusercontent.com` specifically — consistently on
+retry, even after a 20s wait, while the same bytes fetch fine through GitHub's git-blob API —
+which is upstream CDN flakiness, not a bug here. The mirror was redesigned around that finding
+to catch and count per-key failures rather than abort the run, and the deploy step runs with
+`continue-on-error: true` so a handful of broken image URLs never blocks a code deploy. Full
+detail, including the real run's mirrored/failed counts, is in `phase-2-plan.md`'s Phase F
+outcome section and ADR-018's "Finalized" note.
+
+**Phase G is done (implemented and tested locally; PR/merge pending).** `POST /exercises`,
+`PATCH /exercises/:id`, `DELETE /exercises/:id`, `PUT`/`DELETE /exercises/:id/favourite` —
+the repository side already existed from Phase C, so this phase was the contract, the
+`ExercisesService` policy (100% coverage pin, matching `athletes.service.ts`), and the
+controller wiring on top. One design point worth knowing for Phase I/K: **`goal` is derived
+server-side from `measure`**, never accepted from the client — the create/edit screen's own
+"derived, not chosen" comment (`docs/design/phase2-screen-specs.md` §6.1), so
+`createExerciseRequestSchema` has no `goal` field at all and a mobile client should not try
+to send one. Full detail in `phase-2-plan.md`'s Phase G outcome section.
+
+**Phase H is done (implemented and tested locally; PR/merge pending).**
+`GET /exercises/catalogue` returns the whole visible catalogue plus a `catalogueVersion`, and
+`apps/mobile/src/store/exercise-catalogue.ts` mirrors it into on-device SQLite with an FTS5
+index, behind a function seam matching `notification-preferences.ts`'s AsyncStorage wrapper.
+The version is a content hash that deliberately ignores favourite status — favouriting writes
+straight into the local mirror instead of waiting for a re-sync. Full design reasoning is in
+**ADR-022** (not ADR-019, which the original plan text cited before that number was claimed
+by username/avatar). Full detail, including the sync/schema design, is in `phase-2-plan.md`'s
+Phase H outcome section.
 
 **One Phase D finding the design revision needs to hear about:** the ingested catalogue leaves
 the `yoga` and `calisthenics` categories **completely empty** — free-exercise-db has no source
@@ -993,7 +1023,7 @@ failure).
 |---|---|---|---|
 | 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
 | 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
-| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **In progress — [re-planned](phase-2-plan.md); Phases 0, A, B, C, D, E done — next is F** |
+| 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **In progress — [re-planned](phase-2-plan.md); Phases 0, A, B, C, D, E, F, G, H done — next is I** |
 | 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | Not started — [planned](nutrition-plan.md), added by the 2026-08-30 design revision |
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
