@@ -16,7 +16,8 @@
     "test:cov": "jest --coverage",
     "exercises:normalize": "ts-node src/exercises/ingest/normalize.ts",
     "exercises:load": "ts-node src/exercises/ingest/load.ts",
-    "exercises:mirror-media": "ts-node src/exercises/ingest/mirror-media.ts"
+    "exercises:mirror-media": "ts-node src/exercises/ingest/mirror-media.ts",
+    "nutrition:fetch-usda": "ts-node src/nutrition/ingest/fetch-usda.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",
@@ -41,11 +42,13 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
+    "@types/adm-zip": "^0.5.8",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.7",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.2",
+    "adm-zip": "^0.6.0",
     "drizzle-kit": "^0.31.10",
     "jest": "^29.7.0",
     "pino-pretty": "^13.0.0",
