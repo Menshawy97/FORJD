@@ -172,13 +172,27 @@ interface IconProps {
   size?: number;
   /** Overrides the glyph's own stroke width. Only `goals`' selected checkmark needs this. */
   strokeWidth?: number;
+  /**
+   * The prototype's `starIcon(filled, size, color)`: `fill: filled ? O : 'none'`. Only the
+   * favourite star uses this — every other glyph in the app is stroke-only — but it is a
+   * generic prop rather than a `star`-only special case, the same way `strokeWidth` above is
+   * generic despite only `goals` needing it.
+   */
+  filled?: boolean;
 }
 
-export function Icon({ name, color, size, strokeWidth: strokeWidthOverride }: IconProps) {
+export function Icon({
+  name,
+  color,
+  size,
+  strokeWidth: strokeWidthOverride,
+  filled = false,
+}: IconProps) {
   const glyph: Glyph = GLYPHS[name];
   const stroke = color ?? (name === 'back' ? colors.text : colors.dim);
   const rendered = size ?? glyph.size ?? DEFAULT_SIZE;
   const strokeWidth = strokeWidthOverride ?? glyph.strokeWidth ?? DEFAULT_STROKE_WIDTH;
+  const fill = filled ? stroke : 'none';
 
   return (
     <Svg width={rendered} height={rendered} viewBox={glyph.viewBox} fill="none">
@@ -186,7 +200,7 @@ export function Icon({ name, color, size, strokeWidth: strokeWidthOverride }: Ic
         const common = {
           stroke,
           strokeWidth: shape.kind === 'path' ? (shape.strokeWidth ?? strokeWidth) : strokeWidth,
-          fill: 'none' as const,
+          fill,
           strokeLinecap: 'round' as const,
           strokeLinejoin: 'round' as const,
         };

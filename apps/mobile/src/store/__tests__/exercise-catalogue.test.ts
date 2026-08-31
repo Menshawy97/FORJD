@@ -4,6 +4,7 @@ import {
   ensureExerciseCatalogueSchema,
   getCachedExercise,
   getStoredCatalogueVersion,
+  listCachedExercises,
   searchExercises,
   setLocalFavourite,
   SqliteConnection,
@@ -88,10 +89,26 @@ class FakeSqliteConnection implements SqliteConnection {
         }),
       );
     }
-    if (source.startsWith('SELECT data, is_favourite FROM exercises_cache')) {
+    if (source.startsWith('SELECT data, is_favourite FROM exercises_cache WHERE id = ?')) {
       const [id] = params as [string];
       const row = this.cache.get(id);
       return Promise.resolve((row ? [{ data: row.data, is_favourite: row.is_favourite }] : []) as T[]);
+    }
+    if (source.startsWith('SELECT data, is_favourite FROM exercises_cache')) {
+      const conditions: Array<(entry: [string, { category: string; is_favourite: number }]) => boolean> = [];
+      let cursor = 0;
+      if (source.includes('category = ?')) {
+        const category = params[cursor] as string;
+        cursor += 1;
+        conditions.push(([, row]) => row.category === category);
+      }
+      if (source.includes('is_favourite = 1')) {
+        conditions.push(([, row]) => row.is_favourite === 1);
+      }
+      const matches = [...this.cache.entries()]
+        .filter((entry) => conditions.every((condition) => condition(entry)))
+        .sort(([, a], [, b]) => a.name.localeCompare(b.name));
+      return Promise.resolve(matches.map(([, row]) => ({ data: row.data, is_favourite: row.is_favourite }) as T));
     }
     throw new Error(`FakeSqliteConnection: unhandled query: ${source}`);
   }
@@ -177,6 +194,91 @@ describe('exercise catalogue store', () => {
 
       await ensureExerciseCatalogueSchema(db);
       await expect(ensureExerciseCatalogueSchema(db)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('listCachedExercises', () => {
+    it('returns every cached exercise, ordered by name, with no filter', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(
+          catalogueOf([
+            exercise({ id: 'b', name: 'Bravo' }),
+            exercise({ id: 'a', name: 'Alpha' }),
+          ]),
+        ),
+      );
+
+      const results = await listCachedExercises(db);
+
+      expect(results.map((row) => row.name)).toEqual(['Alpha', 'Bravo']);
+    });
+
+    it('filters by category', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(
+          catalogueOf([
+            exercise({ id: 'a', name: 'Alpha', category: 'strength' }),
+            exercise({ id: 'b', name: 'Bravo', category: 'mobility' }),
+          ]),
+        ),
+      );
+
+      const results = await listCachedExercises(db, { category: 'mobility' });
+
+      expect(results.map((row) => row.id)).toEqual(['b']);
+    });
+
+    it('filters to favourites only', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(
+          catalogueOf([
+            exercise({ id: 'a', name: 'Alpha', isFavourite: true }),
+            exercise({ id: 'b', name: 'Bravo', isFavourite: false }),
+          ]),
+        ),
+      );
+
+      const results = await listCachedExercises(db, { favouritesOnly: true });
+
+      expect(results.map((row) => row.id)).toEqual(['a']);
+    });
+
+    it('combines category and favouritesOnly', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(
+          catalogueOf([
+            exercise({ id: 'a', name: 'Alpha', category: 'strength', isFavourite: true }),
+            exercise({ id: 'b', name: 'Bravo', category: 'strength', isFavourite: false }),
+            exercise({ id: 'c', name: 'Charlie', category: 'mobility', isFavourite: true }),
+          ]),
+        ),
+      );
+
+      const results = await listCachedExercises(db, { category: 'strength', favouritesOnly: true });
+
+      expect(results.map((row) => row.id)).toEqual(['a']);
+    });
+
+    it('reflects a favourite toggle written by setLocalFavourite', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(catalogueOf([exercise({ id: 'a', isFavourite: false })])),
+      );
+      await setLocalFavourite(db, 'a', true);
+
+      const results = await listCachedExercises(db, { favouritesOnly: true });
+
+      expect(results.map((row) => row.id)).toEqual(['a']);
+    });
+
+    it('returns an empty array when nothing is cached', async () => {
+      const db = new FakeSqliteConnection();
+
+      expect(await listCachedExercises(db)).toEqual([]);
     });
   });
 

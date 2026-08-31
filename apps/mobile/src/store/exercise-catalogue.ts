@@ -54,6 +54,15 @@ export async function openExerciseCatalogueDb(): Promise<SqliteConnection> {
  * fetched from `exercises_cache` by id, never from the FTS table itself, so there is exactly
  * one place a row's real content lives.
  */
+/**
+ * One `execAsync` call per statement, not one call carrying all three separated by `;`.
+ * Split while investigating a `NativeDatabase.execAsync` -> `NullPointerException` seen on
+ * the Android **emulator** (API 34, x86_64) — the split alone did not resolve it, so the
+ * cause is not multi-statement parsing. Kept anyway: it is a strictly simpler call shape and
+ * makes a future native-side investigation easier to pinpoint (each statement fails or
+ * succeeds independently). See the same investigation's note in ADR-022 for what is and
+ * isn't confirmed about where this reproduces.
+ */
 export async function ensureExerciseCatalogueSchema(db: SqliteConnection): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS exercises_cache (
@@ -64,12 +73,16 @@ export async function ensureExerciseCatalogueSchema(db: SqliteConnection): Promi
       is_favourite INTEGER NOT NULL DEFAULT 0,
       data TEXT NOT NULL
     );
+  `);
+  await db.execAsync(`
     CREATE VIRTUAL TABLE IF NOT EXISTS exercises_fts USING fts5(
       id UNINDEXED,
       name,
       muscles,
       equipment
     );
+  `);
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS catalogue_meta (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -177,6 +190,43 @@ export async function searchExercises(db: SqliteConnection, query: string): Prom
      WHERE exercises_fts MATCH ?
      ORDER BY c.name`,
     [matchQuery],
+  );
+
+  return rows.map(rowToExercise);
+}
+
+export interface CachedExerciseFilter {
+  category?: string;
+  favouritesOnly?: boolean;
+}
+
+/**
+ * The browse-time read behind the library screen's chips (Phase I) -- plain `WHERE` clauses
+ * over `exercises_cache`'s own columns, not FTS5. `category`/`favouritesOnly` are not text
+ * queries, so routing them through FTS5 would mean either a second, redundant column set in
+ * the index or a JOIN that FTS5 buys nothing for. `searchExercises` stays the text-search
+ * path; this is the "show me everything matching these filters" path, ordered the same way
+ * (`name`) so the two feel like one continuous list to a screen that combines both.
+ */
+export async function listCachedExercises(
+  db: SqliteConnection,
+  filter: CachedExerciseFilter = {},
+): Promise<ExerciseResponse[]> {
+  const conditions: string[] = [];
+  const params: SQLiteBindValue[] = [];
+
+  if (filter.category) {
+    conditions.push('category = ?');
+    params.push(filter.category);
+  }
+  if (filter.favouritesOnly) {
+    conditions.push('is_favourite = 1');
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = await db.getAllAsync<{ data: string; is_favourite: number }>(
+    `SELECT data, is_favourite FROM exercises_cache ${where} ORDER BY name`,
+    params,
   );
 
   return rows.map(rowToExercise);

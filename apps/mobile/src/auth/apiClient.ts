@@ -19,6 +19,7 @@ import axios, {
 } from 'axios';
 import Constants from 'expo-constants';
 import type {
+  ExerciseCatalogueResponse,
   LoginRequest,
   MeResponse,
   PrivacySettingsResponse,
@@ -150,4 +151,17 @@ export async function updatePrivacy(
 export async function getAthlete(userId: string): Promise<PublicProfileResponse> {
   const response = await apiClient.get<PublicProfileResponse>(`/athletes/${userId}`);
   return response.data;
+}
+
+export async function getExerciseCatalogue(): Promise<ExerciseCatalogueResponse> {
+  const response = await apiClient.get<ExerciseCatalogueResponse>('/exercises/catalogue');
+  return response.data;
+}
+
+/** `PUT`/`DELETE .../favourite` both answer `204 No Content` — see exercises.controller.ts. */
+export async function setExerciseFavourite(id: string, favourite: boolean): Promise<void> {
+  await apiClient.request({
+    method: favourite ? 'put' : 'delete',
+    url: `/exercises/${id}/favourite`,
+  });
 }

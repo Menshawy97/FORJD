@@ -465,10 +465,13 @@ eslint error that only a local run caught. `pnpm --filter @forjd/contracts lint`
 step, since this phase added source to that package; `@forjd/domain`'s equivalent is currently
 clean and is left as a one-line follow-up rather than widened into here.
 
-> **Phases 0 through H are all merged and `main` is confirmed green** (F, G and H via
-> [PR #46](https://github.com/Menshawy97/FORJD/pull/46)). Next session starts here →
-> **Phase I**. The ⚠ design-revision reconciliation note below Phase H's own section must be
-> read first — three things changed for phases I-K after this plan was written.
+> **Phases 0 through H are merged and `main` is confirmed green** (F, G and H via
+> [PR #46](https://github.com/Menshawy97/FORJD/pull/46)). **Phase I is implemented, tested,
+> and device-verified on a physical iPhone via Expo Go**, pending its own PR/merge. Next
+> session starts here → **Phase J**. The ⚠ design-revision reconciliation note below Phase
+> H's own section still applies to Phase K (the vocabulary-subset decision) — Phase J's own
+> spec (§4-5) is unaffected by the three reconciliation points, which are about `newExercise`
+> and `favorites`, not exercise detail.
 
 ### Phase F — Media mirror *(the stopgap)* — ✅ **DONE**
 
@@ -623,20 +626,58 @@ This was `StorageProvider`'s first real consumer, a phase earlier than InBody ne
 >    subset or the full enum. The category tuple still matches `EXERCISE_CATEGORIES` exactly,
 >    so `exercise-vocabulary.spec.ts` is unaffected.
 
-### Phase I — Library screen and the Train entry point
+### Phase I — Library screen and the Train entry point — ✅ **DONE**
 
-`/library` outside the `(tabs)` group with `<TabBar active="train" />`, following
-`athlete/[userId].tsx`. Search box, the eight chips **including `Favourites`**, the `Recent`
-section, `All exercises`, the star toggle, both empty states, and the three tap modes
-(`browse` / `pick=workout` / `pick=routine`) as expo-router search params — the handoff itself
-says `libraryPickMode` belongs in the URL.
+- ✅ `/library` outside the `(tabs)` group with `<TabBar active="train" />`, following
+  `athlete/[userId].tsx`. Search box, the eight chips **including `Favourites`** in the exact
+  spec order, the `Recent` section (backed by real recency via the new
+  `store/recent-exercises.ts`, not the prototype's `all.slice(0,3)`), `All exercises`, the
+  star toggle (optimistic: writes `setLocalFavourite` immediately, calls the API, reverts and
+  toasts on failure), both empty states with the exact copy including the em dash, and the
+  `pick` search param carried through per §3.6 (only browse mode is reachable in Phase 2;
+  `builder`/`live` are Phase 3).
+- ✅ Two placeholder routes, `apps/mobile/src/app/exercise/[id].tsx` and
+  `apps/mobile/src/app/new-exercise.tsx`, so the row tap and **New** pill land somewhere real
+  instead of a dead route — Phase J/K replace their content, not their existence. The
+  exercise placeholder already does one real thing: it calls `recordExerciseOpened`, so
+  `Recent` has genuine data to show before Phase J exists.
+- ✅ The two prototype quick-action rows on `train.tsx` (`Start a run`, `Exercise library`),
+  and nothing else on that screen — `Start a run` renders inert (§9: "render the card, route
+  it nowhere yet"), `Exercise library` is wired to the real screen shipped this same phase.
+- ✅ **The screenshot's trailing performance stat ("80 kg × 8 × 4") was confirmed as fake seed
+  data in the prototype source** (`libraryAll()`'s literal per-row string, standing in for
+  session data that does not exist without Phase 3) and is deliberately omitted, matching how
+  this project already treats every other Phase-3-dependent stat (athlete screen's tiles,
+  exercise-detail sparklines). The row's chevron is kept, at the user's explicit direction —
+  it signals "tap to open" without displaying a fabricated number.
+- ✅ Device-verified twice: on a physical iPhone via Expo Go (the real target — genuine
+  catalogue sync, real recency, no errors) and on an Android emulator (`forjd_pixel7_api34`,
+  API 34 x86_64) for a first, real cross-platform check of Phase H's SQLite/FTS5 store.
 
-Plus the two prototype quick-action rows on `train.tsx` (`Start a run`, `Exercise library`),
-and nothing else on that screen.
+**Two real bugs found and fixed by the device walk, neither visible in Jest or the web
+preview:**
 
-Box-model styles go in NativeWind `className`, never a raw inline `style` callback on a
-`Pressable` — the Phase I lesson from slice 2, which rendered correctly on web and broke on a
-physical device.
+1. **Schema-creation ordering.** `library.tsx`'s mount effect called `refresh()` (which
+   queries `exercises_cache`/`exercises_fts`) before `syncExerciseCatalogue` had ever run —
+   fine once cached data exists, but a fresh install has no cache yet, and Expo Go threw
+   `no such table: exercises_cache`. Fixed by calling `ensureExerciseCatalogueSchema` directly
+   in the mount effect, before the first `refresh()`.
+2. **`gap` (and background/border) set only inside a `Pressable`'s function-style callback is
+   silently dropped on-device**, even though the exact same value renders fine in the web
+   preview and in `@testing-library/react-native`. This is the **same class of bug
+   `docs/design/slice2-screen-specs.md`'s `SocialAuthRow` incident already documented** — box
+   model belongs in NativeWind `className`, the `style` callback is for genuinely
+   pressed-state-dependent values only — and it recurred here across three call sites (the
+   row's icon-to-text gap, the header's **New** pill background, the Train quick-action
+   cards' background/border) before being caught, all fixed the same way:
+   `style={({ pressed }) => value_or_null}` returning a single conditional object (or
+   `null`), never an object whose keys are needed unconditionally.
+3. **A separate, real `NativeDatabase.execAsync` → `NullPointerException`** reproduces only on
+   the Android **emulator** (not the physical iPhone) — confirmed environment-specific, not a
+   code defect, but not yet explained. Splitting the multi-statement schema creation into one
+   `execAsync` call per statement did not resolve it. Flagged as an open item below; a
+   physical Android device walk is the next diagnostic step, per this project's own
+   "Jest/web preview cannot prove native rendering" standing lesson.
 
 ### Phase J — Exercise detail, including the running variant
 
@@ -745,11 +786,24 @@ Review agents (`code-reviewer`, `security-reviewer`, `typescript-reviewer`, `rea
    gating rule is "enable RLS before any client receives a Supabase credential." A *public*
    media bucket hands no client a credential, so this does not trip the rule — but it is the
    closest anything has come, and it remains a human decision.
+5. **`NativeDatabase.execAsync` throws a `NullPointerException` on the Android emulator**
+   (`forjd_pixel7_api34`, API 34 x86_64) the moment `exercise-catalogue.ts` creates its schema
+   — confirmed, during Phase I's device walk, not to reproduce on a physical iPhone via Expo
+   Go. Splitting the multi-statement `execAsync` call into one call per statement did not fix
+   it, so the cause is not multi-statement parsing. Not yet tested on a **physical** Android
+   device, which is the real target per CLAUDE.md's platform note — an x86_64 emulator's
+   native SQLite build is exactly the kind of thing that can differ from what ships on real
+   hardware. Whoever picks this up next: reproduce on a physical Android phone first: if it
+   does not reproduce there either, this is emulator-only and can be closed as a tooling
+   quirk rather than a code defect.
 
 ## Note on numbering
 
 This plan reserved **ADR-017** (canonical exercise model) and **ADR-019** (on-device exercise
-catalogue) before either was written. ADR-018 was written; the other two were not.
+catalogue) before either was written. ADR-018 was written. ADR-019's own number was
+independently claimed by username/avatar before Phase H reached implementation, so the
+on-device catalogue sync design ended up as **ADR-022** instead — see that ADR's own opening
+note for the discrepancy. ADR-017 remains unwritten.
 
 The 2026-08-30 design revision then wrote **ADR-019 (username and avatar)**, **ADR-020**
 (nutrition in MVP) and **ADR-021** (subscription UI without billing) as real files. A written
