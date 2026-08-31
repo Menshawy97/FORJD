@@ -52,7 +52,7 @@ pagination, `GET /api/v1/exercises/:id`, and the `{ items, nextCursor }` envelop
 `@forjd/contracts` that **every list endpoint after this one should reuse** — look at
 `listResponseSchema` there before inventing a second pagination shape.
 
-**Phase F is done (implemented and tested locally; PR/merge pending).** `imageUrl`/
+**Phase F is done and merged** ([PR #46](https://github.com/Menshawy97/FORJD/pull/46), confirmed green on `main`). `imageUrl`/
 `imageUrls` now resolve to real URLs once `EXERCISE_MEDIA_BASE_URL` is set —
 `exercises:mirror-media` mirrors the catalogue's images into a public `exercise-media`
 Supabase Storage bucket, wired into `deploy-api.yml` after `exercises:load`. One finding from
@@ -65,7 +65,7 @@ to catch and count per-key failures rather than abort the run, and the deploy st
 detail, including the real run's mirrored/failed counts, is in `phase-2-plan.md`'s Phase F
 outcome section and ADR-018's "Finalized" note.
 
-**Phase G is done (implemented and tested locally; PR/merge pending).** `POST /exercises`,
+**Phase G is done and merged** (same PR). `POST /exercises`,
 `PATCH /exercises/:id`, `DELETE /exercises/:id`, `PUT`/`DELETE /exercises/:id/favourite` —
 the repository side already existed from Phase C, so this phase was the contract, the
 `ExercisesService` policy (100% coverage pin, matching `athletes.service.ts`), and the
@@ -75,7 +75,7 @@ server-side from `measure`**, never accepted from the client — the create/edit
 `createExerciseRequestSchema` has no `goal` field at all and a mobile client should not try
 to send one. Full detail in `phase-2-plan.md`'s Phase G outcome section.
 
-**Phase H is done (implemented and tested locally; PR/merge pending).**
+**Phase H is done and merged** (same PR).
 `GET /exercises/catalogue` returns the whole visible catalogue plus a `catalogueVersion`, and
 `apps/mobile/src/store/exercise-catalogue.ts` mirrors it into on-device SQLite with an FTS5
 index, behind a function seam matching `notification-preferences.ts`'s AsyncStorage wrapper.

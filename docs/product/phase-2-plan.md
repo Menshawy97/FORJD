@@ -465,11 +465,10 @@ eslint error that only a local run caught. `pnpm --filter @forjd/contracts lint`
 step, since this phase added source to that package; `@forjd/domain`'s equivalent is currently
 clean and is left as a one-line follow-up rather than widened into here.
 
-> **Phases 0, A, B, C, D and E are merged and `main` is green. Phases F, G and H are
-> implemented and tested locally, pending their PR/merge** (see the checkpoint note in the
-> roadmap). Next session starts here → **Phase I**, once F, G and H are green on `main`. The
-> ⚠ design-revision reconciliation note below Phase H's own section must be read before
-> starting Phase I — three things changed for phases I-K after this plan was written.
+> **Phases 0 through H are all merged and `main` is confirmed green** (F, G and H via
+> [PR #46](https://github.com/Menshawy97/FORJD/pull/46)). Next session starts here →
+> **Phase I**. The ⚠ design-revision reconciliation note below Phase H's own section must be
+> read first — three things changed for phases I-K after this plan was written.
 
 ### Phase F — Media mirror *(the stopgap)* — ✅ **DONE**
 
