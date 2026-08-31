@@ -4,6 +4,7 @@
  */
 
 export * from "./exercise-vocabulary";
+export * from "./nutrition-vocabulary";
 
 /**
  * A **preset**, not a preference. It writes `weightUnit` and `distanceUnit` as a convenience

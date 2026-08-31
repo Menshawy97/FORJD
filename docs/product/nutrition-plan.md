@@ -152,9 +152,28 @@ excluded from search. Recommendation: keep it, gram-only — the design's food d
 a serving selector that can honestly offer only grams, and dropping real foods to avoid an
 empty dropdown is the worse trade.
 
-**Phase B — domain vocabulary.** `packages/domain`: meal slots, macro nutrients, the food and
-serving types. Pure types and `as const` tuples, no dependencies — the same shape as
-`exercise-vocabulary.ts`.
+**Phase B — domain vocabulary. ✅ DONE.** `packages/domain/src/nutrition-vocabulary.ts`
+(re-exported from `index.ts`), following `exercise-vocabulary.ts`'s pattern exactly: `MEAL_SLOTS`
+(4, **Snack third**) and `FOOD_CATEGORIES` (8, matching the design's `FOOD_CATS` minus `'All'`,
+which is a filter-chip value rather than a real category) as `as const` tuples with display-name
+maps, plus `Serving`, `MacroTotals`, and the canonical `Food` interface. `Food` mirrors
+`Exercise`'s own shape (ADR-017's precedent, explicitly named in this plan's locked decisions):
+`ownerUserId: null` marks a catalogue row, `source`/`sourceId` track provenance the same way.
+
+**`FOOD_CATEGORIES` deliberately excludes `'Custom'`.** The prototype writes custom foods with
+a literal `category: 'Custom'` that isn't in its own `FOOD_CATS` list — the design spec calls
+this out itself as "a prototype defect, not a spec" (§1). A custom food instead picks one of
+the eight real categories, and `Food.ownerUserId !== null` is what marks it custom — matching
+how `Exercise.category` is never `'custom'` either, with a separate `Custom` UI tag added in
+Phase K's follow-up instead.
+
+**RED confirmed before GREEN**, per the standing TDD rule: `nutrition-vocabulary.spec.ts` was
+written and run failing (module has no exported members) before the vocabulary existed, then
+implemented to pass — 8/8 new tests (23/23 in the package overall), asserting every tuple
+member has a non-empty display name, no orphan map keys, `MEAL_SLOTS`' exact Snack-third order,
+and `FOOD_CATEGORIES`' exact order excluding `'All'`. Verified: `packages/domain` typecheck,
+lint, and build all clean; `apps/api` and `apps/mobile` both re-typechecked clean against the
+updated `@forjd/domain`, confirming the new exports don't collide with anything downstream.
 
 **Phase C — migration, schema and repository.** Tables for foods, servings, the daily log,
 saved meals and their items, and per-user macro goals. Search indexes on the food name from
