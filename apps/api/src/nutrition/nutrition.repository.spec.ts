@@ -102,6 +102,67 @@ describe("NutritionRepository", () => {
     });
   });
 
+  describe("bulkUpsertCatalogueFoods", () => {
+    it("creates every food in the batch with its own servings", async () => {
+      const idA = `bulk-a-${randomUUID()}`;
+      const idB = `bulk-b-${randomUUID()}`;
+
+      await repository.bulkUpsertCatalogueFoods([catalogueInput(idA), catalogueInput(idB)]);
+
+      const [foodA, foodB] = await Promise.all([
+        repository.searchFoods(randomUUID(), `Test Banana ${idA}`, 1),
+        repository.searchFoods(randomUUID(), `Test Banana ${idB}`, 1),
+      ]);
+      const a = foodA[0];
+      const b = foodB[0];
+      if (!a || !b) throw new Error("expected both bulk-inserted foods to be findable");
+      createdFoodIds.push(a.id, b.id);
+
+      expect(a.macrosPer100g).toEqual({ kcal: 89, protein: 1.1, carbs: 22.8, fat: 0.3 });
+      expect(a.servings).toEqual([
+        { label: "1 medium (118g)", grams: 118 },
+        { label: "100 g", grams: 100 },
+      ]);
+      expect(b.sourceId).toBe(idB);
+    });
+
+    it("is idempotent -- re-running the same batch updates in place rather than duplicating", async () => {
+      const sourceId = `bulk-idempotent-${randomUUID()}`;
+
+      await repository.bulkUpsertCatalogueFoods([catalogueInput(sourceId)]);
+      const [firstRow] = await repository.searchFoods(randomUUID(), `Test Banana ${sourceId}`, 1);
+      if (!firstRow) throw new Error("expected the first bulk upsert to be findable");
+      createdFoodIds.push(firstRow.id);
+
+      await repository.bulkUpsertCatalogueFoods([
+        { ...catalogueInput(sourceId), macrosPer100g: { kcal: 95, protein: 1.5, carbs: 24, fat: 0.5 } },
+      ]);
+
+      const found = await repository.findFoodById(firstRow.id);
+      expect(found?.macrosPer100g.kcal).toBe(95);
+    });
+
+    it("replaces servings entirely rather than merging old and new", async () => {
+      const sourceId = `bulk-servings-${randomUUID()}`;
+
+      await repository.bulkUpsertCatalogueFoods([catalogueInput(sourceId)]);
+      const [firstRow] = await repository.searchFoods(randomUUID(), `Test Banana ${sourceId}`, 1);
+      if (!firstRow) throw new Error("expected the first bulk upsert to be findable");
+      createdFoodIds.push(firstRow.id);
+
+      await repository.bulkUpsertCatalogueFoods([
+        { ...catalogueInput(sourceId), servings: [{ label: "1 whole", grams: 130 }] },
+      ]);
+
+      const found = await repository.findFoodById(firstRow.id);
+      expect(found?.servings).toEqual([{ label: "1 whole", grams: 130 }]);
+    });
+
+    it("does nothing for an empty batch", async () => {
+      await expect(repository.bulkUpsertCatalogueFoods([])).resolves.toBeUndefined();
+    });
+  });
+
   describe("createCustomFood", () => {
     it("creates a custom food owned by the given user", async () => {
       const userId = await makeUser("owner");
