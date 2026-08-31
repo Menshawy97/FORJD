@@ -356,4 +356,38 @@ describe('apiClient - profile reads and writes', () => {
 
     expect(instance.get).toHaveBeenCalledWith('/athletes/u2');
   });
+
+  it('getExerciseCatalogue reads GET /exercises/catalogue through the authenticated client', async () => {
+    const { getExerciseCatalogue } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = { exercises: [], catalogueVersion: 'v1' };
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(getExerciseCatalogue()).resolves.toEqual(body);
+
+    expect(instance.get).toHaveBeenCalledWith('/exercises/catalogue');
+  });
+
+  it('setExerciseFavourite(true) sends PUT /exercises/:id/favourite', async () => {
+    const { setExerciseFavourite } = loadApiClient();
+    const instance = apiClientInstance() as unknown as { request: jest.Mock };
+    instance.request.mockResolvedValue({ data: undefined });
+
+    await setExerciseFavourite('ex1', true);
+
+    expect(instance.request).toHaveBeenCalledWith({ method: 'put', url: '/exercises/ex1/favourite' });
+  });
+
+  it('setExerciseFavourite(false) sends DELETE /exercises/:id/favourite', async () => {
+    const { setExerciseFavourite } = loadApiClient();
+    const instance = apiClientInstance() as unknown as { request: jest.Mock };
+    instance.request.mockResolvedValue({ data: undefined });
+
+    await setExerciseFavourite('ex1', false);
+
+    expect(instance.request).toHaveBeenCalledWith({
+      method: 'delete',
+      url: '/exercises/ex1/favourite',
+    });
+  });
 });
