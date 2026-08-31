@@ -41,7 +41,7 @@ Mobile.dc.html` grew 234 KB → 365 KB. Verified delta, tokens, and what did *no
   --ignore-all-space` over it is empty. It is a frozen pre-revision snapshot that now omits an
   entire feature area. Do not build from it.
 
-**Phase 2 is unaffected and continues from Phase J** (Phases D, E, F, G, H and I all landed
+**Phase 2 is unaffected and continues from Phase K** (Phases D, E, F, G, H, I and J all landed
 after the revision). The revision adds to Phase 2's scope (`favorites`, `newExercise`) rather
 than redirecting it.
 
@@ -85,16 +85,38 @@ straight into the local mirror instead of waiting for a re-sync. Full design rea
 by username/avatar). Full detail, including the sync/schema design, is in `phase-2-plan.md`'s
 Phase H outcome section.
 
-**Phase I is done (implemented, tested, and device-verified on a physical iPhone via Expo
-Go; PR/merge pending).** `/library` and the two `train.tsx` quick-action cards, per
-`phase-2-plan.md`'s Phase I outcome section. Two real bugs surfaced only by the device walk,
-neither visible in Jest or the web preview: (1) the catalogue sync's schema-creation ordering
-— fixed by creating the schema before the first local read, not only inside the sync path —
-and (2) `gap`/background/border set only inside a `Pressable`'s function-`style` callback is
-silently dropped on-device, the same bug class `slice2-screen-specs.md`'s `SocialAuthRow`
-incident already documented, recurring here across three call sites before being caught. A
-third finding, `NativeDatabase.execAsync` throwing on the Android **emulator** specifically
-(not the physical iPhone), is still open — see the Open Items list in `phase-2-plan.md`.
+**Phase I is done and merged** ([PR #47](https://github.com/Menshawy97/FORJD/pull/47), confirmed
+green on `main`; implemented, tested, and device-verified on a physical iPhone via Expo Go).
+`/library` and the two `train.tsx` quick-action cards, per `phase-2-plan.md`'s Phase I outcome
+section. Two real bugs surfaced only by the device walk, neither visible in Jest or the web
+preview: (1) the catalogue sync's schema-creation ordering — fixed by creating the schema
+before the first local read, not only inside the sync path — and (2) `gap`/background/border
+set only inside a `Pressable`'s function-`style` callback is silently dropped on-device, the
+same bug class `slice2-screen-specs.md`'s `SocialAuthRow` incident already documented,
+recurring here across three call sites before being caught. A third finding,
+`NativeDatabase.execAsync` throwing on the Android **emulator** specifically (not the physical
+iPhone), is still open — see the Open Items list in `phase-2-plan.md`; it needs a physical
+Android device check, not yet done, to confirm it is emulator-only.
+
+**Phase J is done.** `/exercise/[id]` replaces the placeholder, branching internally on
+`category === 'running'` per `phase2-screen-specs.md` §4-5 — header, tag pills (muscles +
+goal, `'Running'` appended for the run variant), the equipment block, and (a deliberate
+addition beyond the prototype, §8) the instructions list, sourced from the ingested dataset.
+Stat tiles, sparkline, history and the running variant's route map/pace stats are all Phase 3
+data and are omitted entirely, not rendered as zeros. The delete-confirmation sheet ships with
+its copy reworded for the soft-delete (§8: "removed from the library", not "permanently
+removed... can't be undone"), and calls the already-shipped `DELETE /exercises/:id` plus a new
+`removeCachedExercise` in the on-device store so a deleted custom exercise disappears from the
+library immediately rather than waiting for the next catalogue sync. `library.tsx` gained a
+`toast` search-param so the delete flow's "Exercise deleted" toast can show after navigating
+back, since the screen that triggers it unmounts first. Full detail in `phase-2-plan.md`'s
+Phase J outcome section. Verified: 321/321 mobile Jest tests green, typecheck and lint clean,
+architecture conformance clean, and a real `expo export` bundle compile (1524 modules, no
+errors) — NativeWind and native-module code Jest cannot compile. **Physical-device walk via
+Expo Go is still outstanding** — this session started the dev server
+(`exp://192.168.1.24:8081`, LAN mode) but has no way to drive a physical phone; someone with
+device access needs to do the golden-path walk from `phase-2-plan.md`'s Verification section
+before Phase J is called fully done.
 
 **One Phase D finding the design revision needs to hear about:** the ingested catalogue leaves
 the `yoga` and `calisthenics` categories **completely empty** — free-exercise-db has no source

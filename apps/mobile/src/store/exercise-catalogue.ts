@@ -242,6 +242,18 @@ export async function getCachedExercise(db: SqliteConnection, id: string): Promi
 }
 
 /**
+ * Removes one row from the local mirror immediately, called after `DELETE /exercises/:id`
+ * succeeds against the API -- the same "write the API result into the mirror right away,
+ * independent of the next version-gated sync" idea `setLocalFavourite` already applies, so a
+ * deleted custom exercise disappears from the library instantly rather than waiting for the
+ * next `syncExerciseCatalogue` to notice the server's `catalogueVersion` changed.
+ */
+export async function removeCachedExercise(db: SqliteConnection, id: string): Promise<void> {
+  await db.runAsync('DELETE FROM exercises_cache WHERE id = ?', [id]);
+  await db.runAsync('DELETE FROM exercises_fts WHERE id = ?', [id]);
+}
+
+/**
  * Writes a favourite toggle into the local mirror immediately, independent of the next
  * version-gated sync -- called after `PUT`/`DELETE /exercises/:id/favourite` succeeds against
  * the API, not instead of it. This is the other half of `getCatalogue`'s documented design:
