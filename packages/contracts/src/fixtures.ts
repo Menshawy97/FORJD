@@ -3,10 +3,17 @@ import { z } from 'zod';
 import {
   exerciseListResponseSchema,
   exerciseResponseSchema,
+  foodListResponseSchema,
+  foodResponseSchema,
+  macroGoalsResponseSchema,
   meResponseSchema,
+  nutritionLogEntryResponseSchema,
+  nutritionLogListResponseSchema,
   profileResponseSchema,
   publicProfileResponseSchema,
   registerResponseSchema,
+  savedMealListResponseSchema,
+  savedMealResponseSchema,
   sessionResponseSchema,
 } from './index';
 
@@ -269,6 +276,118 @@ export const responseFixtures = {
       isCustom: false,
       isFavourite: false,
     },
+  },
+
+  /** A catalogue food, USDA-sourced -- `isCustom: false`, matching `Food.ownerUserId === null`. */
+  'food-response': {
+    schema: foodResponseSchema,
+    sample: {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Bananas, ripe and slightly ripe, raw',
+      category: 'fruits' as const,
+      macrosPer100g: { kcal: 98, protein: 0.74, carbs: 23, fat: 0.29 },
+      servings: [{ label: '1 Banana, Peeled', grams: 115 }],
+      isCustom: false,
+    },
+  },
+
+  /** A user-authored custom food -- no servings beyond the implicit 100 g custom amount every food detail screen offers. */
+  'food-list-response': {
+    schema: foodListResponseSchema,
+    sample: {
+      items: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Bananas, ripe and slightly ripe, raw',
+          category: 'fruits' as const,
+          macrosPer100g: { kcal: 98, protein: 0.74, carbs: 23, fat: 0.29 },
+          servings: [{ label: '1 Banana, Peeled', grams: 115 }],
+          isCustom: false,
+        },
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          name: "Mom's protein pancakes",
+          category: 'grains' as const,
+          macrosPer100g: { kcal: 210, protein: 12, carbs: 28, fat: 5 },
+          servings: [],
+          isCustom: true,
+        },
+      ],
+    },
+  },
+
+  /** Zero is a real value here -- an account with no goals set never reaches this fixture (the endpoint 404s instead), so this always describes a saved row. */
+  'macro-goals-response': {
+    schema: macroGoalsResponseSchema,
+    sample: { kcal: 2400, protein: 180, carbs: 240, fat: 80 },
+  },
+
+  /** `groupId` null -- an entry logged individually, not part of a saved-meal group. */
+  'nutrition-log-entry-response': {
+    schema: nutritionLogEntryResponseSchema,
+    sample: {
+      id: '33333333-3333-4333-8333-333333333333',
+      foodId: '11111111-1111-4111-8111-111111111111',
+      loggedDate: '2026-08-31',
+      slot: 'breakfast' as const,
+      servingLabel: '1 Banana, Peeled',
+      grams: 115,
+      kcal: 112.7,
+      protein: 0.85,
+      carbs: 26.45,
+      fat: 0.33,
+      groupId: null,
+    },
+  },
+
+  'nutrition-log-list-response': {
+    schema: nutritionLogListResponseSchema,
+    sample: {
+      items: [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          foodId: '11111111-1111-4111-8111-111111111111',
+          loggedDate: '2026-08-31',
+          slot: 'breakfast' as const,
+          servingLabel: '1 Banana, Peeled',
+          grams: 115,
+          kcal: 112.7,
+          protein: 0.85,
+          carbs: 26.45,
+          fat: 0.33,
+          groupId: null,
+        },
+        {
+          // Two rows sharing a groupId -- what the dashboard collapses into one "N items" row.
+          id: '44444444-4444-4444-8444-444444444444',
+          foodId: '22222222-2222-4222-8222-222222222222',
+          loggedDate: '2026-08-31',
+          slot: 'lunch' as const,
+          servingLabel: '2 pancakes (120g)',
+          grams: 120,
+          kcal: 252,
+          protein: 14.4,
+          carbs: 33.6,
+          fat: 6,
+          groupId: '55555555-5555-4555-8555-555555555555',
+        },
+      ],
+    },
+  },
+
+  'saved-meal-response': {
+    schema: savedMealResponseSchema,
+    sample: {
+      id: '66666666-6666-4666-8666-666666666666',
+      name: 'Breakfast — usual',
+      items: [{ foodId: '11111111-1111-4111-8111-111111111111', servingLabel: '1 Banana, Peeled', grams: 115 }],
+    },
+  },
+
+  /** No saved meals yet -- the empty state `savedMeals`'s own copy describes. */
+  'saved-meal-list-response-empty': {
+    schema: savedMealListResponseSchema,
+    sample: { items: [] },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;
 

@@ -92,34 +92,36 @@ jobs:
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
-      - name: Run database migrations and load the exercise catalogue
+      - name: Run database migrations and load the exercise and nutrition catalogues
         # Pulled from Secret Manager (forjd-<target>-database-url), not a GitHub secret, so
         # the hosted DB credential lives in exactly one place. Must be the Supabase *session
         # pooler* connection string — the direct connection string fails over IPv6 from
         # GitHub-hosted runners (see docs/product/roadmap.md's IPv6 finding).
         #
-        # `exercises:load` runs after `db:migrate` and before the deploy, so a new revision
-        # never comes up serving an empty library. It is a script rather than a migration
-        # because 873 content rows are not schema, and it is safe on every deploy because it
-        # is idempotent: the upsert is keyed on `(source, source_id)` and backed by a partial
-        # unique index, so a re-run updates in place and cannot duplicate the catalogue. It
-        # reads the committed snapshot, never the raw dataset — enforced by
+        # `exercises:load` and `nutrition:load` both run after `db:migrate` and before the
+        # deploy, so a new revision never comes up serving an empty library or an empty food
+        # catalogue. Neither is a migration because their content rows (873 exercises, ~13,700
+        # foods) are not schema, and both are safe on every deploy because they are idempotent:
+        # each upsert is keyed on `(source, source_id)` and backed by a partial unique index, so
+        # a re-run updates in place and cannot duplicate a row. Both read only their own
+        # committed snapshot, never the raw dataset — enforced by
         # scripts/ci/check-architecture-conformance.sh.
         #
-        # The workspace packages must be BUILT before `exercises:load`, not merely installed.
-        # It runs under ts-node on the runner (not inside the image), and the loader's import
-        # graph reaches `@forjd/domain`, which resolves through its `dist/`. `db:migrate` gets
+        # The workspace packages must be BUILT before either loader, not merely installed. They
+        # run under ts-node on the runner (not inside the image), and their import graph reaches
+        # `@forjd/domain`/`@forjd/contracts`, which resolve through `dist/`. `db:migrate` gets
         # away without this because drizzle-kit only reads the schema files, which import
-        # nothing from the workspace — so the first run of this step failed on
-        # `Cannot find module '@forjd/domain'` after the migration had already applied. A local
-        # run cannot reproduce that: a developer tree almost always has a stale `dist/` lying
-        # around. Same reasoning, same fix as the mobile job in ci.yml.
+        # nothing from the workspace — so the first run of `exercises:load` in this step failed
+        # on `Cannot find module '@forjd/domain'` after the migration had already applied. A
+        # local run cannot reproduce that: a developer tree almost always has a stale `dist/`
+        # lying around. Same reasoning, same fix as the mobile job in ci.yml.
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @forjd/domain --filter @forjd/contracts build
           export DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
           pnpm --filter @forjd/api db:migrate
           pnpm --filter @forjd/api exercises:load
+          pnpm --filter @forjd/api nutrition:load
 
       - name: Mirror exercise media
         # ADR-018 / Phase F. Separate step, not folded into the one above, because it needs

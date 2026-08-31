@@ -7,7 +7,7 @@ import {
   MealSlot,
   Serving,
 } from "@forjd/domain";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 import { Database, DRIZZLE } from "../database/database.module";
 import {
@@ -192,8 +192,17 @@ export class NutritionRepository {
    * Full-text OR trigram match on `name`, mirroring `searchCondition` in
    * `exercises.repository.ts` exactly -- FTS matches whole lexemes with stemming, trigram
    * matches partial words while the user is still typing.
+   *
+   * **Scoped to `viewerUserId`'s own custom foods, plus every catalogue row.** Without this,
+   * any signed-in user's search would surface every *other* user's custom foods too --
+   * `foods` has no RLS of its own (rule 12: authorization lives here, not only in SQL), and a
+   * food's name is not something one user should see a stranger typed.
+   *
+   * `category` filters in the same query rather than being applied afterward by the caller --
+   * filtering post-`limit` would under-return (a filtered-out row still consumed one of the
+   * `limit` slots), the same class of bug keyset pagination's own index exists to avoid.
    */
-  async searchFoods(term: string, limit: number): Promise<Food[]> {
+  async searchFoods(viewerUserId: string, term: string, limit: number, category?: FoodCategory): Promise<Food[]> {
     const pattern = `%${term.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
     const rows = await this.db
       .select()
@@ -201,6 +210,8 @@ export class NutritionRepository {
       .where(
         and(
           isNull(foods.deletedAt),
+          or(isNull(foods.ownerUserId), eq(foods.ownerUserId, viewerUserId)),
+          category ? eq(foods.category, category) : undefined,
           sql`(
             ${foods}.search_vector @@ plainto_tsquery('english', ${term})
             or ${foods.name} ilike ${pattern}
