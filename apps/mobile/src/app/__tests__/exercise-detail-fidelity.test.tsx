@@ -133,6 +133,53 @@ describe('exercise detail screen fidelity', () => {
     expect(queryByText('Equipment')).toBeNull();
   });
 
+  it('renders the "How to train it" tip, using the curated copy for a named exercise', async () => {
+    const { findByText } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByText('How to train it: ')).toBeTruthy();
+    expect(
+      await findByText(
+        'Keep shoulder blades pinned back and drive through your feet — a stable base lets you press harder without straining the shoulders.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('falls back to the muscle-group tip when the exercise name has no curated copy', async () => {
+    (getCachedExercise as jest.Mock).mockResolvedValue(
+      exercise({ name: 'Cable Crossover', primaryMuscles: ['chest'] }),
+    );
+
+    const { findByText } = await render(<ExerciseDetailScreen />);
+
+    expect(
+      await findByText(
+        'Warm the joint up with a lighter set first, and keep the movement smooth — jerky reps shift stress to the joint instead of the muscle.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('renders the Best set / Est. 1RM stat tiles with an honest empty state, not fake numbers', async () => {
+    const { findByText, findAllByText } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByText('Best set')).toBeTruthy();
+    expect(await findByText('Est. 1RM')).toBeTruthy();
+    expect((await findAllByText('—')).length).toBe(2);
+  });
+
+  it('renders the sparkline card with an honest empty state', async () => {
+    const { findByText } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByText('Top set — last 8 sessions')).toBeTruthy();
+    expect(await findByText('Log a set to see your trend.')).toBeTruthy();
+  });
+
+  it('renders the History section with an honest empty state', async () => {
+    const { findByText } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByText('History')).toBeTruthy();
+    expect(await findByText('No sessions logged yet.')).toBeTruthy();
+  });
+
   it('renders Instructions when the exercise has them', async () => {
     const { findByText } = await render(<ExerciseDetailScreen />);
 
@@ -148,14 +195,6 @@ describe('exercise detail screen fidelity', () => {
 
     await findByText('Bench Press');
     expect(queryByText('Instructions')).toBeNull();
-  });
-
-  it('never renders stat tiles, sparklines or history -- Phase 3 data', async () => {
-    const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
-
-    await findByText('Bench Press');
-    expect(queryByText('Best set')).toBeNull();
-    expect(queryByText('History')).toBeNull();
   });
 
   it('hides the pencil and delete controls for a catalogue (non-custom) exercise', async () => {
@@ -262,6 +301,14 @@ describe('exercise detail screen fidelity', () => {
       expect(await findByText('Running')).toBeTruthy();
     });
 
+    it('never shows the "How to train it" tip -- the prototype only renders it for s_exercise', async () => {
+      (getCachedExercise as jest.Mock).mockResolvedValue(runningExercise());
+      const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
+
+      await findByText('Running');
+      expect(queryByText('How to train it: ')).toBeNull();
+    });
+
     it('never shows the pencil or delete controls, even for a custom running exercise', async () => {
       (getCachedExercise as jest.Mock).mockResolvedValue({ ...runningExercise(), isCustom: true });
       const { findByText, queryByLabelText } = await render(<ExerciseDetailScreen />);
@@ -276,6 +323,38 @@ describe('exercise detail screen fidelity', () => {
       const { findByLabelText } = await render(<ExerciseDetailScreen />);
 
       expect(await findByLabelText('Add favourite')).toBeTruthy();
+    });
+
+    it('renders the Best time / Avg pace stat tiles with an honest empty state', async () => {
+      (getCachedExercise as jest.Mock).mockResolvedValue(runningExercise());
+      const { findByText, findAllByText } = await render(<ExerciseDetailScreen />);
+
+      expect(await findByText('Best time')).toBeTruthy();
+      expect(await findByText('Avg pace')).toBeTruthy();
+      expect((await findAllByText('—')).length).toBe(2);
+    });
+
+    it('renders the route map placeholder with an honest empty state, not a fake route', async () => {
+      (getCachedExercise as jest.Mock).mockResolvedValue(runningExercise());
+      const { findByText } = await render(<ExerciseDetailScreen />);
+
+      expect(await findByText('No routes logged yet.')).toBeTruthy();
+    });
+
+    it('renders the pace sparkline card with an honest empty state', async () => {
+      (getCachedExercise as jest.Mock).mockResolvedValue(runningExercise());
+      const { findByText } = await render(<ExerciseDetailScreen />);
+
+      expect(await findByText('Pace trend — 8 runs')).toBeTruthy();
+      expect(await findByText('Log a run to see your trend.')).toBeTruthy();
+    });
+
+    it('renders the Recent runs section with an honest empty state', async () => {
+      (getCachedExercise as jest.Mock).mockResolvedValue(runningExercise());
+      const { findByText } = await render(<ExerciseDetailScreen />);
+
+      expect(await findByText('Recent runs')).toBeTruthy();
+      expect(await findByText('No runs logged yet.')).toBeTruthy();
     });
   });
 

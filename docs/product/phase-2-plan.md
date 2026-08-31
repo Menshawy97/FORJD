@@ -682,8 +682,29 @@ preview:**
 
 `/exercise/[id]`. The branch is **by category, not by route**: `s_exercise` returns
 `s_exerciseRun` when `category === 'Running'`. Stat tiles, sparkline and history need Phase 3
-session data — omit them entirely rather than rendering zeros, consistent with how the athlete
-screen's stat tiles were handled.
+session data.
+
+> **Revised mid-phase, after the first pass shipped.** The plan's original text said to omit
+> stat tiles/sparkline/history entirely, matching how the athlete screen's stat tiles were
+> handled. The user compared the shipped screen against
+> `FORJD mobile app design/screenshots/exercise page 1.png` (a reference screenshot, not the
+> interactive prototype `s_exercise()` was extracted from) and asked for the layout to match it
+> exactly. Two things followed from that comparison:
+>
+> 1. **A real prototype element was missed during spec extraction**: `s_exercise()` renders a
+>    "How to train it" tip callout (`trainingTip(name, muscleStr)`, prototype line 1971) that
+>    `phase2-screen-specs.md` §4.2 never documented. It is deterministic client-side copy (a
+>    curated 8-exercise map, falling back to one of four muscle-group buckets) with no
+>    session/analytics dependency, so — unlike the stat tiles — there was never a reason to
+>    defer it to Phase 3. Shipped as `apps/mobile/src/exercises/training-tip.ts`.
+> 2. **The stat tiles / sparkline / history decision was asked back to the user rather than
+>    re-decided unilaterally**, since it reverses a documented plan decision: ship the layout
+>    now with **honest empty states** (an em dash for each stat tile, "Log a set to see your
+>    trend." for the sparkline, "No sessions logged yet." for history — never the prototype's
+>    hardcoded demo numbers like `100 kg × 3`, which would misrepresent a real user's own
+>    training). The running variant's equivalent stats, route map, sparkline and "Recent runs"
+>    section ship the same way, for consistency. Phase 3 replaces the empty states with real
+>    data; the layout does not change shape when it does.
 
 #### What Phase J produced
 
@@ -697,13 +718,16 @@ screen's stat tiles were handled.
   Phase 2, since no other screen links here yet), right cluster = star always, pencil + delete
   only when `isCustom && category !== 'running'` — the running variant never shows edit
   controls, matching §5 exactly, regardless of custom status.
-- ✅ Body: tag pills (`primaryMuscles` display names + the goal's display name, `'Running'`
-  appended for the run variant), the equipment block (conditional on `equipment.length > 0`,
-  `dumb`-glyph-led pills), and **instructions** — a deliberate addition beyond the prototype's
-  own field list (§8), since the ingested dataset provides real steps and a detail screen with
-  only tags would be thinner than the design intends. Both equipment and instructions are
-  gated off entirely for the running variant, matching §5's "everything below tags is
-  omitted."
+- ✅ Body (strength), in order: tag pills (`primaryMuscles` display names + the goal's display
+  name), the equipment block (conditional on `equipment.length > 0`, `dumb`-glyph-led pills),
+  the **"How to train it" tip** (a real, previously-missed prototype element — see the note
+  above), two stat tiles and a sparkline card with honest empty states, an honest-empty-state
+  History section, and **instructions** — a deliberate addition beyond the prototype's own
+  field list (§8), since the ingested dataset provides real steps.
+- ✅ Body (running): tag pills only (`+ 'Running'`), then the same honest-empty-state
+  treatment for its own two stat tiles, the route-map placeholder (no fake route drawn), a
+  pace sparkline card, and a "Recent runs" section. No equipment, tip, or instructions —
+  matching §5, which never mentions them for the run variant.
 - ✅ Favouriting: the same optimistic write-then-revert-on-failure pattern as `library.tsx`'s
   row star, reused for the single exercise in state rather than a list.
 - ✅ Delete confirmation sheet (custom exercises only): reworded body copy per §8's deviation
@@ -717,31 +741,28 @@ screen's stat tiles were handled.
   `useToast().show`) — the delete flow's own screen unmounts before it could show its own
   toast, so the confirming screen shows it instead, the same `returnTo`-style param pattern
   `pick` already established.
-- ✅ Three new NativeWind/tokens.ts colour tokens (`iconButtonPressedBg`,
-  `destructivePressedBg`, `equipmentPillBorder`) for hover/border alphas in §4.1/§4.2 that had
-  no existing token — added to both files per the "add a token, never inline a hex" rule, kept
-  in sync (`tokens.test.ts` still passes).
-- ✅ TDD throughout: `apiClient.deleteExercise`, `exercise-catalogue.removeCachedExercise`, and
-  the `library.tsx` toast param were each written RED (confirmed failing) before their GREEN
-  implementation; the screen itself has a 21-test fidelity suite covering both variants, the
-  edit/delete affordance gating, favouriting, and the full delete flow.
-- ✅ Verification run: 321/321 mobile Jest tests green (full suite, no regressions), typecheck
+- ✅ Six new NativeWind/tokens.ts colour tokens (`iconButtonPressedBg`, `destructivePressedBg`,
+  `equipmentPillBorder`, `trainingTipBg`, `trainingTipBorder`, `trainingTipText`) for
+  hover/border/text alphas in §4.1/§4.2 that had no existing token — added to both files per
+  the "add a token, never inline a hex" rule, kept in sync (`tokens.test.ts` still passes).
+- ✅ TDD throughout: `apiClient.deleteExercise`, `exercise-catalogue.removeCachedExercise`, the
+  `library.tsx` toast param, and `training-tip.ts`'s port were each written RED (confirmed
+  failing) before their GREEN implementation; the screen itself has a 30-test fidelity suite
+  covering both variants, the edit/delete affordance gating, favouriting, the full delete
+  flow, the training tip's curated-vs-fallback copy, and every honest-empty-state section.
+- ✅ Verification run: 338/338 mobile Jest tests green (full suite, no regressions), typecheck
   clean, lint clean, `scripts/ci/check-architecture-conformance.sh` clean, and a real
-  `npx expo export --platform android` bundle compile succeeded (1524 modules, no errors) —
-  the check Jest cannot perform, since it compiles neither NativeWind nor native modules.
+  `npx expo export --platform android` bundle compile succeeded (no errors) — the check Jest
+  cannot perform, since it compiles neither NativeWind nor native modules.
 
-**Physical-device walk: partially confirmed.** This session started the Expo dev server
-(`mobile-expo`, LAN host) and had no way to drive a physical device itself; the user then
-walked a real catalogue exercise (Barbell Bench Press) on a physical iPhone via Expo Go and
-shared a screenshot. **Confirmed working on-device:** header (title, back chevron, unfilled
-star for a non-favourite), tag pills (`Chest` muscle + `Strength` goal), the `Equipment` block
-with its `dumb`-glyph pill, and the numbered `Instructions` list — all rendering real
-catalogue data exactly per §4.1/§4.2, with no device-only bugs surfaced (unlike Phase I's
-schema-ordering and `Pressable` style-callback bugs, both invisible to Jest).
-
-**Still unconfirmed on-device:** the running variant (§5 — tags-only body, no edit controls),
-favouriting (optimistic toggle + revert-on-failure), and the full delete flow (confirmation
-sheet copy, the API call, local-cache removal, and the toast landing back on `/library`).
+**Physical-device walk: partially confirmed, and now stale.** Earlier in this session the
+user walked a real catalogue exercise (Barbell Bench Press) on a physical iPhone via Expo Go
+and shared a screenshot, confirming the header, tag pills, `Equipment` block and
+`Instructions` list rendered correctly with no device-only bugs (unlike Phase I's
+schema-ordering and `Pressable` style-callback bugs, both invisible to Jest). **That
+screenshot predates the training-tip and honest-empty-state sections added afterward** — the
+device walk needs to be re-run to confirm those specifically, alongside everything already
+unconfirmed: the running variant, favouriting, and the full delete flow.
 Whoever picks up Phase K should fold these into that phase's own device walk rather than
 treating Phase J as fully closed until they're checked.
 
