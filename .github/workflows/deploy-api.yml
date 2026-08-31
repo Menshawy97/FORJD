@@ -121,11 +121,40 @@ jobs:
           pnpm --filter @forjd/api db:migrate
           pnpm --filter @forjd/api exercises:load
 
+      - name: Mirror exercise media
+        # ADR-018 / Phase F. Separate step, not folded into the one above, because it needs
+        # SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY (StorageProvider's credentials) rather than
+        # DATABASE_URL, and keeping the two apart means a Storage failure shows up as its own
+        # red step instead of inside "Run database migrations...". Same idempotency argument
+        # as exercises:load: it checks each object before uploading, so a re-run after a
+        # partial failure -- or simply the next deploy -- only mirrors what is still missing.
+        #
+        # `continue-on-error: true`: the script itself never aborts early (a per-key fetch
+        # failure is caught, logged and counted, not thrown -- see mirror-media.ts), but it
+        # does exit non-zero when any key failed, so the step is flagged here without ever
+        # blocking the code deploy that follows. Confirmed live against the pinned commit
+        # while validating this phase: one upstream image path 400s from
+        # raw.githubusercontent.com specifically (not a systemic failure -- 39/39 other
+        # sampled real keys returned 200, and the same bytes fetch fine through GitHub's
+        # git-blob API), which is exactly the class of external flakiness that must not gate
+        # shipping a code change.
+        continue-on-error: true
+        run: |
+          export SUPABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-supabase-url")"
+          export SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-supabase-service-role-key")"
+          pnpm --filter @forjd/api exercises:mirror-media
+
       - name: Deploy to Cloud Run
         run: |
+          # EXERCISE_MEDIA_BASE_URL (ADR-018 / Phase F) is Supabase Storage's own default
+          # public-bucket URL pattern, derived from SUPABASE_URL rather than held as a
+          # separate secret -- it names no credential, and deriving it here means there is
+          # nothing to keep in sync if the project's URL ever changes.
+          SUPABASE_URL_VALUE="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-supabase-url")"
           gcloud run deploy "forjd-api-${TARGET}" \
             --image "$IMAGE" \
             --region "${{ vars.GCP_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest"
+            --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest" \
+            --set-env-vars "EXERCISE_MEDIA_BASE_URL=${SUPABASE_URL_VALUE}/storage/v1/object/public/exercise-media"

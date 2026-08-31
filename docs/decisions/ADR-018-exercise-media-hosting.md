@@ -1,6 +1,6 @@
 # ADR-018: Exercise media hosting
 
-**Status:** Accepted
+**Status:** Accepted, and shipped (Phase F, `apps/api/src/exercises/ingest/mirror-media.ts`).
 
 Supplements ADR-005, which chose the exercise *dataset*. This ADR covers the *imagery*
 separately, because the two turn out to be independent decisions.
@@ -145,3 +145,33 @@ explicit rather than removing it.
 - **Attribution.** None is legally required by the Unlicense. Crediting the dataset on an
   about/licences screen remains good practice. If the Everkinetic route is ever taken, per-image
   attribution becomes mandatory and needs a screen that does not exist yet.
+
+## Finalized at Phase F
+
+Shipped as `apps/api/src/exercises/ingest/mirror-media.ts`
+(`pnpm --filter @forjd/api exercises:mirror-media`), wired into `deploy-api.yml` after
+`exercises:load`. Full detail of what got built is in `phase-2-plan.md`'s Phase F section;
+this note records the one number that matters for the free-tier ceiling above and the one
+finding that changed the design from what was originally planned.
+
+**Real run against the dev Supabase project, not an estimate:** of the 1,746 unique image
+keys the committed catalogue snapshot references, **1,668 mirrored successfully, 24 were
+already present from an earlier interrupted attempt, and 54 failed.** All three numbers sum
+to 1,746. At the measured ~52 KB/image average (`data/SOURCE.md`), that is roughly **88 MB
+actually landed in the bucket** — matching Phase A's estimate almost exactly, and comfortably
+inside the ~1 GB free-storage ceiling.
+
+**What the 54 failures are, and why they are not a defect here:** every one of them is
+`raw.githubusercontent.com` returning a bare `400` for that specific image path,
+consistently on retry, even after a 20-second wait — while the identical bytes fetch cleanly
+through GitHub's git-blob API, and a sibling path for the same exercise (`Chair_Squat/1.jpg`
+next to its own failing `/0.jpg`) succeeds. Upstream CDN flakiness scattered across
+individual objects, confirmed not to be caused by request volume or rate limiting (a fresh,
+isolated request to a previously-successful path still succeeds after the run; a fresh,
+isolated request to a failed path still 400s). `mirrorMedia` names every failed key in its
+output and never marks one as mirrored, so a plain re-run — or simply the next deploy —
+retries exactly the 54 that are still missing, for free, with no code change required.
+
+This is what "finalize ADR-018 with the measured numbers" (Phase F's own plan text) meant in
+practice: not a one-time estimate revised once, but a script that keeps the bucket converging
+on complete every time it runs.
