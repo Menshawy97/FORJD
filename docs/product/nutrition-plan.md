@@ -62,21 +62,91 @@ Each phase is a vertical slice, test-first, RED confirmed before GREEN, per CLAU
 project's standing TDD rule. Each is its own checkpoint: docs updated, PR opened, CI green,
 merged, then CI confirmed on `main`.
 
-**Phase A — food database source.** ✅ ADR written ([ADR-023](../decisions/ADR-023-food-database-source.md)):
+**Phase A — vendor the dataset.** ✅ ADR written ([ADR-023](../decisions/ADR-023-food-database-source.md)):
 USDA FoodData Central, ingested and owned in our own table, not proxied live — matching the
 `exercises` precedent (custom foods share the catalogue table, so the catalogue needs its own
 stable internal IDs a food-log entry can reference safely). Scoped to the **Foundation, SR
 Legacy, and Survey (FNDDS)** data types — together roughly 15k rows of generic/whole foods,
 the exact coverage ADR-023 already prioritized — excluding **Branded** (~300k+ rows of
-packaged products), the coverage gap ADR-023 already accepted. This phase vendors a pinned
-USDA **bulk data release** (FoodData Central publishes dated full-download CSV/JSON sets
-specifically for this use case, the same "static release, not a live call" shape as
-free-exercise-db/ADR-005), writes a source adapter + normalizer + load script mirroring
-`apps/api/src/exercises/ingest/`'s structure (`*-adapter.ts`, `normalize.ts`, `load.ts`, a
-`data/SOURCE.md` pin record), and does **not** require `USDA_FDC_API_KEY` for the ingest
-itself — bulk downloads are unauthenticated. The key stays reserved for a possible future
-live-lookup use (e.g. resolving a specific FDC id outside the vendored subset), not for
-Phase A.
+packaged products), the coverage gap ADR-023 already accepted.
+
+Matching **exercises' own Phase A exactly** (`phase-2-plan.md`'s Phase A: "no schema, no
+endpoints — nothing yet reads this file"), this phase is **vendoring only**. **Does not**
+require `USDA_FDC_API_KEY` — bulk downloads are unauthenticated; the key stays reserved for a
+possible future live-lookup outside the vendored subset. The source adapter, normalizer, and
+load script that actually read this data are Phase D's work (mirroring exercises' own Phase D),
+once the schema and repository from Phase C exist to upsert into — not this phase.
+
+#### What the bulk release actually is — measured 2026-08-31, not assumed
+
+The three pinned releases, all confirmed reachable and downloaded:
+
+| Data type | Release / pin | Zip |
+|---|---|---|
+| Foundation | `FoodData_Central_foundation_food_csv_2025-04-24` | 3.3 MB |
+| SR Legacy | `FoodData_Central_sr_legacy_food_csv_2018-04` | 5.8 MB |
+| Survey (FNDDS) | `FoodData_Central_survey_food_csv_2024-10-31` | 3.2 MB |
+
+**This is a full relational dump, not a food list** — 24 CSVs per release, most of them lab
+provenance (`sub_sample_result.csv` alone is 4.7 MB). Only six tables matter to us: `food`,
+`food_nutrient`, `nutrient`, `food_portion`, `measure_unit`, `food_category`.
+
+**Real food counts, after excluding the sampling rows that share `food.csv`:**
+
+| Data type | Rows in `food.csv` | Actual foods | Macro coverage | Has ≥1 portion |
+|---|---|---|---|---|
+| Foundation | 74,176 | **411** (`foundation_food`) | 353 energy / 399 protein | 116 (28%) |
+| SR Legacy | 7,793 | **7,793** | 7,793 — complete | 7,533 (97%) |
+| Survey (FNDDS) | 5,432 | **5,432** | 5,431 — complete | 5,395 (99%) |
+| | | **13,636 total** | | |
+
+Foundation's `food.csv` is 99% lab sampling records (`sub_sample_food` 62,022,
+`market_acquisition` 7,215, `sample_food` 3,717, `agricultural_acquisition` 810). Filtering on
+`data_type` is mandatory, not an optimisation — ingesting unfiltered would load 74k lab samples
+as if they were foods.
+
+#### Two traps found by inspecting the data, both of which would have shipped silently
+
+1. **`food_nutrient.nutrient_id` means different things in different releases.** Foundation and
+   SR Legacy use `nutrient.id` values (energy `1008`, protein `1003`, fat `1004`, carbs `1005`).
+   **Survey uses `nutrient_nbr` values instead** (`208`, `203`, `204`, `205`) — the same column
+   name, a different identifier series, while its own `nutrient.csv` still lists the `1008`-style
+   ids. A single hardcoded id set measures Survey's macro coverage as **zero** and would ingest
+   5,432 foods with null calories. The adapter must resolve nutrient ids **per release, through
+   that release's own `nutrient.csv`**, keyed on both `id` and `nutrient_nbr`.
+2. **Energy has three competing nutrient ids.** `1008` (Energy, KCAL) plus `2047`
+   (Atwater General) and `2048` (Atwater Specific), which Foundation uses for some foods and
+   not others. The adapter needs an explicit documented precedence rather than picking whichever
+   row it encounters first.
+
+#### Deliverables
+
+- `apps/api/src/nutrition/ingest/data/` — the vendored subset. **Not the raw zips**: only the
+  six needed CSVs, filtered to real foods, per release. Unlike free-exercise-db (whose upstream
+  file was already lean enough to commit verbatim), committing these raw would put ~75 MB of
+  lab-sampling CSV in git history permanently to use 13,636 rows of it. A `fetch-usda.ts`
+  script performs the download-filter-write so the reduction is reproducible and reviewable,
+  and the reduced files are what gets committed.
+- `apps/api/src/nutrition/ingest/data/SOURCE.md` — the pin record, mirroring
+  `exercises/ingest/data/SOURCE.md`: release names and dates, the download URLs, the licence
+  statement **fetched at the pin rather than quoted from memory**, every measured number in
+  the tables above, and the two traps recorded so a future re-vendor does not rediscover them.
+- No schema, no endpoints, nothing reads the files yet.
+
+#### Verification
+
+`SOURCE.md`'s counts must be reproduced by a script, not typed by hand. CI runs the full API +
+mobile suite (this touches `apps/api/src`, so `paths-ignore` does not apply). Checkpoint: PR,
+CI green, merge, confirm CI green on `main`.
+
+#### Open question for Phase C, raised here because the data forced it
+
+Foundation foods have **28% portion coverage** — 295 of 411 have no serving other than "100 g".
+SR Legacy and Survey are near-complete, so this only affects the smallest of the three sets, but
+Phase C must decide whether a food with no named portion is still logged in grams only, or is
+excluded from search. Recommendation: keep it, gram-only — the design's food detail screen has a
+serving selector that can honestly offer only grams, and dropping 295 real foods to avoid an
+empty dropdown is the worse trade.
 
 **Phase B — domain vocabulary.** `packages/domain`: meal slots, macro nutrients, the food and
 serving types. Pure types and `as const` tuples, no dependencies — the same shape as
