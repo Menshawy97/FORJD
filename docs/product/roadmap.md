@@ -100,23 +100,27 @@ Android device check, not yet done, to confirm it is emulator-only.
 
 **Phase J is done.** `/exercise/[id]` replaces the placeholder, branching internally on
 `category === 'running'` per `phase2-screen-specs.md` §4-5 — header, tag pills (muscles +
-goal, `'Running'` appended for the run variant), the equipment block, and (a deliberate
-addition beyond the prototype, §8) the instructions list, sourced from the ingested dataset.
-Stat tiles, sparkline, history and the running variant's route map/pace stats are all Phase 3
-data and are omitted entirely, not rendered as zeros. The delete-confirmation sheet ships with
-its copy reworded for the soft-delete (§8: "removed from the library", not "permanently
-removed... can't be undone"), and calls the already-shipped `DELETE /exercises/:id` plus a new
+goal, `'Running'` appended for the run variant), the equipment block, a **"How to train it"
+tip** (a real prototype element missed during spec extraction, ported to
+`exercises/training-tip.ts`), and (a deliberate addition beyond the prototype, §8) the
+instructions list, sourced from the ingested dataset. Stat tiles, sparkline, history and the
+running variant's route map/pace stats ship now too, but with **honest empty states** rather
+than the prototype's hardcoded demo numbers — the user compared the shipped screen against a
+reference screenshot and asked for exact layout parity; showing invented numbers as a real
+user's own training data was rejected in favour of showing the layout with a clear "no data
+yet" state that Phase 3 fills in later. The delete-confirmation sheet ships with its copy
+reworded for the soft-delete (§8: "removed from the library", not "permanently removed...
+can't be undone"), and calls the already-shipped `DELETE /exercises/:id` plus a new
 `removeCachedExercise` in the on-device store so a deleted custom exercise disappears from the
 library immediately rather than waiting for the next catalogue sync. `library.tsx` gained a
 `toast` search-param so the delete flow's "Exercise deleted" toast can show after navigating
 back, since the screen that triggers it unmounts first. Full detail in `phase-2-plan.md`'s
-Phase J outcome section. Verified: 321/321 mobile Jest tests green, typecheck and lint clean,
-architecture conformance clean, and a real `expo export` bundle compile (1524 modules, no
-errors) — NativeWind and native-module code Jest cannot compile. **Physical-device walk:
-partially confirmed** — the user walked a real catalogue exercise on a physical iPhone via
-Expo Go (header, tag pills, equipment block and instructions all correct, no device-only bugs
-like Phase I's). The running variant, favouriting, and the delete flow are still unconfirmed
-on-device; see `phase-2-plan.md`'s Phase J section.
+Phase J outcome section. Verified: 338/338 mobile Jest tests green, typecheck and lint clean,
+architecture conformance clean, and a real `expo export` bundle compile (no errors) —
+NativeWind and native-module code Jest cannot compile. **Physical-device walk: partially
+confirmed, and now stale** — the user's earlier Expo Go screenshot predates the training-tip
+and honest-empty-state sections; those, the running variant, favouriting, and the delete flow
+are all still unconfirmed on-device. See `phase-2-plan.md`'s Phase J section.
 
 **One Phase D finding the design revision needs to hear about:** the ingested catalogue leaves
 the `yoga` and `calisthenics` categories **completely empty** — free-exercise-db has no source

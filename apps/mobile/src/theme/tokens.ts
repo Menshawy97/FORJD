@@ -44,6 +44,8 @@ export const colors = {
   // A selected goals/activities pick-row's fill (goals.tsx), from the prototype's selected
   // pick-row style.
   pickRowSelectedBg: 'rgba(233,113,47,.1)',
+  // The "How to train it" tip callout's fill.
+  trainingTipBg: 'rgba(233,113,47,.08)',
   // The athlete screen's initials-avatar tile fill, from the prototype's `s_athlete()`.
   athleteAvatarBg: 'rgba(233,113,47,.14)',
 
@@ -58,6 +60,8 @@ export const colors = {
   // The exercise-detail equipment pill's outline -- between `pickRowSelectedBg`'s .1 fill and
   // `borderPro`'s .35.
   equipmentPillBorder: 'rgba(233,113,47,.25)',
+  // The "How to train it" tip callout's outline.
+  trainingTipBorder: 'rgba(233,113,47,.2)',
   // A selected goals/activities pick-row's outline (goals.tsx) — a stronger accent alpha
   // than `borderPro`, from the prototype's selected pick-row style.
   borderPickRowSelected: 'rgba(233,113,47,.45)',
@@ -96,6 +100,9 @@ export const colors = {
   errorText: '#E05A3C',
   deleteAccountRow: '#E05C5C',
   welcomeFeature: '#D8B79C',
+  // The "How to train it" tip callout's body text -- close to but distinct from
+  // `welcomeFeature` above (#D8B79C vs #D8B39A).
+  trainingTipText: '#D8B39A',
   weekScoreLabel: '#C9906C',
   metricSleep: '#8FB4C9',
   badgeGold: '#C9A03C',

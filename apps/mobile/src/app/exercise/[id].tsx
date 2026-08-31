@@ -15,6 +15,7 @@ import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
+import { trainingTip } from '@/exercises/training-tip';
 import {
   ensureExerciseCatalogueSchema,
   getCachedExercise,
@@ -45,6 +46,29 @@ import { colors } from '@/theme/tokens';
  * dataset provides real ones and an exercise detail with nothing but tags would be thinner
  * than the design intends.
  */
+/**
+ * Ports the prototype's `stat(label, value, unit, sub)` card (§4.2 item 3 / §5 item 2), but
+ * with an **honest empty state** rather than the prototype's hardcoded demo numbers (`100 kg
+ * × 3`, `106 kg`) -- there is no real session data until Phase 3 ships, and showing invented
+ * numbers as if they were the user's own would be worse than the layout gap it fills. An
+ * em dash stands in for `value`; no `unit` or `sub` line renders without a real number to
+ * qualify.
+ */
+function StatTile({ label }: { label: string }) {
+  return (
+    <View className="flex-1 rounded-card border border-border bg-surface px-[14px] py-[13px]" style={{ minWidth: 0 }}>
+      <Text
+        className="font-archivo text-[9.5px] font-semibold uppercase text-label"
+        style={{ letterSpacing: 1.33, marginBottom: 9 }}>
+        {label}
+      </Text>
+      <Text className="font-archivo text-[25px] font-bold text-text" style={{ letterSpacing: -0.5 }}>
+        —
+      </Text>
+    </View>
+  );
+}
+
 export default function ExerciseDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -235,6 +259,85 @@ export default function ExerciseDetailScreen() {
               ))}
             </View>
           </View>
+        )}
+
+        {!isRunning && (
+          <View
+            className="flex-row rounded-[12px] border border-trainingTipBorder bg-trainingTipBg px-[14px] py-[13px]"
+            style={{ gap: 10, marginBottom: 14 }}>
+            <View style={{ marginTop: 1 }}>
+              <Icon name="bolt" size={16} color={colors.accent} />
+            </View>
+            <Text className="flex-1 font-archivo text-[12.5px] text-trainingTipText" style={{ lineHeight: 18.75 }}>
+              <Text className="font-archivo text-[12.5px] font-bold text-accent">How to train it: </Text>
+              <Text>{trainingTip(exercise.name, exercise.primaryMuscles)}</Text>
+            </Text>
+          </View>
+        )}
+
+        {!isRunning && (
+          <>
+            <View className="flex-row" style={{ gap: 10, marginBottom: 14 }}>
+              <StatTile label="Best set" />
+              <StatTile label="Est. 1RM" />
+            </View>
+            <View
+              className="rounded-card border border-border bg-surface px-[16px] py-[15px]"
+              style={{ marginBottom: 14 }}>
+              <Text
+                className="font-archivo text-[9.5px] font-semibold uppercase text-label"
+                style={{ letterSpacing: 1.33, marginBottom: 14 }}>
+                Top set — last 8 sessions
+              </Text>
+              <View className="items-center justify-center" style={{ height: 80 }}>
+                <Text className="font-archivo text-[12px] text-dimmer">Log a set to see your trend.</Text>
+              </View>
+            </View>
+            <Text
+              className="font-archivo text-[9.5px] font-semibold uppercase text-label"
+              style={{ letterSpacing: 1.33, marginBottom: 2 }}>
+              History
+            </Text>
+            <Text className="font-archivo text-[13px] text-dimmer" style={{ paddingVertical: 26 }}>
+              No sessions logged yet.
+            </Text>
+          </>
+        )}
+
+        {isRunning && (
+          <>
+            <View className="flex-row" style={{ gap: 10 }}>
+              <StatTile label="Best time" />
+              <StatTile label="Avg pace" />
+            </View>
+            <View
+              className="overflow-hidden rounded-card border border-border"
+              style={{ height: 150, marginTop: 12, backgroundColor: colors.trackBg }}>
+              <View className="flex-1 items-center justify-center">
+                <Text className="font-archivo text-[12px] text-dimmer">No routes logged yet.</Text>
+              </View>
+            </View>
+            <View
+              className="rounded-card border border-border bg-surface px-[16px] py-[15px]"
+              style={{ marginTop: 12 }}>
+              <Text
+                className="font-archivo text-[9.5px] font-semibold uppercase text-label"
+                style={{ letterSpacing: 1.33, marginBottom: 14 }}>
+                Pace trend — 8 runs
+              </Text>
+              <View className="items-center justify-center" style={{ height: 80 }}>
+                <Text className="font-archivo text-[12px] text-dimmer">Log a run to see your trend.</Text>
+              </View>
+            </View>
+            <Text
+              className="font-archivo text-[9.5px] font-semibold uppercase text-label"
+              style={{ letterSpacing: 1.33, marginTop: 24, marginBottom: 2 }}>
+              Recent runs
+            </Text>
+            <Text className="font-archivo text-[13px] text-dimmer" style={{ paddingVertical: 26 }}>
+              No runs logged yet.
+            </Text>
+          </>
         )}
 
         {!isRunning && exercise.instructions.length > 0 && (
