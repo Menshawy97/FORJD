@@ -1,7 +1,9 @@
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync } from "fs";
 import { join } from "path";
 
 import AdmZip from "adm-zip";
+
+import { col, parseCsv, writeCsv } from "./csv";
 
 /**
  * `pnpm --filter @forjd/api nutrition:fetch-usda`
@@ -35,6 +37,14 @@ interface ReleaseSpec {
   /** `food.csv`'s `data_type` value that marks a row as a real food in this release. */
   readonly dataType: string;
   readonly zipUrl: string;
+  /**
+   * The category lookup file this release's `food.csv.food_category_id` resolves against.
+   * Foundation and SR Legacy share the same small (~25-row) SR-legacy-style taxonomy in
+   * `food_category.csv`; Survey (FNDDS) uses the larger WWEIA taxonomy in
+   * `wweia_food_category.csv`. Vendored now (Phase D), having been deliberately left out of
+   * Phase A pending this decision (SOURCE.md).
+   */
+  readonly categoryFile: "food_category.csv" | "wweia_food_category.csv";
 }
 
 // Pinned 2026-08-31. Re-vendoring: update the URLs/dataType below to a newer release and
@@ -45,16 +55,19 @@ const RELEASES: readonly ReleaseSpec[] = [
     dir: "foundation",
     dataType: "foundation_food",
     zipUrl: "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip",
+    categoryFile: "food_category.csv",
   },
   {
     dir: "sr_legacy",
     dataType: "sr_legacy_food",
     zipUrl: "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip",
+    categoryFile: "food_category.csv",
   },
   {
     dir: "survey",
     dataType: "survey_fndds_food",
     zipUrl: "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_csv_2024-10-31.zip",
+    categoryFile: "wweia_food_category.csv",
   },
 ];
 
@@ -76,38 +89,6 @@ const WANTED_NUTRIENT_NAMES = [
   "Total lipid (fat)",
   "Carbohydrate, by difference",
 ] as const;
-
-/** A minimal CSV row splitter for USDA's own export shape: every field double-quoted, comma-separated, no embedded commas or quotes inside a field (verified against the real files at this pin). */
-function splitRow(line: string): string[] {
-  return line.split('","').map((field, index, all) => {
-    if (index === 0) return field.replace(/^"/, "");
-    if (index === all.length - 1) return field.replace(/"$/, "");
-    return field;
-  });
-}
-
-function parseCsv(raw: string): { header: string[]; rows: string[][] } {
-  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
-  const headerLine = lines[0];
-  if (headerLine === undefined) {
-    throw new Error("empty CSV: no header row");
-  }
-  return { header: splitRow(headerLine), rows: lines.slice(1).map(splitRow) };
-}
-
-function writeCsv(path: string, header: string[], rows: string[][]): void {
-  const quote = (value: string): string => `"${value}"`;
-  const body = [header, ...rows].map((row) => row.map(quote).join(",")).join("\n");
-  writeFileSync(path, `${body}\n`, "utf8");
-}
-
-function col(header: string[], name: string): number {
-  const index = header.indexOf(name);
-  if (index === -1) {
-    throw new Error(`column "${name}" not found in header: ${header.join(", ")}`);
-  }
-  return index;
-}
 
 /**
  * Resolves the accepted `food_nutrient.nutrient_id` tokens for this release by looking the
@@ -182,6 +163,7 @@ async function processRelease(spec: ReleaseSpec, outDir: string): Promise<Releas
   const foodPortion = parseCsv(readEntry(zip, "food_portion.csv"));
   const nutrient = parseCsv(readEntry(zip, "nutrient.csv"));
   const measureUnit = parseCsv(readEntry(zip, "measure_unit.csv"));
+  const category = parseCsv(readEntry(zip, spec.categoryFile));
 
   const dataTypeCol = col(food.header, "data_type");
   const fdcIdCol = col(food.header, "fdc_id");
@@ -214,6 +196,7 @@ async function processRelease(spec: ReleaseSpec, outDir: string): Promise<Releas
   writeCsv(join(dir, "food_portion.csv"), foodPortion.header, portionRows);
   writeCsv(join(dir, "nutrient.csv"), nutrient.header, nutrient.rows);
   writeCsv(join(dir, "measure_unit.csv"), measureUnit.header, measureUnit.rows);
+  writeCsv(join(dir, spec.categoryFile), category.header, category.rows);
 
   return { foods: realFoodRows.length, nutrientRows: nutrientRows.length, portionRows: portionRows.length };
 }

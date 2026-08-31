@@ -101,6 +101,22 @@ if [ -d packages/domain/src ]; then
   fi
 fi
 
+# ADR-023 / Phase D: the raw vendored USDA CSVs are readable only by the normalizer, mirroring
+# the free-exercise-db.json rule above exactly and for the same reason -- a second reader of
+# food.csv/food_nutrient.csv/etc. would be a second, untested implementation of the category and
+# kcal-precedence mapping the golden-fixture tests and the committed snapshot already cover.
+# `fetch-usda.ts` is exempt because it *writes* these files (vendoring), not reads them for
+# normalization; `load.ts` reads only the committed JSON snapshot, never the CSVs directly.
+if [ -d apps/api/src ]; then
+  hits=$(grep -rln --include='*.ts' -E '"(food|food_nutrient|food_portion|nutrient|measure_unit|food_category|wweia_food_category)\.csv"' \
+    apps/api/src \
+    | grep -v '^apps/api/src/nutrition/ingest/fetch-usda\.ts$' \
+    | grep -v '^apps/api/src/nutrition/ingest/normalize\.ts$' || true)
+  if [ -n "$hits" ]; then
+    report "the raw vendored USDA CSVs are read outside the normalizer (apps/api/src/nutrition/ingest/normalize.ts)" "$hits"
+  fi
+fi
+
 if [ "$violations" -gt 0 ]; then
   echo ""
   echo "$violations conformance rule(s) violated. Fix the import, or change the rule in CLAUDE.md"

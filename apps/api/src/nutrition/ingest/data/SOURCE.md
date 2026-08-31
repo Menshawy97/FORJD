@@ -97,14 +97,13 @@ this is the file a re-vendor will actually be read against.
   reduced to three columns (`fdc_id`, `nutrient_id`, `amount`) — the source's `data_points`,
   `derivation_id`, `min`, `max`, `median`, `footnote`, `min_year_acquired` columns are lab
   metadata this app never reads.
-- **Not vendored at all:** `food_category.csv` (Foundation/SR Legacy's category lookup) and
-  `wweia_food_category.csv` (Survey's equivalent). The design's food-search categories
-  (`docs/design/nutrition-screen-specs.md`'s `FOOD_CATS`: Protein, Grains, Fruits, Vegetables,
-  Dairy, Snacks, Fats, Beverages) are the prototype's own curated set, not USDA's taxonomy
-  either system maps onto directly — `food.csv`'s `food_category_id` is still present for
-  every row if Phase D's adapter needs it, and both lookup files are one script change away
-  (add the two filenames to `processRelease`'s reads) if that turns out to be the easiest path.
-  Left out now rather than speculatively vendored, per YAGNI.
+- **Vendored in Phase D:** `food_category.csv` (Foundation/SR Legacy's shared ~25-row
+  SR-legacy-style taxonomy) and `wweia_food_category.csv` (Survey's larger WWEIA taxonomy, 172
+  distinct ids actually referenced by the vendored foods, measured 2026-08-31). Left unvendored
+  in Phase A per YAGNI, since the design's 8 `FOOD_CATS` are a curated set that maps onto
+  neither USDA taxonomy directly and the mapping tables (`ingest/mappings.ts`) turned out to be
+  real, deliberate product judgement rather than a mechanical lookup — worth doing once Phase D
+  actually needed it, not speculatively in Phase A.
 - **Never vendored, by design:** every other nutrient (fiber, sugar, sodium, vitamins,
   minerals — USDA ships ~80 per food). ADR-023 and this session's design-spec review confirmed
   no nutrition screen displays anything beyond kcal/protein/carbs/fat.
