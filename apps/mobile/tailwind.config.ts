@@ -39,6 +39,12 @@ export default {
         proBanner: '#1C1408',
         // The fill a ghost control takes while held — `btn('ghost')`'s hover state.
         pressedGhost: 'rgba(255,255,255,.04)',
+        // The exercise-detail header's icon buttons (pencil/star) hover fill --
+        // docs/design/phase2-screen-specs.md §4.1: "hover rgba(255,255,255,.06)".
+        iconButtonPressedBg: 'rgba(255,255,255,.06)',
+        // The exercise-detail header's delete icon hover fill (§4.1: "hover
+        // rgba(201,80,60,.14)") -- the same rgb triple as `destructive` below, at a lower alpha.
+        destructivePressedBg: 'rgba(201,80,60,.14)',
         // A selected goals/activities pick-row's fill (goals.tsx), from the prototype's
         // selected pick-row style.
         pickRowSelectedBg: 'rgba(233,113,47,.1)',
@@ -53,6 +59,9 @@ export default {
         borderBadge: 'rgba(255,255,255,.08)',
         // The Go Pro banner's accent outline.
         borderPro: 'rgba(233,113,47,.35)',
+        // The exercise-detail equipment pill's outline (§4.2: "border 1px solid
+        // rgba(233,113,47,.25)") -- between `pickRowSelectedBg`'s .1 fill and `borderPro`'s .35.
+        equipmentPillBorder: 'rgba(233,113,47,.25)',
         // A selected goals/activities pick-row's outline (goals.tsx) — a stronger accent
         // alpha than `borderPro`, from the prototype's selected pick-row style.
         borderPickRowSelected: 'rgba(233,113,47,.45)',

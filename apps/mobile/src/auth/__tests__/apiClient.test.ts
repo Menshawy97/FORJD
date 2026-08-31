@@ -390,4 +390,14 @@ describe('apiClient - profile reads and writes', () => {
       url: '/exercises/ex1/favourite',
     });
   });
+
+  it('deleteExercise sends DELETE /exercises/:id through the authenticated client', async () => {
+    const { deleteExercise } = loadApiClient();
+    const instance = apiClientInstance() as unknown as { request: jest.Mock };
+    instance.request.mockResolvedValue({ data: undefined });
+
+    await deleteExercise('ex1');
+
+    expect(instance.request).toHaveBeenCalledWith({ method: 'delete', url: '/exercises/ex1' });
+  });
 });

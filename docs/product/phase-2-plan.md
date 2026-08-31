@@ -465,13 +465,12 @@ eslint error that only a local run caught. `pnpm --filter @forjd/contracts lint`
 step, since this phase added source to that package; `@forjd/domain`'s equivalent is currently
 clean and is left as a one-line follow-up rather than widened into here.
 
-> **Phases 0 through H are merged and `main` is confirmed green** (F, G and H via
-> [PR #46](https://github.com/Menshawy97/FORJD/pull/46)). **Phase I is implemented, tested,
-> and device-verified on a physical iPhone via Expo Go**, pending its own PR/merge. Next
-> session starts here → **Phase J**. The ⚠ design-revision reconciliation note below Phase
-> H's own section still applies to Phase K (the vocabulary-subset decision) — Phase J's own
-> spec (§4-5) is unaffected by the three reconciliation points, which are about `newExercise`
-> and `favorites`, not exercise detail.
+> **Phases 0 through J are merged and `main` is confirmed green** (F, G and H via
+> [PR #46](https://github.com/Menshawy97/FORJD/pull/46); I via
+> [PR #47](https://github.com/Menshawy97/FORJD/pull/47); J implemented, tested, and its
+> non-device checks all green — see Phase J's own section for what's still outstanding). Next
+> session starts here → **Phase K**. The ⚠ design-revision reconciliation note below Phase
+> H's own section still applies to Phase K (the vocabulary-subset decision).
 
 ### Phase F — Media mirror *(the stopgap)* — ✅ **DONE**
 
@@ -679,12 +678,68 @@ preview:**
    physical Android device walk is the next diagnostic step, per this project's own
    "Jest/web preview cannot prove native rendering" standing lesson.
 
-### Phase J — Exercise detail, including the running variant
+### Phase J — Exercise detail, including the running variant — ✅ **DONE**
 
 `/exercise/[id]`. The branch is **by category, not by route**: `s_exercise` returns
 `s_exerciseRun` when `category === 'Running'`. Stat tiles, sparkline and history need Phase 3
 session data — omit them entirely rather than rendering zeros, consistent with how the athlete
 screen's stat tiles were handled.
+
+#### What Phase J produced
+
+- ✅ `apps/mobile/src/app/exercise/[id].tsx` replaces the Phase I placeholder. Cache-first read
+  via `getCachedExercise` (the same on-device catalogue Phase H built), then a background
+  `syncExerciseCatalogue` — the same pattern `library.tsx` already established, so a
+  deep-linked exercise not yet cached still resolves once the sync completes.
+  `recordExerciseOpened` is still called (Phase I's placeholder already did this; carried
+  over unchanged).
+- ✅ Header: title = exercise name, back → `/library` (the only reachable `exerciseReturnTo` in
+  Phase 2, since no other screen links here yet), right cluster = star always, pencil + delete
+  only when `isCustom && category !== 'running'` — the running variant never shows edit
+  controls, matching §5 exactly, regardless of custom status.
+- ✅ Body: tag pills (`primaryMuscles` display names + the goal's display name, `'Running'`
+  appended for the run variant), the equipment block (conditional on `equipment.length > 0`,
+  `dumb`-glyph-led pills), and **instructions** — a deliberate addition beyond the prototype's
+  own field list (§8), since the ingested dataset provides real steps and a detail screen with
+  only tags would be thinner than the design intends. Both equipment and instructions are
+  gated off entirely for the running variant, matching §5's "everything below tags is
+  omitted."
+- ✅ Favouriting: the same optimistic write-then-revert-on-failure pattern as `library.tsx`'s
+  row star, reused for the single exercise in state rather than a list.
+- ✅ Delete confirmation sheet (custom exercises only): reworded body copy per §8's deviation
+  (soft-delete, so "permanently removed... can't be undone" would be false) —
+  `"<name>" will be removed from the library.` On confirm: `DELETE /exercises/:id` (already
+  shipped in Phase G), then a new `removeCachedExercise(db, id)` in
+  `store/exercise-catalogue.ts` so the row disappears from the local mirror immediately rather
+  than waiting for the next version-gated sync, then `router.replace` back to `/library` with
+  a `toast` search param carrying `'Exercise deleted'`.
+- ✅ `library.tsx` gained a `toast` search-param read (`useEffect` calling the existing
+  `useToast().show`) — the delete flow's own screen unmounts before it could show its own
+  toast, so the confirming screen shows it instead, the same `returnTo`-style param pattern
+  `pick` already established.
+- ✅ Three new NativeWind/tokens.ts colour tokens (`iconButtonPressedBg`,
+  `destructivePressedBg`, `equipmentPillBorder`) for hover/border alphas in §4.1/§4.2 that had
+  no existing token — added to both files per the "add a token, never inline a hex" rule, kept
+  in sync (`tokens.test.ts` still passes).
+- ✅ TDD throughout: `apiClient.deleteExercise`, `exercise-catalogue.removeCachedExercise`, and
+  the `library.tsx` toast param were each written RED (confirmed failing) before their GREEN
+  implementation; the screen itself has a 21-test fidelity suite covering both variants, the
+  edit/delete affordance gating, favouriting, and the full delete flow.
+- ✅ Verification run: 321/321 mobile Jest tests green (full suite, no regressions), typecheck
+  clean, lint clean, `scripts/ci/check-architecture-conformance.sh` clean, and a real
+  `npx expo export --platform android` bundle compile succeeded (1524 modules, no errors) —
+  the check Jest cannot perform, since it compiles neither NativeWind nor native modules.
+
+**Open: the physical-device walk is not done.** This session started the Expo dev server
+(`mobile-expo`, LAN host) but has no way to drive a physical iPhone or Android device from
+here. Per this project's own standing lesson ("Jest and the web preview both proved
+insufficient to catch real bugs in Phase I" — the schema-ordering bug and the `Pressable`
+style-callback bug were both invisible to Jest), **Phase J should not be treated as fully done
+until someone with device access walks it**: open an exercise from the library, confirm tag
+pills and equipment render, confirm instructions render for a catalogue exercise that has
+them, open a Running exercise and confirm the run variant (tags only, no edit controls even
+if it were custom), create-then-open a custom exercise and confirm pencil/delete appear, and
+delete it — confirming the toast appears back on `/library` and the row is actually gone.
 
 ### Phase K — Custom exercise create / edit / delete screen
 

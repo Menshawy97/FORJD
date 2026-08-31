@@ -165,3 +165,8 @@ export async function setExerciseFavourite(id: string, favourite: boolean): Prom
     url: `/exercises/${id}/favourite`,
   });
 }
+
+/** `DELETE /exercises/:id` answers `204 No Content` — a soft delete on the server. */
+export async function deleteExercise(id: string): Promise<void> {
+  await apiClient.request({ method: 'delete', url: `/exercises/${id}` });
+}

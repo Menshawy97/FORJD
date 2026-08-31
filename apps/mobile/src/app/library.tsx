@@ -122,8 +122,9 @@ async function loadRecent(
 }
 
 export default function LibraryScreen() {
-  const params = useLocalSearchParams<{ pick?: string }>();
+  const params = useLocalSearchParams<{ pick?: string; toast?: string }>();
   const pick = Array.isArray(params.pick) ? params.pick[0] : params.pick;
+  const toastParam = Array.isArray(params.toast) ? params.toast[0] : params.toast;
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<LibraryFilter>('all');
@@ -131,6 +132,17 @@ export default function LibraryScreen() {
   const [recentItems, setRecentItems] = useState<ExerciseResponse[]>([]);
   const toast = useToast();
   const dbRef = useRef<SqliteConnection | null>(null);
+
+  // The exercise detail screen's delete confirmation (§4.3) unmounts on delete, so it cannot
+  // show its own "Exercise deleted" toast -- it navigates back here with a `toast` param
+  // instead. `toast.show` is stable (useCallback, empty deps), so this fires once per param
+  // value rather than looping.
+  useEffect(() => {
+    if (toastParam) {
+      toast.show(toastParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toastParam]);
 
   const refresh = useCallback(async (nextFilter: LibraryFilter, nextQuery: string) => {
     const db = dbRef.current;

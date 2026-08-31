@@ -209,4 +209,13 @@ describe('library screen fidelity', () => {
 
     expect(mockReplace).toHaveBeenCalledWith('/train');
   });
+
+  // The exercise detail screen's delete confirmation (§4.3) navigates back here with a
+  // `toast` param -- this screen unmounts on delete, so it cannot show its own toast.
+  it('shows a toast from the `toast` search param, e.g. after deleting a custom exercise', async () => {
+    mockUseLocalSearchParams.mockReturnValue({ toast: 'Exercise deleted' });
+    const { findByText } = await render(<LibraryScreen />);
+
+    expect(await findByText('Exercise deleted')).toBeTruthy();
+  });
 });

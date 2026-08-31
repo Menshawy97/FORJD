@@ -5,6 +5,7 @@ import {
   getCachedExercise,
   getStoredCatalogueVersion,
   listCachedExercises,
+  removeCachedExercise,
   searchExercises,
   setLocalFavourite,
   SqliteConnection,
@@ -31,7 +32,13 @@ class FakeSqliteConnection implements SqliteConnection {
   }
 
   runAsync(source: string, params: unknown[] = []): Promise<unknown> {
-    if (source.startsWith('DELETE FROM exercises_cache')) {
+    if (source.startsWith('DELETE FROM exercises_cache WHERE id = ?')) {
+      const [id] = params as [string];
+      this.cache.delete(id);
+    } else if (source.startsWith('DELETE FROM exercises_fts WHERE id = ?')) {
+      const [id] = params as [string];
+      this.fts.delete(id);
+    } else if (source.startsWith('DELETE FROM exercises_cache')) {
       this.cache.clear();
     } else if (source.startsWith('DELETE FROM exercises_fts')) {
       this.fts.clear();
@@ -347,6 +354,40 @@ describe('exercise catalogue store', () => {
       await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise()])));
 
       expect(await searchExercises(db, 'zzzznomatch')).toEqual([]);
+    });
+  });
+
+  describe('removeCachedExercise', () => {
+    it('removes the row so it no longer appears in a list or a direct lookup', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(catalogueOf([exercise({ id: 'a', name: 'Alpha' }), exercise({ id: 'b', name: 'Bravo' })])),
+      );
+
+      await removeCachedExercise(db, 'a');
+
+      expect(await getCachedExercise(db, 'a')).toBeNull();
+      expect((await listCachedExercises(db)).map((row) => row.id)).toEqual(['b']);
+    });
+
+    it('removes the row from the FTS index too, not only the cache table', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(catalogueOf([exercise({ id: 'a', name: 'Alpha Barbell Row' })])),
+      );
+
+      await removeCachedExercise(db, 'a');
+
+      expect(await searchExercises(db, 'alpha')).toEqual([]);
+    });
+
+    it('does not touch the stored catalogueVersion', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise({ id: 'a' })])));
+
+      await removeCachedExercise(db, 'a');
+
+      expect(await getStoredCatalogueVersion(db)).toBe('v1');
     });
   });
 
