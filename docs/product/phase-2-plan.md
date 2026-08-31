@@ -465,42 +465,142 @@ eslint error that only a local run caught. `pnpm --filter @forjd/contracts lint`
 step, since this phase added source to that package; `@forjd/domain`'s equivalent is currently
 clean and is left as a one-line follow-up rather than widened into here.
 
-> **Next session starts here → Phase F.**
+> **Phases 0, A, B, C, D and E are merged and `main` is green. Phases F, G and H are
+> implemented and tested locally, pending their PR/merge** (see the checkpoint note in the
+> roadmap). Next session starts here → **Phase I**, once F, G and H are green on `main`. The
+> ⚠ design-revision reconciliation note below Phase H's own section must be read before
+> starting Phase I — three things changed for phases I-K after this plan was written.
 
-### Phase F — Media mirror *(the stopgap)*
+### Phase F — Media mirror *(the stopgap)* — ✅ **DONE**
 
-- Create a **public `exercise-media` bucket**; `exercises:mirror-media` fetches the images from
-  the pinned upstream commit and uploads them through **`StorageProvider`** — rule 11, no
-  Supabase SDK outside the provider directory. Idempotent: skip objects that already exist, so
-  a re-run after a partial failure is safe.
-- `mediaBaseUrl` config; the service resolves `imageKeys` → URLs at read time. **The database
-  never stores a full URL.** That single choice is what keeps swapping to a licensed pack, or
-  to Cloudflare in front of the bucket, a config change rather than a migration.
-- Finalize **ADR-018** with the measured numbers, and record the free-tier ceiling that applies
-  (Supabase free: ~1 GB storage, ~5 GB egress/month) alongside the note that `expo-image`'s disk
-  cache means a device pays for each image roughly once.
+- ✅ `StorageProvider` gained `exists()` and `ensureBucket()` — the mirror's own idempotency
+  and bucket-setup needs, added to the interface rather than routed around it (rule 11 stays
+  intact: `@supabase/supabase-js` is still only imported from `apps/api/src/{auth,storage}/
+  providers/`). `SupabaseStorageProvider` was also refactored to take its `SupabaseClient` by
+  injection (`SUPABASE_STORAGE_CLIENT`, mirroring `SUPABASE_AUTH_CLIENT`'s fix from ADR-011)
+  instead of constructing it in its own constructor — the same problem, the same fix, applied
+  the moment this file got its first real test.
+- ✅ `apps/api/src/exercises/ingest/mirror-media.ts` (`pnpm --filter @forjd/api
+  exercises:mirror-media`): reads the committed snapshot (never the raw dataset — the same
+  conformance rule Phase E narrowed still covers this), fetches each unique `imageKeys` entry
+  from the pinned upstream commit, and uploads it through `StorageProvider` into a public
+  `exercise-media` bucket that the script itself creates (idempotently) on first run.
+  **Idempotent** the way the plan asked: `exists()` is checked before every upload, so the
+  steady state after the first successful run is existence checks with zero uploads.
+- ✅ `EXERCISE_MEDIA_BASE_URL` config, already consumed by `ExercisesService.resolveMedia`
+  since Phase E (it returned `null` for everything until this phase set it) — wired into
+  `deploy-api.yml`'s Cloud Run deploy step, derived from `SUPABASE_URL` rather than held as a
+  second secret, since it names no credential.
+- ✅ **One design change found only by running the real script against the real project**,
+  not by anything a unit test could have caught: `mirrorMedia`'s first draft matched
+  `load.ts`'s "fail loudly on the first error" philosophy. Run for real against the pinned
+  commit, `raw.githubusercontent.com` returned a bare `400` for a real, scattered minority of
+  image paths — consistently on retry, even after a 20-second wait, while the identical bytes
+  fetch cleanly through GitHub's git-blob API, and even a *sibling* path for the same
+  exercise succeeds (`Chair_Squat/1.jpg` next to its own failing `/0.jpg`). Upstream CDN
+  flakiness on individual objects, not a systemic outage — but "fail loudly" would have meant
+  the first flaky upstream path blocking the mirror step, and by extension flagging every
+  deploy, until a human intervened. Redesigned to catch and count per-key failures
+  (`failedKeys`) rather than abort the run: a failed key is never marked as mirrored, so the
+  next run retries it for free. Review then caught that the redesign's first draft left
+  `exists()` itself outside the try/catch — a transient Storage `list()` failure could still
+  abort the loop early, undoing the point of the whole redesign — fixed by moving `exists()`
+  inside the same guarded block. The deploy step (`.github/workflows/deploy-api.yml`) also
+  runs with `continue-on-error: true` — a handful of broken image URLs is strictly better
+  than blocking a code deploy on one external CDN's bad day.
+  **Full run against the real dev Supabase project (not just unit tests): 1,668 of 1,746
+  images mirrored, 24 already present from an earlier interrupted attempt, 54 failed** — all
+  54 named in the run's own output, all retriable for free on the next run or the next
+  deploy. See ADR-018's "Finalized at Phase F" section for the number and what it means.
+- ✅ `SupabaseStorageProvider` and `mirror-media.ts` both have their own spec now
+  (`supabase-storage.provider.spec.ts`, `mirror-media.spec.ts`), following the same
+  pure-function-over-a-fake-target pattern `load.spec.ts` established — no real network call
+  or real Supabase project in the unit suite; the real project was exercised separately, by
+  hand, as validation for this write-up.
+- ✅ **ADR-018 finalized** — status line now points at the shipped script, and its
+  Consequences section carries the real mirror run's counts alongside the Phase A estimate.
 
-This is `StorageProvider`'s first real consumer, a phase earlier than InBody needed it.
+This was `StorageProvider`'s first real consumer, a phase earlier than InBody needed it.
 
-### Phase G — Custom exercises and favourites API
+### Phase G — Custom exercises and favourites API — ✅ **DONE**
 
-- `POST /exercises`, `PATCH /exercises/:id`, `DELETE /exercises/:id` (soft), owner-only.
-  Duplicate-name rejection mirrors the prototype's check and is backed by the partial unique
-  index, so the race is closed in the database rather than only in the service.
-- `PUT` / `DELETE /exercises/:id/favourite`.
-- Ownership and refusal policy live in `ExercisesService`, not only in SQL (rule 12), with a
-  **100% coverage pin** on `exercises.service.ts` in `coverageThreshold` — the house pattern
-  for policy-bearing code, matching `athletes.service.ts` and `privacy.service.ts`.
+- ✅ `POST /exercises`, `PATCH /exercises/:id`, `DELETE /exercises/:id` (soft), owner-only,
+  `PUT`/`DELETE /exercises/:id/favourite` — all five wired in `ExercisesController`. The
+  repository side (`createCustomExercise`, `updateCustomExercise`, `softDeleteCustomExercise`,
+  `addFavourite`, `removeFavourite`, `isFavourite`) already existed from Phase C's "no wire
+  change" work; this phase was entirely about the contract, the service policy, and the
+  controller wiring on top of it.
+- ✅ **Duplicate-name rejection** reaches the wire as `409 Conflict`, backed by the partial
+  unique index (`owner_user_id, lower(name)`) — the race is closed in the database, the
+  service only translates `isUniqueViolation` into the HTTP status, matching the prototype's
+  own check.
+- ✅ **`goal` is derived server-side, never accepted from the client.** The design's own
+  comment calls it "derived, not chosen" (`docs/design/phase2-screen-specs.md` §6.1) —
+  `deriveGoal(measure)` in `ExercisesService` computes `weight -> hypertrophy`,
+  everything else `-> muscular_endurance`, the same rule the prototype's JS applies before
+  building its request. `createExerciseRequestSchema` carries no `goal` field at all, so a
+  client sending one has it silently stripped by Zod rather than trusted — closing a gap the
+  design's derivation comment left open (an inconsistent `measure`/`goal` pair was never
+  actually preventable if the wire accepted `goal`).
+- ✅ **Favouriting is not ownership.** `setFavourite` calls `findByIdForUser` first — the same
+  existence-and-visibility check `getById` already relies on — before ever touching
+  `addFavourite`/`removeFavourite`, so a bogus or invisible id 404s cleanly instead of
+  reaching the `exercise_favourites` foreign key and surfacing as a raw 500.
+- ✅ Ownership and refusal policy live in `ExercisesService`, not only in SQL (rule 12), with a
+  **100% coverage pin** on `exercises.service.ts` in `coverageThreshold` (statements,
+  branches, functions and lines all 100%) — the house pattern for policy-bearing code,
+  matching `athletes.service.ts` and `privacy.service.ts`. 41 unit tests against a fake
+  repository, plus 19 new end-to-end tests over real HTTP and real Postgres (41 total in
+  `exercises.e2e-spec.ts`, counting the read-path tests Phase E already added) proving the
+  query validation, the guard, ownership refusals
+  (**404, never 403** — the same anti-oracle reasoning `getById` already established), the
+  duplicate-name 409, and the favourite idempotency all wire together correctly.
+- ✅ `createExerciseRequestSchema` / `updateExerciseRequestSchema` added to `@forjd/contracts`
+  — the latter `createExerciseRequestSchema.partial()`, matching
+  `updateProfileRequestSchema`'s and `updatePrivacyRequestSchema`'s own partial shape. `name`
+  is trimmed before its length is bounded (the same "trim first, then bound" rule
+  `exerciseListQuerySchema.q` established, for the same reason: bounding the raw string would
+  400 a name that is fine once whitespace is discarded).
 
-### Phase H — Catalogue sync endpoint and the on-device store
+### Phase H — Catalogue sync endpoint and the on-device store — ✅ **DONE**
 
-- `GET /exercises/catalogue` returning the full catalogue plus a `catalogueVersion`.
-- `apps/mobile/src/store/exercise-catalogue.ts` — `expo-sqlite` behind a function seam, the way
-  `notification-preferences.ts` wraps AsyncStorage. Screens never touch SQLite directly, and a
-  source-text conformance test pins the import to that one module (the `apiClient.test.ts`
-  precedent).
-- FTS5 virtual table over name + muscles + equipment; version-gated re-sync on launch.
-- **ADR-019.**
+- ✅ `GET /exercises/catalogue` returns `{ exercises, catalogueVersion }` — the whole visible
+  set (catalogue plus the caller's own custom exercises), unpaginated, each row the full
+  `exerciseResponseSchema` detail shape rather than the leaner list-row summary, because
+  offline workout execution (rule 6) needs everything a detail screen would show. Declared
+  *before* `GET /exercises/:id` in the controller, deliberately — the same route-ordering
+  reasoning already documented for the collection route vs. `:id`, so `"catalogue"` is never
+  swallowed as if it were an exercise id.
+- ✅ `ExercisesRepository.listForSync` — new, unpaginated, `(name, id)`-ordered read behind the
+  endpoint. Not `listExercises` with an unbounded limit: that method's contract is a page plus
+  a lookahead row, a different shape from "give me everything."
+- ✅ `catalogueVersion` is a SHA-256 hash of every visible row's `id:updatedAt`, not a counter
+  or a bare timestamp — full reasoning, including why a counter and a timestamp were both
+  rejected, in **ADR-022** (see below for the numbering note). It deliberately **ignores
+  favourite status**, so starring an exercise never forces a full re-sync.
+- ✅ `apps/mobile/src/store/exercise-catalogue.ts` — `expo-sqlite` behind a function seam, the
+  way `notification-preferences.ts` wraps AsyncStorage. Screens never touch SQLite directly,
+  and `check-architecture-conformance.sh` pins the import to this one file (verified against
+  a planted violation before being committed, the standing house rule) — the same enforcement
+  `expo-secure-store` already has, not a new pattern.
+- ✅ FTS5 virtual table (contentless) over name + muscles + equipment, joined back to a plain
+  `exercises_cache` table for the row's real JSON. `syncExerciseCatalogue` is version-gated:
+  it fetches on every call, but only pays for the SQLite rebuild and FTS5 reindex when the
+  returned version differs from what is already stored.
+- ✅ `setLocalFavourite` writes a favourite toggle into the local mirror immediately, called
+  after the favourite endpoint succeeds, independent of the bulk sync — the deliberate other
+  half of the version hash ignoring favourites (ADR-022 again).
+- ✅ Every function takes its `SqliteConnection` by injection rather than opening one itself —
+  `expo-sqlite`'s native module cannot run under plain Jest, so this is the same fix, for the
+  same reason, as `SupabaseStorageProvider` taking its client by injection (ADR-011). 14 unit
+  tests against a fake in-memory connection cover version-gating, the `isFavourite`
+  strip-and-reattach, and FTS5 query construction (name/muscle/equipment prefix matching,
+  blank query, no-match). `openExerciseCatalogueDb()` itself — the one line touching the real
+  native API — is intentionally left to a device walk, the same "Jest cannot prove a screen
+  renders on a device" limit already accepted for HealthKit/Health Connect.
+- ✅ **ADR-022**, not ADR-019 as this bullet list originally said — ADR-019 was already
+  claimed (username and avatar) by the time this phase landed. Noted in ADR-022 itself so the
+  discrepancy is not mistaken for a typo introduced later.
 
 > ### ⚠ Reconcile with the 2026-08-30 design revision before starting Phase I
 >

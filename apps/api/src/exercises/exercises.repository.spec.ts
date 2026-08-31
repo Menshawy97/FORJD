@@ -796,6 +796,107 @@ describe("ExercisesRepository", () => {
     });
   });
 
+  describe("listForSync", () => {
+    /**
+     * Unpaginated over the *real* catalogue (873 rows and counting), so a test cannot assert
+     * on the exact returned set the way `listExercises`'s marker-scoped tests do -- there is
+     * no `q` filter to narrow it. Every assertion here instead checks that a seeded row is,
+     * or is not, present in the full result, and lets the rest of the real catalogue ride
+     * along unasserted.
+     */
+    const seedCatalogue = async (marker: string, name: string) => {
+      const exercise = await repository.upsertCatalogueExercise({
+        ...catalogueInput(`sync-${randomUUID()}`),
+        name: `${marker} ${name}`,
+      });
+      createdExerciseIds.push(exercise.id);
+      return exercise;
+    };
+
+    const seedCustom = async (ownerUserId: string, marker: string, name: string) => {
+      const exercise = await repository.createCustomExercise(ownerUserId, {
+        name: `${marker} ${name}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(exercise.id);
+      return exercise;
+    };
+
+    it("includes a catalogue exercise", async () => {
+      const userId = await makeUser("sync-catalogue");
+      const marker = `zqx${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const seeded = await seedCatalogue(marker, "Alpha");
+
+      const rows = await repository.listForSync(userId);
+
+      expect(rows.map((row) => row.exercise.id)).toContain(seeded.id);
+    });
+
+    it("includes the caller's own custom exercise", async () => {
+      const userId = await makeUser("sync-own");
+      const marker = `zqx${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const seeded = await seedCustom(userId, marker, "Bravo");
+
+      const rows = await repository.listForSync(userId);
+
+      expect(rows.map((row) => row.exercise.id)).toContain(seeded.id);
+    });
+
+    it("never includes another user's custom exercise", async () => {
+      const owner = await makeUser("sync-owner");
+      const stranger = await makeUser("sync-stranger");
+      const marker = `zqx${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const seeded = await seedCustom(owner, marker, "Private");
+
+      const rows = await repository.listForSync(stranger);
+
+      expect(rows.map((row) => row.exercise.id)).not.toContain(seeded.id);
+    });
+
+    it("excludes a soft-deleted exercise", async () => {
+      const userId = await makeUser("sync-deleted");
+      const marker = `zqx${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const removed = await seedCustom(userId, marker, "Removed");
+      await repository.softDeleteCustomExercise(removed.id, userId);
+
+      const rows = await repository.listForSync(userId);
+
+      expect(rows.map((row) => row.exercise.id)).not.toContain(removed.id);
+    });
+
+    it("reports the caller's own favourite status", async () => {
+      const userId = await makeUser("sync-fav");
+      const marker = `zqx${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const seeded = await seedCatalogue(marker, "Starred");
+      await repository.addFavourite(userId, seeded.id);
+
+      const rows = await repository.listForSync(userId);
+
+      expect(rows.find((row) => row.exercise.id === seeded.id)?.isFavourite).toBe(true);
+    });
+
+    /** Stable ordering matters here: `ExercisesService` hashes rows in this exact order. */
+    it("orders rows by (name, id), the same order listExercises uses", async () => {
+      const userId = await makeUser("sync-order");
+      const marker = `zqx${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      await seedCatalogue(marker, "Charlie");
+      await seedCatalogue(marker, "Alpha");
+      await seedCatalogue(marker, "Bravo");
+
+      const rows = await repository.listForSync(userId);
+      const markedNames = rows
+        .map((row) => row.exercise.name)
+        .filter((name) => name.startsWith(marker));
+
+      expect(markedNames).toEqual([`${marker} Alpha`, `${marker} Bravo`, `${marker} Charlie`]);
+    });
+  });
+
   describe("findByIdForUser", () => {
     it("returns a catalogue exercise with its favourite state", async () => {
       const userId = await makeUser("detail-catalogue");

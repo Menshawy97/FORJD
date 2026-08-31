@@ -56,6 +56,19 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# Phase H: the on-device exercise catalogue is the app's first real expo-sqlite consumer.
+# Same reasoning as the expo-secure-store pin just above -- screens never touch SQLite
+# directly, they call exercise-catalogue.ts, so that every write goes through the one place
+# that knows the schema and the version-gating contract with ExercisesService.getCatalogue.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' "['\"]expo-sqlite['\"]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/store/exercise-catalogue.ts$' \
+    | grep -v '/__tests__/' || true)
+  if [ -n "$hits" ]; then
+    report "expo-sqlite imported outside apps/mobile/src/store/exercise-catalogue.ts" "$hits"
+  fi
+fi
+
 # ADR-005 / Phase 2: the raw vendored dataset is readable only by the normalizer.
 #
 # The point is that ingest stays a reviewable, single-entry pipeline. Anything else reading

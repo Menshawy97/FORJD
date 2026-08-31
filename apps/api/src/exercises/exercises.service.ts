@@ -1,18 +1,38 @@
+import { createHash } from "crypto";
+
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type {
+  CreateExerciseRequest,
+  ExerciseCatalogueResponse,
   ExerciseListQuery,
   ExerciseListResponse,
   ExerciseResponse,
   ExerciseSummary,
+  UpdateExerciseRequest,
 } from "@forjd/contracts";
-import { Exercise, User } from "@forjd/domain";
+import { Exercise, ExerciseGoal, ExerciseMeasure, User } from "@forjd/domain";
 
 import { decodeExerciseCursor, encodeExerciseCursor } from "./exercise-cursor";
-import { ExercisesRepository, ExerciseWithFavourite } from "./exercises.repository";
+import {
+  ExercisesRepository,
+  ExerciseWithFavourite,
+  UpdateCustomExerciseInput,
+} from "./exercises.repository";
 
 /** Same pattern, same reason as `AthletesService`: a malformed id never reaches Postgres. */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * "Derived, not chosen" (`docs/design/phase2-screen-specs.md` §6.1): the create/edit screen
+ * never lets a user pick a goal, it computes one from `measure` alone. Kept server-side,
+ * not trusted from the wire, so `createExerciseRequestSchema` carries no `goal` field at all
+ * -- see that schema's own comment for why accepting one would be worse than deriving it
+ * twice.
+ */
+function deriveGoal(measure: ExerciseMeasure): ExerciseGoal {
+  return measure === "weight" ? "hypertrophy" : "muscular_endurance";
+}
 
 /**
  * Reading the exercise library: browse, search, and one exercise in full.
@@ -71,6 +91,43 @@ export class ExercisesService {
     };
   }
 
+  /**
+   * The whole visible set, unpaginated, for the on-device store (Phase H) to mirror into
+   * SQLite. Full `toDetail` rows, not `toSummary` -- offline workout execution needs
+   * everything a detail screen would show, not just a list row's worth (CLAUDE.md rule 6:
+   * the network is never in the critical path of a live session).
+   *
+   * **`catalogueVersion` deliberately ignores `isFavourite`.** Hashing it in would force a
+   * full re-sync of ~1,700+ rows on every star tap, for state that changes far more often
+   * than the exercise data itself. The mobile store is expected to write a favourite toggle
+   * into its own local mirror immediately after `PUT`/`DELETE .../favourite` succeeds,
+   * independently of this endpoint -- the two are different frequencies of change and do not
+   * need one invalidation signal.
+   */
+  async getCatalogue(viewer: User): Promise<ExerciseCatalogueResponse> {
+    const rows = await this.exercisesRepository.listForSync(viewer.id);
+
+    return {
+      exercises: rows.map((row) => this.toDetail(row)),
+      catalogueVersion: this.deriveCatalogueVersion(rows),
+    };
+  }
+
+  /**
+   * A content hash, not a counter or a bare `MAX(updatedAt)`: a counter needs somewhere to
+   * live and something to remember to bump, and a timestamp alone misses a soft-delete --
+   * removing a row from the visible set changes nothing about any *surviving* row's
+   * `updatedAt`. Hashing every row's `id:updatedAt` in the repository's stable `(name, id)`
+   * order changes the digest for an add, an edit, or a delete alike, and for nothing else.
+   */
+  private deriveCatalogueVersion(rows: ExerciseWithFavourite[]): string {
+    const hash = createHash("sha256");
+    for (const { exercise } of rows) {
+      hash.update(`${exercise.id}:${exercise.updatedAt.toISOString()}`);
+    }
+    return hash.digest("hex");
+  }
+
   async getById(viewer: User, id: string): Promise<ExerciseResponse> {
     if (!UUID_PATTERN.test(id)) {
       throw this.refuse();
@@ -82,6 +139,97 @@ export class ExercisesService {
     }
 
     return this.toDetail(found);
+  }
+
+  /**
+   * A freshly created exercise cannot be favourited yet -- there is no request race where it
+   * could be, since the row does not exist until this call returns -- so `isFavourite: false`
+   * is asserted rather than queried, and this is the one place in the file that skips
+   * `findByIdForUser`.
+   */
+  async create(owner: User, body: CreateExerciseRequest): Promise<ExerciseResponse> {
+    const created = await this.exercisesRepository.createCustomExercise(owner.id, {
+      name: body.name,
+      category: body.category,
+      goal: deriveGoal(body.measure),
+      measure: body.measure,
+      primaryMuscles: body.primaryMuscles,
+      equipment: body.equipment,
+      description: body.description ?? null,
+    });
+
+    return this.toDetail({ exercise: created, isFavourite: false });
+  }
+
+  /**
+   * Ownership is enforced in the repository's `WHERE` clause (`id`, `ownerUserId`,
+   * `deletedAt IS NULL` together), not just here (rule 12's "not only in SQL" cuts both
+   * ways -- SQL alone is not enough, but skipping it and trusting only application code
+   * would leave the constraint unverifiable by a query plan). A `null` back from the
+   * repository covers three different reasons -- no such id, someone else's exercise, a
+   * catalogue row with no owner at all -- and `refuse()` deliberately does not distinguish
+   * them, same reasoning as `getById`.
+   */
+  async update(owner: User, id: string, patch: UpdateExerciseRequest): Promise<ExerciseResponse> {
+    if (!UUID_PATTERN.test(id)) {
+      throw this.refuse();
+    }
+
+    const repositoryPatch: UpdateCustomExerciseInput = {
+      ...(patch.name !== undefined && { name: patch.name }),
+      ...(patch.category !== undefined && { category: patch.category }),
+      // Goal tracks measure, not the other way around: if measure is not part of this patch,
+      // the existing goal is left untouched rather than re-derived from the unchanged value.
+      ...(patch.measure !== undefined && { measure: patch.measure, goal: deriveGoal(patch.measure) }),
+      ...(patch.primaryMuscles !== undefined && { primaryMuscles: patch.primaryMuscles }),
+      ...(patch.equipment !== undefined && { equipment: patch.equipment }),
+      ...(patch.description !== undefined && { description: patch.description ?? null }),
+    };
+
+    const updated = await this.exercisesRepository.updateCustomExercise(id, owner.id, repositoryPatch);
+    if (!updated) {
+      throw this.refuse();
+    }
+
+    const isFavourite = await this.exercisesRepository.isFavourite(owner.id, id);
+    return this.toDetail({ exercise: updated, isFavourite });
+  }
+
+  /** Soft delete, so nothing 404s that a live workout session still references (ADR-017). */
+  async delete(owner: User, id: string): Promise<void> {
+    if (!UUID_PATTERN.test(id)) {
+      throw this.refuse();
+    }
+
+    const deleted = await this.exercisesRepository.softDeleteCustomExercise(id, owner.id);
+    if (!deleted) {
+      throw this.refuse();
+    }
+  }
+
+  /**
+   * Favouriting is not ownership -- any visible exercise, catalogue or someone else's is not
+   * even reachable, can be starred, not just the caller's own. `findByIdForUser` is the
+   * existence-and-visibility check `getById` already relies on; skipping it and calling
+   * straight into `addFavourite`/`removeFavourite` would let a bogus id reach the
+   * `exercise_favourites` foreign key and surface as a raw 500, not the clean 404 every other
+   * bad-id path in this file returns.
+   */
+  async setFavourite(viewer: User, id: string, favourite: boolean): Promise<void> {
+    if (!UUID_PATTERN.test(id)) {
+      throw this.refuse();
+    }
+
+    const found = await this.exercisesRepository.findByIdForUser(id, viewer.id);
+    if (!found) {
+      throw this.refuse();
+    }
+
+    if (favourite) {
+      await this.exercisesRepository.addFavourite(viewer.id, id);
+    } else {
+      await this.exercisesRepository.removeFavourite(viewer.id, id);
+    }
   }
 
   /**
