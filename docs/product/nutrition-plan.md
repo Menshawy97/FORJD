@@ -391,19 +391,97 @@ above)*.
 suites**, `--runInBand`); full mobile suite green (**369 tests / 67 suites** — unaffected, but
 confirmed since `@forjd/contracts` is a shared dependency); architecture conformance clean.
 
-**Phase E — the dashboard screen.** `nutrition` plus its three bottom sheets, wired to real
-data. Build the **empty state first** — first-run state is an empty log and zero saved meals,
-so that is what every new user sees.
+**Phase F — the dashboard screen — ✅ DONE** *(renumbered from the original "Phase E" here —
+this section's own lettering had not been updated when Phase D's earlier correction shifted
+everything after it by one; fixed now rather than left to compound further)*. `nutrition.tsx`
+plus its three bottom sheets (Save as meal, Log meal, Set daily goals), wired to real data via
+the Phase E endpoints, verified against the real screenshots (`FORJD mobile app design/
+screenshots/nutrition dashboard.png`, `Set Nutrition goals.png`, `save meal.png`) and on a
+physical device via Expo Go during this session.
 
-**Phase F — food search and detail.** `foodSearch`, `foodDetail`, and the custom-food sheet.
+- **Empty state built first**, per the plan's own instruction: no goals ever saved shows an
+  honest "Set your daily goals" prompt card instead of a ring against a fabricated default
+  (the design's own prototype has no equivalent state, since its `MACRO_GOALS` literal always
+  exists — this is a deliberate addition, not a fidelity gap). Every meal slot renders its
+  label and a bare "+ Add food" link when empty, matching the design exactly (no per-slot
+  empty-state string exists in the spec).
+- **Two adaptations forced by Phase E's own wire shapes**, not stylistic choices, documented
+  in `nutrition.tsx`'s own header comment:
+  1. `NutritionLogEntryResponse` and `SavedMealResponse.items` carry only `foodId`, not a
+     food's name — Phase E's docblock said joining that in was "a later phase's job"; this
+     screen does it client-side, fetching every distinct `foodId` referenced (deduplicated)
+     once per load and keeping them in a `foodsById` map.
+  2. **Grouped log rows render individually, not collapsed.** The prototype's collapsed group
+     row shows the *saved meal's own name*, but nothing in the wire model records that name
+     once a meal is logged (`nutrition_log_entries` has only `groupId`, no `groupName`).
+     Rendering each item individually is a feature reduction, not a behaviour change — every
+     logged item still shows with its real name and macros; visual collapsing is a follow-up
+     once a name source exists.
+  3. No "qty ×N" suffix — the server model has no repeat-count field, only `servingLabel` +
+     `grams`.
+- **A missing route found and fixed during the device walk**: `nutrition.tsx`'s item-row tap
+  navigated to `/food/[id]`, but that route file never existed — a dead link the mobile test
+  suite's mocked router couldn't catch (it doesn't validate real route registration). Added a
+  placeholder (`app/food/[id].tsx`), alongside two more the plan always intended as Phase G/I
+  placeholders (`food-search.tsx`, `saved-meals.tsx`, `nutrition-share.tsx`), mirroring the
+  exercises catalogue's own Phase I precedent for placeholder routes preceding the phases that
+  fill them in.
+- **A real UX bug found live on a physical device, not caught by any test**: the "Set daily
+  goals" sheet's numeric keyboard covered its own Save/Cancel buttons and the lower input
+  rows, leaving the user stuck mid-input with no way to confirm or see what they were typing.
+  Fixed by wrapping both sheets that contain a `TextInput` (goals, save-as-meal) in
+  `KeyboardAvoidingView`. Recorded as a durable lesson (no existing sheet in the app had ever
+  needed this before) for every future bottom sheet with an input, starting with Phase G's
+  custom-food sheet and `editMeal`'s inline grams inputs.
+- **A real infinite-refetch bug found while debugging an unrelated test crash**: `loadAll`'s
+  `useCallback` depended on the whole object `useToast()` returns, which is a fresh object
+  every render — only its `show` function is stable. That gave `loadAll` a new identity every
+  render, and the `useEffect` that calls it refired on every render, forever. Invisible in
+  manual testing (network latency masks a tight reload loop enough not to notice), but it
+  surfaced as a bizarre, seemingly environment-level Jest crash
+  (`react-native-css-interop`'s `maybeHijackSafeAreaProvider` reading `Platform.OS` on
+  `undefined`) that took extensive bisection to trace back to its real cause: React's own
+  "act() not configured" warnings, present throughout the debugging, were themselves the
+  correct signal of the bug, not noise. Fixed by depending on `toast.show` instead of `toast`.
+- **New shared components/tokens**: `Icon`'s `share` glyph (transcribed from the prototype's
+  `icon()` helper); `Header`'s `onBack` made optional, since the nutrition dashboard is "a
+  destination, not a sub-screen" and has no back chevron (confirmed against the screenshot);
+  the design's own flagged-missing `nutritionCarbs` token (`#6f9ac9`) added to both
+  `tokens.ts` and `tailwind.config.ts`.
+- **12 API client functions** added to `apiClient.ts` for the whole nutrition surface
+  (search, food CRUD, macro goals, saved meals, the daily log).
+- **8 fidelity tests** (`nutrition-fidelity.test.tsx`), covering the honest empty state, the
+  populated summary ring/macro bars, real food-name resolution, optimistic delete, both
+  sheets' full save/log flows (scoped with `testID`+`within` where two sheets can share
+  visible text), and header-icon navigation.
 
-**Phase G — saved meals.** `savedMeals` and `editMeal`.
+**Verified**: `tsc --noEmit` and `eslint` clean; full mobile suite green (**379 tests / 69
+suites**, confirmed after an unrelated resource-contention flake on the first run resolved
+itself with fewer workers); architecture conformance clean; manually walked on a physical
+iPhone via Expo Go against a locally-running API server with the real Phase D/E stack (the
+staging deploy for Phase E was still mid-flight during this session — see the open item
+below).
 
-**Phase H — Home entry point.** The "Nutrition Today" card on the Home dashboard. Sequenced
+**Open item carried forward, not fixed in this phase**: the post-merge staging deploy for
+Phase E's PR (`Deploy API to Cloud Run` run 33440388423) hung for 60+ minutes on the "Run
+database migrations and load the exercise and nutrition catalogues" step, versus ~2 minutes
+measured locally for the equivalent `nutrition:load` run. Left running rather than cancelled,
+per the user's explicit choice. Needs investigation before the next deploy is trusted blindly
+— likely candidates: a connection-pool or timeout difference between the GitHub-hosted
+runner's route to Supabase's session pooler and a local direct connection, or a
+`nutrition:load` behaviour that only manifests against a cold/empty remote `foods` table
+(13,694 sequential inserts, vs. mostly-updates locally where the table was already
+populated).
+
+**Phase G — food search and detail.** `foodSearch`, `foodDetail`, and the custom-food sheet.
+
+**Phase H — saved meals.** `savedMeals` and `editMeal`.
+
+**Phase I — Home entry point.** The "Nutrition Today" card on the Home dashboard. Sequenced
 last of the screens because Home itself is otherwise still a placeholder; if Home has been
 built by then, this folds into that work instead.
 
-**Phase I — share.** `nutritionShare`. Pure client rendering, no backend. Lowest priority and
+**Phase J — share.** `nutritionShare`. Pure client rendering, no backend. Lowest priority and
 the natural thing to cut if the phase runs long.
 
 ## Verification

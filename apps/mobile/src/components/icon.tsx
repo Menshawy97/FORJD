@@ -100,6 +100,10 @@ const GLYPHS = {
     shapes: [path('M12 15.4V5.6M8.2 9.4 12 5.6l3.8 3.8'), path('M5.4 15.8v2.6h13.2v-2.6')],
   },
   plus: { viewBox: '0 0 24 24', shapes: [path('M12 5.6v12.8M5.6 12h12.8')] },
+  share: {
+    viewBox: '0 0 24 24',
+    shapes: [path('M12 3v12M12 3l-4 4M12 3l4 4'), path('M6 13v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6')],
+  },
   search: {
     viewBox: '0 0 24 24',
     shapes: [{ kind: 'circle', cx: 11, cy: 11, r: 5.6 }, path('m15.4 15.4 3.4 3.4')],

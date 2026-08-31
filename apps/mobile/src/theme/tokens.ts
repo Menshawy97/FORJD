@@ -95,6 +95,9 @@ export const colors = {
   accentHover: '#F4894C',
   accentDark: '#A84D1D',
   green: '#79B98A',
+  // The nutrition summary card's Carbs macro bar -- flagged in nutrition-screen-specs.md §7 as
+  // a colour the prototype uses (`#6f9ac9`) with no token of its own until now.
+  nutritionCarbs: '#6F9AC9',
   readinessLabel: '#8BBF96',
   destructive: '#C9503C',
   errorText: '#E05A3C',
