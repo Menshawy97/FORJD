@@ -198,6 +198,9 @@ export async function searchExercises(db: SqliteConnection, query: string): Prom
 export interface CachedExerciseFilter {
   category?: string;
   favouritesOnly?: boolean;
+  /** The library's `Custom` filter chip -- exercises with `ownerUserId` set, mirrored into
+   * `exercises_cache.is_custom` since sync time (Phase H). */
+  customOnly?: boolean;
 }
 
 /**
@@ -221,6 +224,9 @@ export async function listCachedExercises(
   }
   if (filter.favouritesOnly) {
     conditions.push('is_favourite = 1');
+  }
+  if (filter.customOnly) {
+    conditions.push('is_custom = 1');
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

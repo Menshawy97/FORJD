@@ -52,11 +52,17 @@ import { colors } from '@/theme/tokens';
  * icon, title/subtitle, star — nothing else.
  */
 
-type LibraryFilter = 'all' | 'favourites' | ExerciseCategory;
+type LibraryFilter = 'all' | 'favourites' | 'custom' | ExerciseCategory;
 
+/**
+ * `Custom` is a deliberate addition beyond §3.4's eight documented chips -- the same kind of
+ * cross-category filter `Favourites` already is (it cuts across every category rather than
+ * naming one), so it sits in the same position, right after it.
+ */
 const FILTER_CHIPS: ReadonlyArray<{ id: LibraryFilter; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'favourites', label: 'Favourites' },
+  { id: 'custom', label: 'Custom' },
   ...EXERCISE_CATEGORIES.map((category) => ({
     id: category,
     label: EXERCISE_CATEGORY_DISPLAY_NAMES[category],
@@ -87,6 +93,9 @@ async function loadExercises(
     if (filter === 'favourites') {
       return matches.filter((exercise) => exercise.isFavourite);
     }
+    if (filter === 'custom') {
+      return matches.filter((exercise) => exercise.isCustom);
+    }
     if (filter !== 'all') {
       return matches.filter((exercise) => exercise.category === filter);
     }
@@ -94,8 +103,9 @@ async function loadExercises(
   }
 
   return listCachedExercises(db, {
-    category: filter !== 'all' && filter !== 'favourites' ? filter : undefined,
+    category: filter !== 'all' && filter !== 'favourites' && filter !== 'custom' ? filter : undefined,
     favouritesOnly: filter === 'favourites',
+    customOnly: filter === 'custom',
   });
 }
 
@@ -104,8 +114,10 @@ async function loadRecent(
   filter: LibraryFilter,
   query: string,
 ): Promise<ExerciseResponse[]> {
-  // §3.1: "The Favourites filter suppresses the Recent section entirely."
-  if (filter === 'favourites') {
+  // §3.1: "The Favourites filter suppresses the Recent section entirely." `Custom` gets the
+  // same treatment -- a recently-opened catalogue exercise showing up under a filter meant to
+  // isolate the user's own exercises would be confusing, not helpful.
+  if (filter === 'favourites' || filter === 'custom') {
     return [];
   }
 
@@ -323,7 +335,9 @@ export default function LibraryScreen() {
               <Text className="font-archivo text-[13px] text-dimmer" style={{ paddingVertical: 26 }}>
                 {filter === 'favourites'
                   ? 'No favourite exercises yet — tap a star to add one.'
-                  : 'No exercises match.'}
+                  : filter === 'custom'
+                    ? 'No custom exercises yet — tap New to create one.'
+                    : 'No exercises match.'}
               </Text>
             );
           }

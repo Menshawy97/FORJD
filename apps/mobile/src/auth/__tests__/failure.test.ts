@@ -9,7 +9,7 @@
 // password" is not a thing signup can say), so the wording stays at the call site.
 import { AxiosError, AxiosHeaders } from 'axios';
 
-import { actionableServerMessage, classifyRequestFailure } from '../failure';
+import { actionableServerMessage, classifyRequestFailure, isConflict } from '../failure';
 
 /** A rejection shaped the way axios shapes one, for a response that did arrive. */
 function withStatus(status: number, data: unknown = {}): AxiosError {
@@ -112,5 +112,25 @@ describe('actionableServerMessage', () => {
     expect(actionableServerMessage(withStatus(429, { message: 42 }))).toBeUndefined();
     expect(actionableServerMessage(new AxiosError('Network Error'))).toBeUndefined();
     expect(actionableServerMessage(undefined)).toBeUndefined();
+  });
+});
+
+describe('isConflict', () => {
+  it('reads a 409 as a conflict', () => {
+    expect(isConflict(withStatus(409))).toBe(true);
+  });
+
+  it('reads a plain object carrying a 409 response the same way', () => {
+    expect(isConflict({ response: { status: 409 } })).toBe(true);
+  });
+
+  it('is false for every other status', () => {
+    expect(isConflict(withStatus(400))).toBe(false);
+    expect(isConflict(withStatus(500))).toBe(false);
+  });
+
+  it('is false when there is no response at all', () => {
+    expect(isConflict(new AxiosError('Network Error'))).toBe(false);
+    expect(isConflict(undefined)).toBe(false);
   });
 });

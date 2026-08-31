@@ -108,12 +108,24 @@ describe('exercise detail screen fidelity', () => {
     expect(mockReplace).toHaveBeenCalledWith('/library');
   });
 
-  it('renders a tag pill for each primary muscle plus the goal', async () => {
+  it('renders a tag pill for each primary muscle, the category, and the goal', async () => {
     const { findByText } = await render(<ExerciseDetailScreen />);
 
     expect(await findByText('Chest')).toBeTruthy();
     expect(await findByText('Triceps')).toBeTruthy();
+    expect(await findByText('Strength')).toBeTruthy();
     expect(await findByText('Hypertrophy')).toBeTruthy();
+  });
+
+  it('renders a Custom tag pill for a custom exercise, and omits it for a catalogue one', async () => {
+    const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
+    await findByText('Bench Press');
+    expect(queryByText('Custom')).toBeNull();
+
+    (getCachedExercise as jest.Mock).mockResolvedValue(exercise({ isCustom: true }));
+    const { findByText: findByTextCustom } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByTextCustom('Custom')).toBeTruthy();
   });
 
   it('renders the Equipment block with a pill per item when equipment is present', async () => {
@@ -156,6 +168,28 @@ describe('exercise detail screen fidelity', () => {
         'Warm the joint up with a lighter set first, and keep the movement smooth — jerky reps shift stress to the joint instead of the muscle.',
       ),
     ).toBeTruthy();
+  });
+
+  it('uses a custom exercise\'s own description as its tip, never a generated fallback', async () => {
+    (getCachedExercise as jest.Mock).mockResolvedValue(
+      exercise({ isCustom: true, description: 'Brace hard and keep the bar path dead vertical.' }),
+    );
+
+    const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
+
+    expect(await findByText('How to train it: ')).toBeTruthy();
+    expect(await findByText('Brace hard and keep the bar path dead vertical.')).toBeTruthy();
+    // Bench Press would otherwise draw the curated catalogue tip -- it must not leak through.
+    expect(queryByText(/shoulder blades pinned back/)).toBeNull();
+  });
+
+  it('omits the tip entirely for a custom exercise with no description, rather than a generic fallback', async () => {
+    (getCachedExercise as jest.Mock).mockResolvedValue(exercise({ isCustom: true, description: null }));
+
+    const { findByText, queryByText } = await render(<ExerciseDetailScreen />);
+
+    await findByText('Bench Press');
+    expect(queryByText('How to train it: ')).toBeNull();
   });
 
   it('renders the Best set / Est. 1RM stat tiles with an honest empty state, not fake numbers', async () => {
@@ -294,7 +328,7 @@ describe('exercise detail screen fidelity', () => {
         instructions: [],
       });
 
-    it('appends a Running tag to the muscle and goal pills', async () => {
+    it('shows Running as the category tag, same as every other exercise\'s category tag', async () => {
       (getCachedExercise as jest.Mock).mockResolvedValue(runningExercise());
       const { findByText } = await render(<ExerciseDetailScreen />);
 

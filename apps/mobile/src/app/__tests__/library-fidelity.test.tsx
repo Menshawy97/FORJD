@@ -101,13 +101,19 @@ describe('library screen fidelity', () => {
     expect(await findByPlaceholderText('Search exercises…')).toBeTruthy();
   });
 
-  /** §3.4: eight chips, Favourites second, All selected by default. */
-  it('renders all eight filter chips in the exact spec order', async () => {
+  /**
+   * §3.4 documents eight chips (Favourites second, All selected by default). `Custom` is a
+   * deliberate addition beyond that spec, added at the user's request alongside the exercise
+   * detail screen's `Custom` tag (Phase K follow-up) -- same kind of cross-category filter as
+   * `Favourites`, so it sits right after it.
+   */
+  it('renders all nine filter chips in the exact order, including the Custom addition', async () => {
     const { findByText } = await render(<LibraryScreen />);
 
     const labels = [
       'All',
       'Favourites',
+      'Custom',
       'Strength',
       'Running',
       'Cross Training',
@@ -171,6 +177,37 @@ describe('library screen fidelity', () => {
     fireEvent.press(await findByText('Favourites'));
 
     await waitFor(() => expect(queryByText('Recent')).toBeNull());
+  });
+
+  it('shows the custom-exercises empty state when the Custom chip is active and none exist', async () => {
+    const { findByText } = await render(<LibraryScreen />);
+
+    fireEvent.press(await findByText('Custom'));
+
+    expect(await findByText('No custom exercises yet — tap New to create one.')).toBeTruthy();
+  });
+
+  it('suppresses the Recent section when the Custom chip is active', async () => {
+    (getRecentExerciseIds as jest.Mock).mockResolvedValue(['ex1']);
+    const { findByText, queryByText } = await render(<LibraryScreen />);
+    await waitFor(() => expect(getRecentExerciseIds).toHaveBeenCalled());
+
+    fireEvent.press(await findByText('Custom'));
+
+    await waitFor(() => expect(queryByText('Recent')).toBeNull());
+  });
+
+  it('filters to custom exercises only via listCachedExercises when the Custom chip is active', async () => {
+    (listCachedExercises as jest.Mock).mockResolvedValue([exercise({ isCustom: true })]);
+    const { findByText } = await render(<LibraryScreen />);
+
+    fireEvent.press(await findByText('Custom'));
+
+    await waitFor(() => expect(findByText('Bench Press')).resolves.toBeTruthy());
+    expect(listCachedExercises).toHaveBeenLastCalledWith(
+      {},
+      { category: undefined, favouritesOnly: false, customOnly: true },
+    );
   });
 
   it('toggles a favourite locally and calls the API, star icon reflecting the new state', async () => {

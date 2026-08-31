@@ -465,12 +465,15 @@ eslint error that only a local run caught. `pnpm --filter @forjd/contracts lint`
 step, since this phase added source to that package; `@forjd/domain`'s equivalent is currently
 clean and is left as a one-line follow-up rather than widened into here.
 
-> **Phases 0 through J are merged and `main` is confirmed green** (F, G and H via
-> [PR #46](https://github.com/Menshawy97/FORJD/pull/46); I via
-> [PR #47](https://github.com/Menshawy97/FORJD/pull/47); J implemented, tested, and its
-> non-device checks all green — see Phase J's own section for what's still outstanding). Next
-> session starts here → **Phase K**. The ⚠ design-revision reconciliation note below Phase
-> H's own section still applies to Phase K (the vocabulary-subset decision).
+> **Phases 0 through K are implemented and their non-device checks are all green** (F, G and H
+> via [PR #46](https://github.com/Menshawy97/FORJD/pull/46); I via
+> [PR #47](https://github.com/Menshawy97/FORJD/pull/47); J via
+> [PR #48](https://github.com/Menshawy97/FORJD/pull/48) +
+> [PR #49](https://github.com/Menshawy97/FORJD/pull/49); K pending its own PR/merge — see this
+> file's Verification section for what's already confirmed on-device and what a Phase 2.5
+> session should still walk). **Phase 2's screen work is now complete** — next session starts
+> with Phase 2.5 (nutrition, `docs/product/nutrition-plan.md`) per the roadmap's design-revision
+> note, unless a Phase 2 follow-up (the Open Items list below) takes priority first.
 
 ### Phase F — Media mirror *(the stopgap)* — ✅ **DONE**
 
@@ -766,15 +769,83 @@ unconfirmed: the running variant, favouriting, and the full delete flow.
 Whoever picks up Phase K should fold these into that phase's own device walk rather than
 treating Phase J as fully closed until they're checked.
 
-### Phase K — Custom exercise create / edit / delete screen
+### Phase K — Custom exercise create / edit screen — ✅ **DONE**
 
 `/new-exercise`, doubling as the edit screen as the prototype does. Multi-select muscles and
 equipment, description, category, `Measured by`, and the ordered toast validation
-(name → ≥1 muscle → ≥1 equipment → duplicate name). Delete confirmation sheet.
+(name → ≥1 muscle → ≥1 equipment → duplicate name).
 
-**Known deviation to apply without asking:** the prototype's delete copy says "permanently
-removed. This can't be undone." We soft-delete, so reword to stay truthful to the user while
-the row survives for Phase 3 session history. Record it in the deviations list.
+**Correction found while building: no delete control on this screen.** The heading above
+originally said "create / edit / delete", but the prototype source
+(`s_newExercise`, line 3065) calls `this.hdr(editing?'Edit Exercise':'New Exercise',
+this.go('library'))` with no third argument — no delete icon — and none of the reference
+screenshots (`custom exercise1.png`, `custom exercise2.png`, `editcustomexercise.png`) show
+one either. Delete already shipped on the exercise detail screen in Phase J (confirmed again
+by `deletecustomexercise.png`), so Phase K builds create/edit only.
+
+**Vocabulary decision, made explicit per §3's own instruction:** the muscle/equipment pickers
+offer the prototype's own 13-muscle / 12-equipment **subset**, not the full canonical
+`MUSCLE_GROUPS` (19) / `EQUIPMENT` (16) enums — confirmed against all three reference
+screenshots, not just the interactive prototype, so there is no ambiguity left to resolve.
+Muscles omitted: lats, traps, lower_back, neck, abductors, adductors. Equipment omitted:
+foam_roller, exercise_ball, ez_curl_bar, other. Those stay reachable only through the ingest
+adapter (Phase D) — a deliberate gap, not an oversight, since Phase D's own findings already
+established the seed catalogue never produces them.
+
+**Known deviation, applied without asking:** the prototype's delete copy (on the *detail*
+screen's sheet) says "permanently removed. This can't be undone." Phase 2 soft-deletes, so
+that copy would be false — already reworded in Phase J; recorded in the deviations list (§8).
+
+#### What Phase K produced
+
+- ✅ `apps/mobile/src/app/new-exercise.tsx` replaces the Phase I placeholder. Name field,
+  13/12-chip muscle/equipment multi-select (`SelectChip`, a checkmark glyph when selected —
+  disambiguated with an `${label} muscle`/`${label} equipment` accessibility label, since the
+  "Back" muscle chip's visible text would otherwise collide with the header's own "Back"
+  button), description textarea, six-way category select (`Strength` default), three-way
+  measure select (`Weight × reps` default), and the footnote. Edit mode prefills every field
+  from `getCachedExercise` (the same on-device catalogue read Phase J already established).
+- ✅ Validation is tap-time, not disable-time, per §3: the Save button stays tappable at
+  opacity 0.5 when incomplete, and pressing it walks the same order the prototype's own JS
+  does — name, then muscle, then equipment — each showing its own toast rather than a single
+  generic error.
+- ✅ Duplicate-name detection is server-side (Phase G's partial unique index +
+  `409 Conflict`), not a client-side scan of the whole library — a new `isConflict(error)` in
+  `auth/failure.ts` reads the 409 the same way `classifyRequestFailure` already reads a 401,
+  and the screen shows the prototype's own copy, `An exercise with that name already exists`.
+- ✅ `apiClient.createExercise`/`updateExercise` (`POST`/`PATCH /exercises`, both already
+  shipped server-side in Phase G) call through, then `syncExerciseCatalogue` re-fetches so the
+  new/edited row is in the local mirror before the screen navigates back to `/library` with a
+  `toast` param — `"<name> added to your library"` on create, `"<name> updated"` on edit,
+  verbatim from the prototype's own `flash()` call.
+- ✅ TDD throughout: `createExercise`/`updateExercise`/`isConflict` were each written RED
+  before GREEN; the screen carries a 16-test fidelity suite covering both modes, the ordered
+  validation, the duplicate-name path, and edit-mode prefill.
+- ✅ **A second real gap found and fixed after a live device walk**, this one caught by the
+  user, not by a test: the exercise detail screen's "How to train it" tip (Phase J) was
+  calling `trainingTip()` — the curated/muscle-fallback function — for **every** exercise,
+  including custom ones. For a made-up custom exercise, `trainingTip`'s generic fallback is
+  not real advice; the user pointed out the tip for a custom exercise should be whatever they
+  wrote in the create screen's own `Description` field, since that field's own hint text
+  (*"cues, setup or form notes"*) is exactly what the tip box already asks for. Fixed in
+  `exercise/[id].tsx`: a custom exercise's tip is now its own `description` (nullable — no
+  description means no tip box, the same "real content or omit" rule the Equipment block and
+  Instructions already follow), never the generated fallback. `trainingTip()` still applies
+  to catalogue exercises, where it is real curated content.
+- ✅ **Spacing hardened after a live device walk found visible drift from the reference
+  screenshots.** Every layout-affecting margin in `new-exercise.tsx` moved from a NativeWind
+  arbitrary-bracket className (`mt-[24px]`) to an explicit numeric `style` value, and every
+  value was re-checked against the prototype's own literal CSS (`margin:'24px 0 4px'` for
+  each section label, `margin:'0 0 10px'` for each hint line) rather than approximated. The
+  root cause was not conclusively isolated — this is a defensive fix, not a diagnosed one —
+  but it removes NativeWind's arbitrary-className path as a variable entirely for this
+  screen, and the user confirmed the corrected layout on their physical device afterward.
+- ✅ Verification run: 362/362 mobile Jest tests green (full suite, no regressions), typecheck
+  clean, lint clean, and a real `npx expo export --platform android` bundle compile succeeded.
+  **Physical-device walk: done, live, by the user** — create mode, the honest-empty-state
+  stat tiles/sparkline/history, and the corrected spacing were all confirmed on a physical
+  iPhone via Expo Go during this same session, closing out the "still unconfirmed on-device"
+  items Phase J's own section had flagged for the honest-empty-state work.
 
 ---
 

@@ -41,9 +41,10 @@ Mobile.dc.html` grew 234 KB → 365 KB. Verified delta, tokens, and what did *no
   --ignore-all-space` over it is empty. It is a frozen pre-revision snapshot that now omits an
   entire feature area. Do not build from it.
 
-**Phase 2 is unaffected and continues from Phase K** (Phases D, E, F, G, H, I and J all landed
-after the revision). The revision adds to Phase 2's scope (`favorites`, `newExercise`) rather
-than redirecting it.
+**Phase 2's screen work is complete as of Phase K** (Phases D through K all landed after the
+revision). The revision added to Phase 2's scope (`favorites`, `newExercise`) rather than
+redirecting it, and both landed: the `Favourites` filter chip in Phase I, `newExercise` in
+Phase K.
 
 **Phase E is done and merged.** The exercise library is readable over the wire now:
 `exercises:load` (idempotent, wired into `deploy-api.yml` after `db:migrate`),
@@ -115,12 +116,31 @@ can't be undone"), and calls the already-shipped `DELETE /exercises/:id` plus a 
 library immediately rather than waiting for the next catalogue sync. `library.tsx` gained a
 `toast` search-param so the delete flow's "Exercise deleted" toast can show after navigating
 back, since the screen that triggers it unmounts first. Full detail in `phase-2-plan.md`'s
-Phase J outcome section. Verified: 338/338 mobile Jest tests green, typecheck and lint clean,
-architecture conformance clean, and a real `expo export` bundle compile (no errors) —
-NativeWind and native-module code Jest cannot compile. **Physical-device walk: partially
-confirmed, and now stale** — the user's earlier Expo Go screenshot predates the training-tip
-and honest-empty-state sections; those, the running variant, favouriting, and the delete flow
-are all still unconfirmed on-device. See `phase-2-plan.md`'s Phase J section.
+Phase J outcome section. Verified: 338/338 mobile Jest tests green at the time, typecheck and
+lint clean, architecture conformance clean, and a real `expo export` bundle compile (no
+errors). **Physical-device walk: the honest-empty-state stat tiles/sparkline/history and the
+create-mode flow were confirmed live on a physical iPhone during Phase K's own session** — see
+that paragraph below. The running variant, favouriting, and the delete flow remain
+unconfirmed on-device.
+
+**Phase K is done.** `/new-exercise` replaces its placeholder — name, the prototype's own
+13-muscle/12-equipment chip subset (not the full canonical enum; recorded explicitly per
+`design-revision-screen-specs.md` §3's own instruction, confirmed against three reference
+screenshots), description, category, `Measured by`, and the same tap-time ordered-toast
+validation the prototype uses (name → muscle → equipment → server-side duplicate-name 409).
+One screen serves create and edit, prefilling from the on-device cache in edit mode. No
+delete control here — the plan's own heading briefly said otherwise, but the prototype source
+has none, and delete already lives on the exercise detail screen (confirmed again by a
+`deletecustomexercise.png` reference). Two real fixes came out of a live device walk with the
+user during this same session, not from a test: (1) the exercise detail screen's tip was
+calling the generated `trainingTip()` fallback even for custom exercises — fixed so a custom
+exercise's tip is its own `Description` field instead, since that field already asks for
+"cues, setup or form notes"; (2) visible spacing drift from the reference screenshots, fixed
+by moving every layout margin in `new-exercise.tsx` from a NativeWind arbitrary-className
+value to an explicit numeric `style`, re-derived from the prototype's literal CSS rather than
+approximated — the user confirmed the corrected layout live afterward. Verified: 362/362
+mobile Jest tests green, typecheck/lint clean, real bundle compile succeeded. Full detail in
+`phase-2-plan.md`'s Phase K outcome section. **Phase 2's screen work is complete.**
 
 **One Phase D finding the design revision needs to hear about:** the ingested catalogue leaves
 the `yoga` and `calisthenics` categories **completely empty** — free-exercise-db has no source

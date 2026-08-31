@@ -102,7 +102,9 @@ class FakeSqliteConnection implements SqliteConnection {
       return Promise.resolve((row ? [{ data: row.data, is_favourite: row.is_favourite }] : []) as T[]);
     }
     if (source.startsWith('SELECT data, is_favourite FROM exercises_cache')) {
-      const conditions: Array<(entry: [string, { category: string; is_favourite: number }]) => boolean> = [];
+      const conditions: Array<
+        (entry: [string, { category: string; is_favourite: number; is_custom: number }]) => boolean
+      > = [];
       let cursor = 0;
       if (source.includes('category = ?')) {
         const category = params[cursor] as string;
@@ -111,6 +113,9 @@ class FakeSqliteConnection implements SqliteConnection {
       }
       if (source.includes('is_favourite = 1')) {
         conditions.push(([, row]) => row.is_favourite === 1);
+      }
+      if (source.includes('is_custom = 1')) {
+        conditions.push(([, row]) => row.is_custom === 1);
       }
       const matches = [...this.cache.entries()]
         .filter((entry) => conditions.every((condition) => condition(entry)))
@@ -249,6 +254,22 @@ describe('exercise catalogue store', () => {
       );
 
       const results = await listCachedExercises(db, { favouritesOnly: true });
+
+      expect(results.map((row) => row.id)).toEqual(['a']);
+    });
+
+    it('filters to custom exercises only', async () => {
+      const db = new FakeSqliteConnection();
+      await syncExerciseCatalogue(db, () =>
+        Promise.resolve(
+          catalogueOf([
+            exercise({ id: 'a', name: 'Alpha', isCustom: true }),
+            exercise({ id: 'b', name: 'Bravo', isCustom: false }),
+          ]),
+        ),
+      );
+
+      const results = await listCachedExercises(db, { customOnly: true });
 
       expect(results.map((row) => row.id)).toEqual(['a']);
     });
