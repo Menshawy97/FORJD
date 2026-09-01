@@ -12,6 +12,7 @@ interface StorageStub {
   createSignedUrl: jest.Mock;
   remove: jest.Mock;
   list: jest.Mock;
+  getPublicUrl: jest.Mock;
 }
 
 describe('SupabaseStorageProvider', () => {
@@ -24,6 +25,7 @@ describe('SupabaseStorageProvider', () => {
       createSignedUrl: jest.fn(),
       remove: jest.fn(),
       list: jest.fn(),
+      getPublicUrl: jest.fn(),
     };
 
     const client = { storage: { from: jest.fn().mockReturnValue(storage), createBucket: jest.fn() } };
@@ -116,6 +118,18 @@ describe('SupabaseStorageProvider', () => {
       await expect(provider.exists({ bucket: 'b', key: 'Bench_Press/0.jpg' })).rejects.toBeInstanceOf(
         InternalServerErrorException,
       );
+    });
+  });
+
+  /** ADR-019's avatar upload -- the first request-serving caller of this method. */
+  describe('getPublicUrl', () => {
+    it('returns the URL Supabase builds, synchronously, with no network call', () => {
+      storage.getPublicUrl.mockReturnValue({ data: { publicUrl: 'https://x/avatars/k.jpg' } });
+
+      const result = provider.getPublicUrl({ bucket: 'avatars', key: 'k.jpg' });
+
+      expect(result).toBe('https://x/avatars/k.jpg');
+      expect(storage.getPublicUrl).toHaveBeenCalledWith('k.jpg');
     });
   });
 

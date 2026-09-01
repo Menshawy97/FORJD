@@ -127,7 +127,11 @@ export default function SignupScreen() {
       // ui-remediation-and-phase-i-plan.md §1.1). Dismiss everything below this screen before
       // replacing it so the authenticated app mounts at stack depth 1, with nothing to pop to.
       if (router.canDismiss()) router.dismissAll();
-      router.replace('/goals?returnTo=newAccount');
+      // ADR-019: a new onboarding screen sits between signup and goals — it fills the
+      // username and (optionally) an avatar that every account created before this decision
+      // predates. `pick-username.tsx` itself continues on to `/goals?returnTo=newAccount`,
+      // the exact destination this screen used to navigate to directly.
+      router.replace('/pick-username');
     } catch (cause) {
       // No field is implicated: the input passed every client-side rule, so nothing on the
       // screen is the thing to point at.

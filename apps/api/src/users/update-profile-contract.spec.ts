@@ -110,3 +110,40 @@ describe('updateProfileRequestSchema — units', () => {
     expect(parse({}).success).toBe(false);
   });
 });
+
+/**
+ * The prototype's own rule, verbatim (ADR-019): lowercase letters, digits, underscores,
+ * 3-20 characters. Case-insensitive *uniqueness* is a database constraint (the
+ * `profiles_username_unique` partial index) and is not exercised here -- a schema check
+ * cannot see other rows, only shape.
+ */
+describe('updateProfileRequestSchema — username', () => {
+  const parse = (body: unknown) => updateProfileRequestSchema.safeParse(body);
+
+  it('accepts a valid username', () => {
+    expect(parse({ username: 'jmitch' }).success).toBe(true);
+    expect(parse({ username: 'j_mitch_92' }).success).toBe(true);
+  });
+
+  it('accepts null, which clears the username', () => {
+    expect(parse({ username: null }).success).toBe(true);
+  });
+
+  it('rejects uppercase letters', () => {
+    expect(parse({ username: 'JMitch' }).success).toBe(false);
+  });
+
+  it('rejects fewer than 3 characters', () => {
+    expect(parse({ username: 'jm' }).success).toBe(false);
+  });
+
+  it('rejects more than 20 characters', () => {
+    expect(parse({ username: 'a'.repeat(21) }).success).toBe(false);
+  });
+
+  it('rejects characters outside letters, digits and underscore', () => {
+    expect(parse({ username: 'j.mitch' }).success).toBe(false);
+    expect(parse({ username: 'j mitch' }).success).toBe(false);
+    expect(parse({ username: 'j-mitch' }).success).toBe(false);
+  });
+});

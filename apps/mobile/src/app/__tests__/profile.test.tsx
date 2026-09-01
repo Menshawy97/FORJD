@@ -51,6 +51,7 @@ const PROFILE = {
   trainingGoals: ['get_stronger'] as const,
   activities: ['strength', 'running'] as const,
   city: 'Alexandria',
+  username: 'ada_l',
   avatarUrl: null,
   plan: 'free' as const,
 };
@@ -82,9 +83,38 @@ describe('profile screen', () => {
 
     await findByText('Ada Lovelace');
     await findByText('Free User');
-    // Part 1.5: slice2-screen-specs.md's decisions box drops the `@jmitch` handle entirely
-    // (no `handle` column, no username concept) — this line shows the city alone.
+  });
+
+  // ADR-019 reverses the prior "no handle concept" decision. The prototype's own
+  // `profileHandle` is one combined string (`'@'+handle+' · '+city`), not two lines — this
+  // reproduces that exact join.
+  it('renders the handle and city combined when username is set', async () => {
+    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+
+    await findByText('@ada_l · Alexandria');
+  });
+
+  it('shows only the city when username is null, a pre-ADR-019 account', async () => {
+    (getMe as jest.Mock).mockResolvedValue({
+      ...ME,
+      profile: { ...PROFILE, username: null },
+    });
+
+    const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+
     await findByText('Alexandria');
+    expect(queryByText(/^@/)).toBeNull();
+  });
+
+  it('shows only the handle when city is not set', async () => {
+    (getMe as jest.Mock).mockResolvedValue({
+      ...ME,
+      profile: { ...PROFILE, city: null },
+    });
+
+    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+
+    await findByText('@ada_l');
   });
 
   it('falls back to an em dash when the display name is not set', async () => {

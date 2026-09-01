@@ -21,6 +21,12 @@ jest.mock('expo-router', () => ({ router: { replace: (...args: unknown[]) => moc
 jest.mock('@/auth/apiClient', () => ({
   getMe: jest.fn(),
   updateProfile: jest.fn(),
+  uploadAvatar: jest.fn(),
+}));
+
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(),
 }));
 
 // A native module with nothing meaningful to render in Jest. The component itself is
@@ -34,12 +40,14 @@ jest.mock('@react-native-community/datetimepicker', () => {
   };
 });
 
-import { getMe, updateProfile } from '@/auth/apiClient';
+import * as ImagePicker from 'expo-image-picker';
+import { getMe, updateProfile, uploadAvatar } from '@/auth/apiClient';
 import EditProfileScreen, { parseIsoDate } from '../edit-profile';
 
 const PROFILE = {
   userId: '11111111-1111-4111-8111-111111111111',
   displayName: 'Ada Lovelace',
+  username: 'ada_l',
   dateOfBirth: '1990-07-04',
   sex: 'female' as const,
   heightCm: null,
@@ -169,8 +177,10 @@ describe('EditProfileScreen', () => {
     await waitFor(() =>
       expect(updateProfile).toHaveBeenCalledWith({
         displayName: 'Ada King',
+        username: 'ada_l',
         dateOfBirth: '1990-07-04',
         sex: 'female',
+        avatarUrl: null,
       }),
     );
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/profile'));
@@ -260,5 +270,111 @@ describe('EditProfileScreen', () => {
     expect(parsed.getMonth()).toBe(6);
     expect(parsed.getDate()).toBe(4);
     expect(parsed.getTime()).toBe(new Date(1990, 6, 4).getTime());
+  });
+
+  // ADR-019: Username field, added between Name and Birthday (screenshot order).
+  it('loads the username into its own field, separate from Name', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+
+    const { findByDisplayValue } = await render(<EditProfileScreen />);
+
+    expect(await findByDisplayValue('ada_l')).toBeTruthy();
+  });
+
+  it('sanitizes username input as it is typed, same rule as pick-username', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+
+    const { findByLabelText, findByDisplayValue } = await render(<EditProfileScreen />);
+
+    fireEvent.changeText(await findByLabelText('Username'), 'Ada King!!');
+
+    expect(await findByDisplayValue('adaking')).toBeTruthy();
+  });
+
+  it('includes the edited username in the saved patch', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+    (updateProfile as jest.Mock).mockResolvedValue(PROFILE);
+
+    const { findByLabelText, findByText } = await render(<EditProfileScreen />);
+
+    fireEvent.changeText(await findByLabelText('Username'), 'newhandle');
+    fireEvent.press(await findByText('Save Changes'));
+
+    await waitFor(() =>
+      expect(updateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ username: 'newhandle' }),
+      ),
+    );
+  });
+
+  it('shows "That username is taken." and does not navigate on a 409 conflict', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+    (updateProfile as jest.Mock).mockRejectedValue(
+      new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+        status: 409,
+      } as never),
+    );
+
+    const { findByText } = await render(<EditProfileScreen />);
+
+    fireEvent.press(await findByText('Save Changes'));
+
+    expect(await findByText('That username is taken.')).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  // ADR-019: avatar upload, wired to expo-image-picker.
+  it('uploads a picked photo immediately and shows an initial-letter placeholder before one is set', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: true,
+    });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/photo.jpg' }],
+    });
+    (uploadAvatar as jest.Mock).mockResolvedValue({
+      avatarUrl: 'https://cdn.example.com/avatars/u1.jpg',
+    });
+
+    const { findByLabelText, findByText } = await render(<EditProfileScreen />);
+
+    // No avatarUrl on the loaded profile -> the initial-letter placeholder, matching
+    // `personal profile.png`.
+    expect(await findByText('A')).toBeTruthy();
+
+    fireEvent.press(await findByLabelText('Add photo'));
+
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith('file:///tmp/photo.jpg'));
+  });
+
+  it('persists the uploaded avatar URL through Save, not immediately', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: true,
+    });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/photo.jpg' }],
+    });
+    (uploadAvatar as jest.Mock).mockResolvedValue({
+      avatarUrl: 'https://cdn.example.com/avatars/u1.jpg',
+    });
+    (updateProfile as jest.Mock).mockResolvedValue(PROFILE);
+
+    const { findByLabelText, findByText } = await render(<EditProfileScreen />);
+
+    fireEvent.press(await findByLabelText('Add photo'));
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalled());
+
+    expect(updateProfile).not.toHaveBeenCalled();
+
+    fireEvent.press(await findByText('Save Changes'));
+
+    await waitFor(() =>
+      expect(updateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ avatarUrl: 'https://cdn.example.com/avatars/u1.jpg' }),
+      ),
+    );
   });
 });

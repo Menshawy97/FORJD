@@ -6,15 +6,18 @@
 // sign-in-or-create-account screen, which reads as a sign-out.
 //
 // The fix is `router.canDismiss() && router.dismissAll()` immediately before the post-signup
-// `replace` to `/goals?returnTo=newAccount`. Asserts `router.canDismiss()` directly — the same
-// check `react-native-screens` uses to decide whether the pop gesture has anywhere to go —
-// rather than a pathname.
+// `replace`. ADR-019 changed that replace's target from `/goals?returnTo=newAccount` to
+// `/pick-username` (see signup-submit.test.tsx), but the dismiss-then-replace mechanic under
+// test here is unaffected either way. Asserts `router.canDismiss()` directly — the same check
+// `react-native-screens` uses to decide whether the pop gesture has anywhere to go — rather
+// than a pathname.
 //
 // Split from login's equivalent test (swipe-back-login.test.tsx) — see that file's header for
 // why two full auth flows do not belong in one file here.
 //
 // Mocks `expo-secure-store` so the real save/notify plumbing runs, and `getMe` so the
-// first-run `goals` screen (the signup destination) can load, same as signup-submit.test.tsx.
+// first-run `goals` screen (reached later, via pick-username's own Continue) can load, same
+// as signup-submit.test.tsx.
 import { act, fireEvent } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { renderRouter } from 'expo-router/testing-library';
@@ -63,7 +66,7 @@ describe('swipe-back stack reset - signup', () => {
     fireEvent.changeText(await findByPlaceholderText('Min. 8 characters'), 'Str0ng!Pass');
     fireEvent.press(await findByText('Create Account'));
 
-    await findByText('What are you training for?');
+    await findByText('Your Profile');
 
     expect(router.canDismiss()).toBe(false);
   });

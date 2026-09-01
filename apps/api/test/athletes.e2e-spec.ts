@@ -130,6 +130,7 @@ describe('Public athlete profile (e2e)', () => {
     expect(response.body).toEqual({
       userId: ownerId,
       displayName: 'Ada Lovelace',
+      username: null,
       avatarUrl: null,
       city: 'Cairo',
       trainingGoals: ['get_stronger'],

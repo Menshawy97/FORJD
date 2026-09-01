@@ -21,7 +21,7 @@ const DEFAULT_SIZE = 22;
 
 type Shape =
   | { kind: 'path'; d: string; strokeWidth?: number }
-  | { kind: 'circle'; cx: number; cy: number; r: number }
+  | { kind: 'circle'; cx: number; cy: number; r: number; stroke?: string }
   | { kind: 'rect'; x: number; y: number; width: number; height: number; rx: number };
 
 interface Glyph {
@@ -165,6 +165,22 @@ const GLYPHS = {
     strokeWidth: 1.7,
     shapes: [path('M12.5 4 6.5 10l6 6')],
   },
+  /**
+   * The pick-username / edit-profile avatar upload badge, from the prototype's
+   * `icon('camera', ...)`. Only ever called `filled` (the badge sits on a solid accent-orange
+   * circle, so a stroke-only camera would be invisible) — the lens circle keeps its own
+   * white stroke regardless of `color`, matching the prototype's hardcoded `stroke:'#fff'` on
+   * that one shape (every other circle glyph in this file takes the caller's color).
+   */
+  camera: {
+    viewBox: '0 0 24 24',
+    shapes: [
+      path(
+        'M4 8.4A1.4 1.4 0 0 1 5.4 7h2.1l.9-1.6a1.2 1.2 0 0 1 1-.6h5.2a1.2 1.2 0 0 1 1 .6L16.5 7h2.1A1.4 1.4 0 0 1 20 8.4v9.2A1.4 1.4 0 0 1 18.6 19H5.4A1.4 1.4 0 0 1 4 17.6z',
+      ),
+      { kind: 'circle', cx: 12, cy: 13, r: 3.3, stroke: '#fff' },
+    ],
+  },
 } as const satisfies Record<string, Glyph>;
 
 export type IconName = keyof typeof GLYPHS;
@@ -210,7 +226,16 @@ export function Icon({
         };
 
         if (shape.kind === 'circle') {
-          return <Circle key={index} cx={shape.cx} cy={shape.cy} r={shape.r} {...common} />;
+          return (
+            <Circle
+              key={index}
+              cx={shape.cx}
+              cy={shape.cy}
+              r={shape.r}
+              {...common}
+              stroke={shape.stroke ?? common.stroke}
+            />
+          );
         }
         if (shape.kind === 'rect') {
           return (

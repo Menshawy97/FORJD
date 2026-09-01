@@ -5,9 +5,6 @@
 //     recent sessions all need Phase 10 leaderboard/analytics data that does not exist, so
 //     they are omitted rather than faked. The footnote card describing them is omitted too
 //     (it would describe screen content that isn't there).
-//   - No handle line. slice2-screen-specs.md's decisions box drops the handle concept
-//     entirely (no `handle` column, no username), same decision already enacted on
-//     `(tabs)/profile.tsx` in Part 1.
 //   - The prototype draws a specific "this profile is private" message when viewing a
 //     STRANGER's private profile. The real backend deliberately makes a private profile and
 //     a nonexistent one return byte-identical 404s (an anti-enumeration guarantee, since
@@ -18,6 +15,9 @@
 //     back from the endpoint regardless of the privacy flag (see athletes.service.ts) — the
 //     current `publicProfile` value is carried as a query param from `privacy.tsx`, since
 //     `PublicProfileResponse` deliberately never includes privacy flags.
+//
+// ADR-019 reverses the prior "no handle concept" decision: the `@username` line the
+// prototype draws below the name now renders for real, null for a pre-ADR-019 account.
 import { fireEvent, render as rtlRender } from '@testing-library/react-native';
 import { AxiosError } from 'axios';
 import type { ReactElement } from 'react';
@@ -49,6 +49,7 @@ function render(ui: ReactElement) {
 const SELF_PROFILE = {
   userId: 'u1',
   displayName: 'Ada Lovelace',
+  username: 'ada_l',
   avatarUrl: null,
   city: 'Alexandria',
   trainingGoals: [],
@@ -85,7 +86,15 @@ describe('AthleteScreen', () => {
     expect(await findByText('Athlete')).toBeTruthy();
   });
 
-  it('never renders a handle line — the concept was dropped', async () => {
+  it('renders the @username handle line', async () => {
+    const { findByText } = await render(<AthleteScreen />);
+
+    expect(await findByText('@ada_l')).toBeTruthy();
+  });
+
+  it('omits the handle line for a pre-ADR-019 account with no username', async () => {
+    (getAthlete as jest.Mock).mockResolvedValue({ ...SELF_PROFILE, username: null });
+
     const { findByText, queryByText } = await render(<AthleteScreen />);
 
     await findByText('Ada Lovelace');
