@@ -59,6 +59,7 @@ const privacy = {
 const profile = {
   userId: '11111111-1111-4111-8111-111111111111',
   displayName: 'Ada Lovelace',
+  username: 'ada',
   dateOfBirth: '1990-07-04',
   sex: 'female' as const,
   heightCm: 172.5,
@@ -124,6 +125,7 @@ export const responseFixtures = {
     sample: {
       userId: '11111111-1111-4111-8111-111111111111',
       displayName: null,
+      username: null,
       dateOfBirth: null,
       sex: null,
       heightCm: null,
@@ -169,6 +171,7 @@ export const responseFixtures = {
     sample: {
       userId: '11111111-1111-4111-8111-111111111111',
       displayName: 'Ada Lovelace',
+      username: 'ada',
       avatarUrl: 'https://example.com/avatar.png',
       city: 'Cairo',
       trainingGoals: ['get_stronger', 'improve_endurance'],
@@ -186,6 +189,7 @@ export const responseFixtures = {
     sample: {
       userId: '11111111-1111-4111-8111-111111111111',
       displayName: null,
+      username: null,
       avatarUrl: null,
       city: null,
       trainingGoals: [],
