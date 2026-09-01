@@ -33,12 +33,16 @@ export class NutritionService {
   // Foods
   // ---------------------------------------------------------------------------------------
 
-  /** Requires a search term -- category-only browsing of the ~13,700-food catalogue with no query is out of this vertical slice's scope; a blank `q` returns no results rather than the whole catalogue. */
+  /**
+   * A blank `q` browses the catalogue (respecting `category`) rather than returning nothing.
+   * **Reverses Phase E's original "requires a search term" scope decision** -- that call
+   * predated any real screenshot of this screen; `FORJD mobile app design/screenshots/
+   * searchfoodalsoaddfood.png` (added later) shows a fully populated list with nothing typed
+   * and "All" selected, which only a browsable blank-query result can produce. Confirmed with
+   * the user before reversing, same as ADR-019 reversed the earlier "no handle" decision.
+   */
   async searchFoods(viewer: User, query: FoodSearchQuery): Promise<FoodListResponse> {
-    if (!query.q) {
-      return { items: [] };
-    }
-    const results = await this.nutritionRepository.searchFoods(viewer.id, query.q, query.limit, query.category);
+    const results = await this.nutritionRepository.searchFoods(viewer.id, query.q ?? '', query.limit, query.category);
     return { items: results.map((food) => this.toFoodResponse(food)) };
   }
 
