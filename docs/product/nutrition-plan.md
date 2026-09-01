@@ -487,7 +487,90 @@ new bulk method instead of looping `createCatalogueFood` one row at a time;
 empty-batch no-op). The stuck-looking deploy that prompted this was cancelled once the fix was
 ready, rather than left to finish slowly a second time.
 
-**Phase G — food search and detail.** `foodSearch`, `foodDetail`, and the custom-food sheet.
+**Phase G — food search and detail — ✅ DONE.** `foodSearch`, `foodDetail`, and the
+custom-food sheet.
+
+**Outcome:** `food-search.tsx` and `food/[id].tsx` replace their Phase F placeholders; a new
+shared `FilterChip` component was extracted after two mid-task screenshot corrections
+(`fooddetails.png`, `searchfoodalsoaddfood.png` landed during the session) showed the
+category and "Log as" chips use a solid accent-fill selected style, not the app's existing
+translucent `pickRowSelectedBg` pattern. Edit-mode save is `deleteLogEntry` then `logFood`
+(no PATCH endpoint exists for a single log entry); a code review caught that a failure
+between those two calls was indistinguishable from a true no-op failure, so the catch now
+gives that case its own message rather than reusing the generic offline/error toast.
+Quantity has no wire field, so qty > 1 is encoded into the saved `servingLabel` text.
+**Verified**: 10/10 new tests (`food-search-fidelity.test.tsx`, `food-detail-fidelity.test.tsx`)
+green, `tsc --noEmit` clean, `eslint` clean, `npx expo export --platform android`
+bundle-compiled cleanly (1533 modules).
+
+**Everything this phase needs on the backend already shipped in Phase E/F**: `searchFoods`,
+`getFood`, `createCustomFood` in `apiClient.ts`, and the matching contracts/endpoints. This
+phase is mobile UI only.
+
+**No screenshot exists for these screens.** The 2026-08-30 design revision's screenshot set
+covers the dashboard, goals, save-meal, and saved-meals sheets, but never `foodSearch` or
+`foodDetail` — confirmed by listing `FORJD mobile app design/screenshots/`. Building from
+`s_foodSearch()`/`s_foodDetail()` in the runnable prototype (`FORJD Mobile.dc.html`, extracted
+verbatim below) plus `nutrition-screen-specs.md` §3–4 is the only option, consistent with the
+prototype already outranking every summary doc.
+
+**Two decisions the design leaves open, settled with the user before starting:**
+
+1. **Custom-food category.** Phase E's `createCustomFoodRequestSchema` already rejects the
+   prototype's hardcoded `category: 'Custom'` literal and requires a real `FOOD_CATEGORIES`
+   value (`nutrition-vocabulary.ts`'s docblock explains why) — but the prototype's sheet has no
+   category picker at all, since it never needed one. **Decision: add a chip row of the 8 real
+   categories to the sheet**, reusing the same selected-chip visual (`pickRowSelectedBg` /
+   `borderPickRowSelected`) already used for the goals/log-meal slot chips in `nutrition.tsx`.
+2. **Validation UX.** The prototype's `saveCustomFood()` silently no-ops on an empty name, and
+   `foodDetail`'s save path has no validation at all. The real backend now enforces `name`
+   min-length 1 and macros ≥ 0 with a 400. **Decision: show a real toast error** (the same
+   `useToast`/`Toast` pattern `nutrition.tsx`'s goals sheet already uses for "Enter a valid
+   calorie goal and macro values"), not the prototype's silent failure.
+
+**Screens/files:**
+
+- `apps/mobile/src/app/food-search.tsx` (replaces the Phase F placeholder). Header is
+  contextual: `Add ingredient` when `foodTarget === 'meal'` (the param `editMeal` will pass in
+  Phase H), else `Add to <Slot>`; back target matches (`editMeal` or `nutrition`). Search field
+  + `FOOD_CATS`-equivalent chips (`FOOD_CATEGORIES` plus a local `'All'` pseudo-value that maps
+  to `category: undefined` in the query) call `searchFoods(q, category)` **debounced ~300ms**
+  server-side — unlike the prototype's instant in-memory filter over 38 rows, the real
+  catalogue is 13,694+ USDA rows plus custom foods, so every keystroke cannot hit the network
+  directly. Result row shows the food's first serving's kcal
+  (`round(macrosPer100g.kcal * servings[0].grams / 100)`), matching §3 exactly. Empty state:
+  `No foods match "<query>"`. `+` icon in the header opens the custom-food sheet.
+- `apps/mobile/src/app/food/[id].tsx` (replaces the Phase F placeholder). Reads `id` (route
+  param) via `getFood`, plus `entryId`/`slot` (edit mode, already sent by `nutrition.tsx`'s
+  existing navigation at line ~170) and `foodTarget`/`slot` (new-log mode from `food-search`).
+  Macro card, serving list + "Custom amount" row, quantity stepper (hidden when custom amount
+  selected), "Log as" slot chips (hidden when `foodTarget === 'meal'`), sticky footer whose
+  label depends on mode (`Save Changes` / `Add Ingredient` / `Add to Log`), ghost `Remove Entry`
+  when editing. **No update endpoint exists** — `nutrition.controller.ts` only has `POST log`,
+  `POST log/meal`, `DELETE log/group/:groupId`, `DELETE log/:id`, matching the design's own
+  "saving filters the item id out of every slot before appending" note, which assumed
+  client-side array mutation the real server model has no equivalent for. Adaptation: "Save
+  Changes" in edit mode calls `deleteLogEntry(entryId)` then `logFood(...)`, not a PATCH — no
+  new backend endpoint is added for this (Phase E's API surface is already merged and
+  versioned; this is a client-side adaptation, the same class of forced adaptation
+  `nutrition.tsx`'s own docblock already documents twice).
+- Custom-food sheet lives inside `food-search.tsx` (matches the prototype's own structure — the
+  sheet is part of `s_foodSearch()`, not a separate screen). Name input, category chip row
+  (new, per decision 1), four numeric rows (kcal/protein/carbs/fat, decimals allowed, per
+  100 g), calls `createCustomFood`, flashes `Added <name> to your foods`, real validation error
+  on empty name (decision 2) instead of a silent return.
+- `foodTarget === 'meal'` branches are implemented now (both screens already need the
+  conditional per the prototype's own single-component structure), even though nothing calls
+  it with `foodTarget: 'meal'` until Phase H's `editMeal` exists — this is the same screens'
+  spec, not an adjacent feature, and avoids Phase H having to reopen these files.
+
+**Testing (TDD, per project rules):** write failing RTL tests first for both screens, mirroring
+`nutrition-fidelity.test.tsx`'s shape (mock `@/auth/apiClient`, mock `expo-router`,
+`SafeAreaProvider` wrapper) — search debounce, category filtering, empty state, serving
+selection, quantity stepper, custom-amount hides quantity/shows grams input, log-as-slot
+hidden in meal mode, save/log/remove flows, and the custom-food sheet's category chips +
+validation toast. Then `tsc --noEmit`, `eslint`, full mobile suite, and a real bundle compile
+before merge, per the phase's own `## Verification` section below.
 
 **Phase H — saved meals.** `savedMeals` and `editMeal`.
 
