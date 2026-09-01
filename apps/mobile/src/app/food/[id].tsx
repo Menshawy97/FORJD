@@ -94,7 +94,6 @@ export default function FoodDetailScreen() {
   const slotParam = mealSlotSchema.safeParse(firstParam(params.slot));
   const paramSlot: MealSlot | undefined = slotParam.success ? slotParam.data : undefined;
   const forMeal = firstParam(params.foodTarget) === 'meal';
-  const editMealId = firstParam(params.editMealId);
   const invalidId = !id;
 
   const toast = useToast();
