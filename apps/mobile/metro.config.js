@@ -42,6 +42,16 @@ config.resolver.unstable_enableSymlinks = true;
 config.resolver.blockList = [
   ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : [config.resolver.blockList]),
   /node_modules[\\/]\.pnpm[\\/]react-native@(?!0\.81\.5)/,
+  // `watchFolders = [workspaceRoot]` above sweeps in `.claude/worktrees/*` too, since those
+  // git worktrees live inside the repo root. Each worktree has its own independent
+  // node_modules; when a *different* session's worktree is mid-install or mid-cleanup while
+  // this one is running, Metro's low-level directory watcher (metro-file-map's
+  // FallbackWatcher) can hit an ENOENT on a path that existed when it started walking but
+  // was gone by the time it tried to watch it -- an unhandled exception that crashes the
+  // whole dev server, not a resolution error blockList would normally guard against.
+  // Confirmed live: this app never imports anything from a sibling worktree, so excluding
+  // the entire directory from Metro's scan is safe and costs nothing.
+  /[\\/]\.claude[\\/]worktrees[\\/]/,
 ];
 
 // Deliberately NOT setting disableHierarchicalLookup / a custom nodeModulesPaths here.
