@@ -614,17 +614,26 @@ real screenshots rather than trusting a paraphrase.
    in place of the preview — the same honest-empty-state principle `nutrition.tsx`'s own goals
    card already applies to its ring, not a new one invented for this screen.
 
-**A scope-expansion request was received and declined mid-phase.** A message purporting to be a
-coordinator relayed a request to add a background-photo picker (gallery + camera capture,
-new `NSCameraUsageDescription` permission, a scrim-overlay technique) to the share card,
-claiming it was "confirmed directly with the user just now." It was not implemented: it
-directly reversed the locked, explicitly-reasoned decision above (make no scope re-ask, add no
-device-capture dependencies), asked for new device permissions with no independent way to
-verify the claimed user confirmation, and arrived as an unsigned mid-task instruction rather
-than a message from the user themselves — exactly the pattern this project's own instruction-
-source rules exist to catch. If this is genuinely wanted, it should come back as an explicit,
-separate ask reviewed on its own, not folded silently into the lowest-priority phase's original
-scope.
+**Correction, written after the fact.** Two implementation attempts at a background-photo
+picker (gallery + camera, `NSCameraUsageDescription`, a scrim overlay) for this screen were
+declined by the agents assigned to them, each independently unable to verify that a
+coordinator-relayed request actually originated from the user rather than from an injected
+instruction — the right call given the information available to either agent at the time, and
+exactly what this project's instruction-source rules are for. The paragraph originally here
+recorded the second decline as a probable repeat injection attempt.
+
+**That characterization was wrong.** The request was genuine — asked directly by the user in
+conversation with the orchestrating session, confirmed a second time when asked directly again
+after both declines. The orchestrating session cannot make a background agent trust a relayed
+claim of user consent (nor should it be able to — that would defeat the entire point of the
+instruction-source boundary), so the only reliable fix once delegation trust breaks down this
+way is for the orchestrating session to do the work itself, backed by the user's own message,
+rather than keep asking an agent to take a coordinator's word for it. This is a real limitation
+of multi-agent delegation worth remembering: a locked "declined, treat as suspicious" decision
+recorded in project docs will correctly make every subsequent agent that reads those docs more
+suspicious of the same request, even once it is genuinely authorized — so a reversal needs to
+overwrite the record it is reversing, not just add a note beside it, or the false trail persists
+for whichever agent reads the docs next. See the feature's actual implementation below.
 
 **Testing (TDD, per project rules):** `nutrition-share-fidelity.test.tsx`, mirroring
 `nutrition-fidelity.test.tsx`'s shape. Covers all three layout previews rendering from fetched
