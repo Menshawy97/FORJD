@@ -572,7 +572,82 @@ hidden in meal mode, save/log/remove flows, and the custom-food sheet's category
 validation toast. Then `tsc --noEmit`, `eslint`, full mobile suite, and a real bundle compile
 before merge, per the phase's own `## Verification` section below.
 
-**Phase H — saved meals.** `savedMeals` and `editMeal`.
+**Device walk (from the `## Verification` section, carried out at the start of Phase H's own
+session rather than Phase G's own):** the user tested Phase G's `foodSearch`/`foodDetail`
+screens on a physical iPhone via Expo Go — no major bugs found, informal testing continuing.
+Recorded here since Phase G's own section was written before that walk happened.
+
+**Phase H — saved meals — ✅ DONE.** `savedMeals` (renamed `saved-meals.tsx` in the route
+tree, this codebase's kebab-case file convention — `food-search.tsx`, `nutrition-share.tsx`)
+and `editMeal` (`edit-meal.tsx`, same convention).
+
+**Outcome:** `saved-meals.tsx` replaces its Phase F placeholder; a new `edit-meal.tsx` route is
+added. Verified against the real screenshots (`saved meals page.png`, `EditSavedMeal.png`).
+
+**Locked-in cross-screen state, exactly as decided (not re-litigated):** a plain React Context
+(`apps/mobile/src/features/nutrition/meal-draft-context.tsx`, `MealDraftProvider` +
+`useMealDraft()`), mounted once at the root in `_layout.tsx` around the `Stack` — cheap when
+`draft: null`, so there is no cost to it always being present. `MealDraftItem` stores each
+item's `macrosPer100g` snapshot rather than a precomputed `kcal`, per the coding-style rule to
+derive during render rather than duplicate state that can go stale — a grams edit recomputes
+macros via `macroForDraftItem` instead of keeping a second copy in sync.
+
+**The "no update endpoint" adaptation extends Phase G's own precedent, not a new one.** "Save
+Meal" is `deleteSavedMeal(originalId)` then `createSavedMeal({name, items})`, once, only on the
+button press — confirmed safe by reading `nutrition.schema.ts` directly before proceeding
+(per this session's instructions, not just trusted from the ask): `nutrition_log_entries
+.groupId` is a bare, independently-generated `uuid` column with **no foreign key** back to
+`saved_meals`, so a saved meal's id changing on every edit can never orphan or silently rewrite
+an already-logged group. The same delete-then-recreate code review finding from Phase G (a
+failure between the two calls is indistinguishable from a true no-op) is repeated here with its
+own distinguishing error message.
+
+**No per-meal `GET` endpoint exists either**, so `edit-meal.tsx` populates its draft by
+re-listing every saved meal (`listSavedMeals()`) and matching on `editMealId` — the same
+"no update endpoint, recover state by re-listing and matching an id" adaptation `food/[id].tsx`
+already used for a single log entry in Phase G.
+
+**The navigation loop `editMeal -> food-search (meal mode) -> food/[id] (meal mode) -> back`,
+finished:** `food/[id].tsx`'s `forMeal` branch in `onPrimary` — previously a stub that just
+called `router.back()` with a comment saying Phase H would give it a destination — now appends
+the selected food to `MealDraftContext` and calls `router.back()` **twice** (not once): the
+stack is always exactly `edit-meal -> food-search -> food/[id]` in meal mode, and the
+still-mounted `edit-meal` instance underneath already holds the just-added item via context, so
+returning to it re-renders rather than re-fetching and clobbering what was just added.
+`edit-meal.tsx`'s own population effect guards this explicitly: it only re-fetches and calls
+`startDraft` when `draft?.id !== editMealId`, so returning to an already-populated draft is a
+no-op fetch-wise.
+
+**One extraction made during this phase, not before:** `MealSlotChip`
+(`apps/mobile/src/components/meal-slot-chip.tsx`) — the translucent slot-selection chip
+`nutrition.tsx`'s log-meal sheet had inlined since Phase F. `saved-meals.tsx` needs the
+identical "log this meal to which slot" sheet, and the phase's own instruction was to reuse the
+existing chip pattern rather than hand-copy it a second time, so the inline block was pulled
+out into a shared component and `nutrition.tsx` was updated to use it too — the extraction's
+only consumer-visible effect is that this is now one implementation instead of two, not a
+visual change (confirmed by the full existing `nutrition-fidelity.test.tsx` suite staying green
+unmodified). This is a different chip from `FilterChip` (Phase G's solid-fill category/"Log as"
+chip) — the two remain visually distinct, matching their own screenshots.
+
+**A test-authoring bug found and fixed during RED, worth recording:** the project's own
+`render()` test helper (used by every fidelity test in this app) must be `await`-ed — omitting
+`await` on this RN/React 19 + `@testing-library/react-native` combination doesn't throw, it
+silently assigns the *pending Promise* to the destructured result, so `findByText` etc. become
+`undefined` and every query throws `TypeError: ... is not a function` with no indication of the
+missing `await`. Cost real debugging time before the pattern was traced (every existing fidelity
+test in this app already awaits `render()`, which is what protected them). The meal-mode
+add-ingredient test (`food-detail-meal-mode.test.tsx`) is also kept in its own file rather than
+appended to `food-detail-fidelity.test.tsx`, since sharing that file's Jest module registry
+under `--runInBand` reproduced state bleed between tests that a fresh file sidesteps.
+
+**Verified**: 6/6 new + touched fidelity suites green, 41/41 tests
+(`saved-meals-fidelity.test.tsx`, `edit-meal-fidelity.test.tsx`, `food-detail-meal-mode.test.tsx`
+new; `food-detail-fidelity.test.tsx`, `food-search-fidelity.test.tsx`, `nutrition-fidelity.test.tsx`
+re-run unmodified in behaviour); full mobile suite, `tsc --noEmit`, `eslint`, and
+`npx expo export --platform android` all clean (see the session's final verification run for
+exact counts).
+
+**Phase I — Home entry point.** The "Nutrition Today" card on the Home dashboard. Sequenced
 
 **Phase I — Home entry point.** The "Nutrition Today" card on the Home dashboard. Sequenced
 last of the screens because Home itself is otherwise still a placeholder; if Home has been
