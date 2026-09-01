@@ -47,6 +47,14 @@ export class SupabaseStorageProvider implements StorageProvider {
     return data.signedUrl;
   }
 
+  getPublicUrl(ref: StorageObjectRef): string {
+    const {
+      data: { publicUrl },
+    } = this.client.storage.from(ref.bucket).getPublicUrl(ref.key);
+
+    return publicUrl;
+  }
+
   async delete(ref: StorageObjectRef): Promise<void> {
     const { error } = await this.client.storage.from(ref.bucket).remove([ref.key]);
 

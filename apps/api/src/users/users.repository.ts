@@ -35,6 +35,23 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 /**
+ * Same wrapping problem as `isUniqueViolation` (drizzle-orm attaches the real pg error as
+ * `.cause`), narrowed to the specific constraint so a username collision can be told apart
+ * from any other unique-violation `updateProfile` might someday hit. pg reports the violated
+ * index name on `.constraint`, again on `.cause.constraint` once drizzle-orm has wrapped it.
+ */
+function isUsernameUniqueViolation(error: unknown): boolean {
+  if (!isUniqueViolation(error)) {
+    return false;
+  }
+
+  const constraint = (error as { constraint?: unknown } | null)?.constraint;
+  const causeConstraint = (error as { cause?: { constraint?: unknown } } | null)?.cause
+    ?.constraint;
+  return constraint === 'profiles_username_unique' || causeConstraint === 'profiles_username_unique';
+}
+
+/**
  * Keeps only the members a `text[]` column holds that are still in the closed set.
  *
  * The columns are `text[]` so the set can be narrowed without a migration — which is the
@@ -71,6 +88,7 @@ function keepKnownScalar<T extends string>(value: string, known: readonly T[], f
  */
 export interface ProfilePatch {
   displayName?: string | null;
+  username?: string | null;
   dateOfBirth?: string | null;
   sex?: Sex | null;
   heightCm?: number | null;
@@ -175,18 +193,30 @@ export class UsersRepository {
   }
 
   async updateProfile(userId: string, patch: ProfilePatch): Promise<Profile | null> {
-    const [row] = await this.db
-      .update(profiles)
-      .set({
-        ...patch,
-        // numeric columns round-trip as strings through node-postgres.
-        heightCm: patch.heightCm === undefined ? undefined : (patch.heightCm?.toString() ?? null),
-        updatedAt: new Date(),
-      })
-      .where(eq(profiles.userId, userId))
-      .returning();
+    try {
+      const [row] = await this.db
+        .update(profiles)
+        .set({
+          ...patch,
+          // numeric columns round-trip as strings through node-postgres.
+          heightCm:
+            patch.heightCm === undefined ? undefined : (patch.heightCm?.toString() ?? null),
+          updatedAt: new Date(),
+        })
+        .where(eq(profiles.userId, userId))
+        .returning();
 
-    return row ? this.toProfile(row) : null;
+      return row ? this.toProfile(row) : null;
+    } catch (error: unknown) {
+      // The `profiles_username_unique` partial index (ADR-019) rejects a case-insensitive
+      // collision at write time -- there is no honest read-then-write check that would not
+      // itself race. The prototype's own copy, verbatim.
+      if (isUsernameUniqueViolation(error)) {
+        throw new ConflictException('That username is taken.');
+      }
+
+      throw error;
+    }
   }
 
   async recordAudit(
@@ -210,6 +240,7 @@ export class UsersRepository {
     return {
       userId: row.userId,
       displayName: row.displayName,
+      username: row.username,
       dateOfBirth: row.dateOfBirth,
       sex: row.sex as Sex | null,
       heightCm: row.heightCm === null ? null : Number(row.heightCm),

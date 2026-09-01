@@ -101,6 +101,12 @@ export interface User {
 export interface Profile {
   userId: string;
   displayName: string | null;
+  /**
+   * Separate from `displayName` (ADR-019): the design shows both simultaneously, so these are
+   * two fields, not one rendered twice. Null for every account created before the field
+   * existed -- there is no honest value to backfill.
+   */
+  username: string | null;
   dateOfBirth: string | null;
   sex: Sex | null;
   /** Always metric. Imperial is a display concern, converted at the edge. */

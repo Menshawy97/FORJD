@@ -50,9 +50,32 @@ const ACTIVITY_LABELS: Record<Activity, string> = {
 
 interface Identity {
   name: string;
+  /** Separate from `name` (ADR-019) -- null for every account created before the field existed. */
+  username: string | null;
   city: string | null;
   goalsSubtitle: string;
   unitsSubtitle: string;
+}
+
+/**
+ * The single line under the name, from the prototype's own
+ * `profileHandle:'@'+this.state.profile.handle+' · '+this.state.profile.city` (line 3906 of
+ * `FORJD Mobile.dc.html`) -- one combined string with a middle-dot separator, not two lines.
+ * ADR-019 rejects collapsing username and city into the same *field*, but the design has
+ * always rendered them on the same *row*; this reproduces that row now that `username` is a
+ * real value instead of always being absent.
+ *
+ * Null for a pre-ADR-019 account with neither value set, matching the pre-existing
+ * `identity.city &&` guard this replaces.
+ */
+function handleLine(identity: Identity): string | null {
+  if (identity.username && identity.city) {
+    return `@${identity.username} · ${identity.city}`;
+  }
+  if (identity.username) {
+    return `@${identity.username}`;
+  }
+  return identity.city;
 }
 
 function goalsSubtitle(trainingGoals: TrainingGoal[], activities: Activity[]): string {
@@ -139,6 +162,7 @@ const CHEVRON_SIZE = 18;
 const LOGOUT_ERROR = 'Could not log out. Please try again.';
 const EMPTY_IDENTITY: Identity = {
   name: '—',
+  username: null,
   city: null,
   goalsSubtitle: goalsSubtitle([], []),
   unitsSubtitle: unitsSubtitle('metric', 'kg'),
@@ -164,6 +188,7 @@ export default function ProfileScreen() {
         const profile = me.profile;
         setIdentity({
           name: profile.displayName ?? '—',
+          username: profile.username,
           city: profile.city,
           goalsSubtitle: goalsSubtitle(profile.trainingGoals, profile.activities),
           unitsSubtitle: unitsSubtitle(profile.unitSystem, profile.weightUnit),
@@ -309,9 +334,9 @@ function IdentityRow({ identity }: { identity: Identity }) {
             {PLAN_LABEL}
           </Text>
         </View>
-        {identity.city && (
+        {handleLine(identity) && (
           <Text className="mt-[6px] font-archivo text-profile-handle text-dimmer">
-            {identity.city}
+            {handleLine(identity)}
           </Text>
         )}
       </View>

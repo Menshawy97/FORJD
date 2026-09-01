@@ -16,17 +16,14 @@ import { colors } from '@/theme/tokens';
 // 10) — but the screen and `getAthlete()` both take any userId, so it already works for a
 // future stranger-view entry point without changes here.
 //
-// Three deliberate divergences from the prototype, all forced by the real backend
+// Two deliberate divergences from the prototype, both forced by the real backend
 // (apps/api/src/athletes/athletes.service.ts):
 //
 // 1. **Identity only.** §11 Q4's resolution: the stat tiles, personal records and recent
 //    sessions all need Phase 10 leaderboard/analytics data that does not exist, so they are
 //    omitted rather than faked with placeholder numbers. The footnote card describing that
 //    content is omitted too — it would describe screen content that is not there.
-// 2. **No handle line.** slice2-screen-specs.md's decisions box drops the handle concept
-//    entirely (no `handle` column, no username) — the same decision already enacted on
-//    `(tabs)/profile.tsx` in Part 1.
-// 3. **One generic error state, not the prototype's stranger-specific "this profile is
+// 2. **One generic error state, not the prototype's stranger-specific "this profile is
 //    private" message.** The backend makes a private profile and a nonexistent one return
 //    byte-identical 404s on purpose — accounts hold health data, and a distinguishable
 //    refusal would be an enumeration oracle. Reproducing the prototype's specific copy for a
@@ -34,6 +31,12 @@ import { colors } from '@/theme/tokens';
 //    "your profile is private" nudge below is NOT this case: self always gets data back
 //    regardless of the privacy flag (see athletes.service.ts), so it renders from a real
 //    successful response, not from a refusal.
+//
+// A THIRD divergence — "no handle line" — used to be listed here, reflecting the slice-2
+// decision that the product had no handle concept at all. ADR-019 reverses that decision:
+// `s_athlete()`'s own `@handle` line (immediately below the name, above the city/rank row)
+// now renders for real, from `PublicProfileResponse.username`, and is `null` rather than
+// omitted for the pre-ADR-019 accounts that predate the field.
 //
 // `PublicProfileResponse` never includes privacy flags (by design — see the contract's own
 // comment), so the current `publicProfile` value has to travel as a query param from
@@ -50,6 +53,7 @@ export default function AthleteScreen() {
     : params.publicProfile;
   const [profile, setProfile] = useState<{
     displayName: string | null;
+    username: string | null;
     city: string | null;
     isSelf: boolean;
   } | null>(null);
@@ -76,6 +80,7 @@ export default function AthleteScreen() {
         if (cancelled) return;
         setProfile({
           displayName: athlete.displayName,
+          username: athlete.username,
           city: athlete.city,
           isSelf: athlete.isSelf,
         });
@@ -155,6 +160,11 @@ export default function AthleteScreen() {
                 style={{ letterSpacing: -0.01 * 20 }}>
                 {profile.displayName ?? '—'}
               </Text>
+              {profile.username && (
+                <Text className="mt-[6px] font-archivo text-[12px] text-dimmer">
+                  {`@${profile.username}`}
+                </Text>
+              )}
               {profile.city && (
                 <View className="mt-2 flex-row items-center" style={{ gap: 6 }}>
                   <Icon name="pin" size={13} color={colors.metadata} />

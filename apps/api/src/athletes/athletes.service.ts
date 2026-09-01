@@ -85,6 +85,7 @@ export class AthletesService {
     return {
       userId: profile.userId,
       displayName: profile.displayName,
+      username: profile.username,
       avatarUrl: profile.avatarUrl,
       city: profile.city,
       trainingGoals: profile.trainingGoals,

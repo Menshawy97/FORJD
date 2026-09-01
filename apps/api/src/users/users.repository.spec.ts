@@ -231,6 +231,39 @@ describe('UsersRepository', () => {
     expect(updated?.energyUnit).toBe('kcal');
   });
 
+  it('round-trips username and defaults it to null', async () => {
+    const email = uniqueEmail('username-default');
+    const user = await repository.upsertFromIdentity(crypto.randomUUID(), email);
+
+    await expect(repository.findProfile(user.id)).resolves.toMatchObject({ username: null });
+
+    const updated = await repository.updateProfile(user.id, { username: 'testuser' });
+    expect(updated?.username).toBe('testuser');
+  });
+
+  /**
+   * The regression `profiles_username_unique` exists to prevent: two accounts landing on the
+   * same handle differing only by case, which is an impersonation vector on a screen whose
+   * entire purpose is identifying a person to other athletes (ADR-019).
+   */
+  it('rejects a case-insensitive username collision with the ADR-019 copy', async () => {
+    const first = await repository.upsertFromIdentity(
+      crypto.randomUUID(),
+      uniqueEmail('username-collision-a'),
+    );
+    const second = await repository.upsertFromIdentity(
+      crypto.randomUUID(),
+      uniqueEmail('username-collision-b'),
+    );
+    const handle = `Jmitch${Date.now()}`;
+
+    await repository.updateProfile(first.id, { username: handle.toLowerCase() });
+
+    await expect(
+      repository.updateProfile(second.id, { username: handle.toUpperCase() }),
+    ).rejects.toMatchObject({ status: 409, message: 'That username is taken.' });
+  });
+
   it('stores city as a string', async () => {
     const email = uniqueEmail('city');
     const user = await repository.upsertFromIdentity(crypto.randomUUID(), email);

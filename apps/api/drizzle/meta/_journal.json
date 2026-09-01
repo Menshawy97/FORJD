@@ -71,6 +71,13 @@
       "when": 1788195917580,
       "tag": "0009_add-food-search-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788273925290,
+      "tag": "0010_new_champions",
+      "breakpoints": true
     }
   ]
 }

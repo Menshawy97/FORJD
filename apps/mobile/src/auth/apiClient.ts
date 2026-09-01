@@ -19,6 +19,7 @@ import axios, {
 } from 'axios';
 import Constants from 'expo-constants';
 import type {
+  AvatarUploadResponse,
   CreateCustomFoodRequest,
   CreateExerciseRequest,
   CreateSavedMealRequest,
@@ -153,6 +154,31 @@ export async function getMe(): Promise<MeResponse> {
 
 export async function updateProfile(patch: UpdateProfileRequest): Promise<ProfileResponse> {
   const response = await apiClient.patch<ProfileResponse>('/users/me/profile', patch);
+  return response.data;
+}
+
+/**
+ * ADR-019: avatar upload goes through the backend's `StorageProvider`, never a Supabase SDK
+ * call from the client (CLAUDE.md rule 11) — this is a plain authenticated multipart POST.
+ *
+ * Route, field name and response shape match `UsersController.uploadAvatar`
+ * (`apps/api/src/users/users.controller.ts`) exactly: `POST /users/me/avatar`, a
+ * `FileInterceptor('file')` multer field, answering `AvatarUploadResponse` (`{ avatarUrl:
+ * string }`) from `avatarUploadResponseSchema` in `@forjd/contracts`.
+ */
+export async function uploadAvatar(imageUri: string): Promise<AvatarUploadResponse> {
+  const filename = imageUri.split('/').pop() ?? 'avatar.jpg';
+  const extensionMatch = /\.(\w+)$/.exec(filename);
+  const mimeType = extensionMatch ? `image/${extensionMatch[1].toLowerCase()}` : 'image/jpeg';
+
+  const formData = new FormData();
+  // React Native's FormData accepts this `{ uri, name, type }` shape for a file field — it is
+  // not a real `Blob`, hence the cast; this is the standard RN idiom for a multipart upload.
+  formData.append('file', { uri: imageUri, name: filename, type: mimeType } as unknown as Blob);
+
+  const response = await apiClient.post<AvatarUploadResponse>('/users/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return response.data;
 }
 

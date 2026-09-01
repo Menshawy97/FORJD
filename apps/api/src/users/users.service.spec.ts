@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import type { UpdateProfileRequest } from '@forjd/contracts';
 import { PrivacySettings, Profile, User } from '@forjd/domain';
 
@@ -23,6 +23,7 @@ describe('UsersService', () => {
   const profile: Profile = {
     userId: user.id,
     displayName: 'Ada Lovelace',
+    username: 'ada',
     dateOfBirth: '1990-07-04',
     sex: 'female',
     heightCm: 172.5,
@@ -84,6 +85,7 @@ describe('UsersService', () => {
         profile: {
           userId: user.id,
           displayName: 'Ada Lovelace',
+          username: 'ada',
           dateOfBirth: '1990-07-04',
           sex: 'female',
           heightCm: 172.5,
@@ -209,6 +211,26 @@ describe('UsersService', () => {
       const patch = await patchFor({ displayName: 'Ada', heightCm: 172.5 });
 
       expect(patch).toMatchObject({ displayName: 'Ada', heightCm: 172.5 });
+    });
+
+    it('passes username straight through', async () => {
+      const patch = await patchFor({ username: 'jmitch' });
+
+      expect(patch.username).toBe('jmitch');
+    });
+
+    /**
+     * The repository is the layer that recognises the pg unique-violation and throws
+     * `ConflictException('That username is taken.')` (ADR-019) -- this only pins that the
+     * service does not swallow or relabel it on the way back to the controller.
+     */
+    it('propagates the repository ConflictException on a username collision untouched', async () => {
+      repository.updateProfile.mockRejectedValue(new ConflictException('That username is taken.'));
+
+      await expect(service.updateProfile(user, { username: 'jmitch' })).rejects.toMatchObject({
+        status: 409,
+        message: 'That username is taken.',
+      });
     });
 
     /**

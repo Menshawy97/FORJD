@@ -26,6 +26,15 @@ export interface StorageProvider {
    */
   exists(ref: StorageObjectRef): Promise<boolean>;
   getSignedUrl(ref: StorageObjectRef, expiresInSeconds: number): Promise<string>;
+  /**
+   * The stable, non-expiring URL for an object in a *public* bucket (ADR-019 resolves the
+   * signed-URL-vs-public-bucket question for avatars in favour of public, matching ADR-018's
+   * `exercise-media` bucket). Not async on the Supabase side -- unlike `getSignedUrl`, building
+   * a public URL is string concatenation against the project's own storage endpoint, not a
+   * network call -- so this is deliberately sync rather than `Promise<string>` like every
+   * other method here.
+   */
+  getPublicUrl(ref: StorageObjectRef): string;
   delete(ref: StorageObjectRef): Promise<void>;
   /**
    * Idempotent bucket setup for scripts that own their bucket (the media mirror creates

@@ -153,6 +153,7 @@ export class UsersService {
     return {
       userId: profile.userId,
       displayName: profile.displayName,
+      username: profile.username,
       dateOfBirth: profile.dateOfBirth,
       sex: profile.sex,
       heightCm: profile.heightCm,

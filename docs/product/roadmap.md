@@ -425,6 +425,50 @@ data (Phase 6), a software-backed keystore rather than hardware, no WHOOP device
 a synthetic camera for InBody capture (Phase 5), and no sense of using the app mid-set in a
 gym. Rule 16 and ADR-007 both assume real hardware for health work.
 
+### Phase 2.4 — username and avatar (ADR-019) — ✅ DONE
+
+Full vertical slice, per the user's explicit choice of "full ADR-019 slice" over the narrower
+alternatives (username-only, or just `edit-profile.tsx`'s field). See
+[ADR-019](../decisions/ADR-019-username-and-avatar.md) for the decision and its consequences
+list.
+
+**Backend:** `apps/api/drizzle/0010_new_champions.sql` adds `profiles.username` (nullable
+`text`) plus a partial, case-insensitive unique index (`profiles_username_unique` on
+`lower(username) WHERE username IS NOT NULL`), mirroring `exercises_owner_name_unique`'s
+pattern. `profileResponseSchema`/`updateProfileRequestSchema`/`publicProfileResponseSchema`
+gain `username`. The profile-patch endpoint reuses itself for the uniqueness check — no
+separate endpoint — mapping a Postgres `23505` on that index to `ConflictException('That
+username is taken.')`, the prototype's own copy. Avatar upload is a new `POST
+/api/v1/users/me/avatar` (multipart, field `file`) through `StorageProvider`, never the
+Supabase SDK directly (rule 11): a new `StorageProvider.getPublicUrl()` method plus
+`UsersModule.onModuleInit` calling `ensureBucket('avatars', {public: true})`, so `avatarUrl`
+stays a stable `http(s)` URL rather than an expiring signed one — same reasoning as the
+exercise-media mirror's public bucket (ADR-018). Response is deliberately minimal,
+`{avatarUrl: string}` (`AvatarUploadResponse`), not the full profile. The stale "no handle"
+schema comment was checked and found already absent from `profiles.schema.ts` by the time
+this landed.
+
+**Mobile:** new `apps/mobile/src/app/pick-username.tsx` (ported from the prototype's
+`s_pickUsername()`, verified against `create account username.png`), wired into
+`signup.tsx`'s post-registration navigation (`/pick-username` before `/goals`). Shared
+`apps/mobile/src/auth/username.ts` sanitizer (`toLowerCase` + strip non-`[a-z0-9_]`) used by
+both `pick-username.tsx` and the new Username field in `edit-profile.tsx`, which also gained
+the avatar circle + camera badge + "Change photo" control (`expo-image-picker`, added as a
+dependency — `npx expo install --check` run to keep it aligned with the pinned SDK 54, per
+`apps/mobile/AGENTS.md`). `(tabs)/profile.tsx` now renders `@username` alongside city (not
+replacing it, per ADR-019's "alternatives rejected"); `athlete/[userId].tsx` gains the same
+handle line and its stale "No handle line" divergence comment was rewritten. New `camera`
+glyph added to `icon.tsx`. `apiClient.ts`'s `uploadAvatar()` was verified against the real
+backend contract above (not just assumed) — route, multipart field name, and response shape
+all confirmed to match exactly.
+
+**Verified:** Backend — 24 new tests, 110/110 passing for the touched packages (`users`,
+`athletes`, `storage`), `tsc --noEmit` and `eslint` clean. E2E suites are blocked sandbox-wide
+on missing `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (pre-existing, confirmed by unrelated
+suites failing identically — not a regression from this change; needs a real Supabase-backed
+run before merge). Mobile — full suite **70 suites / 396 tests, 0 failures**, `tsc --noEmit`
+and `eslint` clean.
+
 ### Deviations from the design, decided rather than drifted
 
 The design shows things the API cannot yet support. Each was a deliberate call, not an

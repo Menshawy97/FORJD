@@ -1,12 +1,14 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { UpdateProfileRequest } from '@forjd/contracts';
 import type { Sex } from '@forjd/domain';
 
-import { getMe, updateProfile } from '@/auth/apiClient';
-import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { getMe, updateProfile, uploadAvatar } from '@/auth/apiClient';
+import { classifyRequestFailure, isConflict, OFFLINE_MESSAGE } from '@/auth/failure';
+import { sanitizeUsername } from '@/auth/username';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
@@ -57,10 +59,19 @@ function formatDisplayDate(iso: string): string {
 
 const INPUT_HEIGHT = 50;
 
+const AVATAR_SIZE = 88;
+const AVATAR_BADGE_SIZE = 30;
+
 export default function EditProfileScreen() {
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<string | null>(null);
   const [sex, setSex] = useState<Sex | null>(null);
+  // `avatarUrl` starts as the loaded profile's value and is only ever replaced by a fresh
+  // upload's own returned URL — never set from the local picker URI, which is a device-local
+  // `file://`/`content://` path `httpUrlSchema` would reject outright.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -74,8 +85,10 @@ export default function EditProfileScreen() {
       (me) => {
         if (cancelled) return;
         setDisplayName(me.profile?.displayName ?? '');
+        setUsername(me.profile?.username ?? '');
         setDateOfBirth(me.profile?.dateOfBirth ?? null);
         setSex(me.profile?.sex ?? null);
+        setAvatarUrl(me.profile?.avatarUrl ?? null);
         setLoaded(true);
       },
       (error: unknown) => {
@@ -91,14 +104,50 @@ export default function EditProfileScreen() {
 
   const goBack = () => router.replace('/profile');
 
+  // Uploaded immediately on selection, unlike every other field here — the picker only ever
+  // hands back a local device URI, and turning that into something `avatarUrl` (an
+  // `http(s)`-only field) can actually hold requires the network round trip regardless of
+  // when Save is pressed. The result is still only *persisted* to the profile through the
+  // batched `handleSave` patch below, same as every other field on this screen.
+  const handlePickAvatar = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      toast.show('Photo access is needed to set a picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || result.assets.length === 0) {
+      return;
+    }
+
+    const uri = result.assets[0].uri;
+    setAvatarPreviewUri(uri);
+    try {
+      const uploaded = await uploadAvatar(uri);
+      setAvatarUrl(uploaded.avatarUrl);
+    } catch {
+      toast.show('Could not upload photo. Please try again.');
+    }
+  };
+
+  const handleUsernameChange = (value: string) => setUsername(sanitizeUsername(value));
+
   const handleSave = async () => {
     setSaveError(null);
     setSaving(true);
 
     const patch: UpdateProfileRequest = {
       displayName: displayName.length > 0 ? displayName : null,
+      username: username.length > 0 ? username : null,
       dateOfBirth,
       sex,
+      avatarUrl,
     };
 
     try {
@@ -125,6 +174,64 @@ export default function EditProfileScreen() {
         ) : (
           loaded && (
             <>
+              <View className="mb-[22px] items-center" style={{ gap: 12 }}>
+                <View style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }}>
+                  {avatarPreviewUri || avatarUrl ? (
+                    <Image
+                      source={{ uri: avatarPreviewUri ?? avatarUrl ?? undefined }}
+                      style={{
+                        width: AVATAR_SIZE,
+                        height: AVATAR_SIZE,
+                        borderRadius: AVATAR_SIZE / 2,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    />
+                  ) : (
+                    <View
+                      className="items-center justify-center rounded-full border border-border"
+                      style={{
+                        width: AVATAR_SIZE,
+                        height: AVATAR_SIZE,
+                        backgroundColor: '#1c1c1e',
+                      }}>
+                      <Text
+                        className="font-archivo text-[28px] font-bold"
+                        style={{ color: colors.metadata }}>
+                        {(displayName || '?').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add photo"
+                    onPress={handlePickAvatar}
+                    className="absolute"
+                    style={({ pressed }) => [
+                      {
+                        right: -2,
+                        bottom: -2,
+                        width: AVATAR_BADGE_SIZE,
+                        height: AVATAR_BADGE_SIZE,
+                        borderWidth: 2,
+                        borderColor: '#0e0e0f',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: AVATAR_BADGE_SIZE / 2,
+                        backgroundColor: colors.accent,
+                      },
+                      pressed && { transform: [{ scale: 0.985 }] },
+                    ]}>
+                    <Icon name="camera" color="#0e0e0f" size={15} filled />
+                  </Pressable>
+                </View>
+                <Pressable accessibilityRole="button" onPress={handlePickAvatar}>
+                  <Text className="font-archivo text-[12.5px] font-semibold text-accent">
+                    Change photo
+                  </Text>
+                </Pressable>
+              </View>
+
               <Text className="mb-[9px] font-archivo text-section-label font-semibold uppercase text-label">
                 Name
               </Text>
@@ -132,6 +239,19 @@ export default function EditProfileScreen() {
                 accessibilityLabel="Name"
                 value={displayName}
                 onChangeText={setDisplayName}
+                className="rounded-field border border-border bg-fieldBg px-[15px] font-archivo text-input font-semibold text-text"
+                style={{ height: INPUT_HEIGHT }}
+              />
+
+              <Text className="mb-[9px] mt-[18px] font-archivo text-section-label font-semibold uppercase text-label">
+                Username
+              </Text>
+              <TextInput
+                accessibilityLabel="Username"
+                value={username}
+                onChangeText={handleUsernameChange}
+                autoCapitalize="none"
+                autoCorrect={false}
                 className="rounded-field border border-border bg-fieldBg px-[15px] font-archivo text-input font-semibold text-text"
                 style={{ height: INPUT_HEIGHT }}
               />
@@ -257,6 +377,11 @@ export default function EditProfileScreen() {
 }
 
 function describeFailure(error: unknown): string {
+  // ADR-019: the profile PATCH answers 409 with `That username is taken.` on a case-insensitive
+  // duplicate — the same conflict shape `isConflict` already reads for exercise names.
+  if (isConflict(error)) {
+    return 'That username is taken.';
+  }
   return classifyRequestFailure(error) === 'offline'
     ? OFFLINE_MESSAGE
     : 'Could not update your profile. Please try again.';

@@ -4,7 +4,11 @@
 // Phase H: the destination changed from `/` straight to `/goals?returnTo=newAccount` — the
 // prototype's first-run path always visits goals before home (§4.6/§4.8 of
 // slice2-screen-specs.md). See profile-navigation-goals.test.tsx and goals.test.tsx for the
-// screen this now lands on.
+// screen this used to land on directly.
+//
+// ADR-019: a new `pick-username` onboarding screen now sits between the two — signup lands
+// there first, and `pick-username.tsx`'s own Continue button is what carries the user on to
+// `/goals?returnTo=newAccount` (see pick-username.test.tsx).
 import { fireEvent } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 
@@ -28,7 +32,7 @@ describe('signup screen - successful submit', () => {
     (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
   });
 
-  it('calls signup() exactly once with the entered values, persists the session, and lands on goals as a first-run', async () => {
+  it('calls signup() exactly once with the entered values, persists the session, and lands on pick-username', async () => {
     (signup as jest.Mock).mockResolvedValue({
       userId: 'u1',
       email: 'new@example.com',
@@ -49,7 +53,7 @@ describe('signup screen - successful submit', () => {
 
     fireEvent.press(await findByText('Create Account'));
 
-    await findByText('What are you training for?');
+    await findByText('Your Profile');
 
     expect(signup).toHaveBeenCalledTimes(1);
     expect(signup).toHaveBeenCalledWith({
@@ -59,7 +63,6 @@ describe('signup screen - successful submit', () => {
     });
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith('forjd.accessToken', 'access-1');
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith('forjd.refreshToken', 'refresh-1');
-    expect(rendered.getPathname()).toBe('/goals');
-    expect(rendered.getSearchParams()).toMatchObject({ returnTo: 'newAccount' });
+    expect(rendered.getPathname()).toBe('/pick-username');
   });
 });

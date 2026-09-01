@@ -24,6 +24,7 @@ describe('AthletesService', () => {
   const ownerProfile: Profile = {
     userId: ownerId,
     displayName: 'Ada Lovelace',
+    username: 'ada',
     dateOfBirth: '1990-07-04',
     sex: 'female',
     heightCm: 172.5,
@@ -67,6 +68,7 @@ describe('AthletesService', () => {
       await expect(service.getPublicProfile(viewer, ownerId)).resolves.toEqual({
         userId: ownerId,
         displayName: 'Ada Lovelace',
+        username: 'ada',
         avatarUrl: 'https://example.com/a.png',
         city: 'Cairo',
         trainingGoals: ['get_stronger'],

@@ -167,9 +167,30 @@ const citySchema = z.string().min(1).max(120);
 /** Only `free` is reachable today — billing is Phase 10. See `SubscriptionService`. */
 export const planSchema = z.enum(PLANS);
 
+/**
+ * The prototype's own rule, verbatim (ADR-019): lowercase letters, digits, and underscores
+ * only, 3-20 characters. Case-insensitive uniqueness is enforced by the database via a unique
+ * index on `lower(username)`, not by this schema -- a format check cannot see other rows.
+ *
+ * The client sanitizes as the user types (`toLowerCase().replace(/[^a-z0-9_]/g,'')`), but that
+ * is a convenience, not a constraint: this pattern is re-checked here regardless of what the
+ * client already did, because a sanitizing input is not a substitute for server validation.
+ */
+const usernameSchema = z
+  .string()
+  .regex(/^[a-z0-9_]{3,20}$/, '3-20 characters: letters, numbers, underscores.');
+
 export const profileResponseSchema = z.object({
   userId: z.string().uuid(),
   displayName: z.string().nullable(),
+  /**
+   * Separate from `displayName` (ADR-019) -- the design shows both simultaneously
+   * ("James Mitchell" above "@jmitch"), so this is a second field, not the same value
+   * rendered twice. Null for every account created before this field existed; the
+   * `pickUsername` onboarding screen fills it for new accounts, and existing accounts are
+   * prompted from `edit-profile`, not blocked.
+   */
+  username: z.string().nullable(),
   dateOfBirth: z.string().nullable(),
   sex: sexSchema.nullable(),
   heightCm: z.number().nullable(),
@@ -258,6 +279,8 @@ export type UpdatePrivacyRequest = z.infer<typeof updatePrivacyRequestSchema>;
 export const publicProfileResponseSchema = z.object({
   userId: z.string().uuid(),
   displayName: z.string().nullable(),
+  /** Renders as `@username` on the public profile (ADR-019). Null for pre-ADR-019 accounts. */
+  username: z.string().nullable(),
   avatarUrl: z.string().nullable(),
   city: citySchema.nullable(),
   trainingGoals: z.array(trainingGoalSchema),
@@ -309,6 +332,13 @@ const httpUrlSchema = z
 export const updateProfileRequestSchema = z
   .object({
     displayName: z.string().min(1).max(80).nullable(),
+    /**
+     * Format-checked here; case-insensitive uniqueness is a database constraint (ADR-019),
+     * surfaced by the service as a 409 with the message `That username is taken.` on a
+     * Postgres unique-violation (error code 23505) rather than as a Zod issue, because
+     * uniqueness cannot be decided from the request body alone.
+     */
+    username: usernameSchema.nullable(),
     dateOfBirth: isoDateSchema.nullable(),
     sex: sexSchema.nullable(),
     heightCm: z.number().positive().max(300).nullable(),
@@ -341,6 +371,18 @@ export const updateProfileRequestSchema = z
     message: 'At least one field must be provided',
   });
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
+
+/**
+ * `POST /users/me/avatar`'s response (ADR-019 -- `StorageModule`'s first request-serving
+ * consumer). Deliberately just the new URL, not a full `profileResponseSchema` -- the upload
+ * endpoint's one job is producing a URL, and returning the whole profile back would make this
+ * shape shift every time an unrelated profile field changes. The client already has the
+ * `PATCH /users/me/profile` response for that; it merges this value into it.
+ */
+export const avatarUploadResponseSchema = z.object({
+  avatarUrl: z.string(),
+});
+export type AvatarUploadResponse = z.infer<typeof avatarUploadResponseSchema>;
 
 /* ------------------------------------------------------------------------------------------
  * Lists
