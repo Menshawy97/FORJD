@@ -1134,7 +1134,7 @@ failure).
 | 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
 | 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
 | 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **Complete** — [re-planned](phase-2-plan.md); all phases (0, A-K) done, screen work complete |
-| 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | **In progress — [planned](nutrition-plan.md); Phases A (vendor USDA), B (domain vocabulary), C (schema/repository) done — next is D (contracts and endpoints)** |
+| 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | **Screens complete — [planned](nutrition-plan.md); Phases A-G, J done (vendor/domain/schema/contracts/dashboard/food search+detail/share card) — Phase H (saved meals) and Phase I (Home entry point) remain** |
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Programs | 18-21 | Program/week/day, enrollment, progression | Not started |
