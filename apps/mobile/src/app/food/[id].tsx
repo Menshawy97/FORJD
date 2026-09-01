@@ -15,6 +15,7 @@ import { FilterChip } from '@/components/filter-chip';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { generateDraftItemId, useMealDraft } from '@/features/nutrition/meal-draft-context';
 import { todayLocalDate } from '@/nutrition/date';
 import { colors } from '@/theme/tokens';
 
@@ -24,8 +25,14 @@ import { colors } from '@/theme/tokens';
  *
  *   1. New log: `food-search.tsx` -> `{ id, slot }`.
  *   2. Edit existing entry: `nutrition.tsx` -> `{ id, entryId, slot }`.
- *   3. Meal ingredient (Phase H, not wired up by anything yet): `food-search.tsx` in meal mode
- *      -> `{ id, foodTarget: 'meal', editMealId? }`.
+ *   3. Meal ingredient (Phase H): `food-search.tsx` in meal mode -> `{ id, foodTarget: 'meal',
+ *      editMealId? }`. `onPrimary`'s `forMeal` branch appends the selected food to
+ *      `MealDraftContext` (`@/features/nutrition/meal-draft-context`) as a `MealDraftItem`,
+ *      then pops back to `edit-meal.tsx` -- two `router.back()` calls, not one, since this
+ *      screen was reached via `edit-meal -> food-search -> food/[id]`. `edit-meal.tsx`'s own
+ *      population effect guards against overwriting a draft that already matches its
+ *      `editMealId`, so returning to the same still-mounted instance never re-fetches and
+ *      clobbers the item just added.
  *
  * **No update endpoint exists.** `nutrition.controller.ts` only has `POST log`, `POST log/meal`,
  * `DELETE log/group/:groupId`, `DELETE log/:id` -- no `PATCH`. "Save Changes" in edit mode is
@@ -90,6 +97,7 @@ export default function FoodDetailScreen() {
   const invalidId = !id;
 
   const toast = useToast();
+  const mealDraft = useMealDraft();
   const [food, setFood] = useState<FoodResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [servingIdx, setServingIdx] = useState<number>(0);
@@ -202,10 +210,27 @@ export default function FoodDetailScreen() {
     }
 
     if (forMeal) {
-      // Phase H's editMeal draft does not exist yet, so there is nowhere to append this
-      // ingredient today -- nothing calls this screen with `foodTarget: 'meal'` in
-      // production. The branch exists per the screens' own spec; returning is the only
-      // defensible action until Phase H gives it a destination.
+      const servingLabel = servingLabelForSave();
+      if (mealDraft.draft) {
+        // Defensive fallback only: in every real navigation this screen is reached in meal
+        // mode via `edit-meal.tsx` (which always calls `startDraft` before pushing here), so
+        // `mealDraft.draft` is non-null in production. A null draft here (e.g. a deep link
+        // straight into meal mode) has nowhere to append to -- the item is silently dropped
+        // rather than thrown, matching the same "no destination, return" reasoning the
+        // stubbed version of this branch used before Phase H existed.
+        mealDraft.addItem({
+          id: generateDraftItemId(),
+          foodId: food.id,
+          name: food.name,
+          servingLabel,
+          grams,
+          macrosPer100g: food.macrosPer100g,
+        });
+      }
+      // Pop twice: `edit-meal -> food-search -> food/[id]` is always exactly two hops, and the
+      // still-mounted `edit-meal` instance underneath already holds the just-updated draft via
+      // context, so returning to it re-renders rather than re-fetching and clobbering it.
+      router.back();
       router.back();
       return;
     }

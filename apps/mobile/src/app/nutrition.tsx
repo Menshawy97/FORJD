@@ -22,6 +22,7 @@ import {
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
+import { MealSlotChip } from '@/components/meal-slot-chip';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
@@ -504,26 +505,14 @@ export default function NutritionScreen() {
             <Text className="font-archivo text-[18px] font-bold text-text">{`Log "${logMealSheet.name}"`}</Text>
             <Text className="font-archivo text-[13px] text-dimmer">Add all items to which meal?</Text>
             <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-              {MEAL_SLOTS.map((slot) => {
-                const selected = slot === logMealSlot;
-                return (
-                  <Pressable
-                    key={slot}
-                    accessibilityRole="button"
-                    onPress={() => setLogMealSlot(slot)}
-                    className="rounded-full border px-[14px] py-2"
-                    style={{
-                      backgroundColor: selected ? colors.pickRowSelectedBg : 'transparent',
-                      borderColor: selected ? colors.borderPickRowSelected : colors.border,
-                    }}>
-                    <Text
-                      className="font-archivo text-[12.5px] font-semibold"
-                      style={{ color: selected ? colors.accent : colors.textSecondary }}>
-                      {MEAL_SLOT_DISPLAY_NAMES[slot]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              {MEAL_SLOTS.map((slot) => (
+                <MealSlotChip
+                  key={slot}
+                  label={MEAL_SLOT_DISPLAY_NAMES[slot]}
+                  selected={slot === logMealSlot}
+                  onPress={() => setLogMealSlot(slot)}
+                />
+              ))}
             </View>
             <View className="flex-row" style={{ gap: 9, marginTop: 6 }}>
               <Pressable

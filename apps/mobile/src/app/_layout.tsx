@@ -12,6 +12,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secureStorage';
+import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
@@ -92,9 +93,15 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider value={DarkTheme}>
         <StatusBar style="light" />
-        <Stack screenOptions={stackScreenOptions} />
-        {!authenticated && <AuthGate />}
-        {authenticated && <AuthenticatedGate />}
+        {/* Phase H's cross-screen saved-meal draft (`editMeal -> food-search -> food/[id] ->
+            back`), mounted at the root per the locked decision in nutrition-plan.md's Phase H
+            section -- cheap when nobody is editing a meal (`draft: null`), so there is no cost
+            to it always being present here rather than scoped to a sub-tree. */}
+        <MealDraftProvider>
+          <Stack screenOptions={stackScreenOptions} />
+          {!authenticated && <AuthGate />}
+          {authenticated && <AuthenticatedGate />}
+        </MealDraftProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
