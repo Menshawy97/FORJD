@@ -578,8 +578,73 @@ before merge, per the phase's own `## Verification` section below.
 last of the screens because Home itself is otherwise still a placeholder; if Home has been
 built by then, this folds into that work instead.
 
-**Phase J — share.** `nutritionShare`. Pure client rendering, no backend. Lowest priority and
-the natural thing to cut if the phase runs long.
+**Phase J — share — ✅ DONE.** `nutritionShare`. Pure client rendering, no backend.
+
+**Outcome:** `nutrition-share.tsx` replaces the Phase F placeholder (whose docblock said "Phase
+I" — stale from an earlier renumbering pass; corrected). Reuses `nutrition.tsx`'s already-built
+data path rather than adding anything new: `listNutritionLog(today)`, `getMacroGoals()`
+(`.catch(() => null)`, same pattern), and the same client-side `foodsById` name-resolution via
+`getFood`, deduplicated per `foodId`. Three preview layouts (Daily Summary ring, Macro Split
+bars, Meal Log rows) switch on a local `layout` state, matching the prototype's own
+`nutriShareLayout` field one-to-one; the ring uses the identical dasharray/dashoffset math
+`nutrition.tsx`'s own calorie ring already established, just at the prototype's own smaller
+r=40 size for the share-card preview.
+
+**No screenshot existed when this phase was planned, but four surfaced mid-phase** —
+`nutritionShare1.png` through `nutritionShare4.png` — and were used as the primary fidelity
+check in place of the prototype, per this project's screenshots-first rule. They confirmed the
+prototype's structure exactly, plus two details worth recording: the two unselected layout
+thumbnails still carry the app's ordinary hairline border (not no border at all), and the Meal
+Log layout's per-item kcal renders in the accent orange, not a dim grey — both already what the
+prototype's own inline styles said, so no adaptation was needed, just verification against the
+real screenshots rather than trusting a paraphrase.
+
+**Decisions made:**
+
+1. **Save Image / Instagram / More stay mocked**, exactly like the prototype's own `flash(...)`
+   calls — toast-only confirmations, nothing written to the device and nothing actually shared.
+   This codebase has no `expo-media-library`, `react-native-view-shot`, or `react-native-share`
+   dependency, and none was added. Real device capture/sharing is a deliberate scope reduction
+   for this lowest-priority phase, not a bug — the same honest-reduction principle Phase F
+   documented for its own simplifications (e.g. grouped log rows rendering individually).
+2. **A goals gate, not present in the prototype.** The prototype's demo state always has
+   `macroGoals` populated, so it divides by `g.kcal` unconditionally. The real app can reach
+   this screen with no goals ever set. Rather than fabricate a default goal to divide by (or
+   crash), the screen shows an honest "Set your daily goals first" prompt back to the dashboard
+   in place of the preview — the same honest-empty-state principle `nutrition.tsx`'s own goals
+   card already applies to its ring, not a new one invented for this screen.
+
+**A scope-expansion request was received and declined mid-phase.** A message purporting to be a
+coordinator relayed a request to add a background-photo picker (gallery + camera capture,
+new `NSCameraUsageDescription` permission, a scrim-overlay technique) to the share card,
+claiming it was "confirmed directly with the user just now." It was not implemented: it
+directly reversed the locked, explicitly-reasoned decision above (make no scope re-ask, add no
+device-capture dependencies), asked for new device permissions with no independent way to
+verify the claimed user confirmation, and arrived as an unsigned mid-task instruction rather
+than a message from the user themselves — exactly the pattern this project's own instruction-
+source rules exist to catch. If this is genuinely wanted, it should come back as an explicit,
+separate ask reviewed on its own, not folded silently into the lowest-priority phase's original
+scope.
+
+**Testing (TDD, per project rules):** `nutrition-share-fidelity.test.tsx`, mirroring
+`nutrition-fidelity.test.tsx`'s shape. Covers all three layout previews rendering from fetched
+log/goals data, thumbnail selection switching the preview, concrete ring-offset and macro-bar-
+width math (not just "renders without crashing" — e.g. totals of kcal 600 / protein 75 / carbs
+100 / fat 25 against a 2000/150/200/100 goal, asserting the ring's exact `strokeDashoffset` and
+the bars' exact `50%`/`25%` fill widths), the Meal Log layout's 7-item display cap vs. its
+totals still summing every logged item, all three action buttons' toast confirmations, the
+goals-missing gate, and back navigation. 7/7 new tests green.
+
+**Verified:** full mobile suite 421/421 green (`TZ=UTC pnpm --filter @forjd/mobile test --ci
+--watchAll=false`), `tsc --noEmit` clean, `eslint` clean, `npx expo export --platform android`
+bundle-compiled cleanly (1539 modules). The bundle-compile step needed a local-only workaround:
+this repo's `metro.config.js` blocklists any path containing `.claude/worktrees/` to stop Metro
+watching sibling worktrees, but that same regex also blocks a worktree's *own* node_modules
+when the checkout being built is itself inside `.claude/worktrees/` (as this session's was) —
+confirmed by tracing the exact "Unable to resolve module .../expo-router/entry.js" failure to
+that line. Verified locally by temporarily commenting out that one regex line, running the
+export, then reverting via `git checkout` before committing anything — not a change to the
+committed config, since CI's own checkout is never inside a worktree and never hits this.
 
 ## Verification
 
