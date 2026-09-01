@@ -107,11 +107,13 @@ describe("NutritionService", () => {
   });
 
   describe("searchFoods", () => {
-    it("returns no results for a blank query, without calling the repository", async () => {
+    it("browses the catalogue on a blank query, passing an empty term through to the repository", async () => {
+      repository.searchFoods.mockResolvedValue([catalogueFood()]);
+
       const result = await service.searchFoods(viewer, { limit: 30 });
 
-      expect(result).toEqual({ items: [] });
-      expect(repository.searchFoods).not.toHaveBeenCalled();
+      expect(repository.searchFoods).toHaveBeenCalledWith(viewer.id, "", 30, undefined);
+      expect(result.items).toHaveLength(1);
     });
 
     it("passes the term, limit and category straight through, and maps isCustom from ownerUserId", async () => {
