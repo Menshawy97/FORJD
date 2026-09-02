@@ -8,6 +8,7 @@ jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(() => false),
+  consumeSessionExpired: jest.fn(() => false),
 }));
 
 interface HostNode {

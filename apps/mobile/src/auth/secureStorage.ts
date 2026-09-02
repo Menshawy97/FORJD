@@ -130,13 +130,31 @@ export async function saveSession(
   notifySessionChanged();
 }
 
-export async function clearSession(): Promise<void> {
+// In-memory only, deliberately not one of the SecureStore-backed `KEYS` above: it exists to
+// answer one question exactly once ("did apiClient just force this user out, or did they tap
+// Log out?"), not to survive an app restart. `clearSession()` (a manual logout, `profile.tsx`)
+// leaves it false; `clearSession({ expired: true })` (apiClient's interceptor, ADR-011's
+// failed-refresh branch) sets it, and `consumeSessionExpired` resets it on read so a later,
+// unrelated sign-out never replays a stale "your session expired" banner.
+let sessionExpiredFlag = false;
+
+export async function clearSession(options?: { expired?: boolean }): Promise<void> {
   await Promise.all(Object.values(KEYS).map((key) => SecureStore.deleteItemAsync(key)));
   cache.accessToken = null;
   cache.refreshToken = null;
   cache.expiresAt = null;
   cache.userId = null;
   cache.email = null;
+  if (options?.expired) {
+    sessionExpiredFlag = true;
+  }
 
   notifySessionChanged();
+}
+
+/** Read-once: returns whether the session was just force-cleared, and resets the flag. */
+export function consumeSessionExpired(): boolean {
+  const wasExpired = sessionExpiredFlag;
+  sessionExpiredFlag = false;
+  return wasExpired;
 }

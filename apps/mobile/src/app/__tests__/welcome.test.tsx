@@ -11,6 +11,7 @@ jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(() => false),
+  consumeSessionExpired: jest.fn(() => false),
 }));
 
 describe('welcome screen', () => {

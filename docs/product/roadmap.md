@@ -230,7 +230,20 @@ confusing the diagnosis with a garbled exercise name — spun off as its own fol
 than fixed under this session's time pressure (see the spawned task "Fix workouts e2e suite
 leaking fixture data into dev DB"). The `apiClient.ts` interceptor's session-refresh-failure
 messaging gap found and discarded as a hypothesis along the way is still real, independent of
-this bug, and stays spun off (see "Add expired-session UX across authenticated screens").
+this bug, and is now fixed (see immediately below).
+
+**The "unauthorized falls through to a generic message" gap (above) is now fixed, app-wide,
+without touching any of the dozen screens.** Tracing `AuthGate` in `_layout.tsx` showed the
+redirect to `/welcome` already happens automatically on any forced `clearSession()` — the
+actual gap was that nothing told the user *why*. `secureStorage.ts` now exposes a one-shot
+`clearSession({ expired: true })` / `consumeSessionExpired()` pair; `apiClient.ts`'s
+interceptor sets it on a failed-refresh clear (never on `profile.tsx`'s manual logout); and
+`welcome.tsx` shows "Your session expired. Please log in again." above its CTAs when it reads
+true. See ADR-011's addendum for the full design. Tests: `secureStorage.test.ts`,
+`apiClient.test.ts`, and a new `welcome-session-expired.test.tsx`; 18 existing test files'
+`secureStorage` mocks were mechanically updated to include the new export. Full mobile suite
+(63 suites / 371 tests) and `tsc --noEmit` both green; `code-reviewer` agent returned APPROVE
+with 0 blocking issues.
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
@@ -257,12 +270,11 @@ explicitly Phase J's job, deliberately not pulled forward.
    physical-device walk since landing.
 4. **Resolve `pr59-fixup2`.** A leftover, unregistered, clean git clone at
    `.claude/worktrees/pr59-fixup2` — never decided whether to keep or delete.
-5. **Two smaller follow-ups spun off during Phase G's device walk, not yet started:**
-   fixing the workouts e2e suite's missing test-fixture teardown (it leaks real rows into the
-   shared dev DB — one already synced into a real device's exercise catalogue and briefly
-   confused this session's debugging), and adding proper expired-session UX (a 401 surviving
-   a failed token refresh currently shows the same generic error as any other failure, on
-   every authenticated write screen in the app, not just the builder).
+5. **One smaller follow-up spun off during Phase G's device walk, not yet started:** fixing
+   the workouts e2e suite's missing test-fixture teardown (it leaks real rows into the shared
+   dev DB — one already synced into a real device's exercise catalogue and briefly confused
+   that session's debugging). The other follow-up from that walk — expired-session UX — is
+   done (see above).
 6. **Keep the local API dev server running under `npm run start:dev` (watch mode), not a
    one-off `node dist/main`.** A stale `node dist/main` process — started before the Workouts
    feature existed and never restarted — silently 404'd every `/workouts/templates` request

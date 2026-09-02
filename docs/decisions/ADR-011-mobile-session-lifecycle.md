@@ -144,3 +144,27 @@ clock skew a false-positive machine. The server's 401 is the honest signal.
 - Nothing yet pins `flutter_secure_storage` to a single file. A conformance grep asserting it
   is imported only from `secure_token_store.dart` — in the same spirit as the existing
   Supabase grep — is proposed but not implemented.
+
+## Addendum (RN/Expo port, slice 3G follow-up): distinguishing why a session was cleared
+
+The RN port's `clearSession()` (`apps/mobile/src/auth/secureStorage.ts`) is called from two
+places that mean very different things to the user: `profile.tsx`'s manual "Log out" button,
+and `apiClient.ts`'s response interceptor when a 401-triggered refresh itself fails. Both
+paths correctly land the user on `/welcome` — the redirect this ADR already describes ("Why
+the interceptor does not navigate") is unaffected — but a forced sign-out gave no indication
+anything unusual had happened. The screen the user was on (e.g. the workout builder) showed
+its own generic failure message and then silently vanished into the welcome screen, which
+read as a bug rather than an expired session.
+
+The fix is a single in-memory, non-persisted flag: `clearSession({ expired: true })` sets it,
+`consumeSessionExpired()` reads and clears it in one step, and `welcome.tsx` consumes it once
+on mount to show "Your session expired. Please log in again." above its CTAs. `profile.tsx`'s
+manual logout calls the plain `clearSession()` and never sets the flag.
+
+This keeps the ADR's core rule intact — the interceptor still does not navigate, it only now
+also leaves one extra bit behind for the screen that already owns the redirect target to
+read. The flag deliberately does not survive an app restart: if the OS kills the app between
+the forced clear and the user reopening it, the banner is silently skipped rather than shown
+on an unrelated later launch. Individual authenticated screens (builder.tsx,
+edit-profile.tsx, and the rest) needed no changes — the fix lives entirely in the shared auth
+layer, not duplicated per screen.

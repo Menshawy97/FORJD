@@ -29,6 +29,7 @@ jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(true),
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(() => true),
+  consumeSessionExpired: jest.fn(() => false),
 }));
 
 // Phase J: profile.tsx now reads real getMe() data for its identity row.

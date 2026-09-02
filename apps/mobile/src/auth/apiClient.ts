@@ -123,8 +123,10 @@ apiClient.interceptors.response.use(
       // ADR-011: a failed refresh clears the store and propagates the *original* error.
       // The caller asked for a profile; "your profile request failed" is true, "your
       // refresh failed" is an implementation detail they did not ask about — so `error`
-      // propagates, not the refresh error.
-      await clearSession();
+      // propagates, not the refresh error. `{ expired: true }` is the one bit that tells
+      // welcome.tsx (via consumeSessionExpired) this was a forced sign-out, not the user
+      // tapping Log out, so it can show "Your session expired" instead of nothing.
+      await clearSession({ expired: true });
       return Promise.reject(error);
     }
 
