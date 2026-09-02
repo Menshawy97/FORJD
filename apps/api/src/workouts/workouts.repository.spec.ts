@@ -1,3 +1,4 @@
+import { ConflictException } from "@nestjs/common";
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import { inArray } from "drizzle-orm";
 import { Pool } from "pg";
@@ -5,9 +6,13 @@ import { randomUUID } from "crypto";
 
 import { exercises } from "../database/schema/exercises.schema";
 import { users } from "../database/schema/users.schema";
-import { workoutTemplates } from "../database/schema/workouts.schema";
+import { workoutSessions, workoutTemplates } from "../database/schema/workouts.schema";
 import { ExercisesRepository } from "../exercises/exercises.repository";
-import { CreateWorkoutTemplateInput, WorkoutsRepository } from "./workouts.repository";
+import {
+  CreateWorkoutSessionInput,
+  CreateWorkoutTemplateInput,
+  WorkoutsRepository,
+} from "./workouts.repository";
 
 /**
  * Exercised against real Postgres, not a mock -- the behaviour under test is the database's
@@ -25,6 +30,7 @@ describe("WorkoutsRepository", () => {
   const createdUserEmails: string[] = [];
   const createdExerciseIds: string[] = [];
   const createdTemplateIds: string[] = [];
+  const createdSessionIds: string[] = [];
 
   const makeUser = async (label: string): Promise<string> => {
     const email = `wkoutrepo-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -95,6 +101,9 @@ describe("WorkoutsRepository", () => {
   });
 
   afterAll(async () => {
+    if (createdSessionIds.length > 0) {
+      await db.delete(workoutSessions).where(inArray(workoutSessions.id, createdSessionIds));
+    }
     if (createdTemplateIds.length > 0) {
       await db.delete(workoutTemplates).where(inArray(workoutTemplates.id, createdTemplateIds));
     }
@@ -476,6 +485,184 @@ describe("WorkoutsRepository", () => {
       createdTemplateIds.push(created.id);
 
       await expect(repository.softDeleteTemplate(created.id, stranger)).resolves.toBe(false);
+    });
+  });
+
+  const minimalSession = (
+    userId: string,
+    exerciseId: string,
+    overrides: Partial<CreateWorkoutSessionInput> = {},
+  ): CreateWorkoutSessionInput => ({
+    id: randomUUID(),
+    userId,
+    templateId: null,
+    name: "Upper Push",
+    activity: "strength",
+    status: "completed",
+    startedAt: new Date("2026-09-02T09:00:00.000Z"),
+    endedAt: new Date("2026-09-02T09:30:00.000Z"),
+    durationSeconds: 1800,
+    perceivedEffort: "solid",
+    notes: null,
+    city: null,
+    citySlug: null,
+    isLiveTracked: false,
+    exercises: [
+      {
+        exerciseId,
+        measure: "weight",
+        notes: null,
+        sets: [
+          {
+            type: "working",
+            isCompleted: true,
+            weightKg: 100,
+            reps: 8,
+            durationSeconds: null,
+            distanceMeters: null,
+            restSeconds: 90,
+            completedAt: new Date("2026-09-02T09:05:00.000Z"),
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  });
+
+  describe("upsertSession", () => {
+    it("persists a session with a nested exercise and set, ordered from zero", async () => {
+      const owner = await makeUser("session-create");
+      const exerciseId = await makeExercise("session-create-ex");
+      const input = minimalSession(owner, exerciseId);
+
+      const created = await repository.upsertSession(input);
+      createdSessionIds.push(created.id);
+
+      expect(created.id).toBe(input.id);
+      expect(created.userId).toBe(owner);
+      expect(created.exercises).toHaveLength(1);
+      expect(created.exercises[0]?.orderIndex).toBe(0);
+      expect(created.exercises[0]?.sets[0]?.weightKg).toBe(100);
+      expect(created.exercises[0]?.sets[0]?.reps).toBe(8);
+    });
+
+    it("is idempotent: replaying the same id returns the original session untouched, ignoring the retry's own payload", async () => {
+      const owner = await makeUser("session-idempotent");
+      const exerciseId = await makeExercise("session-idempotent-ex");
+      const input = minimalSession(owner, exerciseId);
+
+      const first = await repository.upsertSession(input);
+      createdSessionIds.push(first.id);
+
+      const retried = await repository.upsertSession({ ...input, name: "Hijacked Retry" });
+
+      expect(retried.id).toBe(first.id);
+      expect(retried.name).toBe("Upper Push");
+      expect(retried.exercises).toHaveLength(1);
+
+      const rows = await db.select().from(workoutSessions).where(inArray(workoutSessions.id, [input.id]));
+      expect(rows).toHaveLength(1);
+    });
+
+    it("rejects a replayed id that belongs to a different user", async () => {
+      const owner = await makeUser("session-collision-owner");
+      const stranger = await makeUser("session-collision-stranger");
+      const exerciseId = await makeExercise("session-collision-ex");
+      const input = minimalSession(owner, exerciseId);
+
+      const created = await repository.upsertSession(input);
+      createdSessionIds.push(created.id);
+
+      await expect(
+        repository.upsertSession({ ...input, userId: stranger }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("persists a session with no exercises", async () => {
+      const owner = await makeUser("session-empty");
+      const input = minimalSession(owner, "", { exercises: [] });
+
+      const created = await repository.upsertSession(input);
+      createdSessionIds.push(created.id);
+
+      expect(created.exercises).toEqual([]);
+    });
+  });
+
+  describe("findSessionByIdForUser", () => {
+    it("returns the caller's own session with its exercises and sets", async () => {
+      const owner = await makeUser("session-find-own");
+      const exerciseId = await makeExercise("session-find-ex");
+      const input = minimalSession(owner, exerciseId);
+      const created = await repository.upsertSession(input);
+      createdSessionIds.push(created.id);
+
+      const found = await repository.findSessionByIdForUser(created.id, owner);
+
+      expect(found?.id).toBe(created.id);
+      expect(found?.exercises[0]?.exerciseId).toBe(exerciseId);
+    });
+
+    it("returns null for another user's session", async () => {
+      const owner = await makeUser("session-find-owner");
+      const stranger = await makeUser("session-find-stranger");
+      const exerciseId = await makeExercise("session-find-stranger-ex");
+      const created = await repository.upsertSession(minimalSession(owner, exerciseId));
+      createdSessionIds.push(created.id);
+
+      await expect(repository.findSessionByIdForUser(created.id, stranger)).resolves.toBeNull();
+    });
+
+    it("returns null for an unknown id", async () => {
+      const owner = await makeUser("session-find-unknown");
+
+      await expect(
+        repository.findSessionByIdForUser(randomUUID(), owner),
+      ).resolves.toBeNull();
+    });
+  });
+
+  describe("listSessionsForUser", () => {
+    it("orders sessions newest-first and paginates with a keyset cursor -- no repeat and no gap", async () => {
+      const owner = await makeUser("session-list-paginate");
+      const exerciseId = await makeExercise("session-list-paginate-ex");
+      const base = new Date("2026-09-02T09:00:00.000Z").getTime();
+      const sessions = [];
+      for (let i = 0; i < 3; i += 1) {
+        const input = minimalSession(owner, exerciseId, {
+          startedAt: new Date(base + i * 60_000),
+          endedAt: new Date(base + i * 60_000 + 1_800_000),
+        });
+        const created = await repository.upsertSession(input);
+        createdSessionIds.push(created.id);
+        sessions.push(created);
+      }
+      // Newest first: the third (latest startedAt) session should lead.
+      const [oldest, middle, newest] = sessions;
+
+      const firstPage = await repository.listSessionsForUser({ userId: owner, limit: 2 });
+      expect(firstPage.rows.map((r) => r.id)).toEqual([newest!.id, middle!.id]);
+      expect(firstPage.hasMore).toBe(true);
+
+      const last = firstPage.rows[firstPage.rows.length - 1]!;
+      const secondPage = await repository.listSessionsForUser({
+        userId: owner,
+        after: { startedAt: last.startedAt.toISOString(), id: last.id },
+        limit: 50,
+      });
+      expect(secondPage.rows.map((r) => r.id)).toEqual([oldest!.id]);
+    });
+
+    it("never includes another user's session", async () => {
+      const owner = await makeUser("session-list-owner");
+      const stranger = await makeUser("session-list-stranger");
+      const exerciseId = await makeExercise("session-list-stranger-ex");
+      const created = await repository.upsertSession(minimalSession(owner, exerciseId));
+      createdSessionIds.push(created.id);
+
+      const page = await repository.listSessionsForUser({ userId: stranger, limit: 50 });
+
+      expect(page.rows.some((r) => r.id === created.id)).toBe(false);
     });
   });
 });

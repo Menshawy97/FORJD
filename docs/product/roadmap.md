@@ -98,13 +98,34 @@ Registered in `app.module.ts`; `workouts.service.ts` and `workout-cursor.ts` add
 isolation over real HTTP (404-never-403 on read/update/delete of another user's template, and
 exclusion from their list).
 
-Verified for all four phases: domain (48 tests), contracts (3 suites / 84 tests), api (33
-suites / 547 unit tests + 97 e2e tests, `--runInBand`, coverage thresholds hold — including
-two new 100%-pinned files), mobile (typecheck/lint/build clean; the Jest suite showed
+**Phase E (sessions API) is done**: `POST /workouts/sessions` (`WorkoutSessionsController` /
+`WorkoutSessionsService`, in the same `WorkoutsModule`, sharing `WorkoutsRepository`) accepts
+a completed session keyed by its client-generated `id`. `WorkoutsRepository.upsertSession` is
+idempotent by that id: `onConflictDoNothing` on the primary key, and a replayed upload returns
+the *first* write's row untouched — the retry's own payload (a different `name`,
+`durationSeconds`, etc.) is discarded entirely, which is the whole point of an idempotency key.
+A replayed id belonging to a *different* user is a genuine collision, not a retry —
+`ConflictException` (409), mirroring `ExercisesRepository`'s own unique-violation handling.
+Every referenced exercise must exist and be visible (`ExercisesRepository.findManyVisibleForUser`,
+one bulk query, also returning each exercise's `measure` so the service snapshots it
+server-side rather than trusting the client's request); an optional `templateId` must resolve
+via `WorkoutsRepository.findByIdForUser` before it is accepted. Both failures are 400s on the
+request body, not 404s naming a session that does not exist yet. The sessions list orders
+`(startedAt, id)` **descending** (newest-first, unlike the templates list's alphabetical
+order) with its own cursor shape in `workout-cursor.ts` (`WorkoutSessionCursor`). No
+`PATCH`/`DELETE` — a session uploads once, complete, after it finishes on-device (rule 6).
+`workout-sessions.service.ts` added to the 100%-coverage list. `workout-sessions.e2e-spec.ts`
+proves idempotency over real HTTP (a retried upload with a mutated payload still produces one
+row, with the original values) and that a session's performed values are never back-filled
+from its template's prescription.
+
+Verified for all five phases: domain (48 tests), contracts (3 suites / 84 tests), api (34
+suites / 582 unit tests + 108 e2e tests, `--runInBand`, coverage thresholds hold — three
+100%-pinned workout files), mobile (typecheck/lint/build clean; the Jest suite showed
 resource-contention flakiness under sustained local load in this session — different,
 timing-sensitive navigation tests failed on each of several reruns despite zero mobile files
 being touched — so it was not re-verified locally for this phase; rely on CI's isolated
-runner, which has been green through Phases A-C). `pnpm -r build`, `pnpm -r lint`, mobile
+runner, which has been green through Phases A-D). `pnpm -r build`, `pnpm -r lint`, mobile
 `typecheck`, and `scripts/ci/check-architecture-conformance.sh` all clean.
 
 Read this section first when resuming — it says exactly what's done and what to do next.
@@ -112,12 +133,15 @@ Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase E — sessions
-   API**: `POST /workouts/sessions` accepting a completed session with its client-generated
-   idempotency key (replaying the same key returns the existing session rather than creating
-   a second), plus the list/detail reads Home's counters and history will use. e2e proof that
-   a double upload produces one row, and that a session's stored values are the ones
-   performed, never back-filled from its template. Phases A-D are done (above).
+1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase F — the offline
+   layer**: `apps/mobile/src/store/workout-session.ts` — the append-only event log in
+   `expo-sqlite` and the sync queue that drains on reconnect, behind the same
+   injected-`SqliteConnection` function seam ADR-022 established. Write **ADR-025** for the
+   session sync contract (queue semantics, retry/backoff, what happens to a session whose
+   exercise was deleted server-side). Add the conformance rule pinning the module in
+   `scripts/ci/check-architecture-conformance.sh`. Testing: crash recovery (replay a partial
+   event log, assert the rebuilt session state) and a queued session that fails to upload
+   staying queued and uploading exactly once. Phases A-E are done (above).
 2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.

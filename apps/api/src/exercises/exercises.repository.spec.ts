@@ -1044,4 +1044,55 @@ describe("ExercisesRepository", () => {
       await expect(repository.findVisibleIds([], owner)).resolves.toEqual(new Set());
     });
   });
+
+  describe("findManyVisibleForUser", () => {
+    it("returns full records for catalogue and the caller's own ids, excluding unknown, another user's, and soft-deleted ids", async () => {
+      const owner = await makeUser("visible-full-owner");
+      const stranger = await makeUser("visible-full-stranger");
+
+      const catalogue = await repository.upsertCatalogueExercise(
+        catalogueInput(`visible-full-${randomUUID()}`),
+      );
+      createdExerciseIds.push(catalogue.id);
+
+      const ownCustom = await repository.createCustomExercise(owner, {
+        name: `Own Full ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "time",
+        primaryMuscles: ["core"],
+        equipment: [],
+        description: null,
+      });
+      createdExerciseIds.push(ownCustom.id);
+
+      const strangersCustom = await repository.createCustomExercise(stranger, {
+        name: `Stranger Full ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(strangersCustom.id);
+
+      const unknownId = randomUUID();
+
+      const visible = await repository.findManyVisibleForUser(
+        [catalogue.id, ownCustom.id, strangersCustom.id, unknownId],
+        owner,
+      );
+
+      expect([...visible.keys()].sort()).toEqual([catalogue.id, ownCustom.id].sort());
+      expect(visible.get(ownCustom.id)?.measure).toBe("time");
+      expect(visible.get(catalogue.id)?.name).toBe(catalogue.name);
+    });
+
+    it("returns an empty map for an empty input without querying", async () => {
+      const owner = await makeUser("visible-full-empty");
+
+      await expect(repository.findManyVisibleForUser([], owner)).resolves.toEqual(new Map());
+    });
+  });
 });
