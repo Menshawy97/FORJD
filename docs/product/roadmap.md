@@ -7,12 +7,51 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-08-24)
+## Current status (last updated 2026-09-02)
+
+**Phases 0–2 are complete. Phase 2.5 (nutrition) is functionally complete** — Phases A
+through J are all done, merged to `main`, and CI-confirmed green; see
+[`nutrition-plan.md`](nutrition-plan.md) for the full build history. The one remaining slice,
+**Phase I (the "Nutrition Today" card on Home)**, is genuinely blocked, not just unscheduled:
+`apps/mobile/src/app/(tabs)/index.tsx` is still `<PlaceholderScreen name="Home" />` — there is
+no Home dashboard for the card to live on yet, and nothing in this repo plans one. **Phase 3
+(the workout engine — one of CLAUDE.md's four architecturally-critical pillars) has no written
+plan either** (no `phase-3-plan.md` exists). Building Home and/or starting Phase 3 planning is
+the next real work; see "Immediate next steps" below rather than assuming either is decided.
+
+Also shipped this session, outside the original nutrition phase list: **ADR-024** (image
+compression pipeline — `sharp` server-side, `expo-image-manipulator` client-side, retrofitted
+onto the existing avatar upload, WebP/512px/quality-80) and four Phase H bug fixes found via
+real device testing (duplicate saved-meal names, a stale dashboard after delete, unreliable
+meal logging, and log rows that now collapse into one named group matching the design).
+
+Read this section first when resuming — it says exactly what's done and what to do next.
+Don't re-derive this from scratch; verify it's still accurate and continue.
+
+### Immediate next steps (as of 2026-09-02)
+
+No single next step is locked in — pick one, or ask the user which they'd prefer:
+
+1. **Plan Phase 3 (the workout engine).** The biggest, most architecturally load-bearing piece
+   left (CLAUDE.md's four pillars: canonical health model ✅ exists, provider abstraction ✅
+   exists, **workout engine — not started**, longitudinal analytics — not started). Needs a
+   proper planning pass first, per this project's standing "plan before executing" practice —
+   an outline is not sufficient detail to build from directly, the same lesson nutrition's own
+   planning already applied.
+2. **Build the Home dashboard.** Unblocks nutrition's own Phase I, and is itself a real,
+   currently-undocumented scope of work (the design has a Home screen; nothing plans building
+   it yet).
+3. **Device-test everything just shipped.** Saved meals, the share card (including the new
+   background-photo picker), and avatar upload's new compression have not yet had a full
+   physical-device walk since landing — worth doing before starting new scope.
+4. **Resolve `pr59-fixup2`.** A leftover, unregistered, clean git clone at
+   `.claude/worktrees/pr59-fixup2` from earlier in this session — never decided whether to keep
+   or delete.
+
+### Old status (superseded, kept for history below this point)
 
 **Phase 1 is complete; Phase 2 has not started.** Phase 0 is complete except Spike B, which
-is still open and does not gate anything in Phase 1 (see "Spike status" below). Read this
-section first when resuming — it says exactly what's done and what to do next. Don't
-re-derive this from scratch; verify it's still accurate and continue.
+is still open and does not gate anything in Phase 1 (see "Spike status" below).
 
 ### ⚠ Design revision — 2026-08-30 (read this before building any screen)
 
