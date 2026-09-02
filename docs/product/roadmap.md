@@ -31,16 +31,37 @@ under `apps/mobile/src/features/home/`, so lighting one up is a prop change, not
 the Train tab); the active-program branch arrives with Phase 3's programs slice.
 
 **Phase 3 (the workout engine — one of CLAUDE.md's four architecturally-critical pillars) is
-underway.** Its plan lives at [`phase-3-plan.md`](phase-3-plan.md). **Phase A (domain
-vocabulary) is done**:
+underway.** Its plan lives at [`phase-3-plan.md`](phase-3-plan.md).
+
+**Phase A (domain vocabulary) is done**:
 [`packages/domain/src/workout-vocabulary.ts`](../../packages/domain/src/workout-vocabulary.ts)
 carries the five `as const` tuples (block types, set types, session statuses, perceived
 efforts, local event names) with display-name maps, plus the canonical `WorkoutTemplate` /
 `WorkoutBlock` / `WorkoutExercise` / `WorkoutSession` / `WorkoutSessionExercise` / `WorkoutSet`
 / `WorkoutSessionEvent` interfaces, re-exported from `index.ts`. Written test-first
 (`workout-vocabulary.spec.ts`, confirmed RED before the implementation existed), mirroring
-`exercise-vocabulary.spec.ts`'s coverage/orphan-key pattern. Verified: domain (48 tests),
-contracts (62), api (492, `--runInBand`), mobile (479, `TZ=UTC`) all green; `pnpm -r build`,
+`exercise-vocabulary.spec.ts`'s coverage/orphan-key pattern.
+
+**Phase B (schema and migration `0012`) is done**:
+[`apps/api/src/database/schema/workouts.schema.ts`](../../apps/api/src/database/schema/workouts.schema.ts)
+defines both halves from the domain-model doc —
+`workout_templates -> workout_blocks -> workout_exercises` and
+`workout_sessions -> workout_session_exercises -> workout_sets` — landed together in one
+migration, generated with `pnpm --filter @forjd/api db:generate` (never hand-edited).
+`workout_sessions.id` deliberately has no `defaultRandom()`: it is client-generated at session
+start and doubles as the sync idempotency key (Phase E). FK actions follow existing precedent
+(`exerciseId` is `onDelete: restrict`, mirroring `nutrition_log_entries.food_id`; a session's
+`templateId` is `onDelete: set null` so a hard-deleted template never deletes or orphans the
+sessions performed against it). RLS is not enabled, matching `exercises.schema.ts` and
+`nutrition.schema.ts` — no client holds a Supabase credential (ADR-008), so the gating rule is
+not tripped; authorization is a Phase D/E NestJS-guard concern. Constraint behaviour is pinned
+against real Postgres in `workouts.schema.spec.ts` (soft-deleted exercises stay referenceable,
+hard-deleting a still-referenced exercise is rejected, a session survives its template's
+hard-deletion, cascades clean up session children, `based_on_template_id` nulls out on its
+base template's deletion).
+
+Verified for both phases: domain (48 tests), contracts (62), api (30 suites / 497 tests,
+`--runInBand`, unit + e2e + coverage), mobile (479, `TZ=UTC`) all green; `pnpm -r build`,
 `pnpm -r lint`, mobile `typecheck`, and `scripts/ci/check-architecture-conformance.sh` all
 clean.
 
@@ -49,9 +70,10 @@ Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase B — schema and
-   migration `0012`**: `apps/api/src/database/schema/workouts.schema.ts`, generated with
-   `pnpm --filter @forjd/api db:generate` (never hand-edited). Phase A is done (above).
+1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase C — contracts**:
+   `packages/contracts/src/index.ts` zod schemas built from the Phase A tuples via
+   `z.enum(...)`, request/response shapes for template CRUD and session upload, plus pinned
+   fixtures in `fixtures.ts` (`scripts/write-fixtures.ts`). Phases A and B are done (above).
 2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.
