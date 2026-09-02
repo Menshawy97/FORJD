@@ -5,11 +5,12 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { createWorkoutTemplate } from '@/auth/apiClient';
-import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { actionableServerMessage, classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { TypeChip } from '@/components/type-chip';
 import {
   consumeBuilderPrefill,
   consumePickedExerciseForBuilder,
@@ -154,7 +155,7 @@ export default function BuilderScreen() {
       toast.show(
         classifyRequestFailure(cause) === 'offline'
           ? OFFLINE_MESSAGE
-          : 'Could not save this workout. Please try again.',
+          : (actionableServerMessage(cause) ?? 'Could not save this workout. Please try again.'),
       );
     } finally {
       setSaving(false);
@@ -183,13 +184,7 @@ export default function BuilderScreen() {
         />
 
         <View className="mt-[10px] flex-row items-center" style={{ gap: 9 }}>
-          <View
-            className="rounded-[7px] px-[9px] py-[4px]"
-            style={{ backgroundColor: 'rgba(233,113,47,.14)' }}>
-            <Text className="font-archivo text-[10.5px] font-bold uppercase text-accent">
-              {basedOnTemplateId ? 'Customised' : 'Custom'}
-            </Text>
-          </View>
+          <TypeChip kind={basedOnTemplateId ? 'Customised preset' : 'Custom'} />
           <Text className="font-archivo text-[11.5px] text-dimmer">
             {basedOnTemplateId ? 'Based on a preset' : 'Built from scratch'}
           </Text>
@@ -199,7 +194,7 @@ export default function BuilderScreen() {
           Exercises
         </Text>
 
-        <View className="rounded-card px-[15px] py-[4px]" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+        <View className="rounded-card px-[15px] pt-[4px] pb-[15px]" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
           {exercises.map((exercise, index) => (
             <View
               key={`${exercise.exerciseId}-${index}`}

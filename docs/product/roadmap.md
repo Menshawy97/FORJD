@@ -183,6 +183,44 @@ Given this session's severe context/cost pressure by this point, full RTL compon
 in a follow-up, not a silent omission. `pnpm -r build` and
 `scripts/ci/check-architecture-conformance.sh` both clean.
 
+**Phase G device walk (physical iPhone, Expo Go) found and fixed three real bugs, all in a
+follow-up PR:**
+
+1. **Wrong badge colour/style.** `builder.tsx` and `workout/[id].tsx` each hand-rolled the
+   Preset/Custom/Customised-preset badge as a solid orange fill for every kind. The prototype's
+   own `typeChip(t)` helper (`FORJD Mobile.dc.html`) renders an *outlined* pill
+   (`rgba(255,255,255,.05)` fill, `1px solid <color>44` border) whose colour depends on the
+   kind — grey for Preset, accent orange for Custom, and **green** (`typeChip`'s `else`
+   branch) for Customised preset, never orange. Extracted into a shared
+   `apps/mobile/src/components/type-chip.tsx` (`TypeChip`) so both screens share one
+   correct implementation, with a unit test pinning the colour mapping.
+2. **Uneven card padding.** The exercises card's outer container used a uniform `py-[4px]`;
+   the prototype's own `this.card([...], {padding:'4px 15px 15px'})` call is deliberately
+   asymmetric (4px top, 15px bottom) — the visible gap under "Add exercise" was always
+   smaller than the gap above it, regardless of how many exercises were added, because the
+   button's own `mt-[12px]` compounded with a too-small container bottom padding. Fixed by
+   matching the prototype's exact top/bottom split.
+3. **Save failures showed a generic, unhelpful message.** `builder.tsx` never called
+   `actionableServerMessage` (`apps/mobile/src/auth/failure.ts`) on a save failure, unlike
+   `signup.tsx` — any 400 response (e.g. `WorkoutsService`'s "Unknown exercise id(s)" check)
+   collapsed into "Could not save this workout. Please try again." regardless of the real
+   reason. Fixed to match the established pattern. **The user's actual reported save failure
+   was not resolved by this** — direct e2e reproduction of the exact reported payload (same
+   exercise ids, duplicate exercise entries included) against `WorkoutsService.create()`
+   succeeded with a clean `201`, ruling out the request shape, the exercise-visibility check,
+   and duplicate-exercise handling as the cause. The leading remaining hypothesis is a 401
+   surviving a failed token refresh: `apiClient.ts`'s interceptor calls `clearSession()` and
+   re-throws the *original* 401 on a failed refresh (ADR-011), and 401 bodies are deliberately
+   excluded from `actionableServerMessage` (`failure.ts`'s own docblock explains why) — so a
+   dead session would show exactly this generic message, and Supabase's real auth was
+   independently confirmed hitting its free-tier email-send rate limit during this same
+   session, a plausible refresh-failure trigger. This is unverified without on-device access,
+   and every authenticated write screen in the app has the same "unauthorized falls through to
+   the generic message" gap, not just this one — spun off as its own follow-up rather than
+   special-cased in `builder.tsx` alone (see the spawned task "Add expired-session UX across
+   authenticated screens"). If logging out and back in on the device does not resolve the save
+   failure, the hypothesis is wrong and this needs a fresh round of on-device diagnosis.
+
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 

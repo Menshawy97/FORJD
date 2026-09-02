@@ -8,6 +8,7 @@ import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
+import { TypeChip } from '@/components/type-chip';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { setBuilderPrefill } from '@/workouts/builder-handoff';
 import { colors } from '@/theme/tokens';
@@ -126,11 +127,9 @@ export default function WorkoutDetailScreen() {
         ) : (
           <>
             <View className="mb-4 flex-row items-center" style={{ gap: 8 }}>
-              <View className="rounded-[7px] px-[9px] py-[4px]" style={{ backgroundColor: 'rgba(233,113,47,.14)' }}>
-                <Text className="font-archivo text-[10.5px] font-bold uppercase text-accent">
-                  {!template.isCustom ? 'Preset' : template.basedOnTemplateId ? 'Customised preset' : 'Custom'}
-                </Text>
-              </View>
+              <TypeChip
+                kind={!template.isCustom ? 'Preset' : template.basedOnTemplateId ? 'Customised preset' : 'Custom'}
+              />
               <Text className="font-archivo text-[11.5px] text-dimmer">
                 {template.activity.charAt(0).toUpperCase() + template.activity.slice(1)} · {rows.length} exercises
                 {template.estimatedDurationMinutes ? ` · ~${template.estimatedDurationMinutes} min` : ''}
