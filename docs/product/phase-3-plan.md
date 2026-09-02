@@ -140,11 +140,19 @@ a queued session that fails to upload stays queued and uploads once, not twice.
 **Phase G — the builder screen.** `s_builder()` / `s_workoutDetail()`. Fills the
 `library.tsx?pick=workout` deferral `phase2-screen-specs.md` recorded.
 
-**Phase H — live execution.** `s_live()` plus `s_rest()` (90s default, auto-pushed when a set is
-ticked) and `setTimer`. This is the screen rule 6 exists for: it reads the local catalogue,
-writes to the local event log, and makes no network call at all.
+**Phase H — live execution.** The live screen plus `s_rest()` (90s default, auto-pushed when a
+set is ticked) and `s_setTimer()`. This is the screen rule 6 exists for: it reads the local
+catalogue, writes to the local event log, and makes no network call at all.
 **Testing**: the offline path explicitly — with every API function mocked to reject, a full
 session can still be started, logged and finished.
+
+> **⚠ This paragraph named `s_live()` as the design source. There is no such function.** `live`
+> is one of nine *template-rendered* screens (see `renderVals()`'s `TMPL` array), authored as
+> declarative `{{ }}` markup from ~line 504 with its view-model at ~line 3423. The screen is
+> also far larger than this paragraph implies — a goal guide, a goal picker, per-exercise unit
+> and measure toggles, and a full set table with previous-performance and PR columns.
+> **The executable plan is [`phase-3h-plan.md`](phase-3h-plan.md)**, which corrects both and
+> splits the phase into five reviewable slices. Read that before starting.
 
 **Phase I — the summary screen.** `workout done`, and the write that hands the session to the
 sync queue.

@@ -1,0 +1,156 @@
+# Phase 3H — live execution: implementation plan
+
+Written 2026-09-02, before any code, per the standing "plan first" instruction.
+[`phase-3-plan.md`](phase-3-plan.md) describes Phase H in one paragraph; this document is the
+executable plan for it. It exists because reading the actual design sources turned that
+paragraph out to be **materially wrong about where the design lives**, and because the screen
+is several times larger than "the live screen plus a rest timer".
+
+## Correction: there is no `s_live()`
+
+`phase-3-plan.md` names the design source as the prototype's `s_live()`. **No such function
+exists.** A repo-wide search of `FORJD mobile app design/FORJD Mobile.dc.html` finds 44
+`s_*()` screen functions, and `live` is not among them.
+
+`live` is one of nine **template-rendered** screens, listed in `renderVals()`:
+
+```js
+const TMPL=['loading','welcome','home','progress','progressBody','progressRec','live','rank','profile'];
+```
+
+Those screens are authored as declarative HTML with `{{ }}` bindings inside the document body,
+not as `h()` calls in a function. So the authoritative prototype sources for this phase are:
+
+| What | Where |
+|---|---|
+| **Live screen markup** | the `<sc-if value="{{ isLive }}">` block, from ~line 504 |
+| **Live screen view-model** | `renderVals()`'s live branch, ~line 3423 — every binding the markup consumes |
+| **Session/timer logic** | `componentDidMount()`'s 1 s interval (~line 1003), `tapSet` (~1041), `editSet`, `openSetTimer`, `completeTimedSet`, `removeSet`, `removeExercise`, `cancelWorkout`, `togglePause` (~1041–1094) |
+| **Rest screen** | `s_rest()` — this one *is* a function, ~line 2067 |
+| **Timed-set screen** | `s_setTimer()` — also a function, ~line 3121 |
+
+**Screenshots outrank all of the above** (standing precedence). Both exist and were read while
+writing this plan: `screenshots/live workout.png` (weight measure) and
+`screenshots/live workout 2.png` (time and distance measures). They disagree with nothing in
+the prototype, but they are far more legible about layout, and they are the reference to build
+against.
+
+## What the screen actually contains
+
+From the two screenshots, top to bottom. This is the honest inventory — `phase-3-plan.md`'s
+one-liner covers roughly the first third of it.
+
+**Header block**
+- Pulsing orange dot + `LIVE · UPPER BODY PUSH` (`liveTitle` is `'Live · '`/`'Paused · '` +
+  the session name).
+- Large elapsed time (`0:04`), tabular numerals.
+- Three controls: a red **✕** (cancel), **Pause**, and an orange **Finish**.
+- Progress bar + `2/12 sets` + `1,280 kg` running volume.
+
+**Watch card** — red pulsing dot, `WATCH`, `145 bpm`, `142 avg`.
+
+**"How to train this"** — collapsible, subtitle `Bench Press · Strength`, expanding to the
+goal guide table (load / reps / rest / execution per goal, with a `THIS LIFT` badge on the
+current exercise's goal).
+
+**Rest timer card** — "Applies to every set in this workout", a `− 1:30 +` stepper (90 s
+default, ±15 s).
+
+**One card per exercise**
+- Name, a unit pill (`KG` / `M`), a chart icon (→ exercise detail), an **✕** (remove from this
+  session only).
+- A goal chip (`STRENGTH ▾`, `HYPERTROPHY ▾`, `MUSCULAR ENDURANCE ▾`) opening a goal picker
+  with an "apply to all" option.
+- Distance exercises additionally get a `Set as time` toggle.
+- Subtitle `Weight · 4 sets` / `Time · 3 sets` / `Distance · 2 sets`.
+- A set table — columns `SET | PREV | TARGET` — where each row carries the set number, the
+  previous session's performance (`80 kg × 8`), measure-specific inputs, an ✕ to drop the set,
+  and a circular tick. Completed rows tint green; a timed set's row shows an orange
+  `▶ Timer` button instead of a plain target.
+- `+ Add set` (dashed).
+
+**`+ Add exercise`** (dashed, orange) at the bottom of the list.
+
+## Locked decisions for this phase
+
+| Decision | Reasoning |
+|---|---|
+| **The rest timer uses `expo-notifications`** | Settled by the user on 2026-09-02 over the cheaper wall-clock-only option, so a locked phone buzzes when rest ends. See slice H4. |
+| **Every mutation goes through the Phase F event log first** | `appendSessionEvent` is the write path; React state is a projection of it. This is what makes `replaySessionState` real rather than decorative — CLAUDE.md rule 6 and ADR-025. |
+| **No network call anywhere in this screen** | Rule 6. Exercise names and measures come from `exercises_cache` (ADR-022); the session upload is Phase I's job, off the critical path. |
+| **Heart rate ships as an honest empty state** | The prototype *simulates* HR with `Math.sin(elapsed/9)`. There is no `HealthProvider` reading live HR yet. Following the Phase J precedent — where invented numbers presented as the user's own data were explicitly rejected — the Watch card renders its layout with a "not connected" state rather than fake bpm. |
+| **`PREV` reads from local history, and is blank when there is none** | Same principle. It is populated once sessions exist; a first-ever session shows an empty `PREV` column, not a fabricated one. |
+| **Weights are entered in the display unit and stored in kg** | ADR-016. `convIn`/`convOut` in the prototype; the wire and the log are always kg. |
+| **The set-timer and rest screens are routes, not modals** | Matches the prototype's own `screen:'setTimer'` / `screen:'rest'` transitions and keeps the Android back button meaningful. |
+
+## Slices
+
+Deliberately several small ones rather than one large phase, so each can be reviewed, tested
+and merged on its own — and so the session can stop between any two.
+
+**H1 — the session store seam.** `apps/mobile/src/workouts/live-session.ts`: the pure
+reducer that turns a template + a list of `SessionEventRecord`s into the live screen's view
+state, and the action helpers that produce events. No React, no SQLite, no I/O — so it is
+fully unit-testable, and the screen becomes a thin renderer over it.
+**Tests first**: complete a set → `set_completed` appended and rest started; complete the last
+set of an exercise → `exercise_completed`; pause/resume bookkeeping; volume and set counters;
+that replaying a partial log rebuilds identical state.
+
+**H2 — the live screen.** `apps/mobile/src/app/live.tsx`, built against
+`live workout.png`/`live workout 2.png`: header, progress, exercise cards, the set table for
+all three measures, add/remove set, add/remove exercise, the unit pill, and the goal chip.
+Reads exercise names/measures from `exercises_cache`.
+**Tests**: with every `@/auth/apiClient` function mocked to reject, a session can still be
+started, logged and finished — the explicit offline proof `phase-3-plan.md` asks for.
+
+**H3 — rest and the timed set.** `rest.tsx` and `set-timer.tsx` from `s_rest()` and
+`s_setTimer()`: the 200 px progress ring, `−15`/`+30` on rest and `±15` on the timed set,
+"Up next", Skip Rest, and the auto-push into rest when a set is ticked.
+
+**H4 — notifications.** `expo-notifications` behind a small function seam (mirroring how
+`exercise-catalogue.ts` injects its dependencies) so H1–H3 stay testable: schedule on
+`rest_started`, cancel on `rest_completed` or Skip Rest. Permission is requested **at the
+first rest**, not at app launch — the rule in `rules/ecc/react-native/security.md` is minimum
+permissions, at the moment they are needed. **Write the ADR here**, and **walk it on a
+physical device before merge** — Jest cannot exercise scheduling, so a green suite is not
+proof.
+
+**H5 — entry points.** Wire the two inert CTAs that Phase G deliberately left dead: `Start
+now` in `builder.tsx` and `Start workout` in `workout/[id].tsx`.
+
+## Explicitly out of scope
+
+Named so a later session does not think they were forgotten:
+
+- **The summary screen** (`workout done.png`) and the hand-off to the sync queue — that is
+  Phase I.
+- **The live *run* screen** (`live run 1.png`/`2.png`, `s_run()`) — a different modality with
+  GPS and pace; it is not part of "live execution" for strength.
+- **Real heart rate**, which needs a `HealthProvider` wired to the session.
+- **The AI "How to train this" guide content** beyond the static goal table the prototype
+  already hardcodes.
+
+## Verification
+
+Per slice and again before each merge — the phase-wide bar from `phase-3-plan.md`:
+
+```bash
+TZ=UTC pnpm --filter @forjd/mobile test --ci --watchAll=false
+```
+
+plus `pnpm typecheck`, `pnpm lint`, `pnpm conformance`, and a real bundle compile
+(`npx expo export --platform android`). `TZ=UTC` is not optional.
+
+**Two cautions learned this session:**
+
+- **Await everything in RTL.** `@testing-library/react-native` v14 makes `render()` and every
+  `fireEvent.*` return Promises. An un-awaited one silently empties the rendered tree for
+  every later test in the file. New suites in this phase must await both.
+- **Run the suite with the machine otherwise idle.** Under CPU contention the mobile suite
+  fails a shifting set of suites purely on 30 s timeouts — 20 suites under load, 4 when
+  quieter, 0 in isolation. A red run is not a regression until it reproduces on a quiet
+  machine.
+
+**Device walk** (handed over, not waited on): airplane mode on, start a session, log sets,
+take a rest, lock the phone and confirm the notification fires, force-kill the app mid-session,
+reopen and confirm the session resumes from the event log.
