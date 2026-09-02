@@ -18,7 +18,7 @@ import {
   MUSCLE_GROUPS,
   MuscleGroup,
 } from "@forjd/domain";
-import { and, eq, isNull, SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, SQL, sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 
 import { Database, DRIZZLE } from "../database/database.module";
@@ -319,6 +319,27 @@ export class ExercisesRepository {
       })),
       hasMore: rows.length > filter.limit,
     };
+  }
+
+  /**
+   * Which of the given ids are visible to this user (catalogue or their own custom
+   * exercise), not soft-deleted -- the check `WorkoutsRepository` runs against every
+   * `exerciseId` a template references, so a caller cannot forge someone else's private
+   * custom exercise into their own template by guessing its UUID. One query for the whole
+   * set rather than `findByIdForUser` per id, which would be an N+1 for a multi-block
+   * template with several exercises each.
+   */
+  async findVisibleIds(ids: string[], userId: string): Promise<Set<string>> {
+    if (ids.length === 0) {
+      return new Set();
+    }
+
+    const rows = await this.db
+      .select({ id: exercises.id })
+      .from(exercises)
+      .where(and(inArray(exercises.id, ids), isNull(exercises.deletedAt), visibleTo(userId)));
+
+    return new Set(rows.map((row) => row.id));
   }
 
   /**

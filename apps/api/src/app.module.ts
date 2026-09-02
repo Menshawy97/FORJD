@@ -11,6 +11,7 @@ import { ExercisesModule } from './exercises/exercises.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { UsersModule } from './users/users.module';
 import { StorageModule } from './storage/storage.module';
+import { WorkoutsModule } from './workouts/workouts.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { StorageModule } from './storage/storage.module';
     ExercisesModule,
     NutritionModule,
     StorageModule,
+    WorkoutsModule,
   ],
   // Registering ThrottlerModule alone does nothing — the guard has to be bound, or the
   // @Throttle decorators on AuthController are inert decoration.
