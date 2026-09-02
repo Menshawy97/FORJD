@@ -43,6 +43,10 @@ jest.mock('expo-router', () => {
   };
 });
 
+// expo-crypto is a native module with no JS implementation under Jest -- mocked at the test
+// boundary, per the project's own React Native testing rule.
+jest.mock('expo-crypto', () => ({ randomUUID: () => '11111111-2222-4333-8444-555555555555' }));
+
 jest.mock('@/auth/apiClient', () => ({
   createWorkoutTemplate: jest.fn(),
 }));
@@ -54,6 +58,8 @@ import {
   consumeBuilderPrefill,
   consumePickedExerciseForBuilder,
 } from '@/workouts/builder-handoff';
+
+import { consumePendingLiveSession } from '@/workouts/live-handoff';
 
 import BuilderScreen from '../builder';
 
@@ -306,6 +312,49 @@ describe('save failures', () => {
     await fireEvent.press(getByLabelText('Save workout'));
 
     await waitFor(() => expect(createWorkoutTemplate).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('Start now', () => {
+  it('starts a live session from the drafted exercises without saving a template', async () => {
+    setPickedExerciseForBuilder({ exerciseId: 'ex-1', name: 'Bench Press', measure: 'weight' });
+    const { getByLabelText } = await render(<BuilderScreen />);
+
+    await fireEvent.changeText(getByLabelText('Workout name'), 'Push day');
+    await fireEvent.press(getByLabelText('Start now'));
+
+    // Deliberately NOT saved: an athlete improvising today should not be forced to add the
+    // workout to their library first. Saving is the other button.
+    expect(createWorkoutTemplate).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith('/live');
+
+    const pending = consumePendingLiveSession();
+    expect(pending).toMatchObject({ name: 'Push day', activity: 'strength', templateId: null });
+    expect(pending?.exercises).toHaveLength(1);
+    // Three prescribed sets become three individually tickable rows.
+    expect(pending?.exercises[0].sets).toHaveLength(3);
+    expect(pending?.exercises[0].sets[0]).toMatchObject({ reps: 10, isCompleted: false });
+    expect(pending?.id).toEqual(expect.any(String));
+  });
+
+  it('refuses to start an empty workout, and says why', async () => {
+    const { getByLabelText, findByText } = await render(<BuilderScreen />);
+
+    await fireEvent.press(getByLabelText('Start now'));
+
+    expect(await findByText('Add a name and at least one exercise before saving or starting.')).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalledWith('/live');
+    expect(consumePendingLiveSession()).toBeNull();
+  });
+
+  it('starts an unnamed workout rather than blocking on a name', async () => {
+    setPickedExerciseForBuilder({ exerciseId: 'ex-1', name: 'Bench Press', measure: 'weight' });
+    const { getByLabelText } = await render(<BuilderScreen />);
+
+    await fireEvent.press(getByLabelText('Start now'));
+
+    expect(mockPush).toHaveBeenCalledWith('/live');
+    expect(consumePendingLiveSession()?.name).toBe('Workout');
   });
 });
 

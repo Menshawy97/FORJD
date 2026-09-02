@@ -29,6 +29,7 @@ import {
 import { getRecentExerciseIds } from '@/store/recent-exercises';
 import { colors } from '@/theme/tokens';
 import { setPickedExerciseForBuilder } from '@/workouts/builder-handoff';
+import { setPickedExerciseForLive } from '@/workouts/live-handoff';
 
 /**
  * `s_library()`, docs/design/phase2-screen-specs.md §3. Reads the on-device catalogue
@@ -214,7 +215,7 @@ export default function LibraryScreen() {
   // real as of Phase 3G -- `router.back()` returns to the exact same builder screen instance
   // (see `builder-handoff.ts`'s own docblock for why that matters). `live` still has no
   // screen (Phase 3H), so it falls through to the original browse-mode behaviour.
-  const goBack = () => (pick === 'builder' ? router.back() : router.replace('/train'));
+  const goBack = () => (pick === 'builder' || pick === 'live' ? router.back() : router.replace('/train'));
 
   const onPressRow = (exercise: ExerciseResponse) => {
     if (pick === 'builder') {
@@ -222,6 +223,16 @@ export default function LibraryScreen() {
         exerciseId: exercise.id,
         name: exercise.name,
         measure: exercise.measure,
+      });
+      router.back();
+      return;
+    }
+    if (pick === 'live') {
+      setPickedExerciseForLive({
+        exerciseId: exercise.id,
+        name: exercise.name,
+        measure: exercise.measure,
+        goal: exercise.goal,
       });
       router.back();
       return;

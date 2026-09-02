@@ -11,10 +11,13 @@ import { appendSessionEvent, ensureWorkoutSessionSchema, openWorkoutSessionDb } 
 import {
   consumeCompletedTimedSet,
   consumePendingLiveSession,
+  consumePickedExerciseForLive,
   setRestContext,
   setTimerContext,
 } from '@/workouts/live-handoff';
+import { toLiveExercise } from '@/workouts/start-session';
 import {
+  addExercise,
   addSet,
   completeSet,
   completeTimedSet,
@@ -31,7 +34,6 @@ import {
   updateSet,
   type LiveSession,
   type LiveSessionChange,
-  type LiveSet,
   type PendingEvent,
 } from '@/workouts/live-session';
 import { colors } from '@/theme/tokens';
@@ -81,13 +83,14 @@ const MEASURE_SUBTITLE: Record<string, string> = {
  * reference content, not advice generated about this user -- which is why it can ship now,
  * unlike the Watch card's heart rate.
  */
-const GOAL_GUIDE: { goal: ExerciseGoal; load: string; reps: string; rest: string; execution: string }[] = [
+const GOAL_GUIDE: { goal: ExerciseGoal; load: string; reps: string; rest: string; execution: string; advice: string }[] = [
   {
     goal: 'strength',
     load: '80–95% 1RM',
     reps: '1–5 reps',
     rest: '3–5 min rest',
     execution: 'Controlled down, aggressive press',
+    advice: 'Move heavy weight with excellent technique',
   },
   {
     goal: 'hypertrophy',
@@ -95,6 +98,7 @@ const GOAL_GUIDE: { goal: ExerciseGoal; load: string; reps: string; rest: string
     reps: '6–15 reps',
     rest: '1.5–3 min rest',
     execution: 'Controlled eccentric, full range of motion',
+    advice: 'Maximise muscle tension and train close to failure',
   },
   {
     goal: 'power',
@@ -102,6 +106,7 @@ const GOAL_GUIDE: { goal: ExerciseGoal; load: string; reps: string; rest: string
     reps: '2–5 reps',
     rest: '2–4 min rest',
     execution: 'Explosive concentric, reset every rep',
+    advice: 'Move the bar as fast as possible',
   },
   {
     goal: 'muscular_endurance',
@@ -109,6 +114,7 @@ const GOAL_GUIDE: { goal: ExerciseGoal; load: string; reps: string; rest: string
     reps: '12–25+ reps',
     rest: '30–90 s rest',
     execution: 'Controlled, steady tempo',
+    advice: 'Hold form while fatigue accumulates',
   },
   {
     goal: 'mobility',
@@ -116,15 +122,9 @@ const GOAL_GUIDE: { goal: ExerciseGoal; load: string; reps: string; rest: string
     reps: '5–10 per side',
     rest: 'Minimal rest',
     execution: 'Slow, breathe through the position',
+    advice: 'Own the end range instead of bouncing into it',
   },
 ];
-
-/** `80 kg × 8`, `45 s`, `500 m` -- how a set reads once it is in the past. */
-function describeSet(set: LiveSet, measure: string): string {
-  if (measure === 'time') return `${set.durationSeconds ?? 0} s`;
-  if (measure === 'distance') return `${set.distanceMeters ?? 0} m`;
-  return `${set.weightKg ?? 0} kg × ${set.reps ?? 0}`;
-}
 
 export default function LiveScreen() {
   const [session, setSession] = useState<LiveSession | null>(null);
@@ -288,13 +288,35 @@ export default function LiveScreen() {
   useFocusEffect(
     useCallback(() => {
       const finished = consumeCompletedTimedSet();
-      if (!finished) return;
-      setSession((current) => {
-        if (!current) return current;
-        const change = completeTimedSet(current, finished.exerciseIndex, finished.setIndex, new Date());
-        void persist(change.session.id, change.events);
-        return change.session;
-      });
+      if (finished) {
+        setSession((current) => {
+          if (!current) return current;
+          const change = completeTimedSet(current, finished.exerciseIndex, finished.setIndex, new Date());
+          void persist(change.session.id, change.events);
+          return change.session;
+        });
+      }
+
+      // An exercise added mid-session from `library.tsx?pick=live`. One prescribed set, since
+      // the library knows nothing about how many the athlete intends -- `Add set` covers the
+      // rest, and one is the smallest honest default.
+      const picked = consumePickedExerciseForLive();
+      if (picked) {
+        setSession((current) =>
+          current
+            ? addExercise(
+                current,
+                toLiveExercise({
+                  exerciseId: picked.exerciseId,
+                  name: picked.name,
+                  measure: picked.measure,
+                  goal: picked.goal,
+                  setCount: 1,
+                }),
+              )
+            : current,
+        );
+      }
     }, [persist]),
   );
 
@@ -320,8 +342,13 @@ export default function LiveScreen() {
     ? `${currentExercise.name}${currentGoal ? ` · ${EXERCISE_GOAL_DISPLAY_NAMES[currentGoal]}` : ''}`
     : 'Load, reps and rest by goal';
 
+
   return (
     <ScreenBackground>
+      {/*
+        The fixed header block. Prototype: `padding:'0 22px 14px'` -- and note the Watch card
+        lives HERE, inside the non-scrolling header, not in the list below it.
+      */}
       <View className="flex-none px-screen-x pb-[14px]">
         <View className="flex-row items-center" style={{ gap: 8 }}>
           <View className="h-[7px] w-[7px] rounded-[4px]" style={{ backgroundColor: colors.accent }} />
@@ -333,7 +360,10 @@ export default function LiveScreen() {
         </View>
 
         <View className="mt-[10px] flex-row items-center justify-between" style={{ gap: 8 }}>
-          <Text className="font-archivo text-[28px] font-bold text-text">{formatElapsed(elapsedSeconds)}</Text>
+          {/* `font:'700 28px/1 Archivo', letterSpacing:'-.02em'` */}
+          <Text className="font-archivo text-[28px] font-bold tracking-[-.02em] text-text">
+            {formatElapsed(elapsedSeconds)}
+          </Text>
           <View className="flex-row items-center" style={{ gap: 6 }}>
             <Pressable
               accessibilityRole="button"
@@ -341,7 +371,7 @@ export default function LiveScreen() {
               onPress={() => router.back()}
               className="h-[44px] w-[44px] items-center justify-center rounded-[12px]"
               style={{ backgroundColor: 'rgba(255,255,255,.06)' }}>
-              <Icon name="x" size={15} color={colors.errorText} />
+              <Icon name="x" size={15} color="#C9503C" />
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -354,12 +384,10 @@ export default function LiveScreen() {
               style={{ backgroundColor: 'rgba(255,255,255,.06)' }}>
               <Text className="font-archivo text-[12px] font-bold text-text">{isPaused ? 'Resume' : 'Pause'}</Text>
             </Pressable>
+            {/* Deliberately 34px tall, not 44 -- the prototype's own asymmetry. */}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Finish workout"
-              // Routed through `apply` like every other action, rather than repeating its
-              // persist-then-adopt logic here -- otherwise anything later added to `apply`
-              // would silently not happen when a workout is finished.
               onPress={() => {
                 apply(finishSession(session, new Date()));
                 router.back();
@@ -379,11 +407,33 @@ export default function LiveScreen() {
               style={{ width: `${stats.progress * 100}%`, backgroundColor: colors.accent }}
             />
           </View>
-          <Text className="font-archivo text-[11px] font-semibold text-dim">
+          <Text className="font-archivo text-[11px] font-semibold" style={{ color: '#9A9A92' }}>
             {`${stats.completedSetCount}/${stats.totalSetCount} sets`}
           </Text>
-          <Text className="font-archivo text-[11px] font-semibold text-dimmer">
+          <Text className="font-archivo text-[11px] font-semibold" style={{ color: '#6E6E66' }}>
             {`${stats.volumeKg.toLocaleString()} kg`}
+          </Text>
+        </View>
+
+        {/*
+          Watch card. Container matched exactly (`#141517`, radius 11, `10px 13px`, gap 9), but
+          it ships an HONEST EMPTY STATE where the prototype shows `145 bpm / 142 avg`: those
+          numbers are simulated (`Math.sin(elapsed/9)`) and no `HealthProvider` feeds this
+          screen yet. Phase J established that invented numbers shown as a user's own training
+          data are not acceptable, so the layout renders with a "not connected" line instead.
+        */}
+        <View
+          className="mt-[12px] flex-row items-center rounded-[11px] px-[13px] py-[10px]"
+          style={{ backgroundColor: '#141517', borderWidth: 1, borderColor: colors.border, gap: 9 }}>
+          <View className="h-[8px] w-[8px] rounded-[5px]" style={{ backgroundColor: '#6E6E66' }} />
+          <Text
+            className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.12em]"
+            style={{ color: '#77776F' }}>
+            Watch
+          </Text>
+          <View className="flex-1" />
+          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
+            No watch connected
           </Text>
         </View>
 
@@ -394,46 +444,35 @@ export default function LiveScreen() {
         )}
       </View>
 
+      {/* Scroll area. Prototype: `padding:'0 22px 26px'`. */}
       <ScrollView className="flex-1 px-screen-x" showsVerticalScrollIndicator={false}>
-        {/*
-          The design's Watch card. It ships an HONEST EMPTY STATE: the prototype simulates heart
-          rate with `Math.sin(elapsed/9)`, and no `HealthProvider` feeds this screen yet. Phase J
-          already established that showing invented numbers as a user's own training data is not
-          acceptable, so the layout renders with a "not connected" line rather than fake bpm.
-        */}
+        {/* "How to train this" -- `margin-bottom:14px`, radius 14, `#17181a`. */}
         <View
-          className="flex-row items-center rounded-[11px] px-[13px] py-[10px]"
-          style={{ backgroundColor: colors.fieldBg, borderWidth: 1, borderColor: colors.border, gap: 9 }}>
-          <View className="h-[8px] w-[8px] rounded-[5px]" style={{ backgroundColor: colors.dimmer }} />
-          <Text className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.12em] text-label">Watch</Text>
-          <View className="flex-1" />
-          <Text className="font-archivo text-[11.5px] text-dimmer">No watch connected</Text>
-        </View>
-
-        {/* "How to train this" -- the design's collapsible guide, between Watch and Rest. */}
-        <View
-          className="mt-[12px] rounded-card px-[15px] py-[14px]"
+          className="mb-[14px] overflow-hidden rounded-[14px]"
           style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={guideOpen ? 'Hide how to train this' : 'How to train this'}
             onPress={() => setGuideOpen((open) => !open)}
-            className="flex-row items-center"
-            style={{ gap: 12 }}>
+            className="flex-row items-center px-[15px] py-[13px]"
+            style={{ gap: 11 }}>
             <View
-              className="h-[34px] w-[34px] items-center justify-center rounded-[11px]"
-              style={{ backgroundColor: colors.accentTileBg }}>
+              className="h-[30px] w-[30px] items-center justify-center rounded-[9px]"
+              style={{ backgroundColor: 'rgba(233,113,47,.13)' }}>
               <Icon name="target" size={17} color={colors.accent} />
             </View>
             <View className="flex-1">
-              <Text className="font-archivo text-[13.5px] font-bold text-text">How to train this</Text>
-              <Text className="mt-[3px] font-archivo text-[11.5px] text-dimmer">{guideSubtitle}</Text>
+              <Text className="font-archivo text-[13px] font-semibold text-text">How to train this</Text>
+              <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
+                {guideSubtitle}
+              </Text>
             </View>
-            <Icon name="chevron" size={15} color={colors.dimmer} />
+            <Icon name="chevron" size={16} color="#8B8B83" />
           </Pressable>
 
-          {guideOpen
-            ? GOAL_GUIDE.map((row) => {
+          {guideOpen ? (
+            <View className="px-[15px] pb-[15px]">
+              {GOAL_GUIDE.map((row) => {
                 const isCurrent = row.goal === currentGoal;
                 return (
                   <View
@@ -444,55 +483,90 @@ export default function LiveScreen() {
                       borderTopColor: 'rgba(255,255,255,.06)',
                       opacity: isCurrent ? 1 : 0.66,
                     }}>
-                    <View className="flex-row items-center" style={{ gap: 8 }}>
-                      <Text
-                        className="font-archivo text-[12.5px] font-bold"
-                        style={{ color: isCurrent ? colors.accent : colors.dim }}>
-                        {EXERCISE_GOAL_DISPLAY_NAMES[row.goal]}
+                    <View className="flex-row items-center justify-between" style={{ gap: 8 }}>
+                      <View className="flex-row items-center" style={{ gap: 7 }}>
+                        <Text
+                          className="font-archivo text-[12.5px] font-bold"
+                          style={{ color: isCurrent ? colors.accent : '#C8C8C0' }}>
+                          {EXERCISE_GOAL_DISPLAY_NAMES[row.goal]}
+                        </Text>
+                        {isCurrent ? (
+                          <View
+                            className="rounded-[5px] px-[7px] py-[3px]"
+                            style={{ backgroundColor: 'rgba(233,113,47,.16)' }}>
+                            <Text className="font-archivo text-[8.5px] font-bold uppercase tracking-[.1em] text-accent">
+                              This lift
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#8B8B83' }}>
+                        {row.load}
                       </Text>
-                      {isCurrent ? (
+                    </View>
+                    <View className="mt-[9px] flex-row" style={{ gap: 6 }}>
+                      {[row.reps, row.rest].map((pill) => (
                         <View
-                          className="rounded-[5px] px-[7px] py-[3px]"
-                          style={{ backgroundColor: 'rgba(233,113,47,.16)' }}>
-                          <Text className="font-archivo text-[8.5px] font-bold uppercase tracking-[.1em] text-accent">
-                            This lift
+                          key={pill}
+                          className="rounded-[7px] px-[9px] py-[5px]"
+                          style={{ backgroundColor: '#1B1C1E' }}>
+                          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#A9A9A1' }}>
+                            {pill}
                           </Text>
                         </View>
-                      ) : null}
+                      ))}
                     </View>
-                    <Text className="mt-[6px] font-archivo text-[11.5px] text-dim">
-                      {`${row.load} · ${row.reps} · ${row.rest}`}
+                    <Text className="mt-[8px] font-archivo text-[11px]" style={{ color: '#8B8B83' }}>
+                      {row.execution}
                     </Text>
-                    <Text className="mt-[4px] font-archivo text-[11.5px] text-dimmer">{row.execution}</Text>
+                    <Text className="mt-[5px] font-archivo text-[11.5px] font-semibold" style={{ color: '#E4E2DE' }}>
+                      {row.advice}
+                    </Text>
                   </View>
                 );
-              })
-            : null}
+              })}
+            </View>
+          ) : null}
         </View>
 
+        {/* Rest timer card -- radius 14, `12px 15px`, gap 11, 30px tile. */}
         <View
-          className="mt-[12px] flex-row items-center rounded-[11px] px-[13px] py-[10px]"
-          style={{ backgroundColor: colors.fieldBg, borderWidth: 1, borderColor: colors.border, gap: 11 }}>
-          <Icon name="clock" size={16} color={colors.dim} />
+          className="mb-[14px] flex-row items-center rounded-[14px] px-[15px] py-[12px]"
+          style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 11 }}>
+          <View
+            className="h-[30px] w-[30px] items-center justify-center rounded-[9px]"
+            style={{ backgroundColor: 'rgba(255,255,255,.05)' }}>
+            <Icon name="clock" size={16} color="#8B8B83" />
+          </View>
           <View className="flex-1">
-            <Text className="font-archivo text-[13px] font-bold text-text">Rest timer</Text>
-            <Text className="mt-[2px] font-archivo text-[11px] text-dimmer">Applies to every set in this workout</Text>
+            <Text className="font-archivo text-[13px] font-semibold text-text">Rest timer</Text>
+            <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
+              Applies to every set in this workout
+            </Text>
           </View>
           <View
-            className="flex-row items-center rounded-[9px] px-[10px] py-[7px]"
-            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 10 }}>
+            className="flex-row items-center rounded-[9px] p-[2px]"
+            style={{ backgroundColor: '#101011', borderWidth: 1, borderColor: colors.border, gap: 2 }}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Decrease rest"
-              onPress={() => setSession(setRestSeconds(session, session.restSeconds - 15))}>
-              <Text className="font-archivo text-[14px] font-bold text-dim">−</Text>
+              onPress={() => setSession(setRestSeconds(session, session.restSeconds - 15))}
+              className="h-[26px] w-[28px] items-center justify-center rounded-[7px]">
+              <Text className="font-archivo text-[15px] font-bold" style={{ color: '#9A9A92' }}>
+                −
+              </Text>
             </Pressable>
-            <Text className="font-archivo text-[13px] font-bold text-text">{formatRest(session.restSeconds)}</Text>
+            <Text className="min-w-[46px] text-center font-archivo text-[13px] font-bold text-text">
+              {formatRest(session.restSeconds)}
+            </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Increase rest"
-              onPress={() => setSession(setRestSeconds(session, session.restSeconds + 15))}>
-              <Text className="font-archivo text-[14px] font-bold text-dim">+</Text>
+              onPress={() => setSession(setRestSeconds(session, session.restSeconds + 15))}
+              className="h-[26px] w-[28px] items-center justify-center rounded-[7px]">
+              <Text className="font-archivo text-[15px] font-bold" style={{ color: '#9A9A92' }}>
+                +
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -500,201 +574,296 @@ export default function LiveScreen() {
         {session.exercises.map((exercise, exerciseIndex) => (
           <View
             key={`${exercise.exerciseId}-${exerciseIndex}`}
-            className="mt-[12px] rounded-card px-[15px] pb-[15px] pt-[13px]"
+            className="mb-[14px] rounded-[14px] px-[16px] py-[15px]"
             style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-            <View className="flex-row items-center" style={{ gap: 8 }}>
-              <Text className="flex-1 font-archivo text-[16px] font-bold text-text">{exercise.name}</Text>
-              {/*
-                `Set as time` -- distance exercises only, exactly as `live workout 2.png` shows
-                on Row Machine. A rower is logged as 500 m or as a timed piece, athlete's call.
-              */}
-              {exercise.measure === 'distance' || exercise.sets.some((set) => set.distanceMeters !== null) ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    exercise.measure === 'distance' ? `Set ${exercise.name} as time` : `Set ${exercise.name} as distance`
-                  }
-                  onPress={() =>
-                    setSession(
-                      setExerciseMeasure(session, exerciseIndex, exercise.measure === 'distance' ? 'time' : 'distance'),
-                    )
-                  }
-                  className="rounded-[7px] px-[9px] py-[5px]"
-                  style={{ backgroundColor: 'rgba(233,113,47,.14)' }}>
-                  <Text className="font-archivo text-[10.5px] font-bold text-accent">
-                    {exercise.measure === 'distance' ? 'Set as time' : 'Set as distance'}
-                  </Text>
-                </Pressable>
-              ) : null}
-              <View
-                className="rounded-[6px] px-[8px] py-[4px]"
-                style={{ backgroundColor: colors.fieldBg, borderWidth: 1, borderColor: colors.border }}>
-                <Text className="font-archivo text-[9.5px] font-bold uppercase tracking-[.06em] text-dim">
-                  {exercise.measure === 'distance' ? 'M' : 'KG'}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${exercise.name} history`}
-                onPress={() => router.push(`/exercise/${exercise.exerciseId}`)}
-                hitSlop={8}>
-                <Icon name="bars" size={15} color={colors.dim} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Remove ${exercise.name}`}
-                onPress={() => setSession(removeExercise(session, exerciseIndex))}
-                hitSlop={8}>
-                <Icon name="x" size={15} color={colors.dimmer} />
-              </Pressable>
-            </View>
-
-            {/*
-              The goal chip. Read-only here: `goal` is derived server-side from `measure` and
-              carried on the catalogue row, never chosen by a client. The prototype's per-session
-              goal *picker* is a further step, deliberately not built in this slice.
-            */}
-            <View className="mt-[8px] flex-row items-center" style={{ gap: 8 }}>
-              {exercise.goal ? (
-                <View
-                  className="rounded-[6px] px-[8px] py-[4px]"
-                  style={{ backgroundColor: 'rgba(233,113,47,.12)', borderWidth: 1, borderColor: 'rgba(233,113,47,.28)' }}>
-                  <Text className="font-archivo text-[9.5px] font-bold uppercase tracking-[.06em] text-accent">
-                    {EXERCISE_GOAL_DISPLAY_NAMES[exercise.goal]}
+            <View className="flex-row items-start justify-between" style={{ gap: 10 }}>
+              <View className="flex-1">
+                <Text className="font-archivo text-[15.5px] font-bold text-text">{exercise.name}</Text>
+                <View className="mt-[7px] flex-row flex-wrap items-center" style={{ gap: 7 }}>
+                  {/*
+                    The goal chip. Read-only here: `goal` is derived server-side from `measure`
+                    and carried on the catalogue row, never chosen by a client. The prototype's
+                    per-session goal PICKER is a further step, deliberately not in this slice --
+                    the chevron is drawn because the design has it.
+                  */}
+                  {exercise.goal ? (
+                    <View
+                      className="flex-row items-center rounded-[5px] px-[7px] py-[3px]"
+                      style={{ backgroundColor: 'rgba(233,113,47,.13)', gap: 5 }}>
+                      <Text className="font-archivo text-[8.5px] font-bold uppercase tracking-[.1em] text-accent">
+                        {EXERCISE_GOAL_DISPLAY_NAMES[exercise.goal]}
+                      </Text>
+                      <Icon name="chevron" size={9} color={colors.accent} />
+                    </View>
+                  ) : null}
+                  <Text className="font-archivo text-[11.5px]" style={{ color: '#6E6E66' }}>
+                    {`${MEASURE_SUBTITLE[exercise.measure] ?? 'Weight'} · ${exercise.sets.length} sets`}
                   </Text>
                 </View>
-              ) : null}
-              <Text className="font-archivo text-[11.5px] text-dimmer">
-                {`${MEASURE_SUBTITLE[exercise.measure] ?? 'Weight'} · ${exercise.sets.length} sets`}
-              </Text>
+              </View>
+
+              <View className="flex-row items-center" style={{ gap: 4 }}>
+                {exercise.measure === 'distance' || exercise.sets.some((set) => set.distanceMeters !== null) ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      exercise.measure === 'distance'
+                        ? `Set ${exercise.name} as time`
+                        : `Set ${exercise.name} as distance`
+                    }
+                    onPress={() =>
+                      setSession(
+                        setExerciseMeasure(
+                          session,
+                          exerciseIndex,
+                          exercise.measure === 'distance' ? 'time' : 'distance',
+                        ),
+                      )
+                    }
+                    className="rounded-[8px] px-[9px] py-[5px]"
+                    style={{
+                      backgroundColor: 'rgba(233,113,47,.1)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(233,113,47,.28)',
+                    }}>
+                    <Text className="font-archivo text-[10px] font-bold tracking-[.04em] text-accent">
+                      {exercise.measure === 'distance' ? 'Set as time' : 'Set as distance'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {exercise.measure === 'time' ? null : (
+                  <View
+                    className="rounded-[8px] px-[9px] py-[5px]"
+                    style={{ backgroundColor: 'rgba(255,255,255,.05)', borderWidth: 1, borderColor: colors.border }}>
+                    <Text
+                      className="font-archivo text-[10px] font-bold uppercase tracking-[.06em]"
+                      style={{ color: '#9A9A92' }}>
+                      {exercise.measure === 'distance' ? 'M' : 'KG'}
+                    </Text>
+                  </View>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${exercise.name} history`}
+                  onPress={() => router.push(`/exercise/${exercise.exerciseId}`)}
+                  className="p-[4px]"
+                  style={{ opacity: 0.55 }}>
+                  <Icon name="bars" size={18} color="#C8C8C0" />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${exercise.name}`}
+                  onPress={() => setSession(removeExercise(session, exerciseIndex))}
+                  className="p-[4px]"
+                  style={{ opacity: 0.45 }}>
+                  <Icon name="x" size={15} color="#C9503C" />
+                </Pressable>
+              </View>
             </View>
 
-            <View className="mt-[11px] flex-row" style={{ gap: 10 }}>
-              <Text className="w-[28px] font-archivo text-[9px] font-semibold uppercase tracking-[.1em] text-label">
+            {/* Column headers: `padding:'0 11px 6px'`, widths 16 / 66 / flex / 44. */}
+            <View className="mt-[12px] flex-row items-center px-[11px] pb-[6px]" style={{ gap: 8 }}>
+              <Text
+                className="w-[16px] text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
+                style={{ color: '#4D4D47' }}>
                 Set
               </Text>
-              <Text className="w-[62px] font-archivo text-[9px] font-semibold uppercase tracking-[.1em] text-label">
+              <Text
+                className="w-[66px] text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
+                style={{ color: '#4D4D47' }}>
                 Prev
               </Text>
-              <Text className="font-archivo text-[9px] font-semibold uppercase tracking-[.1em] text-label">Target</Text>
+              <Text
+                className="flex-1 text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
+                style={{ color: '#4D4D47' }}>
+                Target
+              </Text>
+              <View className="w-[44px]" />
             </View>
 
-            {exercise.sets.map((set, setIndex) => (
-              <View
-                key={setIndex}
-                className="mt-[8px] flex-row items-center rounded-[10px] px-[10px] py-[9px]"
-                style={{
-                  backgroundColor: set.isCompleted ? 'rgba(121,185,138,.10)' : colors.fieldBg,
-                  borderWidth: 1,
-                  borderColor: set.isCompleted ? 'rgba(121,185,138,.28)' : colors.border,
-                  gap: 10,
-                }}>
-                <Text className="w-[18px] font-archivo text-[12px] font-semibold text-dim">{setIndex + 1}</Text>
-                {/*
-                  PREV is blank until local history exists. Same principle as the Watch card --
-                  a first-ever session has nothing to compare against, and inventing a previous
-                  performance would be inventing the user's own past.
-                */}
-                <Text className="w-[62px] font-archivo text-[10.5px] text-dimmer">—</Text>
+            <View style={{ gap: 7 }}>
+              {exercise.sets.map((set, setIndex) => {
+                const numberColor = set.isCompleted ? colors.green : colors.text;
+                return (
+                  <View
+                    key={setIndex}
+                    className="flex-row items-center rounded-[10px] px-[11px] py-[10px]"
+                    style={{
+                      backgroundColor: set.isCompleted ? 'rgba(121,185,138,.09)' : '#141517',
+                      borderWidth: 1,
+                      borderColor: set.isCompleted ? 'rgba(121,185,138,.25)' : colors.border,
+                      gap: 8,
+                    }}>
+                    <Text
+                      className="w-[16px] text-center font-archivo text-[11.5px] font-semibold"
+                      style={{ color: '#5C5C55' }}>
+                      {setIndex + 1}
+                    </Text>
+                    {/*
+                      PREV stays blank until local history exists -- same principle as the Watch
+                      card. A first-ever session has nothing to compare against, and inventing a
+                      previous performance would be inventing the athlete's own past.
+                    */}
+                    <Text
+                      numberOfLines={1}
+                      className="w-[66px] text-center font-archivo text-[10.5px] font-medium"
+                      style={{ color: '#5C5C55' }}>
+                      —
+                    </Text>
 
-                <View className="flex-1 flex-row items-center" style={{ gap: 6 }}>
-                  {exercise.measure === 'weight' ? (
-                    <>
-                      <TextInput
-                        accessibilityLabel={`Weight for set ${setIndex + 1} of ${exercise.name}`}
-                        value={set.weightKg === null ? '' : String(set.weightKg)}
-                        keyboardType="decimal-pad"
-                        onChangeText={(raw) =>
-                          setSession(
-                            updateSet(session, exerciseIndex, setIndex, {
-                              weightKg: raw === '' ? null : Number(raw.replace(/[^0-9.]/g, '')) || 0,
-                            }),
-                          )
-                        }
-                        className="w-[46px] font-archivo text-[14px] font-bold text-text"
-                      />
-                      <Text className="font-archivo text-[10.5px] text-dimmer">kg ×</Text>
-                      <TextInput
-                        accessibilityLabel={`Reps for set ${setIndex + 1} of ${exercise.name}`}
-                        value={set.reps === null ? '' : String(set.reps)}
-                        keyboardType="number-pad"
-                        onChangeText={(raw) =>
-                          setSession(
-                            updateSet(session, exerciseIndex, setIndex, {
-                              reps: raw === '' ? null : parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0,
-                            }),
-                          )
-                        }
-                        className="w-[34px] font-archivo text-[14px] font-bold text-text"
-                      />
-                    </>
-                  ) : exercise.measure === 'time' ? (
-                    <>
-                      <Text className="font-archivo text-[14px] font-bold text-text">
-                        {describeSet(set, exercise.measure)}
-                      </Text>
+                    <View
+                      className="flex-1 flex-row items-center justify-center"
+                      style={{ gap: exercise.measure === 'time' ? 4 : 6 }}>
+                      {exercise.measure === 'weight' ? (
+                        <>
+                          <TextInput
+                            accessibilityLabel={`Weight for set ${setIndex + 1} of ${exercise.name}`}
+                            value={set.weightKg === null ? '' : String(set.weightKg)}
+                            keyboardType="decimal-pad"
+                            onChangeText={(raw) =>
+                              setSession(
+                                updateSet(session, exerciseIndex, setIndex, {
+                                  weightKg: raw === '' ? null : Number(raw.replace(/[^0-9.]/g, '')) || 0,
+                                }),
+                              )
+                            }
+                            className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
+                            style={{ color: numberColor }}
+                          />
+                          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
+                            kg
+                          </Text>
+                          <Text className="font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
+                            ×
+                          </Text>
+                          <TextInput
+                            accessibilityLabel={`Reps for set ${setIndex + 1} of ${exercise.name}`}
+                            value={set.reps === null ? '' : String(set.reps)}
+                            keyboardType="number-pad"
+                            onChangeText={(raw) =>
+                              setSession(
+                                updateSet(session, exerciseIndex, setIndex, {
+                                  reps: raw === '' ? null : parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0,
+                                }),
+                              )
+                            }
+                            className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
+                            style={{ color: numberColor }}
+                          />
+                        </>
+                      ) : exercise.measure === 'time' ? (
+                        <>
+                          {/* The design logs a timed set as mm:ss, not one seconds field. */}
+                          <TextInput
+                            accessibilityLabel={`Minutes for set ${setIndex + 1} of ${exercise.name}`}
+                            value={String(Math.floor((set.durationSeconds ?? 0) / 60))}
+                            keyboardType="number-pad"
+                            onChangeText={(raw) =>
+                              setSession(
+                                updateSet(session, exerciseIndex, setIndex, {
+                                  durationSeconds:
+                                    (parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0) * 60 +
+                                    ((set.durationSeconds ?? 0) % 60),
+                                }),
+                              )
+                            }
+                            className="w-[26px] py-[1px] text-right font-archivo text-[14px] font-semibold"
+                            style={{ color: numberColor }}
+                          />
+                          <Text className="font-archivo text-[14px] font-bold" style={{ color: '#6E6E66' }}>
+                            :
+                          </Text>
+                          <TextInput
+                            accessibilityLabel={`Seconds for set ${setIndex + 1} of ${exercise.name}`}
+                            value={String((set.durationSeconds ?? 0) % 60)}
+                            keyboardType="number-pad"
+                            onChangeText={(raw) =>
+                              setSession(
+                                updateSet(session, exerciseIndex, setIndex, {
+                                  durationSeconds:
+                                    Math.floor((set.durationSeconds ?? 0) / 60) * 60 +
+                                    (parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0),
+                                }),
+                              )
+                            }
+                            className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
+                            style={{ color: numberColor }}
+                          />
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Start timer for set ${setIndex + 1} of ${exercise.name}`}
+                            onPress={() => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
+                            className="ml-[2px] flex-row items-center rounded-[8px] px-[9px] py-[5px]"
+                            style={{ backgroundColor: 'rgba(233,113,47,.14)', gap: 5 }}>
+                            <Icon name="chevron" size={10} color={colors.accent} />
+                            <Text className="font-archivo text-[10.5px] font-bold text-accent">Timer</Text>
+                          </Pressable>
+                        </>
+                      ) : (
+                        <>
+                          <TextInput
+                            accessibilityLabel={`Distance for set ${setIndex + 1} of ${exercise.name}`}
+                            value={set.distanceMeters === null ? '' : String(set.distanceMeters)}
+                            keyboardType="number-pad"
+                            onChangeText={(raw) =>
+                              setSession(
+                                updateSet(session, exerciseIndex, setIndex, {
+                                  distanceMeters: raw === '' ? null : Number(raw.replace(/[^0-9.]/g, '')) || 0,
+                                }),
+                              )
+                            }
+                            className="w-[44px] py-[1px] text-center font-archivo text-[14px] font-semibold"
+                            style={{ color: numberColor }}
+                          />
+                          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
+                            m
+                          </Text>
+                        </>
+                      )}
+                    </View>
+
+                    {exercise.sets.length > 1 ? (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={`Start timer for set ${setIndex + 1} of ${exercise.name}`}
-                        onPress={() => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
-                        className="flex-row items-center rounded-[7px] px-[9px] py-[5px]"
-                        style={{ backgroundColor: 'rgba(233,113,47,.14)', gap: 5 }}>
-                        <Text className="font-archivo text-[11px] font-bold text-accent">▶ Timer</Text>
+                        accessibilityLabel={`Remove set ${setIndex + 1} of ${exercise.name}`}
+                        onPress={() => setSession(removeSet(session, exerciseIndex, setIndex))}
+                        hitSlop={6}
+                        style={{ opacity: 0.4 }}>
+                        <Icon name="x" size={14} color="#C9503C" />
                       </Pressable>
-                    </>
-                  ) : (
-                    <>
-                      <TextInput
-                        accessibilityLabel={`Distance for set ${setIndex + 1} of ${exercise.name}`}
-                        value={set.distanceMeters === null ? '' : String(set.distanceMeters)}
-                        keyboardType="number-pad"
-                        onChangeText={(raw) =>
-                          setSession(
-                            updateSet(session, exerciseIndex, setIndex, {
-                              distanceMeters: raw === '' ? null : Number(raw.replace(/[^0-9.]/g, '')) || 0,
-                            }),
-                          )
-                        }
-                        className="w-[54px] font-archivo text-[14px] font-bold text-text"
-                      />
-                      <Text className="font-archivo text-[10.5px] text-dimmer">m</Text>
-                    </>
-                  )}
-                </View>
+                    ) : null}
 
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove set ${setIndex + 1} of ${exercise.name}`}
-                  onPress={() => setSession(removeSet(session, exerciseIndex, setIndex))}
-                  hitSlop={6}>
-                  <Icon name="x" size={13} color={colors.errorText} />
-                </Pressable>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    set.isCompleted
-                      ? `Untick set ${setIndex + 1} of ${exercise.name}`
-                      : `Complete set ${setIndex + 1} of ${exercise.name}`
-                  }
-                  onPress={() => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
-                  className="h-[26px] w-[26px] items-center justify-center rounded-[13px]"
-                  style={
-                    set.isCompleted ? { backgroundColor: colors.green } : { borderWidth: 1.5, borderColor: '#37383C' }
-                  }>
-                  {set.isCompleted ? <Icon name="check" size={13} color="#101011" /> : null}
-                </Pressable>
-              </View>
-            ))}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        set.isCompleted
+                          ? `Untick set ${setIndex + 1} of ${exercise.name}`
+                          : `Complete set ${setIndex + 1} of ${exercise.name}`
+                      }
+                      onPress={() => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
+                      className="h-[24px] w-[24px] items-center justify-center rounded-[12px]"
+                      style={
+                        set.isCompleted
+                          ? { backgroundColor: colors.green }
+                          : { borderWidth: 1.5, borderColor: '#37383C' }
+                      }>
+                      {set.isCompleted ? <Icon name="check" size={13} color="#101011" /> : null}
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Add set to ${exercise.name}`}
               onPress={() => setSession(addSet(session, exerciseIndex))}
-              className="mt-[12px] h-[40px] flex-row items-center justify-center rounded-[10px]"
-              style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, gap: 7 }}>
-              <Icon name="plus" size={14} color={colors.dim} />
-              <Text className="font-archivo text-[12.5px] font-semibold text-dim">Add set</Text>
+              className="mt-[9px] h-[36px] flex-row items-center justify-center rounded-[9px]"
+              style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,.13)', gap: 7 }}>
+              <Icon name="plus" size={15} color={colors.accent} />
+              <Text className="font-archivo text-[12px] font-semibold" style={{ color: '#9A9A92' }}>
+                Add set
+              </Text>
             </Pressable>
           </View>
         ))}
@@ -703,7 +872,7 @@ export default function LiveScreen() {
           accessibilityRole="button"
           accessibilityLabel="Add exercise"
           onPress={() => router.push('/library?pick=live')}
-          className="mt-[14px] h-[52px] flex-row items-center justify-center rounded-[12px]"
+          className="h-[46px] flex-row items-center justify-center rounded-[11px]"
           style={{
             borderWidth: 1,
             borderStyle: 'dashed',
@@ -712,10 +881,10 @@ export default function LiveScreen() {
             gap: 8,
           }}>
           <Icon name="plus" size={16} color={colors.accent} />
-          <Text className="font-archivo text-[13.5px] font-bold text-accent">Add exercise</Text>
+          <Text className="font-archivo text-[13px] font-bold text-accent">Add exercise</Text>
         </Pressable>
 
-        <View style={{ height: 28 }} />
+        <View style={{ height: 26 }} />
       </ScrollView>
 
       <Toast message={toast.message} />

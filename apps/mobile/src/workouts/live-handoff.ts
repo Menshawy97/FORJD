@@ -1,4 +1,4 @@
-import type { Activity } from '@forjd/domain';
+import type { Activity, ExerciseGoal, ExerciseMeasure } from '@forjd/domain';
 
 import type { LiveExercise } from './live-session';
 
@@ -36,6 +36,30 @@ export function setPendingLiveSession(session: PendingLiveSession): void {
 export function consumePendingLiveSession(): PendingLiveSession | null {
   const value = pending;
   pending = null;
+  return value;
+}
+
+/**
+ * An exercise picked from `library.tsx?pick=live` to be added to the session in progress.
+ * Mirrors the builder's own picked-exercise slot: the library sets it and calls `router.back()`,
+ * and the live screen consumes it on focus.
+ */
+let pickedForLive: PickedForLive | null = null;
+
+export interface PickedForLive {
+  exerciseId: string;
+  name: string;
+  measure: ExerciseMeasure;
+  goal: ExerciseGoal | null;
+}
+
+export function setPickedExerciseForLive(exercise: PickedForLive): void {
+  pickedForLive = exercise;
+}
+
+export function consumePickedExerciseForLive(): PickedForLive | null {
+  const value = pickedForLive;
+  pickedForLive = null;
   return value;
 }
 

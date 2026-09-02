@@ -15,6 +15,8 @@ import {
   consumePickedExerciseForBuilder,
   type BuilderExerciseDraft,
 } from '@/workouts/builder-handoff';
+import { setPendingLiveSession } from '@/workouts/live-handoff';
+import { newSessionId, toLiveExercise } from '@/workouts/start-session';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -161,6 +163,39 @@ export default function BuilderScreen() {
     }
   };
 
+  /**
+   * "Start now" -- Phase 3H's live-execution entry point, which this screen deliberately left
+   * inert in Phase 3G.
+   *
+   * **It starts the session without saving the template**, which is the prototype's own
+   * behaviour and the right one: an athlete improvising today's session should not be forced
+   * to add it to their library first. Saving is the other button, and the two are independent.
+   */
+  const startNow = () => {
+    if (exercises.length === 0) {
+      setTriedSubmit(true);
+      return;
+    }
+    setPendingLiveSession({
+      id: newSessionId(),
+      templateId: basedOnTemplateId,
+      name: name.trim() || 'Workout',
+      activity: 'strength',
+      exercises: exercises.map((exercise) =>
+        toLiveExercise({
+          exerciseId: exercise.exerciseId,
+          name: exercise.name,
+          measure: exercise.measure,
+          setCount: exercise.setCount,
+          targetReps: exercise.targetReps,
+          targetSeconds: exercise.targetSeconds,
+          targetDistanceMeters: exercise.targetDistanceMeters,
+        }),
+      ),
+    });
+    router.push('/live');
+  };
+
   const validationMessage = !name.trim() && exercises.length === 0
     ? 'Add a name and at least one exercise before saving or starting.'
     : !name.trim()
@@ -301,11 +336,14 @@ export default function BuilderScreen() {
             {saving ? 'Saving…' : 'Save workout'}
           </Text>
         </Pressable>
-        <View
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Start now"
+          onPress={startNow}
           className="h-[52px] w-[104px] items-center justify-center rounded-[12px]"
           style={{ borderWidth: 1, borderColor: colors.border, opacity: exercises.length ? 1 : 0.5 }}>
           <Text className="font-archivo text-[13.5px] font-semibold text-dim">Start now</Text>
-        </View>
+        </Pressable>
       </View>
 
       <Toast message={toast.message} />

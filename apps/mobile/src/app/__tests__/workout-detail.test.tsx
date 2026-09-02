@@ -37,6 +37,10 @@ jest.mock('expo-router', () => {
   };
 });
 
+// expo-crypto is a native module with no JS implementation under Jest -- mocked at the test
+// boundary, per the project's own React Native testing rule.
+jest.mock('expo-crypto', () => ({ randomUUID: () => '11111111-2222-4333-8444-555555555555' }));
+
 jest.mock('@/auth/apiClient', () => ({
   getWorkoutTemplate: jest.fn(),
 }));
@@ -49,6 +53,7 @@ jest.mock('@/store/exercise-catalogue', () => ({
 import { getWorkoutTemplate } from '@/auth/apiClient';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { consumeBuilderPrefill } from '@/workouts/builder-handoff';
+import { consumePendingLiveSession } from '@/workouts/live-handoff';
 
 import WorkoutDetailScreen from '../workout/[id]';
 
@@ -323,6 +328,53 @@ describe('Customise hands off to the builder', () => {
     // unmounted tree and React logs an act() warning attributed to the next test.
     resolveTemplate?.(template());
     await findByLabelText('Customise');
+  });
+});
+
+describe('Start workout', () => {
+  it('starts a live session from the template prescription, keeping the template id', async () => {
+    const { findByLabelText, findByText } = await render(<WorkoutDetailScreen />);
+    await findByText('Bench Press');
+
+    await fireEvent.press(await findByLabelText('Start workout'));
+
+    expect(mockPush).toHaveBeenCalledWith('/live');
+    const pending = consumePendingLiveSession();
+    expect(pending).toMatchObject({ templateId: 'template-1', name: 'Upper / Lower', activity: 'strength' });
+    // 4 prescribed sets of 8 become four individually tickable rows, each carrying the target.
+    expect(pending?.exercises[0].sets).toHaveLength(4);
+    expect(pending?.exercises[0]).toMatchObject({ exerciseId: 'ex-1', name: 'Bench Press', measure: 'weight' });
+    expect(pending?.exercises[0].sets[3]).toMatchObject({ reps: 8, isCompleted: false });
+  });
+
+  it('carries a timed exercise across as a duration, not reps', async () => {
+    (getWorkoutTemplate as jest.Mock).mockResolvedValue(
+      template({
+        blocks: [
+          {
+            ...template().blocks[0],
+            exercises: [templateExercise({ setCount: 3, targetReps: null, targetSeconds: 45 })],
+          },
+        ],
+      }),
+    );
+    (getCachedExercise as jest.Mock).mockResolvedValue(cachedExercise('Plank', 'time'));
+    const { findByLabelText, findByText } = await render(<WorkoutDetailScreen />);
+    await findByText('Plank');
+
+    await fireEvent.press(await findByLabelText('Start workout'));
+
+    const pending = consumePendingLiveSession();
+    expect(pending?.exercises[0].sets[0]).toMatchObject({ durationSeconds: 45, reps: null });
+  });
+
+  it('does nothing before the template has loaded', async () => {
+    (getWorkoutTemplate as jest.Mock).mockReturnValue(new Promise(() => {}));
+
+    const { queryByLabelText } = await render(<WorkoutDetailScreen />);
+
+    expect(queryByLabelText('Start workout')).toBeNull();
+    expect(consumePendingLiveSession()).toBeNull();
   });
 });
 

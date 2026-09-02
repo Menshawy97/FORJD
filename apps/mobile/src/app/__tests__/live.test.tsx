@@ -220,7 +220,12 @@ describe('design fidelity', () => {
     await fireEvent.press(await findByLabelText('How to train this'));
 
     expect(await findByText('This lift')).toBeTruthy();
-    expect(await findByText('80–95% 1RM · 1–5 reps · 3–5 min rest')).toBeTruthy();
+    // The design renders load, reps and rest as three separate elements -- load right-aligned
+    // on the goal row, reps and rest as their own pills below it -- not one concatenated line.
+    expect(await findByText('80–95% 1RM')).toBeTruthy();
+    expect(await findByText('1–5 reps')).toBeTruthy();
+    expect(await findByText('3–5 min rest')).toBeTruthy();
+    expect(await findByText('Move heavy weight with excellent technique')).toBeTruthy();
     expect(await findByText('Hypertrophy')).toBeTruthy();
   });
 
@@ -259,7 +264,9 @@ describe('design fidelity', () => {
     stageSession();
     const { findAllByText } = await render(<LiveScreen />);
 
-    expect((await findAllByText('KG')).length).toBe(2);
+    // The prototype gates the pill on `showUnitToggle: m !== 'time'` -- a plank has no unit to
+    // switch between, so it gets none. Bench Press (KG) and Row Machine (M) each get one.
+    expect((await findAllByText('KG')).length).toBe(1);
     expect((await findAllByText('M')).length).toBe(1);
   });
 

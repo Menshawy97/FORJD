@@ -11,6 +11,8 @@ import { TabBar } from '@/components/tab-bar';
 import { TypeChip } from '@/components/type-chip';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { setBuilderPrefill } from '@/workouts/builder-handoff';
+import { setPendingLiveSession } from '@/workouts/live-handoff';
+import { newSessionId, toLiveExercise } from '@/workouts/start-session';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -91,6 +93,39 @@ export default function WorkoutDetailScreen() {
     }, [id]),
   );
 
+  /**
+   * "Start workout" -- Phase 3H's entry point from a saved template.
+   *
+   * The session is built from the template's *prescription* (`setCount`, `targetReps`, …) but
+   * carries `templateId`, so what gets logged is what the athlete actually performs while the
+   * template stays untouched. That split is the whole reason template and session are separate
+   * tables: overwriting one with the other destroys the only signal progression analytics has.
+   */
+  const startWorkout = () => {
+    if (!template) return;
+    setPendingLiveSession({
+      id: newSessionId(),
+      templateId: template.id,
+      name: template.name,
+      activity: template.activity,
+      exercises: template.blocks.flatMap((block) =>
+        block.exercises.map((exercise) => {
+          const resolved = rows.find((row) => row.exerciseId === exercise.exerciseId);
+          return toLiveExercise({
+            exerciseId: exercise.exerciseId,
+            name: resolved?.name ?? 'Exercise',
+            measure: resolved?.measure ?? 'weight',
+            setCount: exercise.setCount,
+            targetReps: exercise.targetReps,
+            targetSeconds: exercise.targetSeconds,
+            targetDistanceMeters: exercise.targetDistanceMeters,
+          });
+        }),
+      ),
+    });
+    router.push('/live');
+  };
+
   const onCustomise = () => {
     if (!template) return;
     setBuilderPrefill({
@@ -158,9 +193,14 @@ export default function WorkoutDetailScreen() {
             </View>
 
             <View className="mt-6" style={{ gap: 10 }}>
-              <View className="h-[52px] items-center justify-center rounded-[12px]" style={{ backgroundColor: colors.accent, opacity: 0.5 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Start workout"
+                onPress={startWorkout}
+                className="h-[52px] items-center justify-center rounded-[12px]"
+                style={{ backgroundColor: colors.accent }}>
                 <Text className="font-archivo text-[14.5px] font-bold text-white">Start workout</Text>
-              </View>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Customise"
