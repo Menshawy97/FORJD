@@ -1,0 +1,61 @@
+{
+  "id": "11111111-1111-4111-8111-111111111111",
+  "name": "Upper Push",
+  "activity": "strength",
+  "basedOnTemplateId": null,
+  "notes": null,
+  "estimatedDurationMinutes": 52,
+  "blocks": [
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "type": "straight_sets",
+      "orderIndex": 0,
+      "name": null,
+      "rounds": null,
+      "workSeconds": null,
+      "restSeconds": null,
+      "capSeconds": null,
+      "exercises": [
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "exerciseId": "44444444-4444-4444-8444-444444444444",
+          "orderIndex": 0,
+          "setCount": 4,
+          "targetReps": 8,
+          "targetRepsMax": null,
+          "targetWeightKg": 80,
+          "targetSeconds": null,
+          "targetDistanceMeters": null,
+          "restSeconds": 90,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "type": "interval",
+      "orderIndex": 1,
+      "name": "Conditioning finisher",
+      "rounds": 8,
+      "workSeconds": 60,
+      "restSeconds": 30,
+      "capSeconds": null,
+      "exercises": [
+        {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "exerciseId": "77777777-7777-4777-8777-777777777777",
+          "orderIndex": 0,
+          "setCount": null,
+          "targetReps": null,
+          "targetRepsMax": null,
+          "targetWeightKg": null,
+          "targetSeconds": null,
+          "targetDistanceMeters": null,
+          "restSeconds": null,
+          "notes": null
+        }
+      ]
+    }
+  ],
+  "isCustom": false
+}

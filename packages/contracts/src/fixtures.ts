@@ -15,6 +15,10 @@ import {
   savedMealListResponseSchema,
   savedMealResponseSchema,
   sessionResponseSchema,
+  workoutSessionListResponseSchema,
+  workoutSessionResponseSchema,
+  workoutTemplateListResponseSchema,
+  workoutTemplateResponseSchema,
 } from './index';
 
 /**
@@ -396,6 +400,170 @@ export const responseFixtures = {
   'saved-meal-list-response-empty': {
     schema: savedMealListResponseSchema,
     sample: { items: [] },
+  },
+
+  /**
+   * A curated template with two blocks -- the second one an `interval` block, deliberately
+   * included even though Phase 3 does not implement running it yet: the fixture exists to
+   * prove the wire shape already carries every block type, not just the one screen that
+   * reads it today.
+   */
+  'workout-template-response': {
+    schema: workoutTemplateResponseSchema,
+    sample: {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Upper Push',
+      activity: 'strength' as const,
+      basedOnTemplateId: null,
+      notes: null,
+      estimatedDurationMinutes: 52,
+      isCustom: false,
+      blocks: [
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          type: 'straight_sets' as const,
+          orderIndex: 0,
+          name: null,
+          rounds: null,
+          workSeconds: null,
+          restSeconds: null,
+          capSeconds: null,
+          exercises: [
+            {
+              id: '33333333-3333-4333-8333-333333333333',
+              exerciseId: '44444444-4444-4444-8444-444444444444',
+              orderIndex: 0,
+              setCount: 4,
+              targetReps: 8,
+              targetRepsMax: null,
+              targetWeightKg: 80,
+              targetSeconds: null,
+              targetDistanceMeters: null,
+              restSeconds: 90,
+              notes: null,
+            },
+          ],
+        },
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          type: 'interval' as const,
+          orderIndex: 1,
+          name: 'Conditioning finisher',
+          rounds: 8,
+          workSeconds: 60,
+          restSeconds: 30,
+          capSeconds: null,
+          exercises: [
+            {
+              id: '66666666-6666-4666-8666-666666666666',
+              exerciseId: '77777777-7777-4777-8777-777777777777',
+              orderIndex: 0,
+              setCount: null,
+              targetReps: null,
+              targetRepsMax: null,
+              targetWeightKg: null,
+              targetSeconds: null,
+              targetDistanceMeters: null,
+              restSeconds: null,
+              notes: null,
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  /** The "My workouts" list row -- lean on purpose, see `workoutTemplateSummarySchema`'s own docblock. */
+  'workout-template-list-response': {
+    schema: workoutTemplateListResponseSchema,
+    sample: {
+      items: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Upper Push — my version',
+          activity: 'strength' as const,
+          estimatedDurationMinutes: 52,
+          exerciseCount: 6,
+          isCustom: true,
+        },
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          name: 'Full Body A',
+          activity: 'strength' as const,
+          estimatedDurationMinutes: 45,
+          exerciseCount: 5,
+          isCustom: false,
+        },
+      ],
+      nextCursor: null,
+    },
+  },
+
+  /**
+   * A completed strength session with one working set logged -- `templateId` non-null
+   * (performed against a prescription) and `isLiveTracked: true` (the anti-cheat fact
+   * `leaderboard_eligible` reads at query time, per `docs/architecture/security.md`).
+   */
+  'workout-session-response': {
+    schema: workoutSessionResponseSchema,
+    sample: {
+      id: '11111111-1111-4111-8111-111111111111',
+      templateId: '22222222-2222-4222-8222-222222222222',
+      name: 'Upper Push',
+      activity: 'strength' as const,
+      status: 'completed' as const,
+      startedAt: '2026-09-02T09:00:00.000Z',
+      endedAt: '2026-09-02T09:52:00.000Z',
+      durationSeconds: 3120,
+      perceivedEffort: 'solid' as const,
+      notes: null,
+      city: 'Alexandria',
+      citySlug: 'alexandria',
+      isLiveTracked: true,
+      exercises: [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          exerciseId: '44444444-4444-4444-8444-444444444444',
+          orderIndex: 0,
+          measure: 'weight' as const,
+          notes: null,
+          sets: [
+            {
+              id: '55555555-5555-4555-8555-555555555555',
+              setIndex: 0,
+              type: 'working' as const,
+              isCompleted: true,
+              weightKg: 82.5,
+              reps: 6,
+              durationSeconds: null,
+              distanceMeters: null,
+              restSeconds: 90,
+              completedAt: '2026-09-02T09:05:00.000Z',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  /** The workout history list row -- what Home's stat strip and "Recent PR" (Phase J) read. */
+  'workout-session-list-response': {
+    schema: workoutSessionListResponseSchema,
+    sample: {
+      items: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Upper Push',
+          activity: 'strength' as const,
+          status: 'completed' as const,
+          startedAt: '2026-09-02T09:00:00.000Z',
+          endedAt: '2026-09-02T09:52:00.000Z',
+          durationSeconds: 3120,
+          perceivedEffort: 'solid' as const,
+        },
+      ],
+      nextCursor: null,
+    },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;
 
