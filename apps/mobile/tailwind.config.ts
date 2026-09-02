@@ -103,6 +103,17 @@ export default {
         // The nutrition summary card's Carbs macro bar -- flagged in nutrition-screen-specs.md
         // §7 as a colour the prototype uses (`#6f9ac9`) with no token of its own until now.
         nutritionCarbs: '#6F9AC9',
+        // Protein's macro colour -- used to be `accent`, but accent is also the calorie
+        // ring's colour, and the two need to read as distinct rings once they're nested
+        // (Home, the nutrition dashboard, and the share card all draw calories/protein/
+        // carbs/fat as concentric rings). Applied everywhere protein is drawn: this ring,
+        // the macro-dot legends, `MacroBar`, and the share card.
+        protein: '#C98AD9',
+        // The share card's Daily Summary ring track -- `rgba(255,255,255,.1)`, a different
+        // alpha than the app-wide `ringTrack` (.08) and `nutrition.tsx`'s solid
+        // `restRingTrack`. All three pre-existed as distinct per-screen values before the
+        // rings were shared; this is the one of the three that had no name yet.
+        shareRingTrack: 'rgba(255,255,255,.1)',
         readinessLabel: '#8BBF96',
         destructive: '#C9503C',
         errorText: '#E05A3C',

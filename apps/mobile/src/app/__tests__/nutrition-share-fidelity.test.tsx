@@ -172,11 +172,13 @@ describe('Nutrition share screen', () => {
     expect(getByText('/ 2000 kcal')).toBeTruthy();
     expect(getByText('Today’s intake')).toBeTruthy();
 
-    // pct = min(1, 600/2000) = 0.3; C = 2*PI*40; offset = C*(1-0.3).
+    // pct = min(1, 600/2000) = 0.3; C = 2*PI*60 (the calories ring's radius -- the outermost
+    // of the four nested bands, and the first progress circle in document order); offset =
+    // C*(1-0.3).
     const circles = flatten(toJSON()).filter((node) => node.type === 'RNSVGCircle');
     const progressCircle = circles.find((node) => node.props.strokeDashoffset !== undefined);
     expect(progressCircle).toBeTruthy();
-    const circumference = 2 * Math.PI * 40;
+    const circumference = 2 * Math.PI * 60;
     expect(Number(progressCircle?.props.strokeDashoffset)).toBeCloseTo(circumference * 0.7, 4);
   });
 

@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 
 import { getFood, getMacroGoals, listNutritionLog } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
@@ -12,6 +11,7 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { ConcentricRings, type RingBand } from '@/nutrition/concentric-rings';
 import { todayLocalDate } from '@/nutrition/date';
 import { type MacroTotals, sumTotals } from '@/nutrition/totals';
 import { colors } from '@/theme/tokens';
@@ -96,12 +96,19 @@ const SHARE_LAYOUTS: ShareLayoutMeta[] = [
 const SHARE_GRADIENT_START = { x: 0.2808, y: -0.1022 };
 const SHARE_GRADIENT_END = { x: 0.7192, y: 1.1022 };
 
-const RING_SIZE = 110;
-const RING_RADIUS = 40;
-const RING_STROKE_WIDTH = 8;
-const RING_CENTER = RING_SIZE / 2;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+// Sized larger than the single ring this replaced (110px/r40) for the same reason as
+// nutrition.tsx's dashboard ring: nesting three more bands inward eats into the space the
+// centered kcal number needs, so the box grows to protect that legibility rather than
+// shrinking the text around the new rings.
+const RING_SIZE = 160;
+const RING_OUTER_RADIUS = 60;
+const RING_STROKE_WIDTH = 6;
+const RING_GAP = 2;
 const MAX_MEAL_ITEMS = 7;
+
+function ratio(value: number, goal: number): number {
+  return goal <= 0 ? 0 : Math.min(1, value / goal);
+}
 
 // The card renders at most a phone-screen width tall (its aspect ratio is fixed at 4:5), so a
 // resize target well above any real device's share-card render size still gives headroom for
@@ -112,7 +119,7 @@ const CAMERA_PERMISSION_MESSAGE = 'Camera access is needed to take a photo.';
 const PHOTO_SET_FAILED_MESSAGE = 'Could not set that photo. Please try again.';
 
 const MACRO_ROWS: Array<{ label: string; key: 'protein' | 'carbs' | 'fat'; color: string }> = [
-  { label: 'Protein', key: 'protein', color: colors.accent },
+  { label: 'Protein', key: 'protein', color: colors.protein },
   { label: 'Carbs', key: 'carbs', color: colors.nutritionCarbs },
   { label: 'Fat', key: 'fat', color: colors.green },
 ];
@@ -159,7 +166,6 @@ export default function NutritionShareScreen() {
   }, [loadAll]);
 
   const totals = useMemo(() => sumTotals(log), [log]);
-  const pct = goals ? Math.min(1, totals.kcal / goals.kcal) : 0;
   const activeLayout = SHARE_LAYOUTS.find((candidate) => candidate.id === layout) ?? SHARE_LAYOUTS[0];
 
   const selectLayout = (id: ShareLayoutId) => () => setLayout(id);
@@ -266,7 +272,7 @@ export default function NutritionShareScreen() {
                 </Text>
                 <View className="flex-1">
                   {layout === 'summary' ? (
-                    <SummaryPreview totals={totals} goals={goals} pct={pct} />
+                    <SummaryPreview totals={totals} goals={goals} />
                   ) : layout === 'macros' ? (
                     <MacrosPreview totals={totals} goals={goals} />
                   ) : (
@@ -413,43 +419,30 @@ export default function NutritionShareScreen() {
 interface SummaryPreviewProps {
   totals: MacroTotals;
   goals: MacroGoalsResponse;
-  pct: number;
 }
 
-function SummaryPreview({ totals, goals, pct }: SummaryPreviewProps) {
+function SummaryPreview({ totals, goals }: SummaryPreviewProps) {
   return (
     <View className="flex-1 items-center justify-center" style={{ gap: 14 }}>
-      <View style={{ width: RING_SIZE, height: RING_SIZE }}>
-        <View style={{ width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: '-90deg' }] }}>
-          <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-            <Circle
-              cx={RING_CENTER}
-              cy={RING_CENTER}
-              r={RING_RADIUS}
-              fill="none"
-              stroke="rgba(255,255,255,.1)"
-              strokeWidth={RING_STROKE_WIDTH}
-            />
-            <Circle
-              cx={RING_CENTER}
-              cy={RING_CENTER}
-              r={RING_RADIUS}
-              fill="none"
-              stroke={colors.accent}
-              strokeWidth={RING_STROKE_WIDTH}
-              strokeLinecap="round"
-              strokeDasharray={`${RING_CIRCUMFERENCE}`}
-              strokeDashoffset={RING_CIRCUMFERENCE * (1 - pct)}
-            />
-          </Svg>
-        </View>
-        <View className="absolute inset-0 items-center justify-center">
-          <Text className="font-archivo text-[22px] font-bold text-text" style={{ fontVariant: ['tabular-nums'] }}>
-            {Math.round(totals.kcal)}
-          </Text>
-          <Text className="mt-0.5 font-archivo text-[10px] text-dimmer">{`/ ${goals.kcal} kcal`}</Text>
-        </View>
-      </View>
+      <ConcentricRings
+        size={RING_SIZE}
+        outerRadius={RING_OUTER_RADIUS}
+        strokeWidth={RING_STROKE_WIDTH}
+        gap={RING_GAP}
+        trackColor={colors.shareRingTrack}
+        bands={
+          [
+            { key: 'calories', color: colors.accent, filled: ratio(totals.kcal, goals.kcal) },
+            { key: 'protein', color: colors.protein, filled: ratio(totals.protein, goals.protein) },
+            { key: 'carbs', color: colors.nutritionCarbs, filled: ratio(totals.carbs, goals.carbs) },
+            { key: 'fat', color: colors.green, filled: ratio(totals.fat, goals.fat) },
+          ] satisfies RingBand[]
+        }>
+        <Text className="font-archivo text-[22px] font-bold text-text" style={{ fontVariant: ['tabular-nums'] }}>
+          {Math.round(totals.kcal)}
+        </Text>
+        <Text className="mt-0.5 font-archivo text-[10px] text-dimmer">{`/ ${goals.kcal} kcal`}</Text>
+      </ConcentricRings>
       <Text className="font-archivo text-[15px] font-bold text-text" style={{ textAlign: 'center' }}>
         Today’s intake
       </Text>

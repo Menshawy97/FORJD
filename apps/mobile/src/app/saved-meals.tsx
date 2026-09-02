@@ -175,11 +175,20 @@ export default function SavedMealsScreen() {
                     const food = foodsById[item.foodId];
                     const macro = food ? macroFor(food, item.grams) : null;
                     return (
-                      <View key={`${item.foodId}-${index}`} className="flex-row justify-between">
-                        <Text className="font-archivo text-[12px] font-medium text-text" numberOfLines={1}>
-                          {`${food?.name ?? '…'} · ${item.servingLabel}`}
-                        </Text>
-                        <Text className="font-archivo text-[12px] text-dimmer">
+                      <View
+                        key={`${item.foodId}-${index}`}
+                        className="flex-row items-center justify-between"
+                        style={{ gap: 8 }}>
+                        {/* `flex-1` + `minWidth:0`, matching the meal-name row above --
+                            without it `numberOfLines={1}` has no width to truncate against,
+                            so a long food name grows past the row and pushes the kcal text
+                            off the right edge of the screen instead of ellipsizing. */}
+                        <View className="flex-1" style={{ minWidth: 0 }}>
+                          <Text className="font-archivo text-[12px] font-medium text-text" numberOfLines={1}>
+                            {`${food?.name ?? '…'} · ${item.servingLabel}`}
+                          </Text>
+                        </View>
+                        <Text className="font-archivo text-[12px] text-dimmer" numberOfLines={1}>
                           {`${Math.round(macro?.kcal ?? 0)} kcal`}
                         </Text>
                       </View>

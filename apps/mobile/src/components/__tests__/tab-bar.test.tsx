@@ -40,12 +40,20 @@ describe('TabBar', () => {
     expect(mockReplace).toHaveBeenCalledWith('/profile');
   });
 
-  it('does not re-navigate when pressing the already-active tab', async () => {
+  // `active` is a design label, not the real current route -- every caller of this
+  // standalone bar sets it to whichever tab the screen conceptually belongs under
+  // (nutrition.tsx passes "home" per ADR-020, since nutrition is reached *from* Home, not
+  // because `/nutrition` is `/`). This component is only ever rendered on a screen that
+  // isn't literally one of the five tab routes -- the real tabs get the actual native bar
+  // from `(tabs)/_layout.tsx` instead. Real bug found live on a device: an earlier version
+  // skipped navigation whenever a tab matched `active`, which meant pressing Home from
+  // Nutrition (active="home") did nothing at all.
+  it('navigates even when pressing the tab marked active, since active is a design label, not the real route', async () => {
     const { findByLabelText } = await render(<TabBar active="rank" />);
 
     fireEvent.press(await findByLabelText('Rank'));
 
-    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith('/rank');
   });
 
   it('navigates Home to the tab root, not /home', async () => {

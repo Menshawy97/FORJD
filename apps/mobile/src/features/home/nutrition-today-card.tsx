@@ -1,7 +1,8 @@
+import type { MacroGoalsResponse } from '@forjd/contracts';
 import { Pressable, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 
 import { Icon } from '@/components/icon';
+import { ConcentricRings, type RingBand } from '@/nutrition/concentric-rings';
 import type { MacroTotals } from '@/nutrition/totals';
 import { colors } from '@/theme/tokens';
 
@@ -10,34 +11,48 @@ import { colors } from '@/theme/tokens';
  * `nutrition.tsx`. ADR-020 is explicit that nutrition is not a tab: this card is how the
  * feature is reached, which is why the nutrition plan called Home's absence a real blocker.
  *
- * Ring geometry is the prototype's: 52px box, r=22, 6px stroke, rotated -90deg so it fills
- * clockwise from twelve o'clock.
+ * The ring is four nested bands -- calories outermost, then protein, carbs, fat innermost --
+ * an Apple-Watch-activity-ring treatment applied consistently across this card, the main
+ * nutrition dashboard's ring, and the share card's preview (`concentric-rings.tsx` is the one
+ * geometry shared by all three). No text sits inside this particular ring (there wasn't room
+ * for it at 52px even with a single ring, and the kcal figure already sits beside it), so the
+ * small size here carries no legibility risk the way the two bigger, text-centered rings do.
  *
  * **The no-goals case diverges from the prototype deliberately.** The prototype computes
  * `kcal / macroGoals.kcal` unconditionally because its goals are seeded demo state; a real
  * account may have none. Rather than invent a denominator, the label drops to "<n> kcal" and
- * the ring shows track only -- the same refusal to fabricate a default that `nutrition.tsx`
- * already makes with its "Set your daily goals" card.
+ * every ring shows track only -- the same refusal to fabricate a default that `nutrition.tsx`
+ * already makes with its "Set your daily goals" card. Goals are all-or-nothing on the wire
+ * (`MacroGoalsResponse` carries all four together), so "no goals" is one check, not four.
  */
 const RING_SIZE = 52;
-const RING_RADIUS = 22;
-const RING_STROKE = 6;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const RING_OUTER_RADIUS = 22;
+const RING_STROKE = 3;
+const RING_GAP = 1.5;
+
+function ratio(value: number, goal: number): number {
+  return goal <= 0 ? 0 : Math.min(1, value / goal);
+}
 
 interface NutritionTodayCardProps {
   totals: MacroTotals;
   /** Null when the user has not set macro goals -- a normal state, not an error. */
-  goalKcal: number | null;
+  goals: MacroGoalsResponse | null;
   onPress: () => void;
 }
 
-export function NutritionTodayCard({ totals, goalKcal, onPress }: NutritionTodayCardProps) {
+export function NutritionTodayCard({ totals, goals, onPress }: NutritionTodayCardProps) {
   const kcal = Math.round(totals.kcal);
-  // Capped at 1 so eating over the target fills the ring rather than winding it a second time.
-  const filled = goalKcal === null || goalKcal <= 0 ? 0 : Math.min(1, totals.kcal / goalKcal);
+
+  const bands: RingBand[] = [
+    { key: 'calories', color: colors.accent, filled: goals === null ? 0 : ratio(totals.kcal, goals.kcal) },
+    { key: 'protein', color: colors.protein, filled: goals === null ? 0 : ratio(totals.protein, goals.protein) },
+    { key: 'carbs', color: colors.nutritionCarbs, filled: goals === null ? 0 : ratio(totals.carbs, goals.carbs) },
+    { key: 'fat', color: colors.green, filled: goals === null ? 0 : ratio(totals.fat, goals.fat) },
+  ];
 
   const macros = [
-    { key: 'protein', color: colors.accent, text: `Protein ${Math.round(totals.protein)}g` },
+    { key: 'protein', color: colors.protein, text: `Protein ${Math.round(totals.protein)}g` },
     { key: 'carbs', color: colors.nutritionCarbs, text: `Carbs ${Math.round(totals.carbs)}g` },
     { key: 'fat', color: colors.green, text: `Fat ${Math.round(totals.fat)}g` },
   ];
@@ -48,31 +63,14 @@ export function NutritionTodayCard({ totals, goalKcal, onPress }: NutritionToday
       accessibilityLabel="Nutrition today"
       onPress={onPress}
       className="my-card-gap flex-row items-center gap-[14px] rounded-hero border border-border bg-surface px-4 py-[14px]">
-      <View style={{ width: RING_SIZE, height: RING_SIZE }}>
-        <View style={{ width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: '-90deg' }] }}>
-          <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RING_RADIUS}
-              fill="none"
-              stroke={colors.ringTrack}
-              strokeWidth={RING_STROKE}
-            />
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RING_RADIUS}
-              fill="none"
-              stroke={colors.accent}
-              strokeWidth={RING_STROKE}
-              strokeLinecap="round"
-              strokeDasharray={`${RING_CIRCUMFERENCE}`}
-              strokeDashoffset={RING_CIRCUMFERENCE * (1 - filled)}
-            />
-          </Svg>
-        </View>
-      </View>
+      <ConcentricRings
+        size={RING_SIZE}
+        outerRadius={RING_OUTER_RADIUS}
+        strokeWidth={RING_STROKE}
+        gap={RING_GAP}
+        bands={bands}
+        trackColor={colors.ringTrack}
+      />
 
       <View className="min-w-0 flex-1">
         <Text className="mb-[6px] font-archivo text-section-label font-semibold uppercase text-label">
@@ -82,7 +80,7 @@ export function NutritionTodayCard({ totals, goalKcal, onPress }: NutritionToday
           className="font-archivo text-nutrition-card-value font-bold text-text"
           numberOfLines={1}
           style={{ fontVariant: ['tabular-nums'] }}>
-          {goalKcal === null ? `${kcal} kcal` : `${kcal} / ${goalKcal} kcal`}
+          {goals === null ? `${kcal} kcal` : `${kcal} / ${goals.kcal} kcal`}
         </Text>
         <View className="mt-[6px] flex-row gap-[10px]">
           {macros.map((macro) => (
