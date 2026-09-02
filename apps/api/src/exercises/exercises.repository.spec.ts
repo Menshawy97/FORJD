@@ -983,4 +983,65 @@ describe("ExercisesRepository", () => {
       await expect(repository.findByIdForUser(randomUUID(), userId)).resolves.toBeNull();
     });
   });
+
+  describe("findVisibleIds", () => {
+    it("returns catalogue and the caller's own ids, excluding unknown, another user's, and soft-deleted ids", async () => {
+      const owner = await makeUser("visible-owner");
+      const stranger = await makeUser("visible-stranger");
+
+      const catalogue = await repository.upsertCatalogueExercise(
+        catalogueInput(`visible-${randomUUID()}`),
+      );
+      createdExerciseIds.push(catalogue.id);
+
+      const ownCustom = await repository.createCustomExercise(owner, {
+        name: `Own Visible ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(ownCustom.id);
+
+      const strangersCustom = await repository.createCustomExercise(stranger, {
+        name: `Stranger Visible ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(strangersCustom.id);
+
+      const deleted = await repository.createCustomExercise(owner, {
+        name: `Deleted Visible ${randomUUID()}`,
+        category: "strength",
+        goal: "strength",
+        measure: "weight",
+        primaryMuscles: ["chest"],
+        equipment: ["dumbbell"],
+        description: null,
+      });
+      createdExerciseIds.push(deleted.id);
+      await repository.softDeleteCustomExercise(deleted.id, owner);
+
+      const unknownId = randomUUID();
+
+      const visible = await repository.findVisibleIds(
+        [catalogue.id, ownCustom.id, strangersCustom.id, deleted.id, unknownId],
+        owner,
+      );
+
+      expect(visible).toEqual(new Set([catalogue.id, ownCustom.id]));
+    });
+
+    it("returns an empty set for an empty input without querying", async () => {
+      const owner = await makeUser("visible-empty");
+
+      await expect(repository.findVisibleIds([], owner)).resolves.toEqual(new Set());
+    });
+  });
 });

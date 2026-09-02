@@ -8,10 +8,10 @@ import { ExercisesRepository } from "./exercises.repository";
 import { ExercisesService } from "./exercises.service";
 
 /**
- * `ExercisesRepository` is provided here rather than exported from a shared module, because
- * nothing outside this feature reads exercises yet. Phase 3's workout engine will need it, and
- * exporting it then -- when there is a second consumer to point at -- is a smaller change than
- * unpicking a premature shared module now.
+ * `ExercisesRepository` is exported for Phase 3's workout engine, its first outside
+ * consumer -- `WorkoutsModule` imports this module to validate that a template's referenced
+ * `exerciseId`s exist and are visible to the caller, via `findVisibleIds`, without a second
+ * copy of the ownership/visibility rule this module already owns.
  *
  * `AuthProviderModule` and `UsersModule` are here for `JwtAuthGuard`'s dependencies, the same
  * wiring `AthletesModule` uses.
@@ -20,5 +20,6 @@ import { ExercisesService } from "./exercises.service";
   imports: [AuthProviderModule, UsersModule],
   controllers: [ExercisesController],
   providers: [ExercisesService, ExercisesRepository, JwtAuthGuard],
+  exports: [ExercisesRepository],
 })
 export class ExercisesModule {}

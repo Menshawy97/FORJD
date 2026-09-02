@@ -124,6 +124,18 @@
         "branches": 100,
         "functions": 100,
         "lines": 100
+      },
+      "./src/workouts/workouts.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/workouts/workout-cursor.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
       }
     }
   }

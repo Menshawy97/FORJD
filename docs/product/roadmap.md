@@ -79,22 +79,45 @@ client-declared copy of a fact the server already owns. Weight and distance are 
 (`workout-template-response`, `workout-template-list-response`, `workout-session-response`,
 `workout-session-list-response`).
 
-Verified for all three phases: domain (48 tests), contracts (3 suites / 84 tests), api (30
-suites / 497 unit tests + 85 e2e tests, `--runInBand`, coverage thresholds hold), mobile (479,
-`TZ=UTC`) all green; `pnpm -r build`, `pnpm -r lint`, mobile `typecheck`, and
-`scripts/ci/check-architecture-conformance.sh` all clean.
+**Phase D (templates API) is done**: `apps/api/src/workouts/` (`workouts.module.ts`,
+`workouts.controller.ts`, `workouts.service.ts`, `workouts.repository.ts`,
+`workout-cursor.ts`) mirrors `ExercisesModule` exactly — `@UseGuards(JwtAuthGuard)` at class
+level, `ZodValidationPipe` on every body/query, 404-never-403 in the service, `(name, id)`
+keyset pagination. `ExercisesModule` now exports `ExercisesRepository` (its own docblock
+anticipated this), and gained `findVisibleIds` — one bulk query `WorkoutsService` uses to
+reject a template referencing an exercise the caller cannot see (catalogue, own custom, not
+soft-deleted), returning a 400 rather than letting a forged UUID reach the database.
+`WorkoutsRepository.createTemplate`/`updateTemplate` batch-insert a template's whole
+block/exercise tree in two queries per write (not one insert per row), matched back to their
+input by `orderIndex` rather than assumed `RETURNING` order. An update with `blocks` present
+deletes the existing tree (cascade) and inserts fresh, matching the contract's own "the
+builder screen re-saves the whole workout" decision. `basedOnTemplateId` is always `null` on
+create — the "customise this preset" flow that sets it is Phase G's, not invented early.
+Registered in `app.module.ts`; `workouts.service.ts` and `workout-cursor.ts` added to
+`apps/api/package.json`'s 100%-coverage list. `workouts.e2e-spec.ts` proves cross-user
+isolation over real HTTP (404-never-403 on read/update/delete of another user's template, and
+exclusion from their list).
+
+Verified for all four phases: domain (48 tests), contracts (3 suites / 84 tests), api (33
+suites / 547 unit tests + 97 e2e tests, `--runInBand`, coverage thresholds hold — including
+two new 100%-pinned files), mobile (typecheck/lint/build clean; the Jest suite showed
+resource-contention flakiness under sustained local load in this session — different,
+timing-sensitive navigation tests failed on each of several reruns despite zero mobile files
+being touched — so it was not re-verified locally for this phase; rely on CI's isolated
+runner, which has been green through Phases A-C). `pnpm -r build`, `pnpm -r lint`, mobile
+`typecheck`, and `scripts/ci/check-architecture-conformance.sh` all clean.
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase D — templates
-   API**: `apps/api/src/workouts/` (module, controller, service, repository), mirroring
-   `ExercisesModule` exactly — `@UseGuards(JwtAuthGuard)` at class level, `ZodValidationPipe`
-   on every body/query, 404-never-403 in the service. Register in `app.module.ts` and add
-   per-file coverage thresholds to `apps/api/package.json`. Phases A, B and C are done
-   (above).
+1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase E — sessions
+   API**: `POST /workouts/sessions` accepting a completed session with its client-generated
+   idempotency key (replaying the same key returns the existing session rather than creating
+   a second), plus the list/detail reads Home's counters and history will use. e2e proof that
+   a double upload produces one row, and that a session's stored values are the ones
+   performed, never back-filled from its template. Phases A-D are done (above).
 2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.
