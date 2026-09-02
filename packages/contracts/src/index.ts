@@ -741,6 +741,12 @@ export const nutritionLogEntryResponseSchema = z.object({
   carbs: z.number(),
   fat: z.number(),
   groupId: z.string().uuid().nullable(),
+  /**
+   * The saved meal's name, snapshotted at `logSavedMeal` time; `null` for an individually
+   * logged item. A Phase H follow-up (`nutrition-plan.md`) -- the dashboard's collapsed-group
+   * row needs a name source that `groupId` alone never provided.
+   */
+  groupName: z.string().nullable(),
 });
 export type NutritionLogEntryResponse = z.infer<typeof nutritionLogEntryResponseSchema>;
 

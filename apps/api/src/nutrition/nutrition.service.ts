@@ -175,14 +175,19 @@ export class NutritionService {
     // own, so a stranger's saved meal id would otherwise silently log zero entries (empty
     // items) with a 200 rather than a clear refusal. Checking ownership here first closes that.
     const meals = await this.nutritionRepository.listSavedMeals(viewer.id);
-    if (!meals.some((meal) => meal.id === body.savedMealId)) {
+    const meal = meals.find((candidate) => candidate.id === body.savedMealId);
+    if (!meal) {
       throw new NotFoundException("Saved meal not found");
     }
+    // The meal's current name, already in hand from the ownership check above -- passed
+    // through as the `groupName` snapshot rather than a second lookup. See
+    // NutritionRepository.logSavedMeal's own docblock.
     const entries = await this.nutritionRepository.logSavedMeal(
       viewer.id,
       body.savedMealId,
       body.slot,
       body.loggedDate,
+      meal.name,
     );
     return { items: entries.map((entry) => this.toLogEntryResponse(entry)) };
   }
@@ -214,6 +219,7 @@ export class NutritionService {
       carbs: entry.carbs,
       fat: entry.fat,
       groupId: entry.groupId,
+      groupName: entry.groupName,
     };
   }
 }

@@ -66,6 +66,10 @@ export default function SavedMealsScreen() {
   const [foodsById, setFoodsById] = useState<Record<string, FoodResponse>>({});
   const [logMealSheet, setLogMealSheet] = useState<SavedMealResponse | null>(null);
   const [logMealSlot, setLogMealSlot] = useState<MealSlot>('breakfast');
+  // Same double-submit guard as nutrition.tsx's own log-meal sheet -- a real bug found live on
+  // a device ("it lags and sometimes doesn't work"): no disabled state let a second tap during
+  // the first request's flight fire a concurrent duplicate log.
+  const [loggingMeal, setLoggingMeal] = useState(false);
 
   const loadAll = useCallback(async () => {
     try {
@@ -110,7 +114,8 @@ export default function SavedMealsScreen() {
   };
 
   const confirmLogMeal = async () => {
-    if (!logMealSheet) return;
+    if (!logMealSheet || loggingMeal) return;
+    setLoggingMeal(true);
     try {
       await logSavedMeal({ savedMealId: logMealSheet.id, slot: logMealSlot, loggedDate: todayLocalDate() });
       const mealName = logMealSheet.name;
@@ -118,6 +123,8 @@ export default function SavedMealsScreen() {
       toast.show(`Logged "${mealName}" to ${MEAL_SLOT_DISPLAY_NAMES[logMealSlot]}`);
     } catch (error) {
       toast.show(errorMessage(error));
+    } finally {
+      setLoggingMeal(false);
     }
   };
 
@@ -219,9 +226,14 @@ export default function SavedMealsScreen() {
             <View className="flex-row" style={{ gap: 9, marginTop: 6 }}>
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ disabled: loggingMeal }}
+                disabled={loggingMeal}
                 onPress={confirmLogMeal}
-                className="h-[52px] flex-1 items-center justify-center rounded-button bg-accent">
-                <Text className="font-archivo text-[14px] font-bold text-white">Log</Text>
+                className="h-[52px] flex-1 items-center justify-center rounded-button bg-accent"
+                style={loggingMeal ? { opacity: 0.6 } : undefined}>
+                <Text className="font-archivo text-[14px] font-bold text-white">
+                  {loggingMeal ? 'Logging…' : 'Log'}
+                </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"

@@ -127,6 +127,13 @@ export type MacroGoalsRow = typeof macroGoals.$inferSelect;
  * locked decisions). Logging a saved meal **copies** its items into the day's log rather than
  * referencing this table, so editing a saved meal never rewrites logged history -- enforced
  * structurally by `nutrition_log_entries` having no foreign key back to `saved_meals` at all.
+ *
+ * **`saved_meals_owner_name_unique`** -- a Phase H follow-up fix, found live on a physical
+ * device: `createSavedMeal` had no uniqueness check at all, so saving the same slot repeatedly
+ * (a plausible accident -- the dashboard's "Save as meal" sheet pre-fills the same
+ * `"<Slot> — usual"` name every time) silently created duplicate cards. Case-insensitive,
+ * per-owner, mirroring `foods_owner_name_unique`'s exact shape -- `saved_meals` has no soft
+ * delete, so unlike that index this one needs no `deleted_at` exclusion.
  */
 export const savedMeals = pgTable(
   "saved_meals",
@@ -139,7 +146,10 @@ export const savedMeals = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("saved_meals_user_idx").on(table.userId)],
+  (table) => [
+    index("saved_meals_user_idx").on(table.userId),
+    uniqueIndex("saved_meals_owner_name_unique").on(table.userId, sql`lower(${table.name})`),
+  ],
 );
 
 export type SavedMealRow = typeof savedMeals.$inferSelect;
@@ -183,6 +193,15 @@ export type SavedMealItemRow = typeof savedMealItems.$inferSelect;
  * **`groupId`** ties together every item logged from one `saved_meals` action in a single call
  * (`nutrition-plan.md`'s locked decisions: "Grouped log entries... share a group_id so the
  * dashboard can collapse and delete them as one"). `null` for an item logged individually.
+ *
+ * **`groupName`** -- a Phase H follow-up (found live on a physical device against the real
+ * screenshot `logsavedmeal.png`, which the earlier Phase F session never had): the dashboard's
+ * collapsed-group row needs the saved meal's own name ("Breakfast — usual · 3 items..."), which
+ * nothing in the wire model recorded before this column existed. Snapshotted from
+ * `saved_meals.name` at `logSavedMeal` time, same "preserve source, snapshot at write time,
+ * never compute live" principle as every other field on this row -- a saved meal renamed or
+ * deleted after logging must not silently relabel what a user is told they logged on a past
+ * day. `null` for an individually logged item, same as `groupId`.
  */
 export const nutritionLogEntries = pgTable(
   "nutrition_log_entries",
@@ -206,6 +225,8 @@ export const nutritionLogEntries = pgTable(
     fat: numeric("fat", { precision: 8, scale: 2 }).notNull(),
     /** Groups items logged together from one saved meal; null for an individually logged item. */
     groupId: uuid("group_id"),
+    /** The saved meal's name, snapshotted at log time; null for an individually logged item. See the table docblock. */
+    groupName: text("group_name"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

@@ -335,6 +335,30 @@ describe("NutritionRepository", () => {
         expect.not.arrayContaining([expect.objectContaining({ id: meal.id })]),
       );
     });
+
+    it("rejects a duplicate name (case-insensitive) for the same owner -- the duplicate-cards bug found live on a device", async () => {
+      const userId = await makeUser("saved-meal-dup");
+      const name = `Breakfast — usual ${randomUUID()}`;
+      const first = await repository.createSavedMeal(userId, name, []);
+      createdSavedMealIds.push(first.id);
+
+      await expect(repository.createSavedMeal(userId, name.toUpperCase(), [])).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it("allows two different owners to use the same meal name", async () => {
+      const ownerA = await makeUser("saved-meal-dup-a");
+      const ownerB = await makeUser("saved-meal-dup-b");
+      const name = `Shared Name ${randomUUID()}`;
+      const mealA = await repository.createSavedMeal(ownerA, name, []);
+      createdSavedMealIds.push(mealA.id);
+
+      const mealB = await repository.createSavedMeal(ownerB, name, []);
+      createdSavedMealIds.push(mealB.id);
+
+      expect(mealB.name).toBe(name);
+    });
   });
 
   describe("the daily log", () => {
@@ -356,19 +380,57 @@ describe("NutritionRepository", () => {
       expect(entry.groupId).toBeNull();
     });
 
-    it("logs a saved meal's items as one group sharing a groupId", async () => {
+    it("logs a saved meal's items as one group sharing a groupId, snapshotting the meal's name as groupName", async () => {
       const userId = await makeUser("log-group");
       const food = await repository.createCatalogueFood(catalogueInput(`log-group-${randomUUID()}`));
       createdFoodIds.push(food.id);
-      const meal = await repository.createSavedMeal(userId, "Group Meal", [
+      const meal = await repository.createSavedMeal(userId, `Group Meal ${randomUUID()}`, [
         { foodId: food.id, servingLabel: "100 g", grams: 100 },
       ]);
 
-      const entries = await repository.logSavedMeal(userId, meal.id, "lunch", "2026-08-31");
+      const entries = await repository.logSavedMeal(userId, meal.id, "lunch", "2026-08-31", meal.name);
 
       expect(entries).toHaveLength(1);
       expect(entries[0]?.groupId).not.toBeNull();
       expect(entries[0]?.slot).toBe("lunch");
+      expect(entries[0]?.groupName).toBe(meal.name);
+    });
+
+    it("an individually logged entry has a null groupName, same as groupId", async () => {
+      const userId = await makeUser("log-single-groupname");
+      const food = await repository.createCatalogueFood(catalogueInput(`log-single-gn-${randomUUID()}`));
+      createdFoodIds.push(food.id);
+
+      const entry = await repository.logEntry(userId, {
+        foodId: food.id,
+        slot: "snack",
+        loggedDate: "2026-08-31",
+        servingLabel: "100 g",
+        grams: 100,
+      });
+
+      expect(entry.groupName).toBeNull();
+    });
+
+    it("renaming a saved meal after logging it does not rewrite the already-logged groupName", async () => {
+      const userId = await makeUser("log-group-rename");
+      const food = await repository.createCatalogueFood(catalogueInput(`log-group-rename-${randomUUID()}`));
+      createdFoodIds.push(food.id);
+      const originalName = `Original Name ${randomUUID()}`;
+      const meal = await repository.createSavedMeal(userId, originalName, [
+        { foodId: food.id, servingLabel: "100 g", grams: 100 },
+      ]);
+
+      const entries = await repository.logSavedMeal(userId, meal.id, "dinner", "2026-08-31", meal.name);
+
+      // The meal itself is later deleted and recreated under a new name (edit-meal.tsx's own
+      // delete-then-recreate adaptation) -- the already-logged entry's groupName must not
+      // change, since nothing re-reads saved_meals for it.
+      await repository.deleteSavedMeal(meal.id, userId);
+      const renamed = await repository.createSavedMeal(userId, `Renamed ${randomUUID()}`, []);
+      createdSavedMealIds.push(renamed.id);
+
+      expect(entries[0]?.groupName).toBe(originalName);
     });
 
     it("listLogForDate returns only that user's entries for that date", async () => {
