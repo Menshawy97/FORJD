@@ -31,14 +31,27 @@ under `apps/mobile/src/features/home/`, so lighting one up is a prop change, not
 the Train tab); the active-program branch arrives with Phase 3's programs slice.
 
 **Phase 3 (the workout engine — one of CLAUDE.md's four architecturally-critical pillars) is
-the next real work.** Its plan lives at [`phase-3-plan.md`](phase-3-plan.md).
+underway.** Its plan lives at [`phase-3-plan.md`](phase-3-plan.md). **Phase A (domain
+vocabulary) is done**:
+[`packages/domain/src/workout-vocabulary.ts`](../../packages/domain/src/workout-vocabulary.ts)
+carries the five `as const` tuples (block types, set types, session statuses, perceived
+efforts, local event names) with display-name maps, plus the canonical `WorkoutTemplate` /
+`WorkoutBlock` / `WorkoutExercise` / `WorkoutSession` / `WorkoutSessionExercise` / `WorkoutSet`
+/ `WorkoutSessionEvent` interfaces, re-exported from `index.ts`. Written test-first
+(`workout-vocabulary.spec.ts`, confirmed RED before the implementation existed), mirroring
+`exercise-vocabulary.spec.ts`'s coverage/orphan-key pattern. Verified: domain (48 tests),
+contracts (62), api (492, `--runInBand`), mobile (479, `TZ=UTC`) all green; `pnpm -r build`,
+`pnpm -r lint`, mobile `typecheck`, and `scripts/ci/check-architecture-conformance.sh` all
+clean.
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-1. **Execute Phase 3** from [`phase-3-plan.md`](phase-3-plan.md), starting at its first slice.
+1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase B — schema and
+   migration `0012`**: `apps/api/src/database/schema/workouts.schema.ts`, generated with
+   `pnpm --filter @forjd/api db:generate` (never hand-edited). Phase A is done (above).
 2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.
