@@ -485,6 +485,8 @@ export const responseFixtures = {
           estimatedDurationMinutes: 52,
           exerciseCount: 6,
           isCustom: true,
+          // A "Customised preset" badge (train2.png): edited from a curated template.
+          basedOnTemplateId: '33333333-3333-4333-8333-333333333333',
         },
         {
           id: '22222222-2222-4222-8222-222222222222',
@@ -493,6 +495,7 @@ export const responseFixtures = {
           estimatedDurationMinutes: 45,
           exerciseCount: 5,
           isCustom: false,
+          basedOnTemplateId: null,
         },
       ],
       nextCursor: null,

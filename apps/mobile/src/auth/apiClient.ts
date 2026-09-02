@@ -46,6 +46,9 @@ import type {
   UpdateExerciseRequest,
   UpdatePrivacyRequest,
   UpdateProfileRequest,
+  CreateWorkoutTemplateRequest,
+  WorkoutTemplateListResponse,
+  WorkoutTemplateResponse,
 } from '@forjd/contracts';
 
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
@@ -295,4 +298,31 @@ export async function deleteLogEntry(id: string): Promise<void> {
 
 export async function deleteLogGroup(groupId: string): Promise<void> {
   await apiClient.request({ method: 'delete', url: `/nutrition/log/group/${groupId}` });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Workouts (Phase 3G) -- templates only. Sessions (Phase E's endpoints) are not called from a
+// screen yet; that is Phase H's live-execution work.
+// ---------------------------------------------------------------------------------------------
+
+export async function listWorkoutTemplates(): Promise<WorkoutTemplateListResponse> {
+  const response = await apiClient.get<WorkoutTemplateListResponse>('/workouts/templates');
+  return response.data;
+}
+
+export async function getWorkoutTemplate(id: string): Promise<WorkoutTemplateResponse> {
+  const response = await apiClient.get<WorkoutTemplateResponse>(`/workouts/templates/${id}`);
+  return response.data;
+}
+
+export async function createWorkoutTemplate(
+  body: CreateWorkoutTemplateRequest,
+): Promise<WorkoutTemplateResponse> {
+  const response = await apiClient.post<WorkoutTemplateResponse>('/workouts/templates', body);
+  return response.data;
+}
+
+/** `DELETE /workouts/templates/:id` answers `204 No Content` -- a soft delete on the server. */
+export async function deleteWorkoutTemplate(id: string): Promise<void> {
+  await apiClient.request({ method: 'delete', url: `/workouts/templates/${id}` });
 }

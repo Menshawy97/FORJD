@@ -121,6 +121,7 @@ describe("WorkoutsService", () => {
               activity: "strength",
               estimatedDurationMinutes: 52,
               exerciseCount: 6,
+              basedOnTemplateId: null,
             },
           ],
           hasMore: false,
@@ -138,6 +139,7 @@ describe("WorkoutsService", () => {
           estimatedDurationMinutes: 52,
           exerciseCount: 6,
           isCustom: false,
+          basedOnTemplateId: null,
         },
       ]);
     });
@@ -150,6 +152,7 @@ describe("WorkoutsService", () => {
         activity: "strength" as const,
         estimatedDurationMinutes: null,
         exerciseCount: 3,
+        basedOnTemplateId: null,
       };
       const repository = makeWorkoutsRepository({ page: { rows: [lastRow], hasMore: true } });
 
@@ -241,6 +244,29 @@ describe("WorkoutsService", () => {
   });
 
   describe("create", () => {
+    it("creates a template with a visible basedOnTemplateId, forwarding it to the repository", async () => {
+      const repository = makeWorkoutsRepository({
+        detail: template({ id: "source-template" }),
+        createResult: template({ basedOnTemplateId: "source-template" }),
+      });
+
+      const result = await makeService(repository).create(owner, {
+        ...validCreateBody,
+        basedOnTemplateId: "source-template",
+      });
+
+      expect(result.basedOnTemplateId).toBe("source-template");
+      expect(repository.createCalls[0]?.basedOnTemplateId).toBe("source-template");
+    });
+
+    it("rejects with a 400 when basedOnTemplateId is not visible to the caller", async () => {
+      const repository = makeWorkoutsRepository({ detail: null });
+
+      await expect(
+        makeService(repository).create(owner, { ...validCreateBody, basedOnTemplateId: "unknown" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it("creates a template when every referenced exercise is visible", async () => {
       const repository = makeWorkoutsRepository({ createResult: template() });
 
@@ -295,6 +321,7 @@ describe("WorkoutsService", () => {
         name: "Full Body",
         activity: "strength",
         notes: "leg day",
+        basedOnTemplateId: null,
         estimatedDurationMinutes: 60,
         blocks: [
           {

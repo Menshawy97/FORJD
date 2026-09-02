@@ -28,6 +28,7 @@ import {
 } from '@/store/exercise-catalogue';
 import { getRecentExerciseIds } from '@/store/recent-exercises';
 import { colors } from '@/theme/tokens';
+import { setPickedExerciseForBuilder } from '@/workouts/builder-handoff';
 
 /**
  * `s_library()`, docs/design/phase2-screen-specs.md §3. Reads the on-device catalogue
@@ -209,14 +210,23 @@ export default function LibraryScreen() {
   }, [filter, query, refresh]);
 
   const title = pick ? 'Add Exercise' : 'Exercise Library';
-  // §3.2's table sends `builder`/`live` pick modes back to their own screens, neither of
-  // which exists yet (Phase 3) -- every mode goes to `train` until they do, since a pick
-  // mode is unreachable in Phase 2 in the first place (§8: only browse mode is reachable).
-  const goBack = () => router.replace('/train');
+  // §3.2's table sends `builder`/`live` pick modes back to their own screens. `builder` is
+  // real as of Phase 3G -- `router.back()` returns to the exact same builder screen instance
+  // (see `builder-handoff.ts`'s own docblock for why that matters). `live` still has no
+  // screen (Phase 3H), so it falls through to the original browse-mode behaviour.
+  const goBack = () => (pick === 'builder' ? router.back() : router.replace('/train'));
 
   const onPressRow = (exercise: ExerciseResponse) => {
-    // §3.6: only browse mode is reachable in Phase 2 -- `pick` plumbing is carried on the
-    // param but the builder/live append destinations do not exist yet.
+    if (pick === 'builder') {
+      setPickedExerciseForBuilder({
+        exerciseId: exercise.id,
+        name: exercise.name,
+        measure: exercise.measure,
+      });
+      router.back();
+      return;
+    }
+    // §3.6: browse mode's own row behaviour, unaffected by any pick mode.
     router.push(`/exercise/${exercise.id}`);
   };
 
