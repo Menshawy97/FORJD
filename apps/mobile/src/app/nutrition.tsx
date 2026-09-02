@@ -7,7 +7,6 @@ import type { FoodResponse, MacroGoalsResponse, NutritionLogEntryResponse, Saved
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 
 import {
   createSavedMeal,
@@ -27,6 +26,7 @@ import { MealSlotChip } from '@/components/meal-slot-chip';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
+import { ConcentricRings, type RingBand } from '@/nutrition/concentric-rings';
 import { todayLocalDate } from '@/nutrition/date';
 import { sumTotals } from '@/nutrition/totals';
 import { colors } from '@/theme/tokens';
@@ -91,8 +91,18 @@ function buildLogRows(items: NutritionLogEntryResponse[]): LogRow[] {
   return [...groups.values(), ...singles];
 }
 
-const RING_RADIUS = 52;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+// Sized larger than the single ring this replaced (120px/r52) specifically to protect the
+// kcal number centered inside the innermost band: nesting three more rings inward eats into
+// that clear space, so the box grows enough (150px/r62, thinner 6px strokes) to leave the
+// centered text roughly the room it always had, rather than shrinking around it.
+const RING_SIZE = 150;
+const RING_OUTER_RADIUS = 62;
+const RING_STROKE = 6;
+const RING_GAP = 2;
+
+function ratio(value: number, goal: number): number {
+  return goal <= 0 ? 0 : Math.min(1, value / goal);
+}
 
 function errorMessage(error: unknown): string {
   return classifyRequestFailure(error) === 'offline' ? OFFLINE_MESSAGE : 'Something went wrong. Try again.';
@@ -117,6 +127,10 @@ export default function NutritionScreen() {
 
   const [saveMealSlot, setSaveMealSlot] = useState<MealSlot | null>(null);
   const [saveMealName, setSaveMealName] = useState('');
+  // Shown under the name field itself rather than as a toast -- a duplicate name is something
+  // the user fixes by editing the very field the error is about, so the message belongs next
+  // to it, not in a banner that's already gone by the time they've read it.
+  const [saveMealError, setSaveMealError] = useState<string | null>(null);
 
   const [logMealSheet, setLogMealSheet] = useState<SavedMealResponse | null>(null);
   const [logMealSlot, setLogMealSlot] = useState<MealSlot>('breakfast');
@@ -197,7 +211,6 @@ export default function NutritionScreen() {
   );
 
   const totals = useMemo(() => sumTotals(log), [log]);
-  const pct = goals ? Math.min(1, totals.kcal / goals.kcal) : 0;
 
   const entriesBySlot = useMemo(() => {
     const bySlot: Record<MealSlot, NutritionLogEntryResponse[]> = {
@@ -235,6 +248,14 @@ export default function NutritionScreen() {
   const openSaveMeal = (slot: MealSlot) => () => {
     setSaveMealSlot(slot);
     setSaveMealName(`${MEAL_SLOT_DISPLAY_NAMES[slot]} — usual`);
+    setSaveMealError(null);
+  };
+
+  const changeSaveMealName = (value: string) => {
+    setSaveMealName(value);
+    // Cleared as soon as the user starts fixing it, not left showing a stale complaint about
+    // text that no longer matches what's in the field.
+    if (saveMealError) setSaveMealError(null);
   };
 
   const confirmSaveMeal = async () => {
@@ -251,6 +272,7 @@ export default function NutritionScreen() {
         items: items.map((item) => ({ foodId: item.foodId, servingLabel: item.servingLabel, grams: item.grams })),
       });
       setSaveMealSlot(null);
+      setSaveMealError(null);
       toast.show(`Saved "${name}"`);
       await loadAll();
     } catch (error) {
@@ -259,7 +281,11 @@ export default function NutritionScreen() {
       // had no uniqueness check at all before, so repeatedly saving the same slot (this sheet
       // pre-fills the identical "<Slot> — usual" name every time) silently created duplicate
       // cards with no error.
-      toast.show(saveMealErrorMessage(error, name));
+      //
+      // Shown inline under the field rather than as a toast: the error is about the text the
+      // user is looking at, and the sheet staying open with a toast that vanishes on its own
+      // timer left no persistent explanation of what to fix.
+      setSaveMealError(saveMealErrorMessage(error, name));
     }
   };
 
@@ -389,34 +415,29 @@ export default function NutritionScreen() {
           <View
             className="flex-row items-center rounded-card border border-border bg-surface p-[18px]"
             style={{ gap: 18 }}>
-            <View style={{ width: 120, height: 120 }}>
-              <View style={{ width: 120, height: 120, transform: [{ rotate: '-90deg' }] }}>
-                <Svg width={120} height={120} viewBox="0 0 120 120">
-                  <Circle cx={60} cy={60} r={RING_RADIUS} fill="none" stroke="#1E1F22" strokeWidth={9} />
-                  <Circle
-                    cx={60}
-                    cy={60}
-                    r={RING_RADIUS}
-                    fill="none"
-                    stroke={colors.accent}
-                    strokeWidth={9}
-                    strokeLinecap="round"
-                    strokeDasharray={`${RING_CIRCUMFERENCE}`}
-                    strokeDashoffset={RING_CIRCUMFERENCE * (1 - pct)}
-                  />
-                </Svg>
-              </View>
-              <View className="absolute inset-0 items-center justify-center">
-                <Text
-                  className="font-archivo text-[22px] font-bold text-text"
-                  style={{ fontVariant: ['tabular-nums'] }}>
-                  {Math.round(totals.kcal)}
-                </Text>
-                <Text className="mt-0.5 font-archivo text-[10px] text-dimmer">{`/ ${goals.kcal} kcal`}</Text>
-              </View>
-            </View>
+            <ConcentricRings
+              size={RING_SIZE}
+              outerRadius={RING_OUTER_RADIUS}
+              strokeWidth={RING_STROKE}
+              gap={RING_GAP}
+              trackColor={colors.restRingTrack}
+              bands={
+                [
+                  { key: 'calories', color: colors.accent, filled: ratio(totals.kcal, goals.kcal) },
+                  { key: 'protein', color: colors.protein, filled: ratio(totals.protein, goals.protein) },
+                  { key: 'carbs', color: colors.nutritionCarbs, filled: ratio(totals.carbs, goals.carbs) },
+                  { key: 'fat', color: colors.green, filled: ratio(totals.fat, goals.fat) },
+                ] satisfies RingBand[]
+              }>
+              <Text
+                className="font-archivo text-[22px] font-bold text-text"
+                style={{ fontVariant: ['tabular-nums'] }}>
+                {Math.round(totals.kcal)}
+              </Text>
+              <Text className="mt-0.5 font-archivo text-[10px] text-dimmer">{`/ ${goals.kcal} kcal`}</Text>
+            </ConcentricRings>
             <View className="flex-1" style={{ minWidth: 0 }}>
-              <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color={colors.accent} />
+              <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color={colors.protein} />
               <MacroBar label="Carbs" value={totals.carbs} goal={goals.carbs} color={colors.nutritionCarbs} />
               <MacroBar label="Fat" value={totals.fat} goal={goals.fat} color={colors.green} />
             </View>
@@ -623,11 +644,18 @@ export default function NutritionScreen() {
             <Text className="font-archivo text-[18px] font-bold text-text">
               {`Save ${MEAL_SLOT_DISPLAY_NAMES[saveMealSlot]} as a meal`}
             </Text>
-            <TextInput
-              value={saveMealName}
-              onChangeText={setSaveMealName}
-              className="h-[50px] rounded-[11px] border border-border bg-fieldBg px-[15px] font-archivo text-[14.5px] font-semibold text-text"
-            />
+            <View>
+              <TextInput
+                value={saveMealName}
+                onChangeText={changeSaveMealName}
+                className="h-[50px] rounded-[11px] border border-border bg-fieldBg px-[15px] font-archivo text-[14.5px] font-semibold text-text"
+              />
+              {saveMealError && (
+                <Text className="mt-[10px] font-archivo text-inline-error font-medium text-errorText">
+                  {saveMealError}
+                </Text>
+              )}
+            </View>
             <View className="flex-row" style={{ gap: 9 }}>
               <Pressable
                 accessibilityRole="button"

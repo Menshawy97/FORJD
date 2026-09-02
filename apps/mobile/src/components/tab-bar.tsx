@@ -48,9 +48,17 @@ export function TabBar({ active }: TabBarProps) {
             accessibilityRole="tab"
             accessibilityLabel={tab.label}
             accessibilityState={{ selected }}
-            onPress={() => {
-              if (!selected) router.replace(tab.route);
-            }}
+            // `active` is a design label, not the real route -- every caller of this
+            // standalone bar (library, location, notifs, nutrition, privacy) sets it to
+            // whichever tab the screen conceptually belongs under (nutrition.tsx passes
+            // "home" per ADR-020, since nutrition is reached *from* Home, not because
+            // `/nutrition` is `/`). This component only ever renders on a screen that isn't
+            // literally any of the five tab routes -- the real tabs each get the actual
+            // native bar from `(tabs)/_layout.tsx` instead. A `!selected` guard here was
+            // therefore never actually skipping a same-route navigation; it was skipping
+            // every tap on whichever tab happened to be visually highlighted, which is why
+            // pressing Home from Nutrition did nothing. Always navigate.
+            onPress={() => router.replace(tab.route)}
             className="flex-1 items-center"
             style={{ gap: 5 }}>
             <Icon name={tab.icon} size={TAB_ICON_SIZE} color={tint} />

@@ -1,4 +1,4 @@
-import type { NutritionLogEntryResponse } from '@forjd/contracts';
+import type { MacroGoalsResponse, NutritionLogEntryResponse } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
@@ -39,7 +39,7 @@ import { EMPTY_TOTALS, sumTotals } from '@/nutrition/totals';
 export default function HomeScreen() {
   const [firstName, setFirstName] = useState<string | null>(null);
   const [log, setLog] = useState<NutritionLogEntryResponse[]>([]);
-  const [goalKcal, setGoalKcal] = useState<number | null>(null);
+  const [goals, setGoals] = useState<MacroGoalsResponse | null>(null);
 
   // Bumped by every load and by every blur, so only the newest in-flight load may commit.
   // Without it, flicking between tabs can land an older response after a newer one and show
@@ -70,7 +70,7 @@ export default function HomeScreen() {
 
     setFirstName(trimmed === '' ? null : (trimmed.split(/\s+/)[0] ?? null));
     setLog(logResult.status === 'fulfilled' ? logResult.value.items : []);
-    setGoalKcal(goalsResult.status === 'fulfilled' && goalsResult.value !== null ? goalsResult.value.kcal : null);
+    setGoals(goalsResult.status === 'fulfilled' ? goalsResult.value : null);
   }, []);
 
   useFocusEffect(
@@ -96,7 +96,7 @@ export default function HomeScreen() {
         <ReadinessCard />
         <NutritionTodayCard
           totals={totals}
-          goalKcal={goalKcal}
+          goals={goals}
           onPress={() => router.push('/nutrition')}
         />
         <StatStrip />
