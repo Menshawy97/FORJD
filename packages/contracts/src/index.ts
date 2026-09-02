@@ -863,16 +863,28 @@ const createWorkoutBlockInputSchema = z.object({
 });
 
 /**
- * Body for `POST /workouts/templates` (Phase D). **`basedOnTemplateId` has no field here** --
- * it is set by the service when a template is created via "customise this preset"
- * (`s_builder`'s copy-then-edit flow), never chosen by the client's own request body, the same
- * way `createExerciseRequestSchema` omits `goal` because it is derived, not supplied.
+ * Body for `POST /workouts/templates` (Phase D/G).
+ *
+ * **`basedOnTemplateId` is client-supplied, server-*validated*** -- revised from Phase D's
+ * original "fully service-derived, absent from the body" design once Phase G built the real
+ * "customise this preset" flow (`s_workoutDetail`'s `Customise` button) against the
+ * prototype: it copies the source template's data into the builder's local state for the
+ * user to edit, and only the final, edited result is ever POSTed -- so the request that
+ * creates the row is the only place `basedOnTemplateId` can be attached. This mirrors the
+ * precedent Phase E already shipped for `WorkoutSessionUploadRequest.templateId`: a
+ * client-supplied reference the service must resolve via `findByIdForUser` before accepting
+ * it (400 if the caller cannot see it), never trusted as an opaque id. What stays
+ * server-derived is the *value* of a computed fact like `goal` on `createExerciseRequestSchema`
+ * -- `basedOnTemplateId` is not computed from anything else in this request, it names a
+ * different row the client is asserting a relationship to, which is exactly the shape a
+ * validated reference takes, not a derived one.
  */
 export const createWorkoutTemplateRequestSchema = z.object({
   name: z.string().trim().min(1).max(80),
   activity: activitySchema,
   notes: z.string().trim().max(2000).optional(),
   estimatedDurationMinutes: z.number().int().min(1).max(600).optional(),
+  basedOnTemplateId: z.string().uuid().optional(),
   blocks: z.array(createWorkoutBlockInputSchema).min(1),
 });
 export type CreateWorkoutTemplateRequest = z.infer<typeof createWorkoutTemplateRequestSchema>;
@@ -944,6 +956,14 @@ export type WorkoutTemplateResponse = z.infer<typeof workoutTemplateResponseSche
  * `exerciseCount` is computed by the service by counting `workout_exercises` rows across the
  * template's blocks -- not a stored column, so it can never drift from the blocks that
  * actually exist.
+ *
+ * **`basedOnTemplateId`, alongside `isCustom`**: the design's "My workouts" row (`train2.png`)
+ * shows three distinct badges -- `PRESET` (curated), `CUSTOMISED PRESET` (a user's edited copy
+ * of a preset), `CUSTOM` (built from scratch) -- and `isCustom` alone can only ever tell two
+ * of those apart. The client derives the badge as `!isCustom -> Preset`,
+ * `isCustom && basedOnTemplateId -> Customised preset`, `isCustom && !basedOnTemplateId ->
+ * Custom`, never a fourth server-computed label field for what two existing booleans already
+ * express.
  */
 export const workoutTemplateSummarySchema = z.object({
   id: z.string().uuid(),
@@ -952,6 +972,7 @@ export const workoutTemplateSummarySchema = z.object({
   estimatedDurationMinutes: z.number().int().nullable(),
   exerciseCount: z.number().int(),
   isCustom: z.boolean(),
+  basedOnTemplateId: z.string().uuid().nullable(),
 });
 export type WorkoutTemplateSummary = z.infer<typeof workoutTemplateSummarySchema>;
 

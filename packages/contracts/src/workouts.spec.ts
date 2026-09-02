@@ -91,12 +91,26 @@ describe('workout contracts', () => {
       expect(parsed.blocks[0]).not.toHaveProperty('orderIndex');
     });
 
-    it('has no basedOnTemplateId field -- it is service-derived, never client-supplied', () => {
+    it('accepts an optional basedOnTemplateId -- client-supplied, server-validated (Phase G revision)', () => {
       const parsed = createWorkoutTemplateRequestSchema.parse({
         ...validTemplate,
         basedOnTemplateId: '22222222-2222-4222-8222-222222222222',
       });
-      expect(parsed).not.toHaveProperty('basedOnTemplateId');
+      expect(parsed.basedOnTemplateId).toBe('22222222-2222-4222-8222-222222222222');
+    });
+
+    it('rejects a basedOnTemplateId that is not a UUID', () => {
+      expect(
+        createWorkoutTemplateRequestSchema.safeParse({
+          ...validTemplate,
+          basedOnTemplateId: 'not-a-uuid',
+        }).success,
+      ).toBe(false);
+    });
+
+    it('omits basedOnTemplateId entirely when the client does not send it -- a template built from scratch', () => {
+      const parsed = createWorkoutTemplateRequestSchema.parse(validTemplate);
+      expect(parsed.basedOnTemplateId).toBeUndefined();
     });
 
     it('accepts weight and distance targets as bare numbers -- kg and metres are fixed by contract, never a co-travelling unit field', () => {
@@ -188,6 +202,7 @@ describe('workout contracts', () => {
             estimatedDurationMinutes: 52,
             exerciseCount: 6,
             isCustom: true,
+            basedOnTemplateId: null,
           },
         ],
         nextCursor: null,

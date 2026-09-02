@@ -147,29 +147,58 @@ give-up-after-max-attempts behavior.
 `drainSyncQueue`; this phase only ships the store itself, matching how `exercise-catalogue.ts`
 shipped in Phase H of the exercise-library plan before Phase I's screens consumed it.
 
-Verified for all six phases: domain (48 tests), contracts (3 suites / 84 tests), api (34
-suites / 582 unit tests + 108 e2e tests, `--runInBand`, coverage thresholds hold), mobile
-(typecheck/lint/build clean; new `workout-session.test.ts` — 11/11 passing in isolation; the
-full-suite run is confirmed separately per the checkpoint, since a prior session in this same
-sitting saw resource-contention flakiness in unrelated navigation tests under sustained local
-load — CI's isolated runner has been green through every phase so far and is the tie-breaker
-if local flakiness recurs). `pnpm -r build`, `pnpm -r lint`, mobile `typecheck`, and
-`scripts/ci/check-architecture-conformance.sh` all clean.
+**Phase G (the builder screen) is done**: `apps/mobile/src/app/builder.tsx` (`s_builder()`,
+matched against `workout custom.png`) and `apps/mobile/src/app/workout/[id].tsx`
+(`s_workoutDetail()` — no reference screenshot exists for this one, so the prototype source
+is authoritative per the standing precedence order) — the first screens calling the Phase D
+template API. `library.tsx`'s `pick=builder` deferral is filled: picking a row calls
+`setPickedExerciseForBuilder` then `router.back()`, returning to the exact same builder
+instance (`apps/mobile/src/workouts/builder-handoff.ts`, a plain in-memory module, not a new
+state library, since expo-router has no built-in way for a picker to return a result). Train's
+header gained the screenshot's own orange "+" button as the one minimal entry point to
+`/builder` — the "My Workouts" list itself stays Phase J's job.
+
+**Two real design/contract revisions surfaced while building against the actual prototype,
+both confirmed with the user rather than assumed:** (1) `basedOnTemplateId` on
+`POST /workouts/templates` is now client-supplied and server-validated (`findByIdForUser`),
+reversing Phase D's original "fully derived" design — the prototype's `Customise` flow copies
+a source template's data into the builder's local state and only the final edited result is
+ever saved, so the create request is the only place that relationship can attach; this mirrors
+the precedent already shipped for `WorkoutSessionUploadRequest.templateId`. `workoutTemplateSummarySchema`
+also gained `basedOnTemplateId`, needed to derive the design's three-way Preset/Customised-preset/Custom
+badge (`isCustom` alone only distinguishes two of three). (2) Exercise names for the detail
+screen and the Customise prefill are resolved from the on-device exercise catalogue
+(`getCachedExercise`, ADR-022) rather than added to the workout response — the catalogue
+already owns that data, offline and with no extra round trip.
+
+Builder only creates (`POST`), never `PATCH`es — the prototype has no in-place edit
+affordance; every visit either starts from scratch or copies-then-saves-as-new via Customise.
+"Start workout"/"Start now" render inert (Phase H, not built yet), matching the established
+"render the card, route it nowhere yet" precedent.
+
+Verified: contracts (86 tests), api (34 suites / 584 unit tests + 108 e2e tests, `--runInBand`,
+coverage thresholds hold), mobile (`typecheck`/`lint` clean; `builder-handoff.test.ts` — 4/4).
+Given this session's severe context/cost pressure by this point, full RTL component tests for
+`builder.tsx`/`workout/[id].tsx` were deferred rather than written now — a real gap to close
+in a follow-up, not a silent omission. `pnpm -r build` and
+`scripts/ci/check-architecture-conformance.sh` both clean.
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase G — the builder
-   screen**: `s_builder()` / `s_workoutDetail()`, filling the `library.tsx?pick=workout`
-   deferral `phase2-screen-specs.md` recorded. This is the first screen that will actually
-   call the Phase D template CRUD endpoints and the Phase F store's write path. Phases A-F
+1. **Write the deferred RTL tests** for `builder.tsx` and `workout/[id].tsx` (save flow,
+   validation message, picked-exercise handoff, Customise prefill) before or alongside
+   starting Phase H — flagged above as a real gap, not optional polish.
+2. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase H — live
+   execution**: `s_live()` plus `s_rest()` and `setTimer`, reading the local exercise
+   catalogue and writing to the Phase F event log, making no network call at all. Phases A-G
    are done (above).
-2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
+3. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.
-3. **Resolve `pr59-fixup2`.** A leftover, unregistered, clean git clone at
+4. **Resolve `pr59-fixup2`.** A leftover, unregistered, clean git clone at
    `.claude/worktrees/pr59-fixup2` — never decided whether to keep or delete.
 
 ### Old status (superseded, kept for history below this point)

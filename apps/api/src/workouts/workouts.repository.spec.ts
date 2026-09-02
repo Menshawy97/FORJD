@@ -68,6 +68,7 @@ describe("WorkoutsRepository", () => {
     activity: "strength",
     notes: null,
     estimatedDurationMinutes: 45,
+    basedOnTemplateId: null,
     blocks: [
       {
         type: "straight_sets",
@@ -147,6 +148,7 @@ describe("WorkoutsRepository", () => {
         activity: "strength",
         notes: "leg day",
         estimatedDurationMinutes: 60,
+        basedOnTemplateId: null,
         blocks: [
           {
             type: "straight_sets",
@@ -211,6 +213,7 @@ describe("WorkoutsRepository", () => {
         activity: "strength",
         notes: null,
         estimatedDurationMinutes: null,
+        basedOnTemplateId: null,
         blocks: [],
       });
       createdTemplateIds.push(created.id);
@@ -280,6 +283,7 @@ describe("WorkoutsRepository", () => {
         activity: "strength",
         notes: null,
         estimatedDurationMinutes: null,
+        basedOnTemplateId: null,
         blocks: [
           {
             type: "straight_sets",

@@ -76,16 +76,18 @@ export interface CreateWorkoutBlockInput {
 }
 
 /**
- * `basedOnTemplateId` is deliberately absent -- Phase D's create endpoint always writes
- * `null`. The "customise this preset" flow that sets it belongs to Phase G's builder screen,
- * which does not exist yet; inventing the field here before there is a caller for it would
- * be exactly the "generality nobody asked for" YAGNI warns against.
+ * `basedOnTemplateId` is set when a template is created via "customise this preset" --
+ * client-supplied, validated by the service against `findByIdForUser` before it reaches
+ * here (see `createWorkoutTemplateRequestSchema`'s own docblock in `@forjd/contracts` for
+ * why this is a validated reference, not a derived value). `null` for a template built from
+ * scratch.
  */
 export interface CreateWorkoutTemplateInput {
   name: string;
   activity: Activity;
   notes: string | null;
   estimatedDurationMinutes: number | null;
+  basedOnTemplateId: string | null;
   blocks: CreateWorkoutBlockInput[];
 }
 
@@ -108,7 +110,7 @@ export interface ListWorkoutTemplatesFilter {
   limit: number;
 }
 
-/** A template list row plus the one derived field the list needs and nothing else. */
+/** A template list row plus the derived fields the list needs and nothing else. */
 export interface WorkoutTemplateSummaryRow {
   id: string;
   ownerUserId: string | null;
@@ -116,6 +118,7 @@ export interface WorkoutTemplateSummaryRow {
   activity: Activity;
   estimatedDurationMinutes: number | null;
   exerciseCount: number;
+  basedOnTemplateId: string | null;
 }
 
 export interface WorkoutTemplatePage {
@@ -310,6 +313,7 @@ export class WorkoutsRepository {
         activity: workoutTemplates.activity,
         estimatedDurationMinutes: workoutTemplates.estimatedDurationMinutes,
         exerciseCount: exerciseCountSubquery(),
+        basedOnTemplateId: workoutTemplates.basedOnTemplateId,
       })
       .from(workoutTemplates)
       .where(and(...conditions))
@@ -326,6 +330,7 @@ export class WorkoutsRepository {
         activity: keepKnownOrFallback(row.activity, ACTIVITIES, "strength"),
         estimatedDurationMinutes: row.estimatedDurationMinutes,
         exerciseCount: row.exerciseCount,
+        basedOnTemplateId: row.basedOnTemplateId,
       })),
       hasMore: rows.length > filter.limit,
     };
@@ -346,7 +351,7 @@ export class WorkoutsRepository {
           ownerUserId,
           name: input.name,
           activity: input.activity,
-          basedOnTemplateId: null,
+          basedOnTemplateId: input.basedOnTemplateId,
           notes: input.notes,
           estimatedDurationMinutes: input.estimatedDurationMinutes,
         })

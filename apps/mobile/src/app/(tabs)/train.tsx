@@ -15,6 +15,12 @@ import { colors } from '@/theme/tokens';
  * `Start a run` targets a Phase 3 screen that does not exist — rendered per §9's own
  * instruction ("render the card, route it nowhere yet"), so it is not wired to `onPress` at
  * all. `Exercise library` is real: it is `library.tsx`, shipped this same phase.
+ *
+ * **The header "+" button** (`train1.png`) is Phase 3G's own minimal, screenshot-faithful
+ * addition -- the one real entry point to `/builder` this phase ships. The header's other
+ * control, the favourites star, is deliberately omitted: nothing backs a workout-favourites
+ * feature yet, and the "My Workouts" list this button's own results would populate is
+ * explicitly Phase J's job, not this one's.
  */
 const QUICK_ACTIONS: ReadonlyArray<{ key: string; label: string; icon: IconName; href: '/library' | null }> = [
   { key: 'run', label: 'Start a run', icon: 'runner', href: null },
@@ -24,7 +30,16 @@ const QUICK_ACTIONS: ReadonlyArray<{ key: string; label: string; icon: IconName;
 export default function TrainScreen() {
   return (
     <ScreenBackground className="px-screen-x">
-      <Text className="pt-[2px] font-archivo text-screen-header font-bold text-text">Train</Text>
+      <View className="flex-row items-center justify-between pt-[2px]">
+        <Text className="font-archivo text-screen-header font-bold text-text">Train</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="New workout"
+          onPress={() => router.push('/builder')}
+          className="h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-accent">
+          <Icon name="plus" size={18} color="#fff" />
+        </Pressable>
+      </View>
 
       <View className="mt-4 flex-row" style={{ gap: 8 }}>
         {QUICK_ACTIONS.map((action) => (

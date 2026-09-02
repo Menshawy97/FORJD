@@ -82,6 +82,13 @@ export class WorkoutsService {
   async create(owner: User, body: CreateWorkoutTemplateRequest): Promise<WorkoutTemplateResponse> {
     await this.assertExercisesVisible(owner, body.blocks);
 
+    if (body.basedOnTemplateId) {
+      const source = await this.workoutsRepository.findByIdForUser(body.basedOnTemplateId, owner.id);
+      if (!source) {
+        throw new BadRequestException("Unknown basedOnTemplateId");
+      }
+    }
+
     const created = await this.workoutsRepository.createTemplate(owner.id, this.toRepositoryInput(body));
 
     return this.toDetail(created);
@@ -162,6 +169,7 @@ export class WorkoutsService {
       activity: body.activity,
       notes: body.notes ?? null,
       estimatedDurationMinutes: body.estimatedDurationMinutes ?? null,
+      basedOnTemplateId: body.basedOnTemplateId ?? null,
       blocks: this.toRepositoryBlocks(body.blocks),
     };
   }
@@ -207,6 +215,7 @@ export class WorkoutsService {
       estimatedDurationMinutes: row.estimatedDurationMinutes,
       exerciseCount: row.exerciseCount,
       isCustom: row.ownerUserId !== null,
+      basedOnTemplateId: row.basedOnTemplateId,
     };
   }
 
