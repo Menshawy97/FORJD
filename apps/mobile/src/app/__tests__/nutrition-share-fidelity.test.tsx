@@ -20,6 +20,26 @@ jest.mock('@/auth/apiClient', () => ({
   getFood: jest.fn(),
 }));
 
+// The background-photo picker (gallery + camera), mirroring edit-profile.test.tsx's own
+// `expo-image-picker` mock shape, extended with the camera pair nothing else in the codebase
+// calls yet.
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(),
+  requestCameraPermissionsAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+}));
+
+// The client-side downsize step -- a lightweight resize, not a formal pipeline, so only the
+// one legacy `manipulateAsync` entry point this screen actually calls needs a mock.
+jest.mock('expo-image-manipulator', () => ({
+  manipulateAsync: jest.fn(),
+  SaveFormat: { JPEG: 'jpeg' },
+}));
+
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+
 import { getFood, getMacroGoals, listNutritionLog } from '@/auth/apiClient';
 
 import { todayLocalDate } from '@/nutrition/date';
@@ -108,6 +128,28 @@ function mockFoods() {
     if (id === BANANA_ID) return banana;
     throw new Error(`unexpected food id ${id}`);
   });
+}
+
+const GALLERY_URI = 'file:///picked-from-gallery.jpg';
+const CAMERA_URI = 'file:///captured-with-camera.jpg';
+const RESIZED_URI = 'file:///resized-background-photo.jpg';
+
+function mockManipulate() {
+  (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+    uri: RESIZED_URI,
+    width: 1080,
+    height: 1350,
+  });
+}
+
+async function setUpShareScreenWithData() {
+  (listNutritionLog as jest.Mock).mockResolvedValue({ items: [entryA, entryB] });
+  (getMacroGoals as jest.Mock).mockResolvedValue(GOALS);
+  mockFoods();
+  mockManipulate();
+  const utils = await render(<NutritionShareScreen />);
+  await waitFor(() => expect(utils.getByText('Today’s intake')).toBeTruthy());
+  return utils;
 }
 
 beforeEach(() => {
@@ -251,5 +293,144 @@ describe('Nutrition share screen', () => {
     await waitFor(() => expect(getByText('Strawberries')).toBeTruthy());
     expect(getByText('Banana, raw')).toBeTruthy();
     expect(getFood).toHaveBeenCalledTimes(2);
+  });
+
+  describe('background photo picker', () => {
+    it('sets the card background from the gallery when permission is granted, resizing client-side first', async () => {
+      (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+      (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: GALLERY_URI }],
+      });
+
+      const { getByLabelText, getByText, getByTestId, queryByTestId } = await setUpShareScreenWithData();
+
+      expect(queryByTestId('share-card-background-photo')).toBeNull();
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Choose from Gallery')).toBeTruthy());
+      fireEvent.press(getByText('Choose from Gallery'));
+
+      await waitFor(() => expect(getByTestId('share-card-background-photo')).toBeTruthy());
+      expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+        GALLERY_URI,
+        expect.any(Array),
+        expect.any(Object),
+      );
+      const image = getByTestId('share-card-background-photo');
+      expect(image.props.source).toEqual({ uri: RESIZED_URI });
+      // The sheet closes itself once a photo is picked.
+      expect(queryByTestId('background-photo-sheet')).toBeNull();
+    });
+
+    it('shows a toast and keeps the gradient when gallery permission is denied', async () => {
+      (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
+
+      const { getByLabelText, getByText, queryByTestId } = await setUpShareScreenWithData();
+
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Choose from Gallery')).toBeTruthy());
+      fireEvent.press(getByText('Choose from Gallery'));
+
+      await waitFor(() => expect(getByText('Photo access is needed to set a background.')).toBeTruthy());
+      expect(queryByTestId('share-card-background-photo')).toBeNull();
+      expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
+    });
+
+    it('sets the card background from the camera when permission is granted', async () => {
+      (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+      (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: CAMERA_URI }],
+      });
+
+      const { getByLabelText, getByText, getByTestId } = await setUpShareScreenWithData();
+
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Take Photo')).toBeTruthy());
+      fireEvent.press(getByText('Take Photo'));
+
+      await waitFor(() => expect(getByTestId('share-card-background-photo')).toBeTruthy());
+      expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(CAMERA_URI, expect.any(Array), expect.any(Object));
+      expect(getByTestId('share-card-background-photo').props.source).toEqual({ uri: RESIZED_URI });
+    });
+
+    it('shows a toast and keeps the gradient when camera permission is denied', async () => {
+      (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
+
+      const { getByLabelText, getByText, queryByTestId } = await setUpShareScreenWithData();
+
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Take Photo')).toBeTruthy());
+      fireEvent.press(getByText('Take Photo'));
+
+      await waitFor(() => expect(getByText('Camera access is needed to take a photo.')).toBeTruthy());
+      expect(queryByTestId('share-card-background-photo')).toBeNull();
+      expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
+    });
+
+    it('removes the background photo and reverts to the gradient', async () => {
+      (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+      (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: GALLERY_URI }],
+      });
+
+      const { getByLabelText, getByText, getByTestId, queryByTestId } = await setUpShareScreenWithData();
+
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Choose from Gallery')).toBeTruthy());
+      fireEvent.press(getByText('Choose from Gallery'));
+      await waitFor(() => expect(getByTestId('share-card-background-photo')).toBeTruthy());
+
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Remove Photo')).toBeTruthy());
+      fireEvent.press(getByText('Remove Photo'));
+
+      await waitFor(() => expect(queryByTestId('share-card-background-photo')).toBeNull());
+    });
+
+    it('does not offer Remove Photo before any photo has been set', async () => {
+      const { getByLabelText, getByText, queryByText } = await setUpShareScreenWithData();
+
+      fireEvent.press(getByLabelText('Background photo'));
+
+      await waitFor(() => expect(getByText('Choose from Gallery')).toBeTruthy());
+      expect(getByText('Take Photo')).toBeTruthy();
+      expect(queryByText('Remove Photo')).toBeNull();
+    });
+
+    it('keeps the background photo when switching layouts', async () => {
+      (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+      (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: GALLERY_URI }],
+      });
+
+      const { getByLabelText, getByText, getByTestId } = await setUpShareScreenWithData();
+
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Choose from Gallery')).toBeTruthy());
+      fireEvent.press(getByText('Choose from Gallery'));
+      await waitFor(() => expect(getByTestId('share-card-background-photo')).toBeTruthy());
+
+      fireEvent.press(getByLabelText('Macro Split'));
+      await waitFor(() => expect(getByText('600 kcal')).toBeTruthy());
+      expect(getByTestId('share-card-background-photo').props.source).toEqual({ uri: RESIZED_URI });
+
+      fireEvent.press(getByLabelText('Meal Log'));
+      await waitFor(() => expect(getByText('600 kcal total')).toBeTruthy());
+      expect(getByTestId('share-card-background-photo').props.source).toEqual({ uri: RESIZED_URI });
+    });
+
+    it('cancels out of the picker sheet without changing the background', async () => {
+      const { getByLabelText, getByText, queryByTestId } = await setUpShareScreenWithData();
+
+      fireEvent.press(getByLabelText('Background photo'));
+      await waitFor(() => expect(getByText('Cancel')).toBeTruthy());
+      fireEvent.press(getByText('Cancel'));
+
+      await waitFor(() => expect(queryByTestId('background-photo-sheet')).toBeNull());
+      expect(queryByTestId('share-card-background-photo')).toBeNull();
+    });
   });
 });

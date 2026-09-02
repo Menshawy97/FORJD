@@ -18,6 +18,13 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.forjd.app',
     icon: './assets/expo.icon',
+    // The nutrition share-card's background-photo picker is the first feature to call
+    // `expo-image-picker`'s `launchCameraAsync` -- the existing gallery-only usages
+    // (edit-profile.tsx, pick-username.tsx) never needed this string. iOS refuses camera
+    // access outright with no system prompt at all if this is missing.
+    infoPlist: {
+      NSCameraUsageDescription: 'FORJD uses your camera to let you take a photo for your nutrition share card background.',
+    },
   },
   android: {
     package: 'com.forjd.app',
