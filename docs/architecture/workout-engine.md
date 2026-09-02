@@ -46,7 +46,7 @@ This split exists from Phase 3 (the walking skeleton), not added later.
 The live workout must work with the gym's internet down entirely.
 
 ```
-Workout downloaded → Local SQLite (Drift) → Workout execution →
+Workout downloaded → Local SQLite (expo-sqlite) → Workout execution →
 Local session → Internet returns → Sync to backend
 ```
 
@@ -81,6 +81,13 @@ version, existing ones keep what they started with.
 
 ## Local mobile database
 
-Drift (SQLite) holds: programs, exercises, workout templates, current
-workout, completed sets, pending sync events, user preferences. This local
-layer, not the network, is what the live-workout UI reads and writes to.
+`expo-sqlite` holds: the exercise catalogue (`exercise-catalogue.ts`, ADR-022), and workout
+sessions in progress plus their pending sync queue (`workout-session.ts`, ADR-025) — the
+append-only event log that makes crash recovery real, and the queue that holds a finished
+session until it uploads. This local layer, not the network, is what the live-workout UI
+reads and writes to.
+
+Superseded from an earlier draft of this doc: Drift, a Flutter-only SQLite wrapper, was
+named here under ADR-001's original Flutter client. ADR-013 replaced Flutter with Expo/React
+Native, and ADR-022 picked `expo-sqlite` as the concrete store — this doc just hadn't been
+updated to say so until ADR-025.

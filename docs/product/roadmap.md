@@ -119,29 +119,53 @@ proves idempotency over real HTTP (a retried upload with a mutated payload still
 row, with the original values) and that a session's performed values are never back-filled
 from its template's prescription.
 
-Verified for all five phases: domain (48 tests), contracts (3 suites / 84 tests), api (34
-suites / 582 unit tests + 108 e2e tests, `--runInBand`, coverage thresholds hold — three
-100%-pinned workout files), mobile (typecheck/lint/build clean; the Jest suite showed
-resource-contention flakiness under sustained local load in this session — different,
-timing-sensitive navigation tests failed on each of several reruns despite zero mobile files
-being touched — so it was not re-verified locally for this phase; rely on CI's isolated
-runner, which has been green through Phases A-D). `pnpm -r build`, `pnpm -r lint`, mobile
-`typecheck`, and `scripts/ci/check-architecture-conformance.sh` all clean.
+**Phase F (the offline layer) is done**: `apps/mobile/src/store/workout-session.ts` — the
+append-only `session_events` log and the `session_queue` sync table, in their own
+`forjd-workout-sessions.db`, behind the same injected-`SqliteConnection` seam ADR-022
+established (reused from `exercise-catalogue.ts`, not redeclared). `replaySessionState(startedAt,
+events)` is a pure fold over the event log that rebuilds `{ status, durationSeconds,
+completedSetKeys }` — `durationSeconds` excludes every `workout_paused`→`workout_resumed`
+interval, matching `WorkoutSession.durationSeconds`'s own domain contract. `drainSyncQueue`
+takes its upload function injected (mirroring `syncExerciseCatalogue`'s `fetchCatalogue`
+param), skips a row whose `next_retry_at` hasn't passed or whose `status` is already
+`failed`, and on success removes the row and clears its event log so it can never upload
+twice. **ADR-025** locks the decisions the plan flagged as open: exponential backoff (1s→30min
+cap) to a terminal `failed` state after 5 attempts (never an infinite retry loop, row and log
+both kept rather than deleted); and — the deleted-exercise question — **no special-cased
+fallback**: a session referencing an exercise soft-deleted server-side keeps failing the same
+`findManyVisibleForUser` check a template would, landing in the same terminal `failed` state,
+because loosening the check for sessions specifically would be speculative generality with no
+screen yet to explain a `failed` upload to a user. `workout-engine.md`'s stale "Drift" local-db
+reference is corrected to `expo-sqlite`, citing ADR-013/ADR-022/ADR-025.
+`scripts/ci/check-architecture-conformance.sh`'s `expo-sqlite` pin now covers this file too.
+`workout-session.test.ts` proves crash recovery (partial logs replayed across simulated
+app-kill/reopen boundaries) and the queue's idempotent-retry-until-success and
+give-up-after-max-attempts behavior.
+
+**Nothing yet reads or writes this store from a screen** — Phase G (the builder) and Phase H
+(live execution) are what actually call `appendSessionEvent`/`enqueueSessionUpload`/
+`drainSyncQueue`; this phase only ships the store itself, matching how `exercise-catalogue.ts`
+shipped in Phase H of the exercise-library plan before Phase I's screens consumed it.
+
+Verified for all six phases: domain (48 tests), contracts (3 suites / 84 tests), api (34
+suites / 582 unit tests + 108 e2e tests, `--runInBand`, coverage thresholds hold), mobile
+(typecheck/lint/build clean; new `workout-session.test.ts` — 11/11 passing in isolation; the
+full-suite run is confirmed separately per the checkpoint, since a prior session in this same
+sitting saw resource-contention flakiness in unrelated navigation tests under sustained local
+load — CI's isolated runner has been green through every phase so far and is the tie-breaker
+if local flakiness recurs). `pnpm -r build`, `pnpm -r lint`, mobile `typecheck`, and
+`scripts/ci/check-architecture-conformance.sh` all clean.
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase F — the offline
-   layer**: `apps/mobile/src/store/workout-session.ts` — the append-only event log in
-   `expo-sqlite` and the sync queue that drains on reconnect, behind the same
-   injected-`SqliteConnection` function seam ADR-022 established. Write **ADR-025** for the
-   session sync contract (queue semantics, retry/backoff, what happens to a session whose
-   exercise was deleted server-side). Add the conformance rule pinning the module in
-   `scripts/ci/check-architecture-conformance.sh`. Testing: crash recovery (replay a partial
-   event log, assert the rebuilt session state) and a queued session that fails to upload
-   staying queued and uploading exactly once. Phases A-E are done (above).
+1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase G — the builder
+   screen**: `s_builder()` / `s_workoutDetail()`, filling the `library.tsx?pick=workout`
+   deferral `phase2-screen-specs.md` recorded. This is the first screen that will actually
+   call the Phase D template CRUD endpoints and the Phase F store's write path. Phases A-F
+   are done (above).
 2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.
