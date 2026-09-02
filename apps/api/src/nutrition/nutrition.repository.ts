@@ -98,6 +98,7 @@ export interface NutritionLogEntry {
   carbs: number;
   fat: number;
   groupId: string | null;
+  groupName: string | null;
   createdAt: Date;
 }
 
@@ -415,27 +416,41 @@ export class NutritionRepository {
   // Saved meals
   // ---------------------------------------------------------------------------------------
 
+  /**
+   * Rejects a case-insensitive duplicate name for the same owner (`saved_meals_owner_name_unique`,
+   * mirroring `createCustomFood`'s own conflict handling) -- found live on a physical device: with
+   * no uniqueness check at all, the dashboard's "Save as meal" sheet (which pre-fills the same
+   * `"<Slot> — usual"` name every time) let a user create the same-named meal repeatedly with no
+   * error, three "Breakfast — usual" cards deep before it was noticed.
+   */
   async createSavedMeal(
     userId: string,
     name: string,
     items: SavedMealItemInput[],
   ): Promise<SavedMealWithItems> {
-    const [row] = await this.db.insert(savedMeals).values({ userId, name }).returning();
-    if (!row) throw new Error("createSavedMeal: insert returned no row");
+    try {
+      const [row] = await this.db.insert(savedMeals).values({ userId, name }).returning();
+      if (!row) throw new Error("createSavedMeal: insert returned no row");
 
-    if (items.length > 0) {
-      await this.db.insert(savedMealItems).values(
-        items.map((item, index) => ({
-          savedMealId: row.id,
-          foodId: item.foodId,
-          servingLabel: item.servingLabel,
-          grams: item.grams.toString(),
-          sortOrder: index,
-        })),
-      );
+      if (items.length > 0) {
+        await this.db.insert(savedMealItems).values(
+          items.map((item, index) => ({
+            savedMealId: row.id,
+            foodId: item.foodId,
+            servingLabel: item.servingLabel,
+            grams: item.grams.toString(),
+            sortOrder: index,
+          })),
+        );
+      }
+
+      return this.toSavedMealWithItems(row, items);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException("A saved meal with that name already exists");
+      }
+      throw error;
     }
-
-    return this.toSavedMealWithItems(row, items);
   }
 
   async listSavedMeals(userId: string): Promise<SavedMealWithItems[]> {
@@ -527,12 +542,19 @@ export class NutritionRepository {
    * Copies a saved meal's items into the log, sharing one `groupId` so the dashboard can
    * collapse and delete them as one (`nutrition-plan.md`'s locked decisions). A copy, not a
    * reference -- editing the saved meal afterwards never rewrites this day's history.
+   *
+   * **`groupName` is a caller-supplied snapshot, not a live lookup here.** The caller
+   * (`NutritionService.logSavedMeal`) already has the meal's current name from the
+   * `listSavedMeals` ownership check it does first, so passing it through avoids a second
+   * `saved_meals` query -- and matches the "snapshot at write time" principle this whole table
+   * already follows for every other field (see the schema docblock on `groupName`).
    */
   async logSavedMeal(
     userId: string,
     savedMealId: string,
     slot: MealSlot,
     loggedDate: string,
+    groupName: string,
   ): Promise<NutritionLogEntry[]> {
     const itemRows = await this.db
       .select()
@@ -560,6 +582,7 @@ export class NutritionRepository {
         carbs: macros.carbs.toString(),
         fat: macros.fat.toString(),
         groupId,
+        groupName,
       });
     }
 
@@ -625,6 +648,7 @@ export class NutritionRepository {
       carbs: Number(row.carbs),
       fat: Number(row.fat),
       groupId: row.groupId,
+      groupName: row.groupName,
       createdAt: row.createdAt,
     };
   }

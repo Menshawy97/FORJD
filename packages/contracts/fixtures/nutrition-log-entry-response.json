@@ -9,5 +9,6 @@
   "protein": 0.85,
   "carbs": 26.45,
   "fat": 0.33,
-  "groupId": null
+  "groupId": null,
+  "groupName": null
 }

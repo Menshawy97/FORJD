@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { createSavedMeal, deleteSavedMeal, getFood, listSavedMeals } from '@/auth/apiClient';
-import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { classifyRequestFailure, isConflict, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
@@ -142,7 +142,14 @@ export default function EditMealScreen() {
       router.replace('/saved-meals');
     } catch (error) {
       if (deleted) {
-        toast.show(`Removed the old version of "${name}", but couldn't save the new one. Try again.`);
+        // The old meal is genuinely gone (delete already succeeded) -- a name conflict here
+        // means another saved meal now has this name (`saved_meals_owner_name_unique`), which
+        // needs a message that says so, not the generic "try again".
+        toast.show(
+          isConflict(error)
+            ? `Removed the old version of "${name}", but you already have another saved meal with that name. Rename it and try again.`
+            : `Removed the old version of "${name}", but couldn't save the new one. Try again.`,
+        );
       } else {
         toast.show(errorMessage(error));
       }

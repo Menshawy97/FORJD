@@ -152,6 +152,11 @@ describe('nutrition contracts', () => {
       expect(nutritionLogEntryResponseSchema.shape.groupId.isOptional()).toBe(false);
       expect(nutritionLogEntryResponseSchema.shape.groupId.isNullable()).toBe(true);
     });
+
+    it('groupName is nullable, not optional -- the Phase H follow-up name snapshot for a collapsed group', () => {
+      expect(nutritionLogEntryResponseSchema.shape.groupName.isOptional()).toBe(false);
+      expect(nutritionLogEntryResponseSchema.shape.groupName.isNullable()).toBe(true);
+    });
   });
 
   describe('createSavedMealRequestSchema', () => {

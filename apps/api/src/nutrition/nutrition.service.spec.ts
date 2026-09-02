@@ -61,6 +61,7 @@ function logEntry(overrides: Partial<NutritionLogEntry> = {}): NutritionLogEntry
     carbs: 26.9,
     fat: 0.35,
     groupId: null,
+    groupName: null,
     createdAt: new Date(),
     ...overrides,
   };
@@ -286,11 +287,11 @@ describe("NutritionService", () => {
       expect(repository.logSavedMeal).not.toHaveBeenCalled();
     });
 
-    it("logs every item once ownership is confirmed", async () => {
+    it("logs every item once ownership is confirmed, passing the meal's current name as groupName", async () => {
       repository.listSavedMeals.mockResolvedValue([savedMeal()]);
       repository.logSavedMeal.mockResolvedValue([
-        logEntry({ groupId: "group-1" }),
-        logEntry({ id: "another", groupId: "group-1" }),
+        logEntry({ groupId: "group-1", groupName: savedMeal().name }),
+        logEntry({ id: "another", groupId: "group-1", groupName: savedMeal().name }),
       ]);
 
       const result = await service.logSavedMeal(viewer, {
@@ -299,8 +300,15 @@ describe("NutritionService", () => {
         loggedDate: "2026-08-31",
       });
 
-      expect(repository.logSavedMeal).toHaveBeenCalledWith(viewer.id, savedMeal().id, "dinner", "2026-08-31");
+      expect(repository.logSavedMeal).toHaveBeenCalledWith(
+        viewer.id,
+        savedMeal().id,
+        "dinner",
+        "2026-08-31",
+        savedMeal().name,
+      );
       expect(result.items).toHaveLength(2);
+      expect(result.items[0]?.groupName).toBe(savedMeal().name);
     });
   });
 

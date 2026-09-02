@@ -11,7 +11,8 @@
       "protein": 0.85,
       "carbs": 26.45,
       "fat": 0.33,
-      "groupId": null
+      "groupId": null,
+      "groupName": null
     },
     {
       "id": "44444444-4444-4444-8444-444444444444",
@@ -24,7 +25,8 @@
       "protein": 14.4,
       "carbs": 33.6,
       "fat": 6,
-      "groupId": "55555555-5555-4555-8555-555555555555"
+      "groupId": "55555555-5555-4555-8555-555555555555",
+      "groupName": "Breakfast — usual"
     }
   ]
 }
