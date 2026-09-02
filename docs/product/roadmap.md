@@ -469,6 +469,74 @@ suites failing identically — not a regression from this change; needs a real S
 run before merge). Mobile — full suite **70 suites / 396 tests, 0 failures**, `tsc --noEmit`
 and `eslint` clean.
 
+#### Retrofit — image compression pipeline (ADR-024) — ✅ DONE
+
+`AvatarUploadService` shipped above with **no compression**: it accepted any file up to 5 MiB
+of an allowed MIME type and stored the raw bytes unchanged. [ADR-024
+](../decisions/ADR-024-image-compression-and-storage.md) closes that gap with a two-stage
+pipeline — client-side pre-resize, then a mandatory server-side canonical re-encode that never
+trusts what the client sent.
+
+**Backend:** `AvatarUploadService.upload()` now unconditionally re-encodes every accepted
+upload with `sharp` (new `apps/api` dependency) — `resize(512, 512, { fit: 'inside',
+withoutEnlargement: true })` then `.webp({ quality: 80 })` — before it reaches
+`storageProvider.upload()`. `ALLOWED_AVATAR_TYPES`'s old role (input MIME type → *stored*
+extension) is retired; the replacement, `ALLOWED_AVATAR_MIME_TYPES`, is a pure input-validation
+gate, decoupled from the always-`.webp` stored key/content-type. `MAX_AVATAR_BYTES` is
+unchanged and still gates the input size before decoding. A `sharp` decode failure (corrupt or
+non-image bytes that passed the MIME-type check) is caught and re-thrown as the same
+`BadRequestException` pattern the rest of the method already uses, not an unhandled 500.
+
+**Mobile:** new shared utility `apps/mobile/src/media/resize-image-for-upload.ts` —
+`resizeImageForUpload(uri, { width, height }, maxDimension)` — using `expo-image-manipulator`
+(new dependency, `~14.0.8`, installed via `npx expo install` to stay aligned with the pinned
+SDK 54). Computes target dimensions itself (fit-inside, never upscale) from the picked asset's
+own reported `width`/`height` — `ImagePickerAsset` already returns them, so no extra native
+call (e.g. `Image.getSize`) was needed just to learn them; this is a deliberate, ADR-consistent
+simplification, not a spec deviation. Wired into both `edit-profile.tsx` and
+`pick-username.tsx`'s `handlePickAvatar`, between the picker result and `uploadAvatar()` — the
+resized result's URI is what gets uploaded, not the raw picked one. Client-side output is WebP
+at compression `0.8`, matching the server's own format so there is no format mismatch to
+reason about; this step is a UX/bandwidth optimization only, per the ADR — the server re-encode
+is the correctness guarantee and runs regardless of what arrives.
+
+**A mock-hoisting bug found and fixed along the way, mobile side.** The first draft of the
+three new/updated mobile test files built their `expo-image-manipulator` mock by declaring
+`mock`-prefixed consts *before* `jest.mock(...)` and referencing them from the factory — the
+common pattern, and one Jest's hoisting plugin permits syntactically. It does not, however,
+guarantee those consts are initialized before the factory actually runs (Jest's own docs say
+so explicitly), and here they weren't: `ImageManipulator.manipulate` came back `undefined` at
+call time, first caught by `resize-image-for-upload.test.ts`'s own assertions rather than
+silently passing. Fixed by building the mock entirely inside the factory and pulling the same
+`jest.fn()` back out via the mocked import afterward — the guaranteed-safe form of the pattern.
+
+**API's actual named export shape differed from the docs fetched while planning**, too: SDK
+54's `expo-image-manipulator` exports a named `ImageManipulator` object (`import {
+ImageManipulator, SaveFormat } from 'expo-image-manipulator'`), not a `manipulate` free
+function — confirmed against the installed package's own `.d.ts` files after `tsc --noEmit`
+caught the mismatch, not assumed a second time.
+
+**Verified:** Backend — 4 new compression tests (real `sharp`-generated fixtures, not mocked:
+oversized-image resize+re-encode, no-upscale on an already-small image, corrupt-buffer
+rejection as `BadRequestException`, WebP output regardless of input format) plus the 7 existing
+`AvatarUploadService` tests updated for the new WebP-always contract — 11/11 passing in
+isolation, and passing again as part of the full 488-test suite once run with real
+`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` placeholders and a locally-migrated Postgres
+(mirroring what CI's Postgres service container provides). `tsc --noEmit`, `eslint`, and
+`scripts/ci/check-architecture-conformance.sh` all clean. A handful of unrelated DB-backed
+suites (`exercises.repository`, `nutrition.repository`) and the e2e suite timed out under this
+sandbox's own resource contention when run back-to-back with other suites — the same
+pre-existing, sandbox-only gap ADR-019's own verification note already recorded, reconfirmed
+here rather than re-litigated, and not reproducible against files this change touches when run
+in isolation. Mobile — 4 new tests for the shared utility plus the two screens' existing avatar
+tests updated to mock `expo-image-manipulator` and assert on the resized URI, 31/31 passing in
+isolation; `tsc --noEmit` and `eslint` clean; a real `expo export --platform android` bundle
+compile (1,545 modules) succeeded with no bundle-breaking errors. The full mobile suite hit the
+same kind of sandbox-only `renderRouter` timeout flakiness this repo's own test comments already
+describe ("a flake, not a bug") on screens this change never touches (login, profile Go Pro
+banner, CTA affordances, etc.) — none of it in the files this change added or edited. CI's
+dedicated runner is the authoritative signal for both suites, per this project's standing rule.
+
 ### Deviations from the design, decided rather than drifted
 
 The design shows things the API cannot yet support. Each was a deliberate call, not an

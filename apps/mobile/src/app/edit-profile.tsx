@@ -14,6 +14,7 @@ import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { AVATAR_MAX_DIMENSION, resizeImageForUpload } from '@/media/resize-image-for-upload';
 import { colors } from '@/theme/tokens';
 
 // Layout, copy and geometry from the prototype's `s_editProfile()`
@@ -126,10 +127,18 @@ export default function EditProfileScreen() {
       return;
     }
 
-    const uri = result.assets[0].uri;
-    setAvatarPreviewUri(uri);
+    const asset = result.assets[0];
+    setAvatarPreviewUri(asset.uri);
     try {
-      const uploaded = await uploadAvatar(uri);
+      // ADR-024: resize/re-encode client-side before the upload leaves the device -- a
+      // bandwidth optimization, not the correctness guarantee (the server re-encodes
+      // unconditionally regardless of what arrives).
+      const resized = await resizeImageForUpload(
+        asset.uri,
+        { width: asset.width, height: asset.height },
+        AVATAR_MAX_DIMENSION,
+      );
+      const uploaded = await uploadAvatar(resized.uri);
       setAvatarUrl(uploaded.avatarUrl);
     } catch {
       toast.show('Could not upload photo. Please try again.');
