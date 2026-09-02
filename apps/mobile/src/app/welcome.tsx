@@ -1,10 +1,24 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { consumeSessionExpired } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { pressGhost, pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { colors } from '@/theme/tokens';
+
+/**
+ * `/welcome` is where `_layout.tsx`'s `AuthGate` lands *every* authenticated route once the
+ * session is gone (ADR-011) — including the forced sign-out `apiClient`'s response
+ * interceptor triggers when a 401-triggered token refresh itself fails. Until now that
+ * redirect carried no explanation: the screen the user was on showed its own generic error
+ * (e.g. builder.tsx's "Could not save this workout"), then vanished with no indication the
+ * session had actually been wiped. `consumeSessionExpired()` is the one-shot flag
+ * `clearSession({ expired: true })` sets for exactly this case — read once here, on mount,
+ * so a later ordinary visit to /welcome (app launch, manual logout) never shows it.
+ */
+const SESSION_EXPIRED_MESSAGE = 'Your session expired. Please log in again.';
 
 // Copy, layout and glyphs from the prototype's welcome screen (`isWelcome` branch of
 // `FORJD mobile app design/FORJD Mobile.dc.html`), cross-checked against
@@ -32,6 +46,11 @@ const WORDMARK_BARS: Array<{ height: number; color: string }> = [
 ];
 
 export default function WelcomeScreen() {
+  // Lazy initializer: this must consume the flag exactly once, at mount, not on every
+  // render -- a `useState(consumeSessionExpired())` call form would re-invoke it whenever
+  // React re-renders this component for an unrelated reason before it re-mounts.
+  const [sessionExpired] = useState(() => consumeSessionExpired());
+
   return (
     <ScreenBackground>
       <View className="flex-1 px-welcome-x pb-10">
@@ -76,6 +95,12 @@ export default function WelcomeScreen() {
         </View>
 
         <View className="min-h-[24px] flex-1" />
+
+        {sessionExpired && (
+          <Text className="mb-3 font-archivo text-inline-error font-medium text-errorText">
+            {SESSION_EXPIRED_MESSAGE}
+          </Text>
+        )}
 
         <View className="gap-3">
           <Pressable

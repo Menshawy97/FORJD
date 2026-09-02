@@ -130,3 +130,45 @@ describe('secureStorage - full session lifecycle (Phase 5)', () => {
     await expect(hasSession!()).resolves.toBe(false);
   });
 });
+
+describe('secureStorage - session-expired flag', () => {
+  // apiClient's response interceptor force-clears the session when a 401-triggered refresh
+  // itself fails (ADR-011), and the caller sees the *original* request error, not a refresh
+  // error -- so nothing in that call chain tells the user their session was wiped. This flag
+  // is the one bit welcome.tsx needs to show "Your session expired" instead of silently
+  // landing on the welcome screen as if the user had just opened the app.
+  function load(): {
+    clearSession: (typeof import('../secureStorage'))['clearSession'];
+    consumeSessionExpired: (typeof import('../secureStorage'))['consumeSessionExpired'];
+  } {
+    let result!: ReturnType<typeof load>;
+    jest.isolateModules(() => {
+      const SS = require('expo-secure-store');
+      SS.deleteItemAsync.mockResolvedValue(undefined);
+      const { clearSession, consumeSessionExpired } = require('../secureStorage');
+      result = { clearSession, consumeSessionExpired };
+    });
+    return result;
+  }
+
+  it('consumeSessionExpired resolves false when no session has ever been cleared', () => {
+    const { consumeSessionExpired } = load();
+    expect(consumeSessionExpired()).toBe(false);
+  });
+
+  it('a plain clearSession() (manual logout) does not set the expired flag', async () => {
+    const { clearSession, consumeSessionExpired } = load();
+    await clearSession();
+    expect(consumeSessionExpired()).toBe(false);
+  });
+
+  it('clearSession({ expired: true }) sets the flag for consumeSessionExpired to read once', async () => {
+    const { clearSession, consumeSessionExpired } = load();
+    await clearSession({ expired: true });
+
+    expect(consumeSessionExpired()).toBe(true);
+    // Consuming it resets it -- a second read (e.g. a second mount of welcome.tsx) must not
+    // replay the same banner for an unrelated later visit.
+    expect(consumeSessionExpired()).toBe(false);
+  });
+});

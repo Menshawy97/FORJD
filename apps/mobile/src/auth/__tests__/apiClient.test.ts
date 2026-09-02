@@ -249,6 +249,9 @@ describe('apiClient - what a failure on the retry path is allowed to destroy', (
     await expect(onRejected(originalError)).rejects.toBe(originalError);
 
     expect(secureStorage.clearSession).toHaveBeenCalledTimes(1);
+    // `expired: true` is what lets welcome.tsx tell this apart from a manual logout
+    // (profile.tsx's plain `clearSession()`) and show "Your session expired".
+    expect(secureStorage.clearSession).toHaveBeenCalledWith({ expired: true });
     // The replay never happened — there was no new token to replay with.
     expect(replayInstance.request).not.toHaveBeenCalled();
   });

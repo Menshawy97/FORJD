@@ -15,6 +15,7 @@ jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn(),
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(),
+  consumeSessionExpired: jest.fn(() => false),
 }));
 
 import { getCachedHasSession, hasSession } from '@/auth/secureStorage';
