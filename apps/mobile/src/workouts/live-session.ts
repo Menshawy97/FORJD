@@ -1,4 +1,10 @@
-import type { Activity, ExerciseMeasure, WorkoutEventType, WorkoutSessionStatus } from '@forjd/domain';
+import type {
+  Activity,
+  ExerciseGoal,
+  ExerciseMeasure,
+  WorkoutEventType,
+  WorkoutSessionStatus,
+} from '@forjd/domain';
 
 /**
  * The pure core of the live workout screen (Phase 3H, slice H1).
@@ -44,6 +50,13 @@ export interface LiveExercise {
   /** Resolved from the on-device catalogue (ADR-022), never from a network response. */
   name: string;
   measure: ExerciseMeasure;
+  /**
+   * Drives the design's goal chip (`STRENGTH ▾`) and which row of the "How to train this"
+   * guide is badged. Derived server-side from `measure` and carried on the catalogue row, so
+   * it is read here rather than chosen -- `createExerciseRequestSchema` has no `goal` field at
+   * all, and a client must not invent one.
+   */
+  goal: ExerciseGoal | null;
   sets: LiveSet[];
 }
 
@@ -100,6 +113,7 @@ interface StartSessionInput {
     exerciseId: string;
     name: string;
     measure: ExerciseMeasure;
+    goal?: ExerciseGoal | null;
     sets: {
       weightKg?: number | null;
       reps?: number | null;
@@ -127,6 +141,7 @@ export function startSession(input: StartSessionInput): LiveSession {
       exerciseId: exercise.exerciseId,
       name: exercise.name,
       measure: exercise.measure,
+      goal: exercise.goal ?? null,
       // Every prescribed set is laid out up front and unticked: the user ticks them off, so an
       // unfinished session carries incomplete rows rather than missing ones (`WorkoutSet`'s own
       // docblock). Analytics later filters on `isCompleted` rather than assuming each happened.
@@ -268,6 +283,70 @@ export function completeSet(
   };
 }
 
+/**
+ * Ticks a timed set that the set-timer screen has just finished.
+ *
+ * Separate from `completeSet` because that one *refuses* to tick a time-measured set -- tapping
+ * such a row opens the timer instead. This is the path back from that timer, and it is the only
+ * other way a set can be completed, so the two together are still the whole surface.
+ */
+export function completeTimedSet(
+  session: LiveSession,
+  exerciseIndex: number,
+  setIndex: number,
+  now: Date,
+): LiveSessionChange {
+  const exercise = session.exercises[exerciseIndex];
+  if (!exercise) return unchanged(session);
+  const set = exercise.sets[setIndex];
+  if (!set || set.isCompleted) return unchanged(session);
+
+  const occurredAt = now.toISOString();
+  const nextSession = mapExercise(session, exerciseIndex, (current) => ({
+    ...current,
+    sets: current.sets.map((each, index) => (index === setIndex ? { ...each, isCompleted: true } : each)),
+  }));
+
+  const events: PendingEvent[] = [
+    {
+      type: 'set_completed',
+      occurredAt,
+      payload: {
+        exerciseId: exercise.exerciseId,
+        setIndex,
+        ...(set.durationSeconds !== null ? { durationSeconds: set.durationSeconds } : {}),
+      },
+    },
+  ];
+
+  if (nextSession.exercises[exerciseIndex].sets.every((each) => each.isCompleted)) {
+    events.push({ type: 'exercise_completed', occurredAt, payload: { exerciseId: exercise.exerciseId } });
+  }
+  events.push({ type: 'rest_started', occurredAt, payload: { seconds: session.restSeconds } });
+
+  return { ...unchanged(nextSession), events, restStartedSeconds: session.restSeconds };
+}
+
+/**
+ * The first set still to be done, which is what the rest screen's "Up next" block names. Returns
+ * `null` once everything is ticked -- the rest screen then reads "All sets complete", the
+ * prototype's own wording.
+ */
+export function nextOpenSet(session: LiveSession): { name: string; detail: string } | null {
+  for (const exercise of session.exercises) {
+    const set = exercise.sets.find((each) => !each.isCompleted);
+    if (!set) continue;
+    const detail =
+      exercise.measure === 'time'
+        ? `${set.durationSeconds ?? 0} s hold`
+        : exercise.measure === 'distance'
+          ? `${set.distanceMeters ?? 0} m`
+          : `${set.weightKg ?? 0} kg × ${set.reps ?? 0} reps`;
+    return { name: exercise.name, detail };
+  }
+  return null;
+}
+
 export function pauseSession(session: LiveSession, now: Date): LiveSessionChange {
   if (session.status !== 'in_progress') return unchanged(session);
   return {
@@ -355,4 +434,23 @@ export function addExercise(session: LiveSession, exercise: LiveExercise): LiveS
 /** The rest card's stepper. Floored at zero; a negative rest is not a thing. */
 export function setRestSeconds(session: LiveSession, seconds: number): LiveSession {
   return { ...session, restSeconds: Math.max(0, seconds) };
+}
+
+/**
+ * The design's `Set as time` control, which distance exercises alone carry: a rower can be
+ * logged as 500 m or as a two-minute piece, and the athlete decides which on the day.
+ *
+ * It changes the exercise's own `measure` rather than adding a separate display flag, so
+ * everything downstream stays consistent by construction -- which inputs the row renders,
+ * whether tapping opens the set timer, and which fields the `set_completed` payload carries all
+ * read that one value. A parallel "display mode" would have to be threaded through each of
+ * those separately, and the first place it was forgotten would log a duration into a distance
+ * field.
+ */
+export function setExerciseMeasure(
+  session: LiveSession,
+  exerciseIndex: number,
+  measure: ExerciseMeasure,
+): LiveSession {
+  return mapExercise(session, exerciseIndex, (exercise) => ({ ...exercise, measure }));
 }
