@@ -727,9 +727,34 @@ conflict end-to-end, per-owner name isolation, `groupName` round-tripping throug
 call) all green; full API suite, `tsc --noEmit`, `eslint`, and architecture conformance all
 clean.
 
-**Phase I — Home entry point.** The "Nutrition Today" card on the Home dashboard. Sequenced
-last of the screens because Home itself is otherwise still a placeholder; if Home has been
-built by then, this folds into that work instead.
+**Phase I — Home entry point — ✅ DONE, folded into the Home dashboard.** The "Nutrition
+Today" card. This phase was written with the caveat "if Home has been built by then, this
+folds into that work instead", and that is exactly what happened: Home was still
+`<PlaceholderScreen name="Home" />` when the rest of nutrition shipped, so the card had
+nowhere to live, and it landed as one section of the Home dashboard build rather than as a
+phase of its own.
+
+**Delivered**: `apps/mobile/src/features/home/nutrition-today-card.tsx`, wired into
+`apps/mobile/src/app/(tabs)/index.tsx`. No new endpoint -- there is deliberately no
+server-side daily-totals route, so the card reads `listNutritionLog(todayLocalDate())` and
+`getMacroGoals()` and sums client-side, the same two calls `nutrition.tsx` and
+`nutrition-share.tsx` already make. That third copy of the sum is what prompted lifting
+`sumTotals` out of `nutrition.tsx` into `apps/mobile/src/nutrition/totals.ts`, now shared by
+all three (it had already been duplicated verbatim into `nutrition-share.tsx`).
+
+**One deliberate divergence from the prototype**: it computes `kcal / macroGoals.kcal`
+unconditionally, because its goals are seeded demo state. A real account may have none, so
+with no goals the card reads `"<n> kcal"` with an unfilled ring rather than inventing a 2400
+kcal denominator -- the same refusal to fabricate a default that `nutrition.tsx`'s "Set your
+daily goals" card already makes.
+
+**Testing (TDD, per project rules)**: `home-nutrition-card.test.tsx` (8 tests) written
+first -- today's date is the one queried, totals sum across all four meal slots, the goal
+appears as a denominator only when goals exist, macros round for display, tapping opens
+`/nutrition`, a failed `getMacroGoals` still renders totals, and a fully offline load still
+renders the dashboard.
+
+**Verified**: see the Home dashboard entry in `roadmap.md` for the full-suite numbers.
 
 **Phase J — share — ✅ DONE.** `nutritionShare`. Pure client rendering, no backend.
 

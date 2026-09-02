@@ -28,6 +28,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
 import { todayLocalDate } from '@/nutrition/date';
+import { sumTotals } from '@/nutrition/totals';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -88,27 +89,6 @@ function buildLogRows(items: NutritionLogEntryResponse[]): LogRow[] {
     }
   }
   return [...groups.values(), ...singles];
-}
-
-interface MacroTotals {
-  kcal: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
-const EMPTY_TOTALS: MacroTotals = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-
-function sumTotals(entries: NutritionLogEntryResponse[]): MacroTotals {
-  return entries.reduce<MacroTotals>(
-    (totals, entry) => ({
-      kcal: totals.kcal + entry.kcal,
-      protein: totals.protein + entry.protein,
-      carbs: totals.carbs + entry.carbs,
-      fat: totals.fat + entry.fat,
-    }),
-    EMPTY_TOTALS,
-  );
 }
 
 const RING_RADIUS = 52;

@@ -113,13 +113,19 @@ describe('(tabs) shell', () => {
 
     // 5 tabs x the accent/inactive crossfade pair described above.
     //
-    // Filtered to SVGs with a fixed pixel size, because the tab glyphs are no longer the only
-    // SVG on screen: `ScreenBackground` paints the ember atmosphere with a full-bleed
-    // <Svg> whose width/height are `"100%"` rather than numbers. Counting every RNSVGSvgView
-    // would make this assertion a count of "SVGs anywhere in the app", which is not what it
-    // is about.
+    // Identified by the tab glyph path each SVG contains, rather than by having a fixed pixel
+    // size. Size alone stopped identifying them once Home became a real dashboard: it draws
+    // its own wordmark, bell, rings and metric glyphs, several of them also 22px, and the
+    // count then measured "SVGs anywhere in the app". (The earlier narrowing, from every
+    // RNSVGSvgView to fixed-size ones, was the same fix for `ScreenBackground`'s full-bleed
+    // `"100%"` ember gradient.) Matching on the glyph makes the assertion say what it means.
+    const tabGlyphPaths = new Set(Object.values(TAB_GLYPH_PATHS));
     const svgs = flatten(toJSON()).filter(
-      (node) => node.type === 'RNSVGSvgView' && typeof node.props.width === 'number',
+      (node) =>
+        node.type === 'RNSVGSvgView' &&
+        flatten(node).some(
+          (child) => child.type === 'RNSVGPath' && tabGlyphPaths.has(child.props.d as string),
+        ),
     );
     expect(svgs).toHaveLength(10);
     for (const svg of svgs) {

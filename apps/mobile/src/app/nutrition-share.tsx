@@ -13,6 +13,7 @@ import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
 import { todayLocalDate } from '@/nutrition/date';
+import { type MacroTotals, sumTotals } from '@/nutrition/totals';
 import { colors } from '@/theme/tokens';
 
 import type { FoodResponse, MacroGoalsResponse, NutritionLogEntryResponse } from '@forjd/contracts';
@@ -109,27 +110,6 @@ const BACKGROUND_PHOTO_MAX_WIDTH = 1080;
 const GALLERY_PERMISSION_MESSAGE = 'Photo access is needed to set a background.';
 const CAMERA_PERMISSION_MESSAGE = 'Camera access is needed to take a photo.';
 const PHOTO_SET_FAILED_MESSAGE = 'Could not set that photo. Please try again.';
-
-interface MacroTotals {
-  kcal: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
-const EMPTY_TOTALS: MacroTotals = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-
-function sumTotals(entries: NutritionLogEntryResponse[]): MacroTotals {
-  return entries.reduce<MacroTotals>(
-    (totals, entry) => ({
-      kcal: totals.kcal + entry.kcal,
-      protein: totals.protein + entry.protein,
-      carbs: totals.carbs + entry.carbs,
-      fat: totals.fat + entry.fat,
-    }),
-    EMPTY_TOTALS,
-  );
-}
 
 const MACRO_ROWS: Array<{ label: string; key: 'protein' | 'carbs' | 'fat'; color: string }> = [
   { label: 'Protein', key: 'protein', color: colors.accent },
