@@ -29,6 +29,19 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
 }));
 
+// ADR-024: the client-side pre-resize step. Mocked at the `expo-image-manipulator` boundary so
+// the real `resizeImageForUpload` utility (`@/media/resize-image-for-upload`) is exercised for
+// real, same reasoning as every other native-module mock in this file.
+//
+// Built entirely inside the factory rather than referencing outer `mock`-prefixed consts --
+// Jest's hoisting plugin permits that reference syntactically but does not guarantee the const
+// is initialized before the factory runs (see `resize-image-for-upload.test.ts` for the
+// concrete failure this caused). References are pulled back out via the mocked import instead.
+jest.mock('expo-image-manipulator', () => ({
+  ImageManipulator: { manipulate: jest.fn() },
+  SaveFormat: { WEBP: 'webp', JPEG: 'jpeg', PNG: 'png' },
+}));
+
 // A native module with nothing meaningful to render in Jest. The component itself is
 // exercised for real; this stand-in just needs to accept the same props and let the test
 // simulate a date pick by invoking onChange directly.
@@ -41,8 +54,11 @@ jest.mock('@react-native-community/datetimepicker', () => {
 });
 
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator } from 'expo-image-manipulator';
 import { getMe, updateProfile, uploadAvatar } from '@/auth/apiClient';
 import EditProfileScreen, { parseIsoDate } from '../edit-profile';
+
+const mockManipulate = ImageManipulator.manipulate as jest.Mock;
 
 const PROFILE = {
   userId: '11111111-1111-4111-8111-111111111111',
@@ -77,8 +93,21 @@ const ME = {
 };
 
 describe('EditProfileScreen', () => {
+  const mockSaveAsync = jest.fn();
+  const mockRenderAsync = jest.fn();
+  const mockResize = jest.fn();
+  const mockManipulationContext = { resize: mockResize, renderAsync: mockRenderAsync };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockManipulate.mockReturnValue(mockManipulationContext);
+    mockResize.mockReturnValue(mockManipulationContext);
+    mockRenderAsync.mockResolvedValue({ saveAsync: mockSaveAsync });
+    mockSaveAsync.mockResolvedValue({
+      uri: 'file:///tmp/resized.webp',
+      width: 512,
+      height: 512,
+    });
   });
 
   it('loads the profile and pre-fills every field', async () => {
@@ -331,7 +360,7 @@ describe('EditProfileScreen', () => {
     });
     (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
       canceled: false,
-      assets: [{ uri: 'file:///tmp/photo.jpg' }],
+      assets: [{ uri: 'file:///tmp/photo.jpg', width: 4000, height: 3000 }],
     });
     (uploadAvatar as jest.Mock).mockResolvedValue({
       avatarUrl: 'https://cdn.example.com/avatars/u1.jpg',
@@ -345,7 +374,10 @@ describe('EditProfileScreen', () => {
 
     fireEvent.press(await findByLabelText('Add photo'));
 
-    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith('file:///tmp/photo.jpg'));
+    // ADR-024: the raw picker URI is resized/re-encoded client-side first -- `uploadAvatar`
+    // receives the resized result's URI, not the original picked one.
+    await waitFor(() => expect(mockManipulate).toHaveBeenCalledWith('file:///tmp/photo.jpg'));
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith('file:///tmp/resized.webp'));
   });
 
   it('persists the uploaded avatar URL through Save, not immediately', async () => {
@@ -355,7 +387,7 @@ describe('EditProfileScreen', () => {
     });
     (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
       canceled: false,
-      assets: [{ uri: 'file:///tmp/photo.jpg' }],
+      assets: [{ uri: 'file:///tmp/photo.jpg', width: 4000, height: 3000 }],
     });
     (uploadAvatar as jest.Mock).mockResolvedValue({
       avatarUrl: 'https://cdn.example.com/avatars/u1.jpg',
