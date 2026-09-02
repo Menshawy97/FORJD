@@ -204,22 +204,33 @@ follow-up PR:**
    `actionableServerMessage` (`apps/mobile/src/auth/failure.ts`) on a save failure, unlike
    `signup.tsx` — any 400 response (e.g. `WorkoutsService`'s "Unknown exercise id(s)" check)
    collapsed into "Could not save this workout. Please try again." regardless of the real
-   reason. Fixed to match the established pattern. **The user's actual reported save failure
-   was not resolved by this** — direct e2e reproduction of the exact reported payload (same
-   exercise ids, duplicate exercise entries included) against `WorkoutsService.create()`
-   succeeded with a clean `201`, ruling out the request shape, the exercise-visibility check,
-   and duplicate-exercise handling as the cause. The leading remaining hypothesis is a 401
-   surviving a failed token refresh: `apiClient.ts`'s interceptor calls `clearSession()` and
-   re-throws the *original* 401 on a failed refresh (ADR-011), and 401 bodies are deliberately
-   excluded from `actionableServerMessage` (`failure.ts`'s own docblock explains why) — so a
-   dead session would show exactly this generic message, and Supabase's real auth was
-   independently confirmed hitting its free-tier email-send rate limit during this same
-   session, a plausible refresh-failure trigger. This is unverified without on-device access,
-   and every authenticated write screen in the app has the same "unauthorized falls through to
-   the generic message" gap, not just this one — spun off as its own follow-up rather than
-   special-cased in `builder.tsx` alone (see the spawned task "Add expired-session UX across
-   authenticated screens"). If logging out and back in on the device does not resolve the save
-   failure, the hypothesis is wrong and this needs a fresh round of on-device diagnosis.
+   reason. Fixed to match the established pattern, though this turned out not to be the
+   user's actual bug (see below).
+
+**The user's real save failure: the local API dev server was stale, not restarted since
+before the Workouts feature's routes existed.** A direct e2e reproduction of the exact
+reported payload against `WorkoutsService.create()` in-process succeeded with a clean `201`,
+which ruled out the request shape, exercise-visibility checks, and duplicate exercises — but
+in-process tests boot a fresh Nest application from the current compiled classes every time,
+so they could never have caught this. The actual long-running `node dist/main` process the
+phone's requests were hitting (PID confirmed via `Get-Process` to have started at 8:56 AM that
+day) had been started *before* the Workouts feature was ever wired into `AppModule`, so every
+`/workouts/templates` route hard-404'd — confirmed directly with a real Supabase-issued token
+(minted via the Admin API to bypass the also-active email rate limit) curled straight at the
+running server, independent of anything the phone or the mobile client code was doing. Logging
+out, back in, and even creating a brand-new account never could have fixed it, because the
+route simply did not exist on the process being asked. Fixed by restarting the API under
+`start:dev` (`nest start --watch`) instead of the one-off `node dist/main` it had been running
+under, so future code changes are picked up automatically instead of silently going stale.
+While diagnosing this, an unrelated e2e-test hygiene issue surfaced — the workouts e2e suite
+leaks real fixture rows (an exercise and two users, name/email-prefixed
+`1788351445707-vaetus`) into the shared local dev database with no teardown, and one of those
+rows had already synced into the reporting user's on-device exercise catalogue, briefly
+confusing the diagnosis with a garbled exercise name — spun off as its own follow-up rather
+than fixed under this session's time pressure (see the spawned task "Fix workouts e2e suite
+leaking fixture data into dev DB"). The `apiClient.ts` interceptor's session-refresh-failure
+messaging gap found and discarded as a hypothesis along the way is still real, independent of
+this bug, and stays spun off (see "Add expired-session UX across authenticated screens").
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
