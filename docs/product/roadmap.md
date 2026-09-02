@@ -237,6 +237,14 @@ Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
+Phase G's device walk is now fully closed out: badge/spacing/error-message bugs fixed and
+merged, and the save failure itself root-caused to a stale local API dev process (see above)
+— confirmed fixed by saving a real workout ("Mine", `workout_templates.id
+c50cee18-4218-4391-a43f-f58ae87099ef`) end-to-end from the physical device. **There is
+currently no UI to see it** — Train's "My workouts" section is still the Phase 2 placeholder
+text ("programs, previous workouts, and my workouts — coming soon"); wiring it to real data is
+explicitly Phase J's job, deliberately not pulled forward.
+
 1. **Write the deferred RTL tests** for `builder.tsx` and `workout/[id].tsx` (save flow,
    validation message, picked-exercise handoff, Customise prefill) before or alongside
    starting Phase H — flagged above as a real gap, not optional polish.
@@ -249,6 +257,18 @@ Don't re-derive this from scratch; verify it's still accurate and continue.
    physical-device walk since landing.
 4. **Resolve `pr59-fixup2`.** A leftover, unregistered, clean git clone at
    `.claude/worktrees/pr59-fixup2` — never decided whether to keep or delete.
+5. **Two smaller follow-ups spun off during Phase G's device walk, not yet started:**
+   fixing the workouts e2e suite's missing test-fixture teardown (it leaks real rows into the
+   shared dev DB — one already synced into a real device's exercise catalogue and briefly
+   confused this session's debugging), and adding proper expired-session UX (a 401 surviving
+   a failed token refresh currently shows the same generic error as any other failure, on
+   every authenticated write screen in the app, not just the builder).
+6. **Keep the local API dev server running under `npm run start:dev` (watch mode), not a
+   one-off `node dist/main`.** A stale `node dist/main` process — started before the Workouts
+   feature existed and never restarted — silently 404'd every `/workouts/templates` request
+   for the rest of the day, which looked like an app bug for a long time before being
+   root-caused. Watch mode picks up future backend changes automatically and avoids repeating
+   this.
 
 ### Old status (superseded, kept for history below this point)
 
