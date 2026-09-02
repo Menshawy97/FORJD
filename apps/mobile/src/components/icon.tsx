@@ -147,6 +147,32 @@ const GLYPHS = {
   // Preferences" row; profile's "Notifications" row; the password field's reveal control).
   // Same geometry, lifted here so call sites stay uniform.
   bars: { viewBox: '0 0 24 24', shapes: [path('M5 19V11M12 19V5M19 19v-6')] },
+  // Home's four-bar mark beside the FORJD wordmark. Not the same glyph as `bars` above,
+  // which is three bars and is what Home's own Steps metric uses -- the wordmark mark has a
+  // fourth bar and a heavier 2.4 stroke.
+  wordmark: {
+    viewBox: '0 0 24 24',
+    strokeWidth: 2.4,
+    shapes: [path('M4 20V8M9 20V4M14 20v-9M19 20V10')],
+  },
+  // Home's Sleep metric.
+  moon: {
+    viewBox: '0 0 24 24',
+    strokeWidth: 1.8,
+    shapes: [path('M4 15.5A8.5 8.5 0 1 0 13 4a6.7 6.7 0 0 0 7 9.4A8.5 8.5 0 0 1 4 15.5z')],
+  },
+  // Home's RHR metric.
+  pulse: {
+    viewBox: '0 0 24 24',
+    strokeWidth: 1.8,
+    shapes: [path('M3 12h4l2 6 4-12 2 6h6')],
+  },
+  // The arrow inside Home's "Start Workout" button.
+  arrowRight: {
+    viewBox: '0 0 20 20',
+    strokeWidth: 1.8,
+    shapes: [path('M4 10h11m-4.4-4.6L15.2 10l-4.6 4.6')],
+  },
   bell: {
     viewBox: '0 0 24 24',
     shapes: [path('M7 10a5 5 0 0 1 10 0c0 4 1.4 5.4 1.4 5.4H5.6S7 14 7 10zM10.4 18.4a1.8 1.8 0 0 0 3.2 0')],

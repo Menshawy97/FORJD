@@ -17,8 +17,14 @@ import { fireEvent } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 
 jest.mock('expo-secure-store');
+// Home is a real dashboard now, not a placeholder, and it loads on focus -- so landing on
+// the tabs after a successful login exercises its three requests. They are stubbed here so
+// this test stays about login, not about what Home shows.
 jest.mock('@/auth/apiClient', () => ({
   login: jest.fn(),
+  getMe: jest.fn().mockResolvedValue({ id: 'u1', email: 'a@b.com', profile: null, privacy: {} }),
+  listNutritionLog: jest.fn().mockResolvedValue({ items: [] }),
+  getMacroGoals: jest.fn().mockResolvedValue(null),
 }));
 
 import * as SecureStore from 'expo-secure-store';
@@ -48,7 +54,9 @@ describe('login screen - success', () => {
 
     fireEvent.press(await findByText('Log In'));
 
-    await findByText('home — coming soon');
+    // Home's wordmark: the marker that the tabs shell has taken over. It replaced
+    // 'home — coming soon' when Home stopped being a placeholder screen.
+    await findByText('FORJD');
 
     expect(login).toHaveBeenCalledTimes(1);
     expect(login).toHaveBeenCalledWith({ email: 'user@example.com', password: 'Str0ng!Pass' });

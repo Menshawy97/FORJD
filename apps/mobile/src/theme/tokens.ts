@@ -109,6 +109,34 @@ export const colors = {
   weekScoreLabel: '#C9906C',
   metricSleep: '#8FB4C9',
   badgeGold: '#C9A03C',
+
+  // Home dashboard (the prototype's `isHome` branch, lines 130-283). The readiness card is
+  // the only surface in the app painted on a green ground rather than the neutral `surface`,
+  // so its gradient ends, outline, chip fill and two text colours are all values that appear
+  // nowhere else.
+  readinessCardFrom: '#16221A',
+  readinessCardTo: '#141A16',
+  borderReadiness: 'rgba(121,185,138,.22)',
+  readinessChipBg: 'rgba(121,185,138,.12)',
+  readinessChipText: '#A8D1B0',
+  readinessBody: '#88A88F',
+  // The unfilled remainder of a progress ring -- the readiness ring and the Nutrition Today
+  // ring both draw their track in it.
+  ringTrack: 'rgba(255,255,255,.08)',
+  // The rounded accent tile behind the Insight bolt and the Recent PR star.
+  accentTileBg: 'rgba(233,113,47,.13)',
+  // The darkened tile holding the arrow inside the accent "Start Workout" button -- black at
+  // low alpha over the accent, not a colour of its own.
+  ctaArrowTileBg: 'rgba(0,0,0,.22)',
+  // "This week": the rail behind the progress fill, and a day bar's partial state. A rest day
+  // reuses `tagBg`, which is already this exact value.
+  weekRailTrack: '#1E1F21',
+  weekBarPartial: 'rgba(233,113,47,.2)',
+  // The strip that opens under the four metric cells when one is tapped.
+  tooltipStripBg: 'rgba(255,255,255,.02)',
+  // Text on the accent CTA. The one place the app paints pure white -- `text` (#F6F5F3) is
+  // the off-white used everywhere else, and the prototype is explicit about `#fff` here.
+  onAccent: '#FFFFFF',
 } as const;
 
 export type ColorToken = keyof typeof colors;

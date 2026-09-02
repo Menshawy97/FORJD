@@ -114,6 +114,35 @@ export default {
         weekScoreLabel: '#C9906C',
         metricSleep: '#8FB4C9',
         badgeGold: '#C9A03C',
+
+        // Home dashboard (the prototype's `isHome` branch, lines 130-283). The readiness
+        // card is the only surface in the app painted on a green ground rather than the
+        // neutral `surface`, so its gradient ends, outline, chip fill and two text colours
+        // are all values that appear nowhere else.
+        readinessCardFrom: '#16221A',
+        readinessCardTo: '#141A16',
+        borderReadiness: 'rgba(121,185,138,.22)',
+        readinessChipBg: 'rgba(121,185,138,.12)',
+        readinessChipText: '#A8D1B0',
+        readinessBody: '#88A88F',
+        // The unfilled remainder of a progress ring -- the readiness ring and the Nutrition
+        // Today ring both draw their track in it.
+        ringTrack: 'rgba(255,255,255,.08)',
+        // The rounded accent tile behind the Insight bolt and the Recent PR star.
+        accentTileBg: 'rgba(233,113,47,.13)',
+        // The darkened tile holding the arrow inside the accent "Start Workout" button --
+        // black at low alpha over the accent, not a colour of its own.
+        ctaArrowTileBg: 'rgba(0,0,0,.22)',
+        // "This week": the rail behind the progress fill, and a day bar's partial state. A
+        // rest day reuses `tagBg`, which is already this exact value.
+        weekRailTrack: '#1E1F21',
+        weekBarPartial: 'rgba(233,113,47,.2)',
+        // The strip that opens under the four metric cells when one is tapped.
+        tooltipStripBg: 'rgba(255,255,255,.02)',
+        // Text on the accent CTA. The one place the app paints pure white -- `text` (#F6F5F3)
+        // is the off-white used everywhere else, and the prototype is explicit about `#fff`
+        // here.
+        onAccent: '#FFFFFF',
       },
       fontFamily: {
         // Archivo is a variable font; weight is selected via the `wght` axis (see
@@ -161,6 +190,31 @@ export default {
         toast: ['13px', { lineHeight: '1' }],
         logout: ['13px', { lineHeight: '1' }],
         'plan-badge': ['10px', { lineHeight: '1', letterSpacing: '.03em' }],
+
+        // Home dashboard. The wordmark is 21px here, one pixel under the 22px `wordmark`
+        // the auth screens use -- a real difference in the prototype, not a rounding of it.
+        'wordmark-home': ['21px', { lineHeight: '1', letterSpacing: '.02em' }],
+        // The greeting under the wordmark and the date line above the first card.
+        'home-meta': ['12.5px', { lineHeight: '1' }],
+        // Home's small caption size, shared by the stat labels, the metric units, the macro
+        // chips on the nutrition card, the readiness chips and the weekday letters.
+        'home-caption': ['10.5px', { lineHeight: '1' }],
+        'readiness-score': ['22px', { lineHeight: '1', letterSpacing: '-.02em' }],
+        'readiness-ring-label': ['8px', { lineHeight: '1', letterSpacing: '.1em' }],
+        'readiness-value': ['14px', { lineHeight: '1' }],
+        'readiness-body': ['11px', { lineHeight: '1.3' }],
+        'home-stat-numeral': ['20px', { lineHeight: '1' }],
+        'home-stat-unit': ['11px', { lineHeight: '1' }],
+        'home-metric-value': ['15px', { lineHeight: '1', letterSpacing: '-.01em' }],
+        // The nutrition card's "0 / 2400 kcal" -- the same 15px as a metric value but with
+        // no negative tracking, which is what the prototype specifies.
+        'nutrition-card-value': ['15px', { lineHeight: '1' }],
+        'cta-title': ['19px', { lineHeight: '1', letterSpacing: '-.01em' }],
+        tooltip: ['11.5px', { lineHeight: '1.4' }],
+        'week-count': ['12px', { lineHeight: '1' }],
+        'pr-title': ['14.5px', { lineHeight: '1' }],
+        'pr-meta': ['11.5px', { lineHeight: '1' }],
+        'pr-value': ['18px', { lineHeight: '1' }],
       },
       spacing: {
         'screen-x': '22px',

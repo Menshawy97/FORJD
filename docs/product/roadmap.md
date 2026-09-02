@@ -9,44 +9,41 @@ the quick-reference for "what phase are we in and what's next."
 
 ## Current status (last updated 2026-09-02)
 
-**Phases 0–2 are complete. Phase 2.5 (nutrition) is functionally complete** — Phases A
-through J are all done, merged to `main`, and CI-confirmed green; see
-[`nutrition-plan.md`](nutrition-plan.md) for the full build history. The one remaining slice,
-**Phase I (the "Nutrition Today" card on Home)**, is genuinely blocked, not just unscheduled:
-`apps/mobile/src/app/(tabs)/index.tsx` is still `<PlaceholderScreen name="Home" />` — there is
-no Home dashboard for the card to live on yet, and nothing in this repo plans one. **Phase 3
-(the workout engine — one of CLAUDE.md's four architecturally-critical pillars) has no written
-plan either** (no `phase-3-plan.md` exists). Building Home and/or starting Phase 3 planning is
-the next real work; see "Immediate next steps" below rather than assuming either is decided.
+**Phases 0–2 are complete. Phase 2.5 (nutrition) is complete** — Phases A through J are done,
+and **Phase I (the "Nutrition Today" card) shipped as part of the Home dashboard**, exactly as
+`nutrition-plan.md` said it should if Home were built first. See
+[`nutrition-plan.md`](nutrition-plan.md) for the full build history. Also shipped in that
+stretch, outside the original phase list: **ADR-024** (image compression — `sharp`
+server-side, `expo-image-manipulator` client-side, WebP/512px/quality-80) and four Phase H bug
+fixes found on a real device.
 
-Also shipped this session, outside the original nutrition phase list: **ADR-024** (image
-compression pipeline — `sharp` server-side, `expo-image-manipulator` client-side, retrofitted
-onto the existing avatar upload, WebP/512px/quality-80) and four Phase H bug fixes found via
-real device testing (duplicate saved-meal names, a stale dashboard after delete, unreliable
-meal logging, and log rows that now collapse into one named group matching the design).
+**The Home dashboard is built.** `apps/mobile/src/app/(tabs)/index.tsx` is no longer
+`<PlaceholderScreen name="Home" />`. All eight sections of the design's Home screen render at
+full visual fidelity, but **only the Nutrition Today card has a backend today** — readiness
+and the four health metrics are gated on Phase 6 (Health Connect / HealthKit), and the workout
+counters, "This week" and "Recent PR" are gated on Phase 3 (the workout engine). The decision
+taken, and the thing to preserve when those phases land, is **honest empty values**: zero
+counters, em dashes for unknowns, and copy explaining what will fill them — never the design's
+demo numbers (147 workouts, an 87 readiness score, a 100 kg bench PR), which would be
+fabricated claims about a user's own health and training. Each section is its own component
+under `apps/mobile/src/features/home/`, so lighting one up is a prop change, not a rewrite.
+"Start Workout" implements the prototype's `goSuggested` fallback branch (no active program ⇒
+the Train tab); the active-program branch arrives with Phase 3's programs slice.
+
+**Phase 3 (the workout engine — one of CLAUDE.md's four architecturally-critical pillars) is
+the next real work.** Its plan lives at [`phase-3-plan.md`](phase-3-plan.md).
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-No single next step is locked in — pick one, or ask the user which they'd prefer:
-
-1. **Plan Phase 3 (the workout engine).** The biggest, most architecturally load-bearing piece
-   left (CLAUDE.md's four pillars: canonical health model ✅ exists, provider abstraction ✅
-   exists, **workout engine — not started**, longitudinal analytics — not started). Needs a
-   proper planning pass first, per this project's standing "plan before executing" practice —
-   an outline is not sufficient detail to build from directly, the same lesson nutrition's own
-   planning already applied.
-2. **Build the Home dashboard.** Unblocks nutrition's own Phase I, and is itself a real,
-   currently-undocumented scope of work (the design has a Home screen; nothing plans building
-   it yet).
-3. **Device-test everything just shipped.** Saved meals, the share card (including the new
-   background-photo picker), and avatar upload's new compression have not yet had a full
-   physical-device walk since landing — worth doing before starting new scope.
-4. **Resolve `pr59-fixup2`.** A leftover, unregistered, clean git clone at
-   `.claude/worktrees/pr59-fixup2` from earlier in this session — never decided whether to keep
-   or delete.
+1. **Execute Phase 3** from [`phase-3-plan.md`](phase-3-plan.md), starting at its first slice.
+2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
+   background-photo picker), avatar upload's compression, and now Home have not had a full
+   physical-device walk since landing.
+3. **Resolve `pr59-fixup2`.** A leftover, unregistered, clean git clone at
+   `.claude/worktrees/pr59-fixup2` — never decided whether to keep or delete.
 
 ### Old status (superseded, kept for history below this point)
 
@@ -1241,8 +1238,8 @@ failure).
 | 0 — Setup & decisions | 1-3 | Toolchain, accounts, repo skeleton, 3 spikes, business entity | Complete except Spike B |
 | 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
 | 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **Complete** — [re-planned](phase-2-plan.md); all phases (0, A-K) done, screen work complete |
-| 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | **Screens complete — [planned](nutrition-plan.md); Phases A-G, J done (vendor/domain/schema/contracts/dashboard/food search+detail/share card) — Phase H (saved meals) and Phase I (Home entry point) remain** |
-| 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started |
+| 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | **Complete** — [planned](nutrition-plan.md); Phases A-J done, and Phase I (the Home entry-point card) shipped as part of the Home dashboard |
+| 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started — [planned](phase-3-plan.md) |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Programs | 18-21 | Program/week/day, enrollment, progression | Not started |
 | 5 — InBody | 22-24 | Upload, Claude extraction, confirmation, BullMQ | Not started |
