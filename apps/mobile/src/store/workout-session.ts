@@ -161,6 +161,15 @@ export function replaySessionState(startedAt: Date, events: SessionEventRecord[]
         completedSetKeys.add(`${exerciseId}:${setIndex}`);
         break;
       }
+      // The log is append-only, so unticking a set is recorded as its own event rather than by
+      // removing the `set_completed` one. Replay order therefore matters: a set ticked, then
+      // unticked, then ticked again must end up completed, which falls out of applying each
+      // event in `id` order rather than counting them.
+      case 'set_uncompleted': {
+        const { exerciseId, setIndex } = event.payload as { exerciseId: string; setIndex: number };
+        completedSetKeys.delete(`${exerciseId}:${setIndex}`);
+        break;
+      }
       case 'workout_paused':
         status = 'paused';
         pausedAt = occurredAt;
