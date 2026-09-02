@@ -647,7 +647,85 @@ re-run unmodified in behaviour); full mobile suite, `tsc --noEmit`, `eslint`, an
 `npx expo export --platform android` all clean (see the session's final verification run for
 exact counts).
 
-**Phase I — Home entry point.** The "Nutrition Today" card on the Home dashboard. Sequenced
+**Phase H addendum — four follow-up fixes, found live on the user's physical iPhone against the
+merged Phase H code on `main` — ✅ DONE.**
+
+1. **Duplicate saved-meal names were allowed with no error.** Three "Breakfast — usual" cards,
+   each one item, from repeatedly tapping the dashboard's "Save as meal" sheet (which pre-fills
+   that exact name every time) with no uniqueness check at all behind it. **Decision: case-
+   insensitive, per-owner uniqueness**, matching the `foods_owner_name_unique` precedent for
+   custom foods rather than inventing a different rule — a meal name differing only by case is
+   the same accidental-duplicate the custom-food index already guards against, and consistency
+   with an existing pattern beat a fresh judgment call here. New migration `0011` adds
+   `saved_meals_owner_name_unique` (`(user_id, lower(name))`, no `deleted_at` exclusion needed --
+   `saved_meals` has no soft delete). `NutritionRepository.createSavedMeal` catches the
+   `23505` and throws `ConflictException`, mirroring `createCustomFood`'s own
+   `isUniqueViolation` handling exactly. Client-side: `nutrition.tsx`'s "Save as meal" sheet and
+   `edit-meal.tsx`'s "Save Meal" (which is delete-then-recreate, so a name collision there means
+   the old meal is already gone) both show a real message via the existing `isConflict` helper
+   (`edit-profile.tsx`'s username-taken precedent) instead of the prototype's silent success.
+2. **The dashboard's Saved Meals section went stale after a delete on `saved-meals.tsx`.**
+   `nutrition.tsx` loaded once on mount and never refetched on return. Fixed by switching its
+   load effect from a plain mount `useEffect` to `useFocusEffect` (`expo-router`, re-exported
+   from react-navigation) — fires on initial mount too, so this is a replacement, not an
+   addition. Refetches the *whole* dashboard load (log, goals, saved meals, foods) on every
+   focus, not just the saved-meals list, since all of it can go stale the same way after an
+   action taken on another screen.
+3. **Logging a saved meal was unreliable** ("it lags and sometimes doesn't work," the user's own
+   words). Two real causes, not one:
+   - **No double-submit guard.** The "Log" button had no disabled state, so a tap during any
+     network lag was easy to repeat, firing a second concurrent `logSavedMeal` call. Fixed with
+     a `loggingMeal` boolean disabling the button (and relabelling it "Logging…") for the
+     duration of the request, on both `nutrition.tsx`'s and `saved-meals.tsx`'s own log sheets.
+   - **A failed post-log refresh could silently overwrite the success toast.** `confirmLogMeal`
+     called `loadAll()` right after a successful log to refresh the dashboard; if that refetch
+     failed, `loadAll`'s own catch showed its generic error toast, which replaced the "Logged
+     ..." success message already on screen (the `useToast` hook restarts the timer on every
+     `show()` call) -- making a real success look exactly like a failure. This is the same class
+     of mistake as the missing-`await` bug this phase's own test-authoring already hit once
+     (recorded above): a distinguishable failure needs its own message, not a reused generic
+     one. Fixed by giving `loadAll` a `{ silent: true }` mode that rethrows instead of toasting,
+     so `confirmLogMeal` can catch that specific failure and show a compound message ("Logged
+     ..., but the dashboard couldn't refresh — pull down or reopen to see it.") instead.
+4. **Grouped log entries rendered individually instead of collapsed.** Phase F's own docblock
+   had explicitly deferred this, reasoning that nothing in the wire model recorded a saved
+   meal's name once it was logged. The real screenshot this bug report named
+   (`logsavedmeal.png`) turned out not to be present in this repo's `screenshots/` directory at
+   all when checked — the prototype's own `mealSection()`/`toggleGroup` source (extracted
+   verbatim) was the fallback source of truth instead, the same "prototype outranks every
+   summary" rule applied when a named screenshot doesn't exist to check against. **Fix: snapshot
+   the saved meal's name onto the log entry at write time.** New `group_name` column on
+   `nutrition_log_entries` (migration `0011`, same one as the uniqueness index above), populated
+   by `NutritionRepository.logSavedMeal` from a `groupName` parameter the service passes in --
+   the meal's current name, already in hand from the ownership check `NutritionService
+   .logSavedMeal` does first, so no second query. Never a live lookup: the same
+   "preserve source, snapshot at write time" principle the macro snapshot on every log entry
+   already follows, confirmed with a repository test that renames-then-recreates the saved meal
+   after logging and asserts the already-logged `groupName` is untouched. `groupName` added to
+   `nutritionLogEntryResponseSchema` (nullable, matching `groupId`). `nutrition.tsx` gained a
+   `buildLogRows` helper that groups entries sharing a `groupId` into one collapsed row
+   ("<name> · N items · tap to view/collapse · kcal"); tapping expands it to the individual
+   items (indented, no per-item delete, matching the prototype); the row's own × deletes the
+   whole group via the already-existing `deleteLogGroup` endpoint (wired client-side for the
+   first time this phase — it shipped in Phase E but nothing called it from the UI until now).
+
+**A test-infrastructure note repeated from this phase's own earlier lesson:** the new
+`nutrition-fidelity.test.tsx` additions were moved into their own file
+(`nutrition-phase-h-fixes.test.tsx`) after hitting the identical `--runInBand` state-bleed
+`food-detail-meal-mode.test.tsx` already found once this phase — later-resolving promises from
+the file's eight pre-existing tests corrupted the shared renderer mid-test for the new ones,
+which passed cleanly in isolation. A fresh file sidesteps it rather than chasing the root cause
+a second time.
+
+**Verified**: 26/26 new/touched mobile tests green across four suites
+(`nutrition-phase-h-fixes.test.tsx` new; `nutrition-fidelity.test.tsx`, `saved-meals-fidelity
+.test.tsx`, `edit-meal-fidelity.test.tsx` touched); the full mobile suite, `tsc --noEmit`,
+`eslint`, and a real `npx expo export --platform android` bundle compile all clean. API side:
+migration `0011` applied cleanly to local Postgres; `NutritionRepository`/`NutritionService`
+unit suites and the `nutrition.e2e-spec.ts` HTTP suite (new cases: the 409 duplicate-name
+conflict end-to-end, per-owner name isolation, `groupName` round-tripping through a real log
+call) all green; full API suite, `tsc --noEmit`, `eslint`, and architecture conformance all
+clean.
 
 **Phase I — Home entry point.** The "Nutrition Today" card on the Home dashboard. Sequenced
 last of the screens because Home itself is otherwise still a placeholder; if Home has been

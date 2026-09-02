@@ -341,6 +341,7 @@ export const responseFixtures = {
       carbs: 26.45,
       fat: 0.33,
       groupId: null,
+      groupName: null,
     },
   },
 
@@ -360,9 +361,11 @@ export const responseFixtures = {
           carbs: 26.45,
           fat: 0.33,
           groupId: null,
+          groupName: null,
         },
         {
-          // Two rows sharing a groupId -- what the dashboard collapses into one "N items" row.
+          // Two rows sharing a groupId -- what the dashboard collapses into one "N items" row,
+          // both carrying the saved meal's name via groupName (the Phase H follow-up fix).
           id: '44444444-4444-4444-8444-444444444444',
           foodId: '22222222-2222-4222-8222-222222222222',
           loggedDate: '2026-08-31',
@@ -374,6 +377,7 @@ export const responseFixtures = {
           carbs: 33.6,
           fat: 6,
           groupId: '55555555-5555-4555-8555-555555555555',
+          groupName: 'Breakfast — usual',
         },
       ],
     },

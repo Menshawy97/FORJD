@@ -195,12 +195,13 @@ describe('Nutrition (e2e)', () => {
     expect(strangerSearch.body.items).toEqual([]);
   });
 
-  it('saves a meal, logs it as one group, and deletes the whole group at once', async () => {
+  it('saves a meal, logs it as one group carrying the meal name as groupName, and deletes the whole group at once', async () => {
+    const mealName = `${marker} Breakfast — usual`;
     const meal = await request(app.getHttpServer())
       .post('/api/v1/nutrition/meals')
       .set(auth('owner-token'))
       .send({
-        name: `${marker} Breakfast — usual`,
+        name: mealName,
         items: [{ foodId: catalogueFoodId, servingLabel: '1 medium (118g)', grams: 118 }],
       })
       .expect(201);
@@ -212,8 +213,12 @@ describe('Nutrition (e2e)', () => {
       .send({ savedMealId: meal.body.id, slot: 'lunch', loggedDate: '2026-08-31' })
       .expect(201);
     expect(logged.body.items).toHaveLength(1);
+    expect(nutritionLogEntryResponseSchema.parse(logged.body.items[0])).toEqual(logged.body.items[0]);
     const groupId = logged.body.items[0].groupId as string;
     expect(groupId).not.toBeNull();
+    // The dashboard's collapsed-group row needs this to render "<name> · N items" -- a Phase H
+    // follow-up fix (`nutrition-plan.md`) for a name source that groupId alone never provided.
+    expect(logged.body.items[0].groupName).toBe(mealName);
 
     await request(app.getHttpServer())
       .delete(`/api/v1/nutrition/log/group/${groupId}`)
@@ -231,5 +236,36 @@ describe('Nutrition (e2e)', () => {
       .set(auth('stranger-token'))
       .send({ savedMealId: meal.body.id, slot: 'dinner', loggedDate: '2026-08-31' })
       .expect(404);
+  });
+
+  it('rejects a duplicate saved-meal name (case-insensitive) for the same owner with 409, but allows it for a different owner', async () => {
+    const name = `${marker} Duplicate Meal`;
+    const first = await request(app.getHttpServer())
+      .post('/api/v1/nutrition/meals')
+      .set(auth('owner-token'))
+      .send({ name, items: [] })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/nutrition/meals')
+      .set(auth('owner-token'))
+      .send({ name: name.toUpperCase(), items: [] })
+      .expect(409);
+
+    // A different user can use the exact same name -- uniqueness is per-owner, not global.
+    const strangers = await request(app.getHttpServer())
+      .post('/api/v1/nutrition/meals')
+      .set(auth('stranger-token'))
+      .send({ name, items: [] })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/api/v1/nutrition/meals/${first.body.id}`)
+      .set(auth('owner-token'))
+      .expect(204);
+    await request(app.getHttpServer())
+      .delete(`/api/v1/nutrition/meals/${strangers.body.id}`)
+      .set(auth('stranger-token'))
+      .expect(204);
   });
 });

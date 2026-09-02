@@ -10,9 +10,20 @@ import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({
-  router: { push: (...args: unknown[]) => mockPush(...args) },
-}));
+// nutrition.tsx now loads via `useFocusEffect` (Phase H's follow-up fix for stale data on
+// return -- see nutrition-focus-refetch.test.tsx), not a plain mount effect -- this mock runs
+// the callback once on mount so every test below still sees its initial load.
+jest.mock('expo-router', () => {
+  const react = require('react');
+  return {
+    router: { push: (...args: unknown[]) => mockPush(...args) },
+    useFocusEffect: (callback: () => void) => {
+      react.useEffect(() => {
+        callback();
+      }, []);
+    },
+  };
+});
 
 jest.mock('@/auth/apiClient', () => ({
   listNutritionLog: jest.fn(),
@@ -20,6 +31,7 @@ jest.mock('@/auth/apiClient', () => ({
   getMacroGoals: jest.fn(),
   getFood: jest.fn(),
   deleteLogEntry: jest.fn(),
+  deleteLogGroup: jest.fn(),
   createSavedMeal: jest.fn(),
   logSavedMeal: jest.fn(),
   setMacroGoals: jest.fn(),
@@ -70,6 +82,7 @@ const bananaEntry = {
   carbs: 26.9,
   fat: 0.35,
   groupId: null,
+  groupName: null,
 };
 
 function mockEmptyDay() {
