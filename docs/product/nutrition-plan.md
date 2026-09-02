@@ -633,7 +633,83 @@ of multi-agent delegation worth remembering: a locked "declined, treat as suspic
 recorded in project docs will correctly make every subsequent agent that reads those docs more
 suspicious of the same request, even once it is genuinely authorized — so a reversal needs to
 overwrite the record it is reversing, not just add a note beside it, or the false trail persists
-for whichever agent reads the docs next. See the feature's actual implementation below.
+for whichever agent reads the docs next.
+
+**Background photo picker — implementation.** One `backgroundPhotoUri` state variable, declared
+alongside (not nested under) `layout`, so it survives every layout switch untouched — the
+feature's own "one shared photo, not per-layout" requirement holds by construction, not by a
+special case. A small circular icon button (`accessibilityLabel="Background photo"`,
+`Icon name="camera"`) sits in the card's top-right corner and opens a bottom sheet built from
+`nutrition.tsx`'s own Log Meal / Save Meal / Set Goals sheet shape verbatim — the same
+absolute-inset `colors.scrim` backdrop plus a rounded-top `bg-surface` panel, not a new modal
+pattern. The sheet offers "Take Photo" and "Choose from Gallery", plus a destructive "Remove
+Photo" row (`colors.destructive`, the same token `exercise/[id].tsx`'s own delete-icon button
+uses) that only renders once a photo is actually set, and a "Cancel" row.
+
+Gallery selection reuses `edit-profile.tsx`/`pick-username.tsx`'s established
+`requestMediaLibraryPermissionsAsync` + `launchImageLibraryAsync` pair exactly. Camera capture
+is new — `requestCameraPermissionsAsync` + `launchCameraAsync` — nothing else in the app called
+these before. Both flows request permission first and toast a plain-language denial message
+without ever calling the picker/camera launcher if the OS refuses (`'Photo access is needed to
+set a background.'` / `'Camera access is needed to take a photo.'`), then run the picked or
+captured URI through `expo-image-manipulator`'s legacy `manipulateAsync(uri, [{ resize: {
+width: BACKGROUND_PHOTO_MAX_WIDTH } }], { compress: 0.8, format: SaveFormat.JPEG })` — the
+"lightweight resize, not a formal pipeline" the feature asked for, so an arbitrary
+multi-megapixel original never sits behind this small 4:5 preview card at full resolution.
+`expo-image-manipulator` (`~14.0.8`, added via `npx expo install` so its version stays pinned
+to this project's Expo SDK 54, per `apps/mobile/AGENTS.md`) was chosen over a hand-rolled
+resize for the same "prefer a battle-tested library" reasoning the rest of this codebase
+already follows — it is the official Expo SDK entry for exactly this.
+
+When a photo is set, it replaces the card's `LinearGradient` entirely (both painted via
+`StyleSheet.absoluteFillObject` inside the same bordered, clipped outer `View`, so neither
+needs its own border/radius/overflow handling), with a `colors.scrim` overlay — the identical
+token every other modal backdrop in this app already uses for a dark overlay — laid behind the
+text/graphics for legibility, exactly as the feature asked ("reuse this app's existing
+dark-atmosphere overlay technique rather than inventing one"; the ember radial-gradient
+technique in `ScreenBackground` was considered and rejected, since its orange tint is tuned for
+this app's own screens, not for sitting over an arbitrary user photo). Removing the photo clears
+`backgroundPhotoUri` and the gradient reappears, unchanged from before this feature existed nor
+persisted anywhere: purely local component state, matching this screen's existing "no backend
+involvement" scope untouched.
+
+**iOS permission string, added.** `app.config.ts`'s `ios` block had no `infoPlist` at all before
+this phase — `NSCameraUsageDescription` is now declared there, since `launchCameraAsync` is the
+first call in this codebase to ever need it (the existing gallery-only screens never triggered
+iOS's camera permission prompt). **Android, confirmed rather than assumed**, per the feature's
+own instruction: `expo-image-picker`'s own `android/src/main/AndroidManifest.xml` already
+declares `CAMERA`, `READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE`, and the API-30
+`IMAGE_CAPTURE`/`ACTION_VIDEO_CAPTURE` `<queries>` entries — Expo's config-plugin system merges
+a native module's own manifest during prebuild automatically, so no `app.config.ts` change was
+needed on that platform; read directly out of the installed package rather than taken on faith.
+
+**Testing (TDD, per project rules) — extended.** `nutrition-share-fidelity.test.tsx` gained a
+`background photo picker` sub-describe block: gallery pick end-to-end (permission granted,
+picker returns an asset, `manipulateAsync` is called with that URI, the resized URI — not the
+raw picker URI — becomes the rendered `Image` source, and the sheet closes itself), the gallery
+permission-denied path (a toast fires and `launchImageLibraryAsync` is never called), the same
+pair for camera, removing a photo, confirming "Remove Photo" is absent until a photo exists,
+switching between all three layouts with a photo set (the same resized URI asserted present
+after each switch — the "shared, not per-layout" contract, checked directly rather than
+assumed), and cancelling the sheet with no state change. One synchronization detail worth
+recording: `fireEvent.press` on the trigger button needs an `await waitFor(...)` before the next
+interaction with the sheet's own content — the state update that opens the sheet was landing a
+tick later than `fireEvent.press` alone accounts for under this RN test renderer, unlike the
+plain callback-firing presses (e.g. the header back chevron) elsewhere in this same file; every
+open-then-interact step in the new tests waits on the sheet's own text before proceeding, rather
+than assuming synchronous re-render the way the rest of the file safely can.
+
+**Verified (background photo picker addition):** `nutrition-share-fidelity.test.tsx` 15/15
+green (the original 7 plus 8 new); full mobile suite **429/429 tests, 73/73 suites** green
+(`TZ=UTC pnpm --filter @forjd/mobile test --ci --watchAll=false`), up from Phase J's own
+421/421 baseline by exactly the 8 new tests; `tsc --noEmit` clean across the workspace (after
+building `packages/contracts`/`packages/domain` first -- their `dist/` output wasn't present in
+this fresh checkout, which is what actually produced the wall of unrelated `Cannot find module
+'@forjd/contracts'` errors on the first run, not a defect in this phase's own code); `eslint`
+clean on both changed files; `npx expo export --platform android` bundle-compiled cleanly (1544
+modules, up from Phase J's 1539 by the newly-imported `expo-image-manipulator` module graph),
+using the same local-only `.claude/worktrees` metro blocklist workaround Phase J already
+documented, reverted before anything was committed.
 
 **Testing (TDD, per project rules):** `nutrition-share-fidelity.test.tsx`, mirroring
 `nutrition-fidelity.test.tsx`'s shape. Covers all three layout previews rendering from fetched

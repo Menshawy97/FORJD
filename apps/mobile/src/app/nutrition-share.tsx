@@ -1,12 +1,15 @@
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { getFood, getMacroGoals, listNutritionLog } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
+import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
 import { todayLocalDate } from '@/nutrition/date';
@@ -47,6 +50,23 @@ import type { FoodResponse, MacroGoalsResponse, NutritionLogEntryResponse } from
  *
  * No TabBar: like the prototype, this screen has no `this.tabbar()` call -- it is a sub-screen
  * reached via the dashboard's header icon, not a tab destination.
+ *
+ * **Background photo picker (post-Phase-J addition).** A small icon button on the preview
+ * card itself opens a bottom sheet -- the same absolute-inset scrim + rounded-top sheet shape
+ * `nutrition.tsx`'s own Log Meal / Save Meal / Set Goals sheets already use -- offering
+ * `expo-image-picker`'s gallery flow (the exact `requestMediaLibraryPermissionsAsync` +
+ * `launchImageLibraryAsync` pattern `edit-profile.tsx`/`pick-username.tsx` already established)
+ * alongside a new camera flow (`requestCameraPermissionsAsync` + `launchCameraAsync`, nothing
+ * else in the app calls yet). The picked/captured photo is downsized client-side with
+ * `expo-image-manipulator`'s `manipulateAsync` -- a lightweight resize to `BACKGROUND_PHOTO_MAX_
+ * WIDTH`, not a formal pipeline -- before it ever becomes the card's background, so an arbitrary
+ * multi-megapixel photo never sits in memory at full resolution behind a preview this small.
+ * One photo is shared across all three layouts (`backgroundPhotoUri` lives above `layout`, and
+ * nothing about picking or clearing it touches `layout`), replacing the gradient entirely when
+ * set, with a `colors.scrim` overlay behind the text/graphics for legibility -- reusing the
+ * exact token every other modal backdrop in this app already uses for a dark overlay, rather
+ * than inventing a new one. Never uploaded or persisted anywhere: purely local component state,
+ * gone on unmount, matching this screen's existing "no backend involvement" scope.
  */
 
 type ShareLayoutId = 'summary' | 'macros' | 'meals';
@@ -81,6 +101,14 @@ const RING_STROKE_WIDTH = 8;
 const RING_CENTER = RING_SIZE / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const MAX_MEAL_ITEMS = 7;
+
+// The card renders at most a phone-screen width tall (its aspect ratio is fixed at 4:5), so a
+// resize target well above any real device's share-card render size still gives headroom for
+// pinch-zoom in the OS photo viewer without keeping a multi-megapixel original in memory.
+const BACKGROUND_PHOTO_MAX_WIDTH = 1080;
+const GALLERY_PERMISSION_MESSAGE = 'Photo access is needed to set a background.';
+const CAMERA_PERMISSION_MESSAGE = 'Camera access is needed to take a photo.';
+const PHOTO_SET_FAILED_MESSAGE = 'Could not set that photo. Please try again.';
 
 interface MacroTotals {
   kcal: number;
@@ -121,6 +149,10 @@ export default function NutritionShareScreen() {
   const [goals, setGoals] = useState<MacroGoalsResponse | null>(null);
   const [foodsById, setFoodsById] = useState<Record<string, FoodResponse>>({});
   const [layout, setLayout] = useState<ShareLayoutId>('summary');
+  // Deliberately independent of `layout` -- one photo behind the card regardless of which
+  // preview is showing, per the feature's own "shared, not per-layout" requirement.
+  const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
+  const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
 
   const loadAll = useCallback(async () => {
     try {
@@ -154,6 +186,69 @@ export default function NutritionShareScreen() {
   const saveImage = () => toast.show('Image saved to Photos');
   const shareTo = (label: string) => () => toast.show(`Sharing to ${label}…`);
 
+  const openPhotoSheet = () => setPhotoSheetOpen(true);
+  const closePhotoSheet = () => setPhotoSheetOpen(false);
+  const removeBackgroundPhoto = () => {
+    setBackgroundPhotoUri(null);
+    closePhotoSheet();
+  };
+
+  // Shared by both the gallery and camera flows below: a lightweight client-side downsize
+  // (not a formal pipeline) so an arbitrary multi-megapixel original never sits behind this
+  // small preview card at full resolution.
+  const applyPickedPhoto = async (uri: string) => {
+    try {
+      const resized = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: BACKGROUND_PHOTO_MAX_WIDTH } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      setBackgroundPhotoUri(resized.uri);
+      closePhotoSheet();
+    } catch {
+      toast.show(PHOTO_SET_FAILED_MESSAGE);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      toast.show(GALLERY_PERMISSION_MESSAGE);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 5],
+      quality: 0.8,
+    });
+    if (result.canceled || result.assets.length === 0) {
+      return;
+    }
+
+    await applyPickedPhoto(result.assets[0].uri);
+  };
+
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      toast.show(CAMERA_PERMISSION_MESSAGE);
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 5],
+      quality: 0.8,
+    });
+    if (result.canceled || result.assets.length === 0) {
+      return;
+    }
+
+    await applyPickedPhoto(result.assets[0].uri);
+  };
+
   return (
     <ScreenBackground>
       <Header title="Share Nutrition" onBack={() => router.push('/nutrition')} />
@@ -161,13 +256,31 @@ export default function NutritionShareScreen() {
       <ScrollView className="flex-1 px-screen-x" showsVerticalScrollIndicator={false}>
         {goals ? (
           <>
-            <View style={{ borderRadius: 18, overflow: 'hidden' }}>
-              <LinearGradient
-                colors={activeLayout.gradientColors}
-                start={SHARE_GRADIENT_START}
-                end={SHARE_GRADIENT_END}
-                className="border border-border"
-                style={{ aspectRatio: 4 / 5, borderRadius: 18, paddingVertical: 26, paddingHorizontal: 20 }}>
+            <View
+              className="border border-border"
+              style={{ aspectRatio: 4 / 5, borderRadius: 18, overflow: 'hidden' }}>
+              {backgroundPhotoUri ? (
+                <Image
+                  testID="share-card-background-photo"
+                  source={{ uri: backgroundPhotoUri }}
+                  resizeMode="cover"
+                  style={StyleSheet.absoluteFillObject}
+                />
+              ) : (
+                <LinearGradient
+                  colors={activeLayout.gradientColors}
+                  start={SHARE_GRADIENT_START}
+                  end={SHARE_GRADIENT_END}
+                  style={StyleSheet.absoluteFillObject}
+                />
+              )}
+              {/* The legibility scrim -- only over a photo background, since the gradients are
+                  already dark enough on their own. Reuses `colors.scrim`, the exact token every
+                  other modal backdrop in this app already uses for a dark overlay. */}
+              {backgroundPhotoUri && (
+                <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.scrim }]} />
+              )}
+              <View style={{ flex: 1, paddingVertical: 26, paddingHorizontal: 20 }}>
                 <Text className="font-archivo text-[13px] font-extrabold uppercase text-accent" style={{ letterSpacing: 0.8 }}>
                   FORJD
                 </Text>
@@ -180,7 +293,15 @@ export default function NutritionShareScreen() {
                     <MealsPreview totals={totals} items={log} foodsById={foodsById} />
                   )}
                 </View>
-              </LinearGradient>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Background photo"
+                onPress={openPhotoSheet}
+                className="absolute items-center justify-center rounded-full"
+                style={{ right: 12, top: 12, width: 34, height: 34, backgroundColor: colors.scrim }}>
+                <Icon name="camera" color={colors.text} size={16} />
+              </Pressable>
             </View>
 
             <Text className="mb-[10px] mt-[22px] font-archivo text-[11px] font-semibold uppercase tracking-wide text-label">
@@ -253,6 +374,56 @@ export default function NutritionShareScreen() {
           </Pressable>
         )}
       </ScrollView>
+
+      {photoSheetOpen ? (
+        <View
+          testID="background-photo-sheet"
+          className="absolute inset-0 z-20 items-end justify-end"
+          style={{ backgroundColor: colors.scrim }}>
+          <View
+            className="w-full rounded-t-[18px] border-t border-border bg-surface px-[22px] pb-[24px] pt-[20px]"
+            style={{ gap: 10 }}>
+            <Text className="font-archivo text-[18px] font-bold text-text">Background photo</Text>
+            <Text className="mb-[4px] font-archivo text-[13px] text-dimmer">
+              Use a photo of your own behind the card, in place of the gradient.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={takePhoto}
+              className="h-[52px] flex-row items-center rounded-button border border-border bg-elevated px-[16px]"
+              style={{ gap: 12 }}>
+              <Icon name="camera" color={colors.text} size={18} />
+              <Text className="font-archivo text-[14px] font-semibold text-text">Take Photo</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={pickFromGallery}
+              className="h-[52px] flex-row items-center rounded-button border border-border bg-elevated px-[16px]"
+              style={{ gap: 12 }}>
+              <Icon name="upload" color={colors.text} size={18} />
+              <Text className="font-archivo text-[14px] font-semibold text-text">Choose from Gallery</Text>
+            </Pressable>
+            {backgroundPhotoUri && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={removeBackgroundPhoto}
+                className="h-[52px] flex-row items-center rounded-button border border-border bg-elevated px-[16px]"
+                style={{ gap: 12 }}>
+                <Icon name="x" color={colors.destructive} size={18} />
+                <Text className="font-archivo text-[14px] font-semibold" style={{ color: colors.destructive }}>
+                  Remove Photo
+                </Text>
+              </Pressable>
+            )}
+            <Pressable
+              accessibilityRole="button"
+              onPress={closePhotoSheet}
+              className="mt-[4px] h-[52px] items-center justify-center rounded-button border border-border">
+              <Text className="font-archivo text-[14px] font-bold text-dim">Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       <Toast message={toast.message} />
     </ScreenBackground>
