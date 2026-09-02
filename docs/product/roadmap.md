@@ -278,14 +278,29 @@ explicitly Phase J's job, deliberately not pulled forward.
      the visible label. The name `TextInput` also gained the `accessibilityLabel` it lacked.
    - **Not covered, deliberately**: the Save button's `disabled={saving}` double-submit
      guard, and the second stepper's `Math.max(1, …)` floor for the time/distance measures.
-2. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase H — live
-   execution**: `s_live()` plus `s_rest()` and `setTimer`, reading the local exercise
-   catalogue and writing to the Phase F event log, making no network call at all. Phases A-G
-   are done (above). **Open question 1 is now settled: the rest timer WILL use
-   `expo-notifications`** so a locked phone buzzes when rest ends — decided by the user this
-   session, over the cheaper wall-clock-only option. That adds a native dependency, an OS
-   permission prompt to place, and a mandatory physical-device check before merge (Jest
-   cannot exercise notification scheduling). Record it as an ADR when the phase starts.
+2. **Continue Phase 3** at **Phase H — live execution**. Phases A–G are done (above).
+   **The plan is written: [`phase-3h-plan.md`](phase-3h-plan.md)** — read that, not
+   `phase-3-plan.md`'s Phase H paragraph, which is wrong in two ways it corrects:
+   - **There is no `s_live()`.** `live` is one of nine *template-rendered* screens (see the
+     prototype's `renderVals()` `TMPL` array), authored as declarative `{{ }}` markup from
+     ~line 504 with its view-model at ~line 3423. Only `s_rest()` and `s_setTimer()` are
+     real functions. `screenshots/live workout.png` and `live workout 2.png` both exist and
+     outrank the prototype either way.
+   - **The screen is roughly three times the size that paragraph implies** — a collapsible
+     goal guide, a goal picker with apply-to-all, per-exercise unit and measure toggles, and
+     a set table with previous-performance and PR columns.
+
+   The plan splits it into five slices (H1 pure session reducer → H2 live screen → H3 rest
+   and timed set → H4 notifications + ADR → H5 wiring the two dead CTAs), and records what is
+   deliberately out of scope (the summary screen is Phase I; the live *run* screen is a
+   separate modality; real heart rate needs a `HealthProvider`, so the Watch card ships as an
+   honest empty state rather than the prototype's simulated bpm).
+
+   **Open question 1 is settled: the rest timer WILL use `expo-notifications`** so a locked
+   phone buzzes when rest ends — decided by the user this session, over the cheaper
+   wall-clock-only option. That adds a native dependency, an OS permission prompt to place,
+   and a **mandatory physical-device check before merge** (Jest cannot exercise notification
+   scheduling). It gets its own ADR in slice H4.
 3. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.
