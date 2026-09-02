@@ -79,6 +79,7 @@ describe("workout vocabulary membership", () => {
   it("WORKOUT_EVENT_TYPES matches the architecture doc's event log exactly", () => {
     expect(WORKOUT_EVENT_TYPES).toEqual([
       "set_completed",
+      "set_uncompleted",
       "rest_started",
       "rest_completed",
       "exercise_completed",
@@ -86,6 +87,15 @@ describe("workout vocabulary membership", () => {
       "workout_resumed",
       "workout_finished",
     ]);
+  });
+
+  /**
+   * `set_uncompleted` is the one member NOT in `workout-engine.md`'s list -- see the tuple's
+   * own docblock. Pinned separately so a future reader does not "correct" the tuple back to
+   * the doc and silently break untick's crash recovery.
+   */
+  it("carries an un-complete event, which the architecture doc's list omits", () => {
+    expect(WORKOUT_EVENT_TYPES).toContain("set_uncompleted");
   });
 
   /** The prototype's four-value qualitative RPE row on the `done` screen, in its own order. */

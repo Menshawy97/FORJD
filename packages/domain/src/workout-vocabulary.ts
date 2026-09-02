@@ -112,9 +112,20 @@ export const PERCEIVED_EFFORT_DISPLAY_NAMES: Record<PerceivedEffort, string> = {
  * The architecture doc writes them in PascalCase (`SetCompleted`); they are slugs here
  * because every other stored value set in this package is a slug, and these are written to a
  * `text` column in on-device SQLite.
+ *
+ * **`set_uncompleted` is not in `workout-engine.md`'s list, and is deliberately added here**
+ * (Phase 3H). The design lets a user untick a set they ticked by mistake -- the prototype's
+ * `tapSet` toggles, and guards the toggle with its own "Untick later sets first" message, so
+ * the affordance is intended rather than incidental. An append-only log with no un-complete
+ * event cannot represent that: `replaySessionState` accumulates `completedSetKeys` into a set
+ * that only ever grows, so a session force-killed after an untick would come back with the set
+ * ticked again. That is silent corruption of a user's own training record, which is exactly
+ * what the event log exists to prevent. Adding a member here is cheap by construction --
+ * these are a tuple, never a PG enum, precisely so that a new event is not a migration.
  */
 export const WORKOUT_EVENT_TYPES = [
   "set_completed",
+  "set_uncompleted",
   "rest_started",
   "rest_completed",
   "exercise_completed",
@@ -126,6 +137,7 @@ export type WorkoutEventType = (typeof WORKOUT_EVENT_TYPES)[number];
 
 export const WORKOUT_EVENT_TYPE_DISPLAY_NAMES: Record<WorkoutEventType, string> = {
   set_completed: "Set completed",
+  set_uncompleted: "Set un-completed",
   rest_started: "Rest started",
   rest_completed: "Rest completed",
   exercise_completed: "Exercise completed",
