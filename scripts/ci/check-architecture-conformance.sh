@@ -57,15 +57,17 @@ if [ -d apps/mobile/src ]; then
 fi
 
 # Phase H: the on-device exercise catalogue is the app's first real expo-sqlite consumer.
-# Same reasoning as the expo-secure-store pin just above -- screens never touch SQLite
-# directly, they call exercise-catalogue.ts, so that every write goes through the one place
-# that knows the schema and the version-gating contract with ExercisesService.getCatalogue.
+# Phase 3F (ADR-025) adds a second: the workout session event log and sync queue. Same
+# reasoning in both cases -- screens never touch SQLite directly, they call one of these two
+# files, so every write goes through the place that knows that table's own schema and sync
+# contract (ExercisesService.getCatalogue's version gate; ADR-025's queue/retry contract).
 if [ -d apps/mobile/src ]; then
   hits=$(grep -rln --include='*.ts' --include='*.tsx' "['\"]expo-sqlite['\"]" apps/mobile/src \
     | grep -v '^apps/mobile/src/store/exercise-catalogue.ts$' \
+    | grep -v '^apps/mobile/src/store/workout-session.ts$' \
     | grep -v '/__tests__/' || true)
   if [ -n "$hits" ]; then
-    report "expo-sqlite imported outside apps/mobile/src/store/exercise-catalogue.ts" "$hits"
+    report "expo-sqlite imported outside apps/mobile/src/store/{exercise-catalogue,workout-session}.ts" "$hits"
   fi
 fi
 
