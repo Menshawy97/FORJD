@@ -343,6 +343,26 @@ export class ExercisesRepository {
   }
 
   /**
+   * Full `Exercise` records for the visible subset of the given ids, keyed by id -- what
+   * `WorkoutSessionsService` needs to snapshot each session exercise's `measure` at upload
+   * time from the exercise the server looked up, never from a client-declared copy of a fact
+   * the server already owns. One bulk query for the whole set, same reasoning as
+   * `findVisibleIds`.
+   */
+  async findManyVisibleForUser(ids: string[], userId: string): Promise<Map<string, Exercise>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.db
+      .select()
+      .from(exercises)
+      .where(and(inArray(exercises.id, ids), isNull(exercises.deletedAt), visibleTo(userId)));
+
+    return new Map(rows.map((row) => [row.id, this.toExercise(row)]));
+  }
+
+  /**
    * The read behind `GET /exercises/catalogue` (Phase H) -- the whole visible set in one
    * unpaginated query, for the on-device store to mirror. Deliberately not `listExercises`
    * with `limit: Infinity`: that method's contract is a page plus a lookahead row, and this

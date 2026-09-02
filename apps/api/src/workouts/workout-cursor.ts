@@ -1,4 +1,4 @@
-import { WorkoutTemplateCursor } from "./workouts.repository";
+import { WorkoutSessionCursor, WorkoutTemplateCursor } from "./workouts.repository";
 
 /**
  * Encodes and decodes the opaque `nextCursor` of the templates list envelope. Same shape and
@@ -38,4 +38,44 @@ export function decodeWorkoutTemplateCursor(raw: string): WorkoutTemplateCursor 
   }
 
   return { name, id };
+}
+
+/**
+ * The sessions list's own cursor -- ordered by `startedAt` (most recent first), not `name`,
+ * since a workout history reads newest-to-oldest rather than alphabetically. `startedAt` is
+ * carried as the ISO string the wire already uses, so the cursor round-trips through JSON
+ * without a Date (de)serialization step of its own.
+ */
+export function encodeWorkoutSessionCursor(cursor: WorkoutSessionCursor): string {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+
+export function decodeWorkoutSessionCursor(raw: string): WorkoutSessionCursor | null {
+  if (!raw) {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return null;
+  }
+
+  const { startedAt, id } = parsed as Partial<WorkoutSessionCursor>;
+
+  if (
+    typeof startedAt !== "string" ||
+    Number.isNaN(Date.parse(startedAt)) ||
+    typeof id !== "string" ||
+    !UUID_PATTERN.test(id)
+  ) {
+    return null;
+  }
+
+  return { startedAt, id };
 }

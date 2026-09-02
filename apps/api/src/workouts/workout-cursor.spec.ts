@@ -1,4 +1,9 @@
-import { decodeWorkoutTemplateCursor, encodeWorkoutTemplateCursor } from "./workout-cursor";
+import {
+  decodeWorkoutSessionCursor,
+  decodeWorkoutTemplateCursor,
+  encodeWorkoutSessionCursor,
+  encodeWorkoutTemplateCursor,
+} from "./workout-cursor";
 
 /** Mirrors exercise-cursor.spec.ts exactly -- same shape, same opaque-not-secret contract. */
 describe("workout template cursor", () => {
@@ -60,5 +65,66 @@ describe("workout template cursor", () => {
 
   it("rejects an empty string", () => {
     expect(decodeWorkoutTemplateCursor("")).toBeNull();
+  });
+});
+
+describe("workout session cursor", () => {
+  const cursor = {
+    startedAt: "2026-09-02T09:00:00.000Z",
+    id: "11111111-1111-4111-8111-111111111111",
+  };
+
+  it("round-trips a cursor", () => {
+    expect(decodeWorkoutSessionCursor(encodeWorkoutSessionCursor(cursor))).toEqual(cursor);
+  });
+
+  it("encodes to a URL-safe string with no padding or query-hostile characters", () => {
+    expect(encodeWorkoutSessionCursor(cursor)).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+
+  it("rejects a string that is not base64 at all", () => {
+    expect(decodeWorkoutSessionCursor("not a cursor!!")).toBeNull();
+  });
+
+  it("rejects base64 that does not decode to JSON", () => {
+    expect(decodeWorkoutSessionCursor(Buffer.from("nonsense").toString("base64url"))).toBeNull();
+  });
+
+  it("rejects JSON that is not a cursor object", () => {
+    expect(decodeWorkoutSessionCursor(Buffer.from("[1,2,3]").toString("base64url"))).toBeNull();
+  });
+
+  it("rejects a cursor missing its startedAt", () => {
+    const forged = Buffer.from(JSON.stringify({ id: cursor.id })).toString("base64url");
+
+    expect(decodeWorkoutSessionCursor(forged)).toBeNull();
+  });
+
+  it("rejects a cursor whose startedAt is not a string", () => {
+    const forged = Buffer.from(JSON.stringify({ startedAt: 42, id: cursor.id })).toString(
+      "base64url",
+    );
+
+    expect(decodeWorkoutSessionCursor(forged)).toBeNull();
+  });
+
+  it("rejects a cursor whose startedAt does not parse as a date", () => {
+    const forged = Buffer.from(
+      JSON.stringify({ startedAt: "not-a-date", id: cursor.id }),
+    ).toString("base64url");
+
+    expect(decodeWorkoutSessionCursor(forged)).toBeNull();
+  });
+
+  it("rejects a cursor whose id is not a uuid", () => {
+    const forged = Buffer.from(
+      JSON.stringify({ startedAt: cursor.startedAt, id: "not-a-uuid" }),
+    ).toString("base64url");
+
+    expect(decodeWorkoutSessionCursor(forged)).toBeNull();
+  });
+
+  it("rejects an empty string", () => {
+    expect(decodeWorkoutSessionCursor("")).toBeNull();
   });
 });
