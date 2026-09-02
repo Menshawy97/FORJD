@@ -1,4 +1,3 @@
-import { EXERCISE_MEASURE_DISPLAY_NAMES } from '@forjd/domain';
 import type { CreateWorkoutTemplateRequest } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -177,6 +176,7 @@ export default function BuilderScreen() {
           Workout name
         </Text>
         <TextInput
+          accessibilityLabel="Workout name"
           value={name}
           onChangeText={setName}
           className="h-[50px] rounded-field px-[15px] font-archivo text-[14.5px] font-semibold text-text"
@@ -241,7 +241,7 @@ export default function BuilderScreen() {
                   </Text>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Decrease ${EXERCISE_MEASURE_DISPLAY_NAMES[exercise.measure].toLowerCase()}`}
+                    accessibilityLabel={`Decrease ${LABEL_BY_MEASURE[exercise.measure].toLowerCase()}`}
                     onPress={() =>
                       updateExercise(index, withTarget(exercise, Math.max(1, targetOf(exercise) - STEP_BY_MEASURE[exercise.measure])))
                     }>
@@ -252,7 +252,7 @@ export default function BuilderScreen() {
                   </Text>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Increase ${EXERCISE_MEASURE_DISPLAY_NAMES[exercise.measure].toLowerCase()}`}
+                    accessibilityLabel={`Increase ${LABEL_BY_MEASURE[exercise.measure].toLowerCase()}`}
                     onPress={() =>
                       updateExercise(index, withTarget(exercise, targetOf(exercise) + STEP_BY_MEASURE[exercise.measure]))
                     }>

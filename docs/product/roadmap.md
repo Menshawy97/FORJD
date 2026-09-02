@@ -245,13 +245,34 @@ currently no UI to see it** — Train's "My workouts" section is still the Phase
 text ("programs, previous workouts, and my workouts — coming soon"); wiring it to real data is
 explicitly Phase J's job, deliberately not pulled forward.
 
-1. **Write the deferred RTL tests** for `builder.tsx` and `workout/[id].tsx` (save flow,
-   validation message, picked-exercise handoff, Customise prefill) before or alongside
-   starting Phase H — flagged above as a real gap, not optional polish.
+1. ~~**Write the deferred RTL tests** for `builder.tsx` and `workout/[id].tsx`.~~ **Done.**
+   `apps/mobile/src/app/__tests__/builder.test.tsx` (23 tests) and
+   `workout-detail.test.tsx` (18 tests) cover the save flow's request body, the ordered
+   validation message, the picked-exercise handoff and the Customise prefill. Three things
+   worth carrying forward from writing them:
+   - **`@testing-library/react-native` is v14, where `render()` and every `fireEvent.*`
+     return Promises and MUST be awaited.** An un-awaited one leaves an open `act()` scope
+     that silently empties the rendered tree for every *later* test in the same file — it
+     presents as "unable to find an element" on tests that pass in isolation, which is a
+     genuinely confusing symptom. **39 of the 64 mobile suites still call `fireEvent`
+     without awaiting it**, which is the likely root of the suite's documented timeout
+     flakiness (a full run under load failed 20 suites; the same run with less contention
+     failed 4, and all 4 passed in isolation — every failure a timeout, never an assertion).
+     Migrating those 39 suites is a worthwhile standalone task.
+   - **One real bug fixed in `builder.tsx`**: the set/target steppers announced the domain
+     display name (`Increase weight x reps`) while visibly reading `Reps` — a WCAG
+     "label in name" mismatch. They now use `LABEL_BY_MEASURE`, the same map that renders
+     the visible label. The name `TextInput` also gained the `accessibilityLabel` it lacked.
+   - **Not covered, deliberately**: the Save button's `disabled={saving}` double-submit
+     guard, and the second stepper's `Math.max(1, …)` floor for the time/distance measures.
 2. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase H — live
    execution**: `s_live()` plus `s_rest()` and `setTimer`, reading the local exercise
    catalogue and writing to the Phase F event log, making no network call at all. Phases A-G
-   are done (above).
+   are done (above). **Open question 1 is now settled: the rest timer WILL use
+   `expo-notifications`** so a locked phone buzzes when rest ends — decided by the user this
+   session, over the cheaper wall-clock-only option. That adds a native dependency, an OS
+   permission prompt to place, and a mandatory physical-device check before merge (Jest
+   cannot exercise notification scheduling). Record it as an ADR when the phase starts.
 3. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.
