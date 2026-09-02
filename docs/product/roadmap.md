@@ -60,20 +60,41 @@ hard-deleting a still-referenced exercise is rejected, a session survives its te
 hard-deletion, cascades clean up session children, `based_on_template_id` nulls out on its
 base template's deletion).
 
-Verified for both phases: domain (48 tests), contracts (62), api (30 suites / 497 tests,
-`--runInBand`, unit + e2e + coverage), mobile (479, `TZ=UTC`) all green; `pnpm -r build`,
-`pnpm -r lint`, mobile `typecheck`, and `scripts/ci/check-architecture-conformance.sh` all
-clean.
+**Phase C (contracts) is done**: `packages/contracts/src/index.ts` builds
+`workoutBlockTypeSchema` / `workoutSetTypeSchema` / `workoutSessionStatusSchema` /
+`perceivedEffortSchema` via `z.enum(...)` straight from the Phase A tuples, plus request
+schemas for template CRUD (`createWorkoutTemplateRequestSchema`,
+`updateWorkoutTemplateRequestSchema`) and detail/list response schemas
+(`workoutTemplateResponseSchema`, `workoutTemplateListResponseSchema`) and for session upload
+(`workoutSessionUploadRequestSchema`, `workoutSessionResponseSchema`,
+`workoutSessionListResponseSchema`). Three deliberate omissions, each mirroring an existing
+precedent: **`orderIndex` is never a client field** — position is the array's own index, the
+same choice `createSavedMealRequestSchema.items` makes. **`basedOnTemplateId` is
+service-derived**, never client-supplied, the same division `createExerciseRequestSchema`
+draws around `goal`. **A session-exercise's `measure` is never client-supplied** — the server
+snapshots it from the `exercises` row it looks up by `exerciseId`, never trusting a
+client-declared copy of a fact the server already owns. Weight and distance are bare numbers
+(kg and metres, fixed by contract, never a co-travelling unit field). Pinned in
+`workouts.spec.ts` (22 tests) and four new fixtures in `fixtures.ts`
+(`workout-template-response`, `workout-template-list-response`, `workout-session-response`,
+`workout-session-list-response`).
+
+Verified for all three phases: domain (48 tests), contracts (3 suites / 84 tests), api (30
+suites / 497 unit tests + 85 e2e tests, `--runInBand`, coverage thresholds hold), mobile (479,
+`TZ=UTC`) all green; `pnpm -r build`, `pnpm -r lint`, mobile `typecheck`, and
+`scripts/ci/check-architecture-conformance.sh` all clean.
 
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
 ### Immediate next steps (as of 2026-09-02)
 
-1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase C — contracts**:
-   `packages/contracts/src/index.ts` zod schemas built from the Phase A tuples via
-   `z.enum(...)`, request/response shapes for template CRUD and session upload, plus pinned
-   fixtures in `fixtures.ts` (`scripts/write-fixtures.ts`). Phases A and B are done (above).
+1. **Continue Phase 3** from [`phase-3-plan.md`](phase-3-plan.md) at **Phase D — templates
+   API**: `apps/api/src/workouts/` (module, controller, service, repository), mirroring
+   `ExercisesModule` exactly — `@UseGuards(JwtAuthGuard)` at class level, `ZodValidationPipe`
+   on every body/query, 404-never-403 in the service. Register in `app.module.ts` and add
+   per-file coverage thresholds to `apps/api/package.json`. Phases A, B and C are done
+   (above).
 2. **Device-walk Home and the nutrition work.** Saved meals, the share card (including the
    background-photo picker), avatar upload's compression, and now Home have not had a full
    physical-device walk since landing.

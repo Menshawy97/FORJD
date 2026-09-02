@@ -12,11 +12,15 @@ import {
   MEAL_SLOTS,
   MECHANICS,
   MUSCLE_GROUPS,
+  PERCEIVED_EFFORTS,
   PLANS,
   SEXES,
   TRAINING_GOALS,
   UNIT_SYSTEMS,
   WEIGHT_UNITS,
+  WORKOUT_BLOCK_TYPES,
+  WORKOUT_SESSION_STATUSES,
+  WORKOUT_SET_TYPES,
 } from '@forjd/domain';
 import { z } from 'zod';
 
@@ -807,3 +811,291 @@ export type SavedMealResponse = z.infer<typeof savedMealResponseSchema>;
 export const savedMealListResponseSchema = z.object({ items: z.array(savedMealResponseSchema) });
 export type SavedMealListResponse = z.infer<typeof savedMealListResponseSchema>;
 export type ExerciseCatalogueResponse = z.infer<typeof exerciseCatalogueResponseSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Workouts (Phase 3) -- built from workout-vocabulary.ts's tuples, so a value added there
+// only needs a z.enum(...) here to stay in sync; there is no second list to remember to edit.
+// ---------------------------------------------------------------------------------------------
+
+export const workoutBlockTypeSchema = z.enum(WORKOUT_BLOCK_TYPES);
+export const workoutSetTypeSchema = z.enum(WORKOUT_SET_TYPES);
+export const workoutSessionStatusSchema = z.enum(WORKOUT_SESSION_STATUSES);
+export const perceivedEffortSchema = z.enum(PERCEIVED_EFFORTS);
+
+/**
+ * One prescribed exercise inside a create/update block. **`orderIndex` has no field here** --
+ * position is the array's own index, the same choice `createSavedMealRequestSchema.items`
+ * already makes, so there is exactly one way to express order and no way for a client to send
+ * an index that disagrees with where the item actually sits in the array.
+ *
+ * **`setCount`/`targetReps`/etc. accept whatever the create screen collects; nothing here
+ * checks them against the referenced exercise's `measure`.** That check needs a database
+ * lookup this schema cannot perform, so it is a service-layer concern (Phase D), the same
+ * division `createExerciseRequestSchema` draws around `goal`.
+ */
+const createWorkoutExerciseInputSchema = z.object({
+  exerciseId: z.string().uuid(),
+  setCount: z.number().int().min(1).optional(),
+  targetReps: z.number().int().min(1).optional(),
+  targetRepsMax: z.number().int().min(1).optional(),
+  /** Always kilograms (ADR-016) -- there is no unit field to disagree with it. */
+  targetWeightKg: z.number().min(0).optional(),
+  targetSeconds: z.number().int().min(1).optional(),
+  /** Always metres, for the same reason weight is always kilograms. */
+  targetDistanceMeters: z.number().min(0).optional(),
+  restSeconds: z.number().int().min(0).optional(),
+  notes: z.string().trim().max(2000).optional(),
+});
+
+/**
+ * One block inside a create/update template. `type` is the tuple built above -- an unknown
+ * string (a typo, or a client built against a stale domain package) is a 400 the caller can
+ * see and fix, not a value that reaches the `workout_blocks.type` column unexamined.
+ */
+const createWorkoutBlockInputSchema = z.object({
+  type: workoutBlockTypeSchema,
+  name: z.string().trim().max(80).optional(),
+  rounds: z.number().int().min(1).optional(),
+  workSeconds: z.number().int().min(1).optional(),
+  restSeconds: z.number().int().min(0).optional(),
+  capSeconds: z.number().int().min(1).optional(),
+  exercises: z.array(createWorkoutExerciseInputSchema).min(1),
+});
+
+/**
+ * Body for `POST /workouts/templates` (Phase D). **`basedOnTemplateId` has no field here** --
+ * it is set by the service when a template is created via "customise this preset"
+ * (`s_builder`'s copy-then-edit flow), never chosen by the client's own request body, the same
+ * way `createExerciseRequestSchema` omits `goal` because it is derived, not supplied.
+ */
+export const createWorkoutTemplateRequestSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  activity: activitySchema,
+  notes: z.string().trim().max(2000).optional(),
+  estimatedDurationMinutes: z.number().int().min(1).max(600).optional(),
+  blocks: z.array(createWorkoutBlockInputSchema).min(1),
+});
+export type CreateWorkoutTemplateRequest = z.infer<typeof createWorkoutTemplateRequestSchema>;
+
+/**
+ * Body for `PATCH /workouts/templates/:id` -- every field the builder screen's edit mode can
+ * change, all optional, matching `updateExerciseRequestSchema`'s own partial shape. A partial
+ * update still replaces `blocks` wholesale when sent, rather than patching one block in
+ * place: the builder screen edits and re-saves the whole workout, it does not diff blocks.
+ */
+export const updateWorkoutTemplateRequestSchema = createWorkoutTemplateRequestSchema.partial();
+export type UpdateWorkoutTemplateRequest = z.infer<typeof updateWorkoutTemplateRequestSchema>;
+
+/** One prescribed exercise as returned inside a template's detail response. */
+export const workoutExerciseResponseSchema = z.object({
+  id: z.string().uuid(),
+  exerciseId: z.string().uuid(),
+  orderIndex: z.number().int(),
+  setCount: z.number().int().nullable(),
+  targetReps: z.number().int().nullable(),
+  targetRepsMax: z.number().int().nullable(),
+  targetWeightKg: z.number().nullable(),
+  targetSeconds: z.number().int().nullable(),
+  targetDistanceMeters: z.number().nullable(),
+  restSeconds: z.number().int().nullable(),
+  notes: z.string().nullable(),
+});
+export type WorkoutExerciseResponse = z.infer<typeof workoutExerciseResponseSchema>;
+
+/** One block as returned inside a template's detail response. */
+export const workoutBlockResponseSchema = z.object({
+  id: z.string().uuid(),
+  type: workoutBlockTypeSchema,
+  orderIndex: z.number().int(),
+  name: z.string().nullable(),
+  rounds: z.number().int().nullable(),
+  workSeconds: z.number().int().nullable(),
+  restSeconds: z.number().int().nullable(),
+  capSeconds: z.number().int().nullable(),
+  exercises: z.array(workoutExerciseResponseSchema),
+});
+export type WorkoutBlockResponse = z.infer<typeof workoutBlockResponseSchema>;
+
+/**
+ * A template in full, for the builder/detail screen. **No `ownerUserId`.** Mirrors
+ * `exerciseResponseSchema`'s own `isCustom` choice: the only templates a caller can see that
+ * are not curated are their own, so publishing the id would carry no information the caller
+ * does not already have.
+ */
+export const workoutTemplateResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  activity: activitySchema,
+  /** Non-null when this template started as "customise this preset" -- the design's own state. */
+  basedOnTemplateId: z.string().uuid().nullable(),
+  notes: z.string().nullable(),
+  estimatedDurationMinutes: z.number().int().nullable(),
+  blocks: z.array(workoutBlockResponseSchema),
+  isCustom: z.boolean(),
+});
+export type WorkoutTemplateResponse = z.infer<typeof workoutTemplateResponseSchema>;
+
+/**
+ * One row in the templates list ("My workouts" / a curated catalogue). Written out rather
+ * than `.pick()`-derived from `workoutTemplateResponseSchema`, for the same payload reason
+ * `exerciseSummarySchema` gives: the list can return many rows, and none of them need every
+ * block and exercise to render "6 exercises · ~52 min".
+ *
+ * `exerciseCount` is computed by the service by counting `workout_exercises` rows across the
+ * template's blocks -- not a stored column, so it can never drift from the blocks that
+ * actually exist.
+ */
+export const workoutTemplateSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  activity: activitySchema,
+  estimatedDurationMinutes: z.number().int().nullable(),
+  exerciseCount: z.number().int(),
+  isCustom: z.boolean(),
+});
+export type WorkoutTemplateSummary = z.infer<typeof workoutTemplateSummarySchema>;
+
+export const workoutTemplateListResponseSchema = listResponseSchema(workoutTemplateSummarySchema);
+export type WorkoutTemplateListResponse = z.infer<typeof workoutTemplateListResponseSchema>;
+
+/** Query for `GET /workouts/templates`. Cursor pagination only -- see `listResponseSchema`'s own docblock for why cursor, not page number. */
+export const workoutTemplateListQuerySchema = z.object({
+  cursor: z.string().max(512).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type WorkoutTemplateListQuery = z.infer<typeof workoutTemplateListQuerySchema>;
+
+/**
+ * One performed set inside a session upload. **No `setIndex` field** -- position is the
+ * array's own index, the same choice `createWorkoutExerciseInputSchema` makes for the same
+ * reason.
+ *
+ * **Which of `weightKg`/`durationSeconds`/`distanceMeters` is meaningful is not enforced
+ * here.** That follows the parent exercise's `measure`, which this schema does not know --
+ * the service validates the pairing against the exercise it looked up (Phase E), the same
+ * division of labour `createWorkoutExerciseInputSchema` draws.
+ */
+const workoutSetInputSchema = z.object({
+  type: workoutSetTypeSchema,
+  isCompleted: z.boolean(),
+  weightKg: z.number().min(0).optional(),
+  reps: z.number().int().min(0).optional(),
+  durationSeconds: z.number().int().min(0).optional(),
+  distanceMeters: z.number().min(0).optional(),
+  restSeconds: z.number().int().min(0).optional(),
+  completedAt: z.string().datetime().optional(),
+});
+
+/**
+ * One exercise as performed, inside a session upload. **No `measure` field.** The session's
+ * `measure` column is a snapshot of the exercise's own `measure` at the time it was
+ * performed (`workouts.schema.ts`'s own docblock) -- the server takes that snapshot from the
+ * `exercises` row it looks up by `exerciseId`, it does not trust a client-declared copy of a
+ * fact the server already owns.
+ */
+const workoutSessionExerciseInputSchema = z.object({
+  exerciseId: z.string().uuid(),
+  notes: z.string().trim().max(2000).optional(),
+  sets: z.array(workoutSetInputSchema).min(1),
+});
+
+/**
+ * Body for `POST /workouts/sessions` (Phase E) -- a completed (or paused/cancelled) session,
+ * uploaded once the device regains connectivity. The network is never in the critical path of
+ * the live session itself (CLAUDE.md rule 6); this is the sync call that happens afterwards.
+ *
+ * **`id` is required, not server-assigned, and is the sync idempotency key.** It is generated
+ * on the device at session start (`phase-3-plan.md`'s locked decisions), so a retried upload
+ * after a dropped response is a second POST with the same `id` -- the service's job (Phase E)
+ * is to return the existing session for a repeated id rather than creating a second one.
+ */
+export const workoutSessionUploadRequestSchema = z.object({
+  id: z.string().uuid(),
+  templateId: z.string().uuid().nullable().optional(),
+  name: z.string().trim().min(1).max(120),
+  activity: activitySchema,
+  status: workoutSessionStatusSchema,
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().nullable().optional(),
+  durationSeconds: z.number().int().min(0),
+  perceivedEffort: perceivedEffortSchema.nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  /** Present only when the user has opted in to location for leaderboards. */
+  city: z.string().nullable().optional(),
+  citySlug: z.string().nullable().optional(),
+  isLiveTracked: z.boolean(),
+  exercises: z.array(workoutSessionExerciseInputSchema),
+});
+export type WorkoutSessionUploadRequest = z.infer<typeof workoutSessionUploadRequestSchema>;
+
+/** One performed set, as returned in a session's detail response. */
+export const workoutSetResponseSchema = z.object({
+  id: z.string().uuid(),
+  setIndex: z.number().int(),
+  type: workoutSetTypeSchema,
+  isCompleted: z.boolean(),
+  weightKg: z.number().nullable(),
+  reps: z.number().int().nullable(),
+  durationSeconds: z.number().int().nullable(),
+  distanceMeters: z.number().nullable(),
+  restSeconds: z.number().int().nullable(),
+  completedAt: z.string().datetime().nullable(),
+});
+export type WorkoutSetResponse = z.infer<typeof workoutSetResponseSchema>;
+
+/** One exercise as performed, as returned in a session's detail response. */
+export const workoutSessionExerciseResponseSchema = z.object({
+  id: z.string().uuid(),
+  exerciseId: z.string().uuid(),
+  orderIndex: z.number().int(),
+  measure: exerciseMeasureSchema,
+  notes: z.string().nullable(),
+  sets: z.array(workoutSetResponseSchema),
+});
+export type WorkoutSessionExerciseResponse = z.infer<typeof workoutSessionExerciseResponseSchema>;
+
+/** A session in full, for the summary/history-detail screen. */
+export const workoutSessionResponseSchema = z.object({
+  id: z.string().uuid(),
+  templateId: z.string().uuid().nullable(),
+  name: z.string(),
+  activity: activitySchema,
+  status: workoutSessionStatusSchema,
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().nullable(),
+  durationSeconds: z.number().int(),
+  perceivedEffort: perceivedEffortSchema.nullable(),
+  notes: z.string().nullable(),
+  city: z.string().nullable(),
+  citySlug: z.string().nullable(),
+  isLiveTracked: z.boolean(),
+  exercises: z.array(workoutSessionExerciseResponseSchema),
+});
+export type WorkoutSessionResponse = z.infer<typeof workoutSessionResponseSchema>;
+
+/**
+ * One row in the workout history list, and what Home's stat strip / "Recent PR" (Phase J)
+ * read. Written out rather than derived, for the same reason `workoutTemplateSummarySchema`
+ * is: a history list can be long, and no row there needs every exercise and set.
+ */
+export const workoutSessionSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  activity: activitySchema,
+  status: workoutSessionStatusSchema,
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().nullable(),
+  durationSeconds: z.number().int(),
+  perceivedEffort: perceivedEffortSchema.nullable(),
+});
+export type WorkoutSessionSummary = z.infer<typeof workoutSessionSummarySchema>;
+
+export const workoutSessionListResponseSchema = listResponseSchema(workoutSessionSummarySchema);
+export type WorkoutSessionListResponse = z.infer<typeof workoutSessionListResponseSchema>;
+
+/** Query for `GET /workouts/sessions`. Cursor pagination only, same shape as the templates list. */
+export const workoutSessionListQuerySchema = z.object({
+  cursor: z.string().max(512).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type WorkoutSessionListQuery = z.infer<typeof workoutSessionListQuerySchema>;
