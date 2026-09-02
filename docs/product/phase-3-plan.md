@@ -181,9 +181,14 @@ confirm exactly one session syncs.
 
 ## Open questions
 
-1. **Does a rest timer need to survive backgrounding?** A phone locks between sets. If the
-   timer must fire a notification, that is `expo-notifications` and a permissions prompt —
-   decide before Phase H, because it changes the rest screen's design.
+1. ~~**Does a rest timer need to survive backgrounding?**~~ **Settled 2026-09-02: yes, with
+   `expo-notifications`.** The user chose this over the cheaper alternative (recompute the
+   remaining time from a stored `restStartedAt` on every foreground, no native dependency),
+   accepting the cost so a locked phone actually buzzes when rest ends. Consequences Phase H
+   must carry: a new native dependency, an OS permission prompt that needs a place in the
+   flow, iOS/Android scheduling differences, a cancel path when the user skips rest early,
+   and — because Jest cannot exercise notification scheduling — **a physical-device check is
+   mandatory before merge, not optional**. Write this up as an ADR when the phase starts.
 2. **What happens to a queued session whose exercise was deleted server-side?** Soft delete
    means the row still exists, so the reference resolves — confirm that is enough, or define
    the fallback. Settle in ADR-025 (Phase F).
