@@ -45,6 +45,18 @@ export async function ensureWorkoutSessionSchema(db: SqliteConnection): Promise<
       payload TEXT NOT NULL
     );
   `);
+  // What the event log alone cannot rebuild. Replaying `session_events` restores *what happened*
+  // -- which sets were ticked, when the athlete paused -- but not *what the session is*: its
+  // name, its exercises, or the targets prescribed for each set. Without this row, a
+  // force-killed app has a log it cannot interpret. One row per unfinished session; dropped
+  // when the session finishes and is handed to the queue.
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS session_snapshot (
+      session_id TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      started_at TEXT NOT NULL
+    );
+  `);
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS session_queue (
       session_id TEXT PRIMARY KEY,
@@ -122,6 +134,68 @@ export async function getSessionEvents(db: SqliteConnection, sessionId: string):
 /** Called once a session's queue row has successfully uploaded -- the log has done its job (crash recovery for a session that no longer needs recovering) and is dropped with it. */
 export async function clearSessionEvents(db: SqliteConnection, sessionId: string): Promise<void> {
   await db.runAsync('DELETE FROM session_events WHERE session_id = ?', [sessionId]);
+}
+
+/** One unfinished session, as written at start and read back after a crash. */
+export interface SessionSnapshotRecord {
+  sessionId: string;
+  /** The started session, opaque here -- `live-session.ts` owns its shape. */
+  payload: Record<string, unknown>;
+  startedAt: string;
+}
+
+/**
+ * Records a session so a force-killed app can rebuild it.
+ *
+ * Written **once, at session start**, not on every change: the mutable part of a session is
+ * exactly what the event log already carries, and rewriting this row per tick would reintroduce
+ * the "mutable current-session row" the append-only design exists to avoid.
+ *
+ * `INSERT OR REPLACE` so starting a session twice with the same id (a remount) overwrites
+ * rather than throwing.
+ */
+export async function saveSessionSnapshot(
+  db: SqliteConnection,
+  sessionId: string,
+  payload: Record<string, unknown>,
+  startedAt: string,
+): Promise<void> {
+  await db.runAsync('INSERT OR REPLACE INTO session_snapshot (session_id, payload, started_at) VALUES (?, ?, ?)', [
+    sessionId,
+    JSON.stringify(payload),
+    startedAt,
+  ]);
+}
+
+/**
+ * The session to offer to resume, or `null`.
+ *
+ * Returns the **most recently started** one. There should only ever be a single row -- a
+ * session is snapshotted at start and cleared when it finishes -- but ordering makes the
+ * behaviour defined rather than incidental if an earlier session was abandoned without ever
+ * being finished (an app killed at exactly the wrong moment, say).
+ */
+export async function getUnfinishedSessionSnapshot(db: SqliteConnection): Promise<SessionSnapshotRecord | null> {
+  const rows = await db.getAllAsync<{ session_id: string; payload: string; started_at: string }>(
+    'SELECT session_id, payload, started_at FROM session_snapshot ORDER BY started_at DESC LIMIT 1',
+    [],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    sessionId: row.session_id,
+    payload: JSON.parse(row.payload) as Record<string, unknown>,
+    startedAt: row.started_at,
+  };
+}
+
+/**
+ * Drops a snapshot. Called when a session finishes, and when the athlete declines to resume --
+ * in the second case the events go too, since a session nobody intends to continue should not
+ * keep being offered, nor grow the log forever.
+ */
+export async function clearSessionSnapshot(db: SqliteConnection, sessionId: string): Promise<void> {
+  await db.runAsync('DELETE FROM session_snapshot WHERE session_id = ?', [sessionId]);
 }
 
 /**

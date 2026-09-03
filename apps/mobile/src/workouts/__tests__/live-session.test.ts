@@ -17,6 +17,7 @@ import {
   pauseSession,
   removeExercise,
   removeSet,
+  restoreSession,
   resumeSession,
   sessionStats,
   setRestSeconds,
@@ -276,5 +277,51 @@ describe('immutability', () => {
     pauseSession(original, NOW);
 
     expect(JSON.stringify(original)).toBe(snapshot);
+  });
+});
+
+describe('restoreSession', () => {
+  it('rebuilds the ticked sets from a replayed log', () => {
+    const restored = restoreSession(session(), {
+      status: 'in_progress',
+      completedSetKeys: ['ex-1:0', 'ex-2:0'],
+    });
+
+    expect(restored.exercises[0].sets[0].isCompleted).toBe(true);
+    expect(restored.exercises[0].sets[1].isCompleted).toBe(false);
+    expect(restored.exercises[1].sets[0].isCompleted).toBe(true);
+  });
+
+  it('keeps the prescription the snapshot carries, which the log does not', () => {
+    const restored = restoreSession(session(), { status: 'in_progress', completedSetKeys: [] });
+
+    // The event log records what happened; only the snapshot knows the session's name, its
+    // exercises and their targets.
+    expect(restored.name).toBe('Upper / Lower');
+    expect(restored.exercises[0].name).toBe('Bench Press');
+    expect(restored.exercises[0].sets[0].weightKg).toBe(80);
+    expect(restored.exercises[1].sets[0].durationSeconds).toBe(45);
+  });
+
+  it('comes back paused when the athlete left it paused', () => {
+    const restored = restoreSession(session(), { status: 'paused', completedSetKeys: [] });
+
+    expect(restored.status).toBe('paused');
+  });
+
+  it('leaves a set open that was ticked and then unticked', () => {
+    // The replay applies set_uncompleted by removing the key, so it simply is not in the list.
+    const restored = restoreSession(session(), { status: 'in_progress', completedSetKeys: [] });
+
+    expect(restored.exercises[0].sets[0].isCompleted).toBe(false);
+  });
+
+  it('round-trips a real sequence of actions through replay', () => {
+    // Tick two sets, untick one -- what completeSet would have written to the log.
+    const keys = ['ex-1:0', 'ex-1:1'].filter((key) => key !== 'ex-1:1');
+
+    const restored = restoreSession(session(), { status: 'in_progress', completedSetKeys: keys });
+
+    expect(sessionStats(restored)).toMatchObject({ completedSetCount: 1, totalSetCount: 3, volumeKg: 640 });
   });
 });

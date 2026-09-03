@@ -347,6 +347,39 @@ export function nextOpenSet(session: LiveSession): { name: string; detail: strin
   return null;
 }
 
+/**
+ * Rebuilds a session from its snapshot plus the replayed state of its event log -- the crash
+ * recovery path the append-only log exists for (`workout-engine.md`: "the app can be killed
+ * mid-session and the state rebuilt by replay").
+ *
+ * The two halves are complementary and neither is sufficient alone. The snapshot says what the
+ * session *is* (its name, exercises and prescribed targets); the replay says what *happened* to
+ * it (which sets were ticked, whether it is paused). `completedSetKeys` is keyed
+ * `exerciseId:setIndex`, which is why `setIndex` is dense and stable.
+ *
+ * A set that was ticked and later unticked does not appear in `completedSetKeys` at all -- the
+ * replay applies `set_uncompleted` by removing the key -- so it correctly comes back open.
+ */
+export function restoreSession(
+  snapshot: LiveSession,
+  replayed: { status: WorkoutSessionStatus; completedSetKeys: string[] },
+): LiveSession {
+  const completed = new Set(replayed.completedSetKeys);
+  return {
+    ...snapshot,
+    // A finished session is never restored into the live screen -- if the log says it completed,
+    // it belongs to the sync queue, not to another workout.
+    status: replayed.status === 'completed' ? 'completed' : replayed.status,
+    exercises: snapshot.exercises.map((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) => ({
+        ...set,
+        isCompleted: completed.has(`${exercise.exerciseId}:${set.setIndex}`),
+      })),
+    })),
+  };
+}
+
 export function pauseSession(session: LiveSession, now: Date): LiveSessionChange {
   if (session.status !== 'in_progress') return unchanged(session);
   return {
