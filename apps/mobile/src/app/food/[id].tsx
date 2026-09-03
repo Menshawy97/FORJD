@@ -279,7 +279,11 @@ export default function FoodDetailScreen() {
     <ScreenBackground>
       <Header title={food.name} onBack={() => router.back()} />
 
-      <ScrollView className="flex-1 px-screen-x" contentContainerStyle={{ paddingBottom: 26 }}>
+      <ScrollView
+        className="flex-1 px-screen-x"
+        contentContainerStyle={{ paddingBottom: 26 }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled">
         <Text className="font-archivo text-[11.5px] text-dimmer">{FOOD_CATEGORY_DISPLAY_NAMES[food.category]}</Text>
 
         <View

@@ -170,7 +170,11 @@ export default function EditMealScreen() {
     <ScreenBackground>
       <Header title="Edit Meal" onBack={onBack} />
 
-      <ScrollView className="flex-1 px-screen-x" contentContainerStyle={{ paddingBottom: 26 }}>
+      <ScrollView
+        className="flex-1 px-screen-x"
+        contentContainerStyle={{ paddingBottom: 26 }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled">
         <TextInput
           value={draft.name}
           onChangeText={renameDraft}

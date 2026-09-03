@@ -206,7 +206,11 @@ export default function BuilderScreen() {
     <ScreenBackground>
       <Header title="Workout builder" onBack={() => router.back()} />
 
-      <ScrollView className="flex-1 px-screen-x" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1 px-screen-x"
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled">
         <Text className="mb-[9px] font-archivo text-section-label font-semibold uppercase text-label">
           Workout name
         </Text>

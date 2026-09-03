@@ -544,8 +544,24 @@ export default function LiveScreen() {
         ) : null}
       </View>
 
-      {/* Scroll area. Prototype: `padding:'0 22px 26px'`. */}
-      <ScrollView className="flex-1 px-screen-x" showsVerticalScrollIndicator={false}>
+      {/*
+        Scroll area. Prototype: `padding:'0 22px 26px'`.
+
+        `automaticallyAdjustKeyboardInsets` is what keeps the row being edited visible. Every set
+        row holds two numeric inputs, and the numeric keypad covers roughly the bottom third of the
+        screen -- without this the athlete taps a weight field low in the list and the keypad lands
+        directly on top of the number they are typing. iOS-only by design; on Android the window
+        resizes for the keyboard already.
+
+        `keyboardShouldPersistTaps="handled"` fixes the other half of the same problem: with the
+        keypad open, the first tap on a set's tick would otherwise be swallowed dismissing the
+        keyboard, so completing a set mid-workout took two taps.
+      */}
+      <ScrollView
+        className="flex-1 px-screen-x"
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled">
         {/* "How to train this" -- `margin-bottom:14px`, radius 14, `#17181a`. */}
         <View
           className="mb-[14px] overflow-hidden rounded-[14px]"
