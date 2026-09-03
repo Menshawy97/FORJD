@@ -48,6 +48,7 @@ import type {
   UpdateProfileRequest,
   CreateWorkoutTemplateRequest,
   WorkoutTemplateListResponse,
+  WorkoutSessionUploadRequest,
   WorkoutTemplateResponse,
 } from '@forjd/contracts';
 
@@ -327,4 +328,17 @@ export async function createWorkoutTemplate(
 /** `DELETE /workouts/templates/:id` answers `204 No Content` -- a soft delete on the server. */
 export async function deleteWorkoutTemplate(id: string): Promise<void> {
   await apiClient.request({ method: 'delete', url: `/workouts/templates/${id}` });
+}
+
+/**
+ * `POST /workouts/sessions` -- the sync call that happens *after* a workout, never during one
+ * (CLAUDE.md rule 6). Only `store/workout-session.ts`'s queue drain calls this; the live screen
+ * itself must never reach the network.
+ *
+ * The body carries a client-generated `id` which is the **idempotency key**: a retry after a
+ * dropped response is a second POST with the same id, and the service answers with the existing
+ * session rather than creating a second one. That is what makes retrying safe.
+ */
+export async function uploadWorkoutSession(body: WorkoutSessionUploadRequest): Promise<void> {
+  await apiClient.post('/workouts/sessions', body);
 }

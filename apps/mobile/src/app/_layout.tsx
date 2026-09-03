@@ -9,11 +9,13 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secureStorage';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
+import { syncPendingSessions } from '@/workouts/sync-sessions';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -74,6 +76,27 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, authChecked]);
+
+  /**
+   * Drains the finished-workout upload queue, once at launch and again whenever the app comes
+   * back to the foreground.
+   *
+   * Foreground is the right trigger rather than a connectivity listener: a phone regaining
+   * signal in a pocket is not a moment worth waking work for, and the queue's own backoff
+   * already handles a drain that arrives too early. Calling it often is free -- a row whose
+   * retry time has not passed is skipped without a request.
+   *
+   * Deliberately not awaited and never surfaced: sync is not something the athlete asked for at
+   * this moment, and the queue is durable, so a failure simply waits for the next trigger.
+   */
+  useEffect(() => {
+    if (!authChecked || !authenticated) return;
+    void syncPendingSessions();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void syncPendingSessions();
+    });
+    return () => subscription.remove();
+  }, [authChecked, authenticated]);
 
   if (!fontsLoaded || !authChecked) {
     return null;
