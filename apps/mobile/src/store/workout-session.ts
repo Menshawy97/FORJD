@@ -18,10 +18,11 @@ import type { SqliteConnection } from './exercise-catalogue';
  *   specifies. What makes crash recovery real: a force-killed app rebuilds its session state
  *   by replaying this log (`replaySessionState`), not by trusting whatever React state
  *   happened to survive.
- * - **`session_queue`** -- one row per *finished* session awaiting upload. A session enters
- *   this table exactly once, when a `workout_finished` event is appended -- see
- *   `appendSessionEvent`'s own docblock for why that is enforced here rather than left to a
- *   caller's discipline.
+ * - **`session_queue`** -- one row per *finished* session awaiting upload, written by
+ *   `enqueueSessionUpload`. **The caller does this, not `appendSessionEvent`.** An earlier
+ *   version of this docblock claimed a session was enqueued automatically when a
+ *   `workout_finished` event was appended; it never was, and the live screen's Finish handler
+ *   is the one place it happens (Phase I).
  *
  * See ADR-025 for the full retry/backoff and deleted-exercise-reference decisions this file
  * implements.

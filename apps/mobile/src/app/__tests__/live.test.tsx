@@ -19,6 +19,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
+const mockReplace = jest.fn();
 
 jest.mock('expo-router', () => {
   const react = require('react');
@@ -26,6 +27,7 @@ jest.mock('expo-router', () => {
     router: {
       push: (...args: unknown[]) => mockPush(...args),
       back: (...args: unknown[]) => mockBack(...args),
+      replace: (...args: unknown[]) => mockReplace(...args),
     },
     useFocusEffect: (callback: () => void) => {
       react.useEffect(() => {
@@ -44,6 +46,7 @@ jest.mock('@/store/workout-session', () => ({
   clearSessionSnapshot: jest.fn(),
   getSessionEvents: jest.fn(),
   replaySessionState: jest.fn(),
+  enqueueSessionUpload: jest.fn(),
 }));
 
 // Every API function rejects. Nothing in the live flow may depend on one.
@@ -56,6 +59,7 @@ jest.mock('@/auth/apiClient', () => ({
 import {
   appendSessionEvent,
   clearSessionSnapshot,
+  enqueueSessionUpload,
   ensureWorkoutSessionSchema,
   getSessionEvents,
   getUnfinishedSessionSnapshot,
@@ -131,6 +135,7 @@ beforeEach(() => {
   (appendSessionEvent as jest.Mock).mockResolvedValue(undefined);
   (saveSessionSnapshot as jest.Mock).mockResolvedValue(undefined);
   (clearSessionSnapshot as jest.Mock).mockResolvedValue(undefined);
+  (enqueueSessionUpload as jest.Mock).mockResolvedValue(undefined);
   (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue(null);
   (getSessionEvents as jest.Mock).mockResolvedValue([]);
   (replaySessionState as jest.Mock).mockReturnValue({
@@ -598,7 +603,15 @@ describe('the offline path', () => {
       expect(types).toContain('workout_finished');
       expect(types).toContain('exercise_completed');
     });
-    expect(mockBack).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith('/workout-done');
+    // The whole point of the offline path: the finished session reaches the sync queue even
+    // though every API call rejected.
+    await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
+    const payload = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    expect(payload).toMatchObject({ id: 'session-1', templateId: 'template-1', isLiveTracked: false });
+    // Every set travels, ticked or not -- analytics filters on isCompleted rather than
+    // assuming each row happened.
+    expect(payload.exercises[0].sets).toHaveLength(2);
   });
 
   it('still runs the session when the local database cannot even be opened', async () => {

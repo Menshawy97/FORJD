@@ -1,3 +1,4 @@
+import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 import type {
   Activity,
   ExerciseGoal,
@@ -377,6 +378,52 @@ export function restoreSession(
         isCompleted: completed.has(`${exercise.exerciseId}:${set.setIndex}`),
       })),
     })),
+  };
+}
+
+/**
+ * Turns a finished session into the body `POST /workouts/sessions` expects (Phase I).
+ *
+ * Pure, and separate from the enqueue that follows it, so the mapping is testable without a
+ * database. Three things it gets deliberately right:
+ *
+ * - **Every set is included, completed or not.** `WorkoutSet`'s own docblock: an unfinished
+ *   session carries incomplete rows rather than missing ones, and analytics filters on
+ *   `isCompleted`. Dropping the unticked ones would quietly rewrite what the athlete did.
+ * - **Exercises with no sets are dropped**, because the contract requires at least one and an
+ *   exercise with none has nothing to say.
+ * - **`isLiveTracked` is false.** It means "streamed live to the server as it happened", which
+ *   this never is — the whole design logs locally first (rule 6).
+ */
+export function toUploadRequest(
+  session: LiveSession,
+  endedAt: Date,
+  durationSeconds: number,
+): WorkoutSessionUploadRequest {
+  return {
+    id: session.id,
+    templateId: session.templateId,
+    name: session.name,
+    activity: session.activity,
+    status: session.status,
+    startedAt: session.startedAt.toISOString(),
+    endedAt: endedAt.toISOString(),
+    durationSeconds: Math.max(0, Math.round(durationSeconds)),
+    isLiveTracked: false,
+    exercises: session.exercises
+      .filter((exercise) => exercise.sets.length > 0)
+      .map((exercise) => ({
+        exerciseId: exercise.exerciseId,
+        sets: exercise.sets.map((set) => ({
+          setIndex: set.setIndex,
+          type: 'working' as const,
+          isCompleted: set.isCompleted,
+          ...(set.weightKg !== null ? { weightKg: set.weightKg } : {}),
+          ...(set.reps !== null ? { reps: set.reps } : {}),
+          ...(set.durationSeconds !== null ? { durationSeconds: set.durationSeconds } : {}),
+          ...(set.distanceMeters !== null ? { distanceMeters: set.distanceMeters } : {}),
+        })),
+      })),
   };
 }
 
