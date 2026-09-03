@@ -1,4 +1,5 @@
-import { index, integer, numeric, pgTable, text, timestamp, uuid, boolean, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { index, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid, boolean, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users.schema";
 import { exercises } from "./exercises.schema";
 
@@ -310,3 +311,132 @@ export const workoutSets = pgTable(
 
 export type WorkoutSetRow = typeof workoutSets.$inferSelect;
 export type NewWorkoutSetRow = typeof workoutSets.$inferInsert;
+
+/* ------------------------------------------------------------------------------------------
+ * Program half (Phase 3K): a named, multi-week plan the athlete follows.
+ *
+ * `docs/product/phase-3k-plan.md` explains why this is `programs -> program_workouts` and not
+ * the `programs -> program_weeks -> program_days` the phase outline sketched: a preset program
+ * is a *set of named workouts* plus a duration and a level, and weekday assignment exists only
+ * in the builder, for custom programs.
+ * ---------------------------------------------------------------------------------------- */
+
+export const programs = pgTable(
+  "programs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /**
+     * Null for a catalogue preset, exactly as `workout_templates.owner_user_id` is -- the same
+     * "visible to everyone" convention, so the existing `visibleTo` predicate applies unchanged.
+     */
+    ownerUserId: uuid("owner_user_id").references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Stable across renames; unique among presets only (see the index below). */
+    slug: text("slug").notNull(),
+    /** One of PROGRAM_CATEGORIES in @forjd/domain -- how the catalogue's filter chips file it. */
+    category: text("category").notNull(),
+    /** One of PROGRAM_LEVELS in @forjd/domain. Not `LEVELS`: the design says "Advanced". */
+    level: text("level").notNull(),
+    /** The two halves of the design's `4 days · 8 weeks` meta line, stored as numbers. */
+    daysPerWeek: integer("days_per_week").notNull(),
+    durationWeeks: integer("duration_weeks").notNull(),
+    description: text("description"),
+    /**
+     * Bumped whenever a program's content is rewritten. An enrolment snapshots the version it
+     * began under -- see `program_enrollments.program_version`, and the honest limits of what
+     * that currently buys, in `phase-3k-plan.md`.
+     */
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("programs_owner_idx").on(table.ownerUserId),
+    index("programs_category_idx").on(table.category),
+    /**
+     * Presets only. A partial unique index rather than a plain one, because two athletes may
+     * each build a custom program called "My Split" and neither should collide with the other
+     * or with a catalogue slug.
+     */
+    uniqueIndex("programs_preset_slug_key")
+      .on(table.slug)
+      .where(sql`owner_user_id is null`),
+  ],
+);
+
+export type ProgramRow = typeof programs.$inferSelect;
+export type NewProgramRow = typeof programs.$inferInsert;
+
+/**
+ * The join that makes a program's workouts *be* workout templates.
+ *
+ * `restrict` on delete rather than cascade: a template still referenced by a program is not one
+ * to remove silently, and the alternative -- a program quietly losing a day -- is the kind of
+ * hollowing-out this phase's plan explicitly refuses.
+ */
+export const programWorkouts = pgTable(
+  "program_workouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    programId: uuid("program_id")
+      .notNull()
+      .references(() => programs.id, { onDelete: "cascade" }),
+    templateId: uuid("template_id")
+      .notNull()
+      .references(() => workoutTemplates.id, { onDelete: "restrict" }),
+    orderIndex: integer("order_index").notNull(),
+    /**
+     * `0`-`6`, indexed like `Date#getDay()`, so nothing between here and the client converts an
+     * index and risks reversing it.
+     *
+     * **Null for a preset**, which prescribes a set of workouts rather than a calendar. Only
+     * the builder's custom programs pin a workout to a weekday.
+     */
+    dayOfWeek: integer("day_of_week"),
+  },
+  (table) => [index("program_workouts_program_order_idx").on(table.programId, table.orderIndex)],
+);
+
+export type ProgramWorkoutRow = typeof programWorkouts.$inferSelect;
+export type NewProgramWorkoutRow = typeof programWorkouts.$inferInsert;
+
+/**
+ * Who is following what.
+ *
+ * Ended rather than deleted, so "you followed this for six weeks last spring" survives -- the
+ * same soft-history reasoning `workout_sessions.deleted_at` documents.
+ */
+export const programEnrollments = pgTable(
+  "program_enrollments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    programId: uuid("program_id")
+      .notNull()
+      .references(() => programs.id, { onDelete: "cascade" }),
+    /** Snapshotted at enrolment from `programs.version`. */
+    programVersion: integer("program_version").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Null while active. */
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("program_enrollments_user_idx").on(table.userId),
+    /**
+     * One active program at a time, which the design assumes throughout -- `activeProgram` is a
+     * single value and Train renders one "Currently following:" chip.
+     *
+     * Defence in depth only. The same rule is enforced in the service, because a rule that
+     * exists only in SQL is a rule that cannot be unit-tested (CLAUDE.md rule 12).
+     */
+    uniqueIndex("program_enrollments_one_active_key")
+      .on(table.userId)
+      .where(sql`ended_at is null`),
+  ],
+);
+
+export type ProgramEnrollmentRow = typeof programEnrollments.$inferSelect;
+export type NewProgramEnrollmentRow = typeof programEnrollments.$inferInsert;

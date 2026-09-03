@@ -6,6 +6,9 @@ import { randomUUID } from "crypto";
 import { exercises } from "./exercises.schema";
 import { users } from "./users.schema";
 import {
+  programEnrollments,
+  programWorkouts,
+  programs,
   workoutBlocks,
   workoutExercises,
   workoutSessionExercises,
@@ -21,7 +24,7 @@ import {
  * ExercisesRepository.spec.ts. No repository exists yet for these tables (that is Phase D);
  * this pins the schema's own claims directly against the applied migration.
  */
-describe("workouts schema (migration 0012)", () => {
+describe("workouts schema (migrations 0012, 0013)", () => {
   const connectionString =
     process.env.DATABASE_URL ?? "postgresql://forjd:forjd_local_dev@localhost:5432/forjd";
 
@@ -31,6 +34,7 @@ describe("workouts schema (migration 0012)", () => {
   const createdExerciseIds: string[] = [];
   const createdTemplateIds: string[] = [];
   const createdSessionIds: string[] = [];
+  const createdProgramIds: string[] = [];
 
   const makeUser = async (label: string): Promise<string> => {
     const email = `wkoutschema-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -75,6 +79,9 @@ describe("workouts schema (migration 0012)", () => {
   afterAll(async () => {
     if (createdSessionIds.length > 0) {
       await db.delete(workoutSessions).where(inArray(workoutSessions.id, createdSessionIds));
+    }
+    if (createdProgramIds.length > 0) {
+      await db.delete(programs).where(inArray(programs.id, createdProgramIds));
     }
     if (createdTemplateIds.length > 0) {
       await db.delete(workoutTemplates).where(inArray(workoutTemplates.id, createdTemplateIds));
@@ -226,5 +233,99 @@ describe("workouts schema (migration 0012)", () => {
       .from(workoutTemplates)
       .where(eq(workoutTemplates.id, customized.id));
     expect(row?.basedOnTemplateId).toBeNull();
+  });
+
+  /**
+   * Phase 3K. Both assertions below are about **partial unique indexes**, which are the part of
+   * this migration most easily lost: a regenerated migration that drops the `where` clause still
+   * applies cleanly, still passes a typecheck, and silently stops enforcing anything.
+   */
+  describe("programs (migration 0013)", () => {
+    const makeProgram = async (
+      ownerUserId: string | null,
+      slug: string,
+    ): Promise<string> => {
+      const [row] = await db
+        .insert(programs)
+        .values({
+          ownerUserId,
+          name: `Test ${slug}`,
+          slug,
+          category: "strength",
+          level: "intermediate",
+          daysPerWeek: 4,
+          durationWeeks: 8,
+        })
+        .returning();
+      if (!row) throw new Error("insert did not return a row");
+      createdProgramIds.push(row.id);
+      return row.id;
+    };
+
+    it("refuses a second catalogue preset with the same slug", async () => {
+      const slug = `preset-${randomUUID()}`;
+      await makeProgram(null, slug);
+
+      await expect(makeProgram(null, slug)).rejects.toThrow();
+    });
+
+    // The reason the index is partial. Two athletes may each build a program called "My Split",
+    // and neither should collide with the other or with a catalogue slug.
+    it("lets two different users own a program with the same slug", async () => {
+      const slug = `mine-${randomUUID()}`;
+      const owner = await makeUser("prog-owner");
+      const stranger = await makeUser("prog-stranger");
+
+      await makeProgram(owner, slug);
+
+      await expect(makeProgram(stranger, slug)).resolves.toBeTruthy();
+    });
+
+    it("refuses a second active enrolment for the same user", async () => {
+      const owner = await makeUser("enrol-one");
+      const first = await makeProgram(null, `p1-${randomUUID()}`);
+      const second = await makeProgram(null, `p2-${randomUUID()}`);
+
+      await db.insert(programEnrollments).values({ userId: owner, programId: first, programVersion: 1 });
+
+      await expect(
+        db.insert(programEnrollments).values({ userId: owner, programId: second, programVersion: 1 }),
+      ).rejects.toThrow();
+    });
+
+    // Ending one and starting another is the design's own Start Following, which has no "stop
+    // the other one first" step -- so the index must not stand in its way.
+    it("allows a new enrolment once the previous one has ended", async () => {
+      const owner = await makeUser("enrol-again");
+      const first = await makeProgram(null, `p3-${randomUUID()}`);
+      const second = await makeProgram(null, `p4-${randomUUID()}`);
+
+      await db.insert(programEnrollments).values({ userId: owner, programId: first, programVersion: 1 });
+      await db
+        .update(programEnrollments)
+        .set({ endedAt: new Date() })
+        .where(eq(programEnrollments.userId, owner));
+
+      await expect(
+        db.insert(programEnrollments).values({ userId: owner, programId: second, programVersion: 1 }),
+      ).resolves.toBeTruthy();
+    });
+
+    // `restrict`, not `cascade`: a program quietly losing a day is the hollowing-out this
+    // phase's plan refuses.
+    it("rejects hard-deleting a template a program still points at", async () => {
+      const owner = await makeUser("prog-tmpl");
+      const programId = await makeProgram(null, `p5-${randomUUID()}`);
+      const templateId = await makeTemplate(owner);
+
+      await db.insert(programWorkouts).values({ programId, templateId, orderIndex: 0 });
+
+      await expect(
+        db.delete(workoutTemplates).where(eq(workoutTemplates.id, templateId)),
+      ).rejects.toThrow();
+
+      // Leave nothing behind for the shared teardown to trip over.
+      await db.delete(programWorkouts).where(eq(programWorkouts.programId, programId));
+    });
   });
 });
