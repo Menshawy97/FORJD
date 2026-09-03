@@ -46,6 +46,9 @@ const ACTIVITY_LABELS: Record<Activity, string> = {
   pilates: 'Pilates',
   cycling: 'Cycling',
   swimming: 'Swimming',
+  // Not offered by the goals screen's chips (the design has six), but a stored activity must
+  // still have a label -- Phase 3K's preset programs file two of themselves under it.
+  cross_training: 'Cross Training',
 };
 
 interface Identity {

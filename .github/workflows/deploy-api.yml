@@ -92,7 +92,7 @@ jobs:
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
-      - name: Run database migrations and load the exercise and nutrition catalogues
+      - name: Run database migrations and seed the catalogues and programs
         # Pulled from Secret Manager (forjd-<target>-database-url), not a GitHub secret, so
         # the hosted DB credential lives in exactly one place. Must be the Supabase *session
         # pooler* connection string — the direct connection string fails over IPv6 from
@@ -115,6 +115,14 @@ jobs:
         # on `Cannot find module '@forjd/domain'` after the migration had already applied. A
         # local run cannot reproduce that: a developer tree almost always has a stale `dist/`
         # lying around. Same reasoning, same fix as the mobile job in ci.yml.
+        #
+        # `programs:seed` runs last of the three and depends on `exercises:load`: 24 of the 28
+        # exercise names the nine preset programs use resolve to ingested catalogue rows, so it
+        # fails loudly naming the missing slugs rather than seeding a program short of a lift. It
+        # is idempotent on the same terms — a program is keyed by its slug through the
+        # `programs_preset_slug_key` partial unique index, and its workout templates are found
+        # again through the `program_workouts` join rows, so template ids stay stable across
+        # deploys and the sessions performed against a preset are never orphaned.
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @forjd/domain --filter @forjd/contracts build
@@ -122,6 +130,7 @@ jobs:
           pnpm --filter @forjd/api db:migrate
           pnpm --filter @forjd/api exercises:load
           pnpm --filter @forjd/api nutrition:load
+          pnpm --filter @forjd/api programs:seed
 
       - name: Mirror exercise media
         # ADR-018 / Phase F. Separate step, not folded into the one above, because it needs

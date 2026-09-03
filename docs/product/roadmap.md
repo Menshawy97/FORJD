@@ -356,7 +356,7 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and
    `screen-atmosphere.test.tsx` anchors on per-screen text — that one broke when Train stopped
    saying "coming soon", and CI caught it rather than the targeted runs.
-3. **Phase K — programs. Planned, not started** —
+3. **Phase K — programs. K1 done (PRs #99, #100); K2–K6 next** —
    [`phase-3k-plan.md`](phase-3k-plan.md) has the schema, the six slices and the reasoning.
    The final Phase 3 slice.
 
@@ -365,6 +365,17 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    while the other fifteen would mean writing training progressions and labelling them `5/3/1`
    or `Race Prep 10K` — fabricated training advice. Train's hero copy gets corrected to the real
    count in K5. And **Phase K covers the whole surface including the builder**, across six PRs.
+
+   **K1 is complete.** Migration 0013 and the three tables landed in #99; #100 landed the seed —
+   the nine programs, their 38 catalogue workout templates, and four curated exercises (`5K Run`,
+   `Tempo Intervals`, `Assault Bike`, `Pistol Squat`) that the ingested catalogue genuinely cannot
+   supply. All 24 hand-curated `name → slug` mappings were re-verified against the committed
+   snapshot before seeding, and `program-catalogue.spec.ts` now fails the build if any of them
+   stops resolving — the catalogue is re-ingested, and an upstream rename would otherwise silently
+   hollow out a program. `ACTIVITIES` gained `cross_training` for the two Cross Training programs.
+   The seed runs as `programs:seed` in `deploy-api.yml` after `exercises:load`, and is idempotent:
+   template ids stay stable across deploys, so sessions performed against a preset are never
+   orphaned. **Next: K2, the read API** (`GET /programs`, `/programs/:id`, `/programs/enrollment`).
 
    The plan also corrects this outline's own sketch of the schema. `programs → program_weeks →
    program_days` is not how the design works — a preset program is a *set of named workouts*

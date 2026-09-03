@@ -19,7 +19,8 @@
     "exercises:mirror-media": "ts-node src/exercises/ingest/mirror-media.ts",
     "nutrition:fetch-usda": "ts-node src/nutrition/ingest/fetch-usda.ts",
     "nutrition:normalize": "ts-node src/nutrition/ingest/normalize.ts",
-    "nutrition:load": "ts-node src/nutrition/ingest/load.ts"
+    "nutrition:load": "ts-node src/nutrition/ingest/load.ts",
+    "programs:seed": "ts-node src/programs/seed/seed.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",
