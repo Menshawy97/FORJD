@@ -4,18 +4,19 @@ import {
   EXERCISE_GOAL_DISPLAY_NAMES,
   MUSCLE_GROUP_DISPLAY_NAMES,
 } from '@forjd/domain';
-import type { ExerciseResponse } from '@forjd/contracts';
+import type { ExerciseHistoryResponse, ExerciseResponse } from '@forjd/contracts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { deleteExercise, getExerciseCatalogue, setExerciseFavourite } from '@/auth/apiClient';
+import { deleteExercise, getExerciseCatalogue, getExerciseHistory, setExerciseFavourite } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
+import { Sparkline } from '@/features/exercise/sparkline';
 import { trainingTip } from '@/exercises/training-tip';
 import {
   ensureExerciseCatalogueSchema,
@@ -27,6 +28,7 @@ import {
   type SqliteConnection,
 } from '@/store/exercise-catalogue';
 import { recordExerciseOpened } from '@/store/recent-exercises';
+import { formatHistoryDate } from '@/workouts/previous-workout';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -40,32 +42,52 @@ import { colors } from '@/theme/tokens';
  * execution (CLAUDE.md rule 6) needs the exercise available without a round trip, and Phase H's
  * sync endpoint already returns the full detail shape for exactly this reason.
  *
- * **Stat tiles, sparkline and history (§4.2 items 3-5, §5 items 2-6) are Phase 3 data and are
- * omitted entirely**, not rendered as zeros -- the same call already made for the athlete
- * screen's stat tiles and the library row's trailing stat. **Instructions are shown** (§8's
+ * **The strength stat tiles, trend and History are real as of Phase 3J-d**, from
+ * `GET /workouts/sessions/exercise/:exerciseId`. Their empty states remain and still matter:
+ * they are what an exercise the athlete has never performed shows, and what a failed history
+ * request falls back to. The **running** branch's tiles, route map and pace trend are still
+ * empty -- they need GPS-tracked runs, which this phase does not ship. **Instructions are
+ * shown** (§8's
  * deviation list) even though the prototype has no field for them, because the ingested
  * dataset provides real ones and an exercise detail with nothing but tags would be thinner
  * than the design intends.
  */
 /**
- * Ports the prototype's `stat(label, value, unit, sub)` card (§4.2 item 3 / §5 item 2), but
- * with an **honest empty state** rather than the prototype's hardcoded demo numbers (`100 kg
- * × 3`, `106 kg`) -- there is no real session data until Phase 3 ships, and showing invented
- * numbers as if they were the user's own would be worse than the layout gap it fills. An
- * em dash stands in for `value`; no `unit` or `sub` line renders without a real number to
- * qualify.
+ * Ports the prototype's `stat(label, value, unit, sub)` card (§4.2 item 3 / §5 item 2).
+ *
+ * **The empty state is still the default and still matters.** An em dash renders whenever
+ * `value` is absent -- which is what an exercise never performed shows, and what "Est. 1RM"
+ * shows even beside a real best set when the reps ran past the range Epley can speak to. No
+ * `unit` renders without a number to qualify.
  */
-function StatTile({ label }: { label: string }) {
+function StatTile({ label, value, unit }: { label: string; value?: string; unit?: string }) {
+  const shown = value ?? '—';
   return (
-    <View className="flex-1 rounded-card border border-border bg-surface px-[14px] py-[13px]" style={{ minWidth: 0 }}>
+    <View
+      className="flex-1 rounded-card border border-border bg-surface px-[14px] py-[13px]"
+      style={{ minWidth: 0 }}>
       <Text
         className="font-archivo text-[9.5px] font-semibold uppercase text-label"
         style={{ letterSpacing: 1.33, marginBottom: 9 }}>
         {label}
       </Text>
-      <Text className="font-archivo text-[25px] font-bold text-text" style={{ letterSpacing: -0.5 }}>
-        —
-      </Text>
+      <View className="flex-row items-baseline" style={{ gap: 4 }}>
+        <Text
+          className="font-archivo font-bold text-text"
+          numberOfLines={1}
+          style={{
+            letterSpacing: -0.5,
+            // The prototype drops 25px to 19px past five characters, so a long value shrinks
+            // rather than overflowing its card.
+            fontSize: shown.length > 5 ? 19 : 25,
+            fontVariant: ['tabular-nums'],
+          }}>
+          {shown}
+        </Text>
+        {value !== undefined && unit !== undefined ? (
+          <Text className="font-archivo text-[11.5px] font-medium text-dimmer">{unit}</Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -76,9 +98,31 @@ export default function ExerciseDetailScreen() {
 
   const [exercise, setExercise] = useState<ExerciseResponse | null>(null);
   const [loaded, setLoaded] = useState(false);
+  /**
+   * `null` until the history request resolves, and after one that fails -- both render the
+   * screen's shipped empty states, which are also what an exercise never performed shows. The
+   * catalogue read is what this screen is *for*; its history is an enrichment, so a failure
+   * here must not cost the athlete the exercise itself (Phase 3J-d).
+   */
+  const [history, setHistory] = useState<ExerciseHistoryResponse | null>(null);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const toast = useToast();
   const dbRef = useRef<SqliteConnection | null>(null);
+
+  const historySessions = history?.sessions ?? [];
+
+  /**
+   * The trend's points, oldest first -- the direction a line is read. The response is newest
+   * first, because that is the order the History list below wants, so this reverses it rather
+   * than making the server answer twice in two orders.
+   *
+   * Sessions with no weight are dropped rather than plotted as zero: a bodyweight or timed set
+   * is not a lighter lift, and a zero would draw the line through the floor.
+   */
+  const trendPoints = [...historySessions]
+    .reverse()
+    .map((session) => session.weightKg)
+    .filter((weight): weight is number => weight !== null);
 
   const load = useCallback(async () => {
     const db = dbRef.current;
@@ -91,6 +135,18 @@ export default function ExerciseDetailScreen() {
     if (typeof id === 'string') {
       void recordExerciseOpened(id);
     }
+
+    // Its own effect, deliberately separate from the catalogue read below: the two are
+    // independent, and neither failing should delay or cancel the other.
+    (async () => {
+      if (typeof id !== 'string') return;
+      try {
+        const loadedHistory = await getExerciseHistory(id);
+        if (!cancelled) setHistory(loadedHistory);
+      } catch {
+        // Offline, or an exercise never performed — the shipped empty states already say so.
+      }
+    })();
 
     (async () => {
       const db = await openExerciseCatalogueDb();
@@ -292,8 +348,28 @@ export default function ExerciseDetailScreen() {
         {!isRunning && (
           <>
             <View className="flex-row" style={{ gap: 10, marginBottom: 14 }}>
-              <StatTile label="Best set" />
-              <StatTile label="Est. 1RM" />
+              <StatTile
+                label="Best set"
+                value={
+                  history?.bestSet
+                    ? `${history.bestSet.weightKg} kg × ${history.bestSet.reps}`
+                    : undefined
+                }
+              />
+              {/*
+                Independent of the tile beside it: a real best set can have no estimate, because
+                Epley refuses past twelve reps. That tile then keeps its em dash rather than
+                showing a number the formula cannot stand behind.
+              */}
+              <StatTile
+                label="Est. 1RM"
+                value={
+                  history?.estimatedOneRepMaxKg === null || history?.estimatedOneRepMaxKg === undefined
+                    ? undefined
+                    : String(history.estimatedOneRepMaxKg)
+                }
+                unit="kg"
+              />
             </View>
             <View
               className="rounded-card border border-border bg-surface px-[16px] py-[15px]"
@@ -303,18 +379,52 @@ export default function ExerciseDetailScreen() {
                 style={{ letterSpacing: 1.33, marginBottom: 14 }}>
                 Top set — last 8 sessions
               </Text>
-              <View className="items-center justify-center" style={{ height: 80 }}>
-                <Text className="font-archivo text-[12px] text-dimmer">Log a set to see your trend.</Text>
-              </View>
+              {trendPoints.length >= 2 ? (
+                <Sparkline points={trendPoints} />
+              ) : (
+                <View className="items-center justify-center" style={{ height: 80 }}>
+                  {/*
+                    One session is not a trend, so a single point keeps the copy rather than
+                    drawing a line through nothing.
+                  */}
+                  <Text className="font-archivo text-[12px] text-dimmer">
+                    Log a set to see your trend.
+                  </Text>
+                </View>
+              )}
             </View>
             <Text
               className="font-archivo text-[9.5px] font-semibold uppercase text-label"
               style={{ letterSpacing: 1.33, marginBottom: 2 }}>
               History
             </Text>
-            <Text className="font-archivo text-[13px] text-dimmer" style={{ paddingVertical: 26 }}>
-              No sessions logged yet.
-            </Text>
+            {historySessions.length === 0 ? (
+              <Text className="font-archivo text-[13px] text-dimmer" style={{ paddingVertical: 26 }}>
+                No sessions logged yet.
+              </Text>
+            ) : (
+              historySessions.map((session) => (
+                <View
+                  key={session.sessionId}
+                  className="flex-row items-center justify-between"
+                  style={{
+                    paddingVertical: 13,
+                    borderBottomWidth: 1,
+                    borderBottomColor: 'rgba(255,255,255,.05)',
+                  }}>
+                  <Text className="font-archivo text-[13px] font-medium" style={{ color: '#B4B4AC' }}>
+                    {formatHistoryDate(new Date(session.performedAt), new Date())}
+                  </Text>
+                  <Text
+                    className="font-archivo text-[12.5px] font-medium text-dim"
+                    style={{ fontVariant: ['tabular-nums'] }}>
+                    {session.weightKg === null || session.reps === null
+                      ? '—'
+                      : `${session.weightKg} kg × ${session.reps}`}
+                  </Text>
+                </View>
+              ))
+            )}
           </>
         )}
 

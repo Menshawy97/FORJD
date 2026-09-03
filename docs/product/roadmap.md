@@ -295,7 +295,7 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
      confirm exactly **one** session syncs (PRs #84/#85).
    - **Android**: the notification channel, importance and vibration have been reasoned about
      but never run.
-2. **Phase J — wire up what is already waiting. Mostly done (PRs #87, and J-a/J-b).** Train's **My Workouts**
+2. **Phase J — wire up what is already waiting. Done, apart from City Rank.** Train's **My Workouts**
    now lists real templates, which finally gives a saved workout somewhere to be seen. What is
    **still** placeholder or empty, in the order worth doing:
 
@@ -341,8 +341,16 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    behind the Rank tab, itself a placeholder (open question 4, still unanswered). It keeps its
    em dash.
 
-   **d. `exercise/[id].tsx`'s stat tiles, sparkline and history** — deliberately shipped as
-   honest empty states in Phase 2J, waiting on exactly this data.
+   ~~**d. `exercise/[id].tsx`'s stat tiles, sparkline and history**~~ **Done.** Its "Best set"
+   and "Est. 1RM" tiles, its top-set trend and its History list now read from
+   `GET /workouts/sessions/exercise/:exerciseId`.
+
+   Est. 1RM brought the project its **first domain calculation**, `estimateOneRepMaxKg` in
+   `packages/domain` — CLAUDE.md rule 8's "unit tests for training/analytics calculations". It
+   returns `null` past twelve reps rather than extrapolate a number the formula cannot stand
+   behind, so a real best set can sit beside an empty estimate. The **running** branch's tiles,
+   route map and pace trend are still empty: they need GPS-tracked runs, which Phase 3 does not
+   ship.
 
    **Update the existing tests rather than adding around them**: several suites pin the empty
    states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and

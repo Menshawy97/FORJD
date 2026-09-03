@@ -4,6 +4,7 @@
 import type { WorkoutSessionResponse } from '@forjd/contracts';
 
 import {
+  formatHistoryDate,
   formatRelativeDay,
   formatSessionDuration,
   sessionExerciseChips,
@@ -401,5 +402,28 @@ describe('toRepeatExercises', () => {
     expect(exercises).toHaveLength(1);
     expect(exercises[0].name).toBe('Exercise');
     expect(exercises[0].goal).toBeNull();
+  });
+});
+
+// Phase 3J-d: the exercise-detail History list. A different job from `formatRelativeDay`:
+// "three weeks ago" is precise but useless for locating a session in a list, so the relative
+// form is kept only while it genuinely reads better.
+describe('formatHistoryDate', () => {
+  const now = new Date('2026-09-03T09:00:00');
+
+  it('keeps the relative form while it still reads better than a date', () => {
+    expect(formatHistoryDate(new Date('2026-09-03T06:00:00'), now)).toBe('Today');
+    expect(formatHistoryDate(new Date('2026-09-02T10:00:00'), now)).toBe('Yesterday');
+    expect(formatHistoryDate(new Date('2026-08-30T10:00:00'), now)).toBe('4 days ago');
+  });
+
+  // The prototype's own rows read `Yesterday`, `16 Aug`, `12 Aug`, `9 Aug`.
+  it('falls back to a day and month once a week has passed', () => {
+    expect(formatHistoryDate(new Date('2026-08-16T10:00:00'), now)).toBe('16 Aug');
+    expect(formatHistoryDate(new Date('2026-08-09T10:00:00'), now)).toBe('9 Aug');
+  });
+
+  it('writes a January date without a leading zero, as the design does', () => {
+    expect(formatHistoryDate(new Date('2026-01-05T10:00:00'), now)).toBe('5 Jan');
   });
 });

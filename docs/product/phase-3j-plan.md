@@ -214,6 +214,30 @@ The endpoint answers only with sessions the caller performed, so an exercise the
 necessarily has none. An empty history is both the truthful answer and one that leaks nothing
 about whether the id exists.
 
+### The mobile half
+
+The history read gets **its own effect**, separate from the catalogue read the screen already
+does. The catalogue read is what this screen is *for*; the history is an enrichment, and neither
+failing should delay or cancel the other. `null` renders the shipped empty states, which are
+also what an exercise never performed shows.
+
+Two details worth keeping:
+
+- **The trend is reversed, not re-fetched.** The response is newest-first because that is the
+  order the History list wants; the chart reads oldest-first, so the screen reverses its own
+  copy rather than making the server answer twice in two orders. Sessions with no weight are
+  **dropped rather than plotted as zero** — a bodyweight or timed set is not a lighter lift, and
+  a zero would draw the line through the floor.
+- **`Sparkline` guards a single point.** One session is not a trend, and the prototype's own
+  `(pts.length - 1)` divisor is a division by zero there. A flat series is guarded too, by the
+  prototype's `|| 1`: every point normalises to zero and the line draws flat along the baseline,
+  which reads as "no change" — correct, and the prototype's behaviour verbatim. `NaN` in an SVG
+  path renders as nothing at all with no error, so both cases are asserted on real coordinates
+  rather than on something merely having been drawn.
+
+**The running branch is still empty.** Its "Best time" and "Avg pace" tiles, route map and pace
+trend need GPS-tracked runs, which this phase does not ship.
+
 ## K — not started
 
 Programs, the final Phase 3 slice.
