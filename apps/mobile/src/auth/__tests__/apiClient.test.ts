@@ -433,3 +433,72 @@ describe('apiClient - profile reads and writes', () => {
     expect(instance.request).toHaveBeenCalledWith({ method: 'delete', url: '/exercises/ex1' });
   });
 });
+
+// Phase 3J(a): the read half of the sessions endpoints. `uploadWorkoutSession` (PR #85) has
+// been the only session call the client could make -- write-only, so nothing on the device
+// could ever show a workout that had already happened. Train's "Previous Workout" card,
+// Home's stat strip and the exercise-detail history are all blocked on these two reads.
+describe('apiClient - workout session reads', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (axios as unknown as { __instances: unknown[] }).__instances.length = 0;
+  });
+
+  function apiClientInstance() {
+    const instances = (axios as unknown as { __instances: Array<Record<string, unknown>> })
+      .__instances;
+    // Construction order in apiClient.ts: public, refresh, api, replay.
+    return instances[2] as unknown as { get: jest.Mock };
+  }
+
+  const summary = {
+    id: '11111111-1111-4111-8111-111111111111',
+    name: 'Push Day',
+    activity: 'weightlifting' as const,
+    status: 'completed' as const,
+    startedAt: '2026-09-02T18:00:00.000Z',
+    endedAt: '2026-09-02T18:45:12.000Z',
+    durationSeconds: 2712,
+    perceivedEffort: null,
+  };
+
+  it('listWorkoutSessions reads GET /workouts/sessions through the authenticated client', async () => {
+    const { listWorkoutSessions } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = { items: [summary], nextCursor: null };
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(listWorkoutSessions()).resolves.toEqual(body);
+
+    // No query given, so no params are sent and the server applies its own default limit.
+    expect(instance.get).toHaveBeenCalledWith('/workouts/sessions', { params: {} });
+  });
+
+  // The "Previous Workout" card wants exactly one row, not the default fifty.
+  it('listWorkoutSessions forwards cursor and limit as query params', async () => {
+    const { listWorkoutSessions } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+
+    await listWorkoutSessions({ limit: 1, cursor: 'abc' });
+
+    expect(instance.get).toHaveBeenCalledWith('/workouts/sessions', {
+      params: { limit: 1, cursor: 'abc' },
+    });
+  });
+
+  it('getWorkoutSession reads GET /workouts/sessions/:id through the authenticated client', async () => {
+    const { getWorkoutSession } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = { ...summary, templateId: null, notes: null, city: null, citySlug: null, isLiveTracked: false, exercises: [] };
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(
+      getWorkoutSession('11111111-1111-4111-8111-111111111111'),
+    ).resolves.toEqual(body);
+
+    expect(instance.get).toHaveBeenCalledWith(
+      '/workouts/sessions/11111111-1111-4111-8111-111111111111',
+    );
+  });
+});

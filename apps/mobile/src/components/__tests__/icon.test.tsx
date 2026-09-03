@@ -129,6 +129,19 @@ describe('Icon', () => {
     expect(ofType('RNSVGPath')[0].props.strokeWidth).toBe(2.6);
   });
 
+  // The prototype draws Train's Repeat button with a *filled* triangle and no stroke
+  // (`fill:'#fff'` on the path, unlike every other glyph in the set). `filled` already existed
+  // for the favourite star; pairing it with `strokeWidth={0}` is what makes a fill-only glyph
+  // render at exactly the geometry the prototype draws, rather than a triangle fattened by a
+  // 1.6px outline.
+  it('draws the play triangle as a fill with no stroke', async () => {
+    const { ofType } = await renderIcon(<Icon name="play" color="#fff" filled strokeWidth={0} />);
+
+    const [triangle] = ofType('RNSVGPath');
+    expect(triangle.props.fill).toEqual(expect.objectContaining({ payload: expect.anything() }));
+    expect(triangle.props.strokeWidth).toBe(0);
+  });
+
   it('exposes every glyph the app needs', async () => {
     const names = [
       'home',
@@ -158,6 +171,7 @@ describe('Icon', () => {
       'bell',
       'eye',
       'back',
+      'play',
     ] as const;
 
     for (const name of names) {

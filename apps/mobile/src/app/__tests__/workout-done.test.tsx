@@ -52,6 +52,7 @@ function stageSummary(overrides: Record<string, unknown> = {}) {
     volumeKg: 1280,
     completedSetCount: 12,
     exerciseIds: ['ex-1', 'ex-2'],
+    origin: 'live',
     ...overrides,
   } as Parameters<typeof setCompletedSummary>[0]);
 }
@@ -172,6 +173,40 @@ describe('syncing', () => {
 
   it('does not try to sync when there is no workout to summarise', async () => {
     await render(<WorkoutDoneScreen />);
+
+    expect(syncPendingSessions).not.toHaveBeenCalled();
+  });
+});
+
+// Phase 3J-b: this screen is now reached two ways -- from a workout that has just finished
+// (`origin: 'live'`) and from Train's "Previous Workout" card, which reads a session back off
+// the server (`origin: 'history'`). The second is already uploaded, so both of the behaviours
+// below would be false claims if the distinction were ever dropped.
+describe('a summary opened from history rather than from a finished workout', () => {
+  it('says when it was performed instead of promising to sync it', async () => {
+    stageSummary({ origin: 'history', performedAt: 'Yesterday' });
+
+    const { findByText, queryByText } = await render(<WorkoutDoneScreen />);
+
+    expect(await findByText('Upper / Lower · Yesterday')).toBeTruthy();
+    expect(queryByText(/will sync when you are back online/)).toBeNull();
+  });
+
+  it('names the session alone when nothing said when it happened', async () => {
+    stageSummary({ origin: 'history' });
+
+    const { findByText } = await render(<WorkoutDoneScreen />);
+
+    expect(await findByText('Upper / Lower')).toBeTruthy();
+  });
+
+  // Nothing of this session is in the local queue -- draining it on its behalf would be a
+  // request made on a false premise.
+  it('does not kick the sync queue for a session that is already on the server', async () => {
+    stageSummary({ origin: 'history', performedAt: 'Yesterday' });
+
+    const { findByText } = await render(<WorkoutDoneScreen />);
+    await findByText('Session complete');
 
     expect(syncPendingSessions).not.toHaveBeenCalled();
   });
