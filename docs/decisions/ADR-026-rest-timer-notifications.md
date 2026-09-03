@@ -86,6 +86,16 @@ and confirm that skipping rest early produces no notification.
   the rest screen already owns the end timestamp and every exit path, so putting the schedule
   anywhere else would split the pair that has to stay symmetric.
 
+## Status of the device walk
+
+**Confirmed working on a physical iPhone via Expo Go, 2026-09-03**: with the screen locked
+during a rest period, the notification is delivered. This is the check this ADR called mandatory,
+and it took two attempts — the first found the feature completely silent, for the reasons below.
+
+Still unverified on device: skipping a rest early and confirming that *no* notification arrives,
+and the whole Android path (channel, importance, vibration), which has been reasoned about but
+never run.
+
 ## Addendum — the first device walk found it silent (2026-09-03)
 
 The walk this ADR made mandatory did its job on the first attempt: the phone stayed silent

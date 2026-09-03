@@ -274,12 +274,27 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
 
 **What to do next, in order:**
 
-1. **Walk it on a physical device.** This is the largest outstanding item and it is now worth
-   doing, because before this week the flow could only fail. Airplane mode on: start a session
-   from Train, log sets, take a rest, **lock the phone and confirm the notification fires**,
-   **force-kill the app mid-session and confirm it resumes**, finish, then re-enable the network
-   and confirm exactly one session syncs. The notification check is *mandatory* — Jest cannot
-   prove the OS schedules or delivers anything (ADR-026).
+1. **Finish the device walk. Partly done — the notification now fires (2026-09-03).**
+
+   **Verified on a physical iPhone:** locking the screen during a rest delivers the
+   "Rest complete" notification. It took two attempts. The first walk found the feature
+   **completely silent**, and the cause is worth remembering because no test could have caught
+   it: `expo-notifications` 0.32 requires every object trigger to name a
+   `SchedulableTriggerInputTypes` value, the code passed a bare `{ seconds }` — which schedules
+   nothing, silently — and **an `as unknown as` cast in the scheduler seam had silenced the
+   compile error that would have flagged it.** Fixed in PR #89, with the ADR-026 addendum
+   carrying the general lesson: *a seam that exists to make a native module testable must still
+   be typed against that module's real interface, or a compile-time error becomes a runtime
+   silence only a device can observe.*
+
+   **Still to walk**, all of it now worth doing because each path could previously only fail:
+   - **Skip a rest early** and confirm *no* notification arrives (the cancel path).
+   - **Force-kill mid-session, reopen** and confirm the session resumes with its ticked sets,
+     paused state and elapsed time (PR #83 — this had no caller at all before).
+   - **Airplane mode**: log a whole session offline, finish, then re-enable the network and
+     confirm exactly **one** session syncs (PRs #84/#85).
+   - **Android**: the notification channel, importance and vibration have been reasoned about
+     but never run.
 2. **Phase J — wire up what is already waiting. Partly done (PR #87).** Train's **My Workouts**
    now lists real templates, which finally gives a saved workout somewhere to be seen. What is
    **still** placeholder or empty, in the order worth doing:
