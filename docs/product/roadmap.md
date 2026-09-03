@@ -356,7 +356,22 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and
    `screen-atmosphere.test.tsx` anchors on per-screen text — that one broke when Train stopped
    saying "coming soon", and CI caught it rather than the targeted runs.
-3. **Phase K — programs.** The final Phase 3 slice.
+3. **Phase K — programs. Planned, not started** —
+   [`phase-3k-plan.md`](phase-3k-plan.md) has the schema, the six slices and the reasoning.
+   The final Phase 3 slice.
+
+   Two things were decided with the user before planning. **Nine preset programs are seeded, not
+   twenty-four**: the prototype specifies all nine in full, so seeding them invents nothing,
+   while the other fifteen would mean writing training progressions and labelling them `5/3/1`
+   or `Race Prep 10K` — fabricated training advice. Train's hero copy gets corrected to the real
+   count in K5. And **Phase K covers the whole surface including the builder**, across six PRs.
+
+   The plan also corrects this outline's own sketch of the schema. `programs → program_weeks →
+   program_days` is not how the design works — a preset program is a *set of named workouts*
+   plus a duration, with weekday assignment appearing only in the builder. And a program's
+   workouts **are workout templates**: `workout_templates` already supports catalogue rows with
+   a null owner, so presets reuse machinery that is already built and tested rather than growing
+   a parallel one.
 4. **Smaller known gaps**, all recorded at the end of
    [`phase-3h-plan.md`](phase-3h-plan.md): abandoned sessions leak `session_events` rows, and
    the per-exercise goal chip renders its chevron but opens no picker.
