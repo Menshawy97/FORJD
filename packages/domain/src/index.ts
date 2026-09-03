@@ -72,6 +72,21 @@ export const TRAINING_GOALS = [
 ] as const;
 export type TrainingGoal = (typeof TRAINING_GOALS)[number];
 
+/**
+ * What kind of training a thing is. Backs the profile's activity chips, `workout_templates`
+ * and `workout_sessions`.
+ *
+ * `cross_training` was appended in Phase 3K, not inserted, so nothing reading this tuple
+ * positionally shifts. It exists because two of the nine seeded programs — Engine Builder
+ * (fan-bike and thruster conditioning) and Bodyweight Anywhere (progressive calisthenics) —
+ * are Cross Training in the design's own catalogue, and the six members above have no home for
+ * them: filing a fan-bike interval under `strength` is plainly wrong, and filing calisthenics
+ * under `hyrox` labels it a race format it is not.
+ *
+ * **It is deliberately absent from the onboarding activity picker.** That list is the design's
+ * own six chips (the prototype's `acts` array) and gains no seventh here — this tuple says what
+ * the API accepts and what a template may be, not what the goals screen offers.
+ */
 export const ACTIVITIES = [
   'strength',
   'running',
@@ -79,6 +94,7 @@ export const ACTIVITIES = [
   'pilates',
   'cycling',
   'swimming',
+  'cross_training',
 ] as const;
 export type Activity = (typeof ACTIVITIES)[number];
 

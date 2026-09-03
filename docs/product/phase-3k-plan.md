@@ -100,7 +100,39 @@ Record it as a known gap rather than pretend the column already does more than i
 
 Each is its own PR: docs first, tests green, merge, confirm CI on `main`.
 
-### K1 — schema and the seed
+### K1 — schema and the seed — **done** (PRs #99, #100)
+
+PR #99 landed the three tables and migration 0013. PR #100 landed the seed: the nine programs,
+their 38 catalogue workout templates, and the four curated exercises. What was decided while
+building it, beyond what this section already anticipated:
+
+- **All 24 mapped slugs were re-verified against the committed snapshot before seeding**, as this
+  plan asked. All 24 still resolve. The four curated names were re-confirmed absent, and
+  `air-bike` was re-confirmed to be the bicycle crunch (`primaryMuscles: ["core"]`).
+- **`cross_training` was added to `ACTIVITIES`** in `@forjd/domain`. Engine Builder and Bodyweight
+  Anywhere are Cross Training in the design, and the six existing members had no home for them:
+  filing a fan-bike interval under `strength` is plainly wrong, and filing calisthenics under
+  `hyrox` labels it a race format it is not. Appended rather than inserted, so nothing reading the
+  tuple positionally shifts, and **deliberately not added to the onboarding activity chips** — that
+  list is the design’s own six (`acts` in the prototype), and this vocabulary says what the API
+  accepts, not what the goals screen offers.
+- **No `slug` column was added to `workout_templates`.** The seed finds a program by its slug and
+  its templates through the `program_workouts` join rows already pointing at them, at their
+  `order_index`. The join row is already the authoritative link; a second key would be a second
+  thing that can disagree with it. Template ids therefore stay stable across deploys, which
+  matters because `workout_sessions.template_id` references them.
+- **Every preset workout prescribes 3 sets and no rep target.** That is the design’s own choice,
+  not one invented here: `s_programOverview` renders `goalOf(n) + ’ · 3 sets’` and `buildSession`
+  starts a program workout with `sessionEx(n, 3, null)`.
+- **`ProgramsSeedRepository` is separate from `WorkoutsRepository`.** Every method on the latter is
+  owner-scoped — `createTemplate` takes a non-null `ownerUserId` — which is what keeps one athlete
+  out of another’s templates. Catalogue rows have a null owner, so seeding through it would mean
+  relaxing those signatures and trusting every future caller.
+- `pnpm --filter @forjd/api programs:seed` runs in `deploy-api.yml` after `exercises:load`, which
+  it depends on. Verified idempotent locally: a second run created nothing and rewrote 38.
+
+#### The original plan for this slice
+
 
 The migration, the three tables, and the seed of nine programs plus their catalogue templates.
 Content comes verbatim from the prototype's `workoutsForProgram` table and `s_catalog`'s own
@@ -236,5 +268,9 @@ phase, which is why it is last: everything under it is proven by then.
 ## Known gaps to record as they land
 
 - Serving an enrollee their enrolled *version's* content (above).
+- **`ACTIVITIES` and `EXERCISE_CATEGORIES` now disagree by two members.** The former gained
+  `cross_training` in K1; it still has no `calisthenics`, `yoga` or `mobility`, which the latter
+  has. Nothing needs them yet — no seeded program is a yoga program — but the two vocabularies
+  answer overlapping questions and will eventually want reconciling, or an ADR saying why not.
 - Program favourites (`toggleFavProgram`, `favourite workouts and programs.png`) — the same
   feature Train's header star has been waiting on since Phase G, still unbacked.
