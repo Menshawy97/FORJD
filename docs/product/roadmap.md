@@ -356,7 +356,7 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and
    `screen-atmosphere.test.tsx` anchors on per-screen text — that one broke when Train stopped
    saying "coming soon", and CI caught it rather than the targeted runs.
-3. **Phase K — programs. K1 and K2 done (PRs #99, #100, #101); K3–K6 next** —
+3. **Phase K — programs. K1 and K2 done (PRs #99, #100, #103); K3–K6 next** —
    [`phase-3k-plan.md`](phase-3k-plan.md) has the schema, the six slices and the reasoning.
    The final Phase 3 slice.
 

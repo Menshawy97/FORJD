@@ -231,7 +231,7 @@ Verify: repository tests against real Postgres, a test asserting all nine progra
 most importantly — **a test that fails if any mapped name stops resolving**, since the catalogue
 is re-ingested and a rename would otherwise silently hollow out a program.
 
-### K2 — the read API — **done** (PR #101)
+### K2 — the read API — **done** (PR #103)
 
 `GET /programs` (the catalogue, filterable by category), `GET /programs/:id` (overview: metadata
 plus its workouts), and `GET /programs/enrollment` (the active one, or null). Contracts, service,
