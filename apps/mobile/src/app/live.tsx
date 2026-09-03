@@ -10,6 +10,7 @@ import { Toast, useToast } from '@/components/toast';
 import {
   appendSessionEvent,
   clearSessionSnapshot,
+  enqueueSessionUpload,
   ensureWorkoutSessionSchema,
   getSessionEvents,
   getUnfinishedSessionSnapshot,
@@ -21,6 +22,7 @@ import {
   consumeCompletedTimedSet,
   consumePendingLiveSession,
   consumePickedExerciseForLive,
+  setCompletedSummary,
   setRestContext,
   setTimerContext,
 } from '@/workouts/live-handoff';
@@ -41,6 +43,7 @@ import {
   setExerciseMeasure,
   setRestSeconds,
   startSession,
+  toUploadRequest,
   updateSet,
   type LiveSession,
   type LiveSessionChange,
@@ -454,14 +457,32 @@ export default function LiveScreen() {
               accessibilityRole="button"
               accessibilityLabel="Finish workout"
               onPress={() => {
-                apply(finishSession(session, new Date()));
-                // The snapshot exists only to recover an *unfinished* session. Once finished,
-                // leaving it would offer this workout back on the next launch.
+                const endedAt = new Date();
+                const change = finishSession(session, endedAt);
+                apply(change);
+
+                const finished = change.session;
+                const summary = sessionStats(finished);
                 void (async () => {
                   const db = await dbRef.current;
-                  if (db) await clearSessionSnapshot(db, session.id);
+                  if (!db) return;
+                  // Hand the session to the sync queue. This is the one place it happens --
+                  // `appendSessionEvent` does NOT enqueue on `workout_finished`, despite what
+                  // the store's module docblock used to claim.
+                  await enqueueSessionUpload(db, toUploadRequest(finished, endedAt, elapsedSeconds));
+                  // The snapshot exists only to recover an *unfinished* session; leaving it
+                  // would offer this workout back on the next launch.
+                  await clearSessionSnapshot(db, finished.id);
                 })();
-                router.back();
+
+                setCompletedSummary({
+                  name: finished.name,
+                  durationSeconds: elapsedSeconds,
+                  volumeKg: summary.volumeKg,
+                  completedSetCount: summary.completedSetCount,
+                  exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
+                });
+                router.replace('/workout-done');
               }}
               className="h-[34px] items-center justify-center rounded-[10px] px-[14px]"
               style={{ backgroundColor: colors.accent }}>

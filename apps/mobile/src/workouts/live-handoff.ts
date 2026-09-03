@@ -40,6 +40,41 @@ export function consumePendingLiveSession(): PendingLiveSession | null {
 }
 
 /**
+ * What the summary screen shows after a workout (Phase I).
+ *
+ * Deliberately the *computed* figures rather than the whole session: the summary is a read-only
+ * report, and handing it the live session would invite a future edit there to write back into a
+ * workout that has already been enqueued for upload.
+ */
+export interface CompletedSummary {
+  name: string;
+  durationSeconds: number;
+  volumeKg: number;
+  completedSetCount: number;
+  /** For resolving muscles worked from the on-device catalogue. */
+  exerciseIds: string[];
+}
+
+let completedSummary: CompletedSummary | null = null;
+
+export function setCompletedSummary(summary: CompletedSummary): void {
+  completedSummary = summary;
+}
+
+/**
+ * Read, not consumed: the summary screen re-renders as its muscle tally resolves, and each
+ * render must still see the figures. It is cleared explicitly on the way out instead.
+ */
+export function getCompletedSummary(): CompletedSummary | null {
+  return completedSummary;
+}
+
+/** Called when the athlete leaves the summary, so a finished workout is not shown again. */
+export function clearCompletedSummary(): void {
+  completedSummary = null;
+}
+
+/**
  * An exercise picked from `library.tsx?pick=live` to be added to the session in progress.
  * Mirrors the builder's own picked-exercise slot: the library sets it and calls `router.back()`,
  * and the live screen consumes it on focus.
