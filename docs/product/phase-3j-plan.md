@@ -80,8 +80,67 @@ no weight renders `BW`, as the prototype's own `Dips` chip does.
   `'history'` summary does neither — that session is already on the server, and saying
   otherwise would be false.
 
-## J-c / J-d / K — not started
+## J-c — Home's counters, and the `/workouts/sessions/stats` endpoint
 
-Home's stat strip, "This week" and "Recent PR"; the exercise-detail stat tiles, sparkline and
-history; then programs. `City Rank` remains the one Home counter Phase 3 does not supply
-(open question 4 in `phase-3-plan.md`, still unanswered).
+Home needs six figures: lifetime workouts, this month, City Rank, a week streak, "This week"'s
+seven day bars, and "Recent PR". **None of them can be served by the session list**, which is
+cursor-paginated with no totals and carries no sets. So J-c adds an endpoint rather than
+deriving them on the device.
+
+### Why an endpoint rather than client-side derivation
+
+This was put to the user as an explicit choice, and they chose the endpoint. The alternative —
+fetching a page of sessions and counting — is honest only for "This week" and "This Month". The
+lifetime count and the streak need the whole history, and a personal record needs every *set* of
+every session, which would mean walking the entire history on every Home render. Computing it in
+Postgres, next to the data, is one request that stays correct as history grows.
+
+This is the revisit J-b's own note anticipated when it declined to widen the list contract.
+
+### The time zone is a parameter, and that is the point
+
+Every figure here is a **local calendar** concept — which month, which week, which weekday — and
+the server has no idea what calendar the device is on. Without an explicit zone, "this month"
+silently means "this month in UTC": wrong for most of the world for part of every day, and wrong
+about *which day a workout happened on* for anyone far enough from Greenwich.
+
+`workoutStatsQuerySchema` validates the zone against `Intl` rather than a hardcoded list, which
+would go stale with every IANA release. The validation is not cosmetic: the value reaches a
+`date_trunc(... at time zone $1)`, and Postgres *raises* on a name it does not know — so an
+unvalidated typo would be a 500 rather than a 400.
+
+Inside the repository, each session's timestamp is resolved to a local `YYYY-MM-DD` in SQL, and
+every calculation after that is **civil-date arithmetic on a UTC ruler**. That is what stops a
+daylight-saving transition from making one week 167 hours long and shifting every weekday index
+inside it by one.
+
+### Definitions worth not re-deriving
+
+- **Counts are of completed sessions only.** An in-progress or cancelled session is not a workout
+  the athlete did, and counting one inflates every figure on Home at once.
+- **The streak tolerates an empty current week.** Measured on a Monday morning, a streak that
+  required *this* week would reset every week before the athlete had a chance to train. It falls
+  to zero only once the previous week is empty too.
+- **"Recent PR" is the most recently *set* record, not the heaviest lift ever.** An athlete who
+  set a squat PR last week should see that, not the heavier deadlift they have held for a year.
+  Each exercise's best weight is dated to the **first** time it was reached — repeating a lift
+  does not re-set the record, and dating it to the latest repeat would make the card change for
+  no reason — and the most recent of those wins.
+- **Weighted sets carrying both a weight and a rep count only.** There is no honest way to rank a
+  timed hold against a lift, and "100 kg × —" is worse than reporting the next-best set that has
+  both halves.
+
+### The route-ordering trap
+
+`@Get("stats")` is declared **above** `@Get(":id")` in `workout-sessions.controller.ts` and must
+stay there. Nest matches routes in declaration order, so the other way round
+`/workouts/sessions/stats` binds to `getById` with `id: "stats"`, fails its UUID guard, and 404s
+on every request Home makes — with nothing in either method looking wrong. An e2e test asserts a
+200 on that path for exactly this reason.
+
+**City Rank remains unsupplied.** It needs the leaderboard behind the Rank tab, which is still a
+placeholder — open question 4 in `phase-3-plan.md`, still unanswered. It keeps its em dash.
+
+## J-d / K — not started
+
+The exercise-detail stat tiles, sparkline and history; then programs.

@@ -3,6 +3,8 @@ import {
   updateWorkoutTemplateRequestSchema,
   workoutBlockTypeSchema,
   workoutSessionListResponseSchema,
+  workoutStatsQuerySchema,
+  workoutStatsResponseSchema,
   workoutSessionResponseSchema,
   workoutSessionUploadRequestSchema,
   workoutSetTypeSchema,
@@ -329,6 +331,87 @@ describe('workout contracts', () => {
         nextCursor: null,
       });
       expect(result.success).toBe(true);
+    });
+  });
+  // Phase 3J-c: Home's stat strip, "This week" and "Recent PR". These are aggregates over all
+  // of a user's history, which the cursor-paginated session list cannot answer -- it has no
+  // totals, and a personal record needs every set, not every session summary.
+  describe('workoutStatsQuerySchema', () => {
+    // Every figure here is a *local calendar* concept -- which month, which week, which day --
+    // and the server has no idea what the device's calendar is. Passing the zone explicitly is
+    // what stops "this month" from silently meaning "this month in UTC".
+    it('accepts a real IANA time zone', () => {
+      expect(workoutStatsQuerySchema.safeParse({ timeZone: 'Africa/Cairo' }).success).toBe(true);
+      expect(workoutStatsQuerySchema.safeParse({ timeZone: 'America/New_York' }).success).toBe(true);
+    });
+
+    it('defaults to UTC when the client sends no zone', () => {
+      const result = workoutStatsQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.timeZone).toBe('UTC');
+    });
+
+    // The zone reaches a `date_trunc(... AT TIME ZONE $1)`. Postgres raises on an unknown zone
+    // name, so an unvalidated one turns a typo into a 500 rather than a 400.
+    it('rejects anything that is not a zone Postgres will recognise', () => {
+      expect(workoutStatsQuerySchema.safeParse({ timeZone: 'Mars/Olympus_Mons' }).success).toBe(false);
+      expect(workoutStatsQuerySchema.safeParse({ timeZone: 'not a zone' }).success).toBe(false);
+      expect(workoutStatsQuerySchema.safeParse({ timeZone: '' }).success).toBe(false);
+    });
+  });
+
+  describe('workoutStatsResponseSchema', () => {
+    const valid = {
+      totalSessions: 42,
+      sessionsThisMonth: 6,
+      weekStreak: 3,
+      thisWeek: { sessionCount: 2, trainedWeekdays: [1, 3] },
+      recentPersonalRecord: {
+        exerciseId: '33333333-3333-4333-8333-333333333333',
+        exerciseName: 'Bench Press',
+        weightKg: 100,
+        reps: 5,
+        achievedAt: '2026-09-01T09:05:00.000Z',
+      },
+    };
+
+    it('parses a full stats payload', () => {
+      expect(workoutStatsResponseSchema.safeParse(valid).success).toBe(true);
+    });
+
+    // A user who has never lifted has no record. Null is the honest answer, and the client
+    // renders its "No PR yet" empty state from it -- a zero-weight record would be a lie.
+    it('allows a null personal record', () => {
+      expect(
+        workoutStatsResponseSchema.safeParse({ ...valid, recentPersonalRecord: null }).success,
+      ).toBe(true);
+    });
+
+    it('parses the all-zero shape a brand new account produces', () => {
+      const result = workoutStatsResponseSchema.safeParse({
+        totalSessions: 0,
+        sessionsThisMonth: 0,
+        weekStreak: 0,
+        thisWeek: { sessionCount: 0, trainedWeekdays: [] },
+        recentPersonalRecord: null,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects negative counts, which no aggregate here can legitimately produce', () => {
+      expect(workoutStatsResponseSchema.safeParse({ ...valid, totalSessions: -1 }).success).toBe(false);
+      expect(workoutStatsResponseSchema.safeParse({ ...valid, weekStreak: -1 }).success).toBe(false);
+    });
+
+    // `trainedWeekdays` is indexed the way `Date#getDay()` is, so the client can compare it
+    // against its own day index without a conversion step that could be got backwards.
+    it('rejects a weekday index outside 0-6', () => {
+      expect(
+        workoutStatsResponseSchema.safeParse({
+          ...valid,
+          thisWeek: { sessionCount: 1, trainedWeekdays: [7] },
+        }).success,
+      ).toBe(false);
     });
   });
 });

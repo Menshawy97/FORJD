@@ -5,6 +5,8 @@ import type {
   WorkoutSessionResponse,
   WorkoutSessionSummary,
   WorkoutSessionUploadRequest,
+  WorkoutStatsQuery,
+  WorkoutStatsResponse,
 } from "@forjd/contracts";
 import { User, WorkoutSession, WorkoutSessionExercise, WorkoutSet } from "@forjd/domain";
 
@@ -64,6 +66,34 @@ export class WorkoutSessionsService {
     const session = await this.workoutsRepository.upsertSession(input);
 
     return this.toDetail(session);
+  }
+
+  /**
+   * Home's stat strip, "This week" and "Recent PR" (Phase 3J-c).
+   *
+   * A thin pass-through by design: the arithmetic belongs in SQL, next to the data, and this
+   * service's only jobs are that the aggregate is scoped to the caller's own id and that the
+   * `Date`s coming back become the ISO strings `workoutStatsResponseSchema` declares.
+   *
+   * `now` is read here rather than inside the repository so the repository stays a pure
+   * function of its arguments and its calendar boundaries remain testable.
+   */
+  async stats(viewer: User, query: WorkoutStatsQuery): Promise<WorkoutStatsResponse> {
+    const row = await this.workoutsRepository.statsForUser(viewer.id, query.timeZone, new Date());
+
+    return {
+      totalSessions: row.totalSessions,
+      sessionsThisMonth: row.sessionsThisMonth,
+      weekStreak: row.weekStreak,
+      thisWeek: row.thisWeek,
+      recentPersonalRecord:
+        row.recentPersonalRecord === null
+          ? null
+          : {
+              ...row.recentPersonalRecord,
+              achievedAt: row.recentPersonalRecord.achievedAt.toISOString(),
+            },
+    };
   }
 
   async getById(viewer: User, id: string): Promise<WorkoutSessionResponse> {

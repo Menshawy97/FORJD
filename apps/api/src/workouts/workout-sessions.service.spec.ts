@@ -8,6 +8,7 @@ import {
   CreateWorkoutSessionInput,
   ListWorkoutSessionsFilter,
   WorkoutSessionPage,
+  WorkoutStatsRow,
   WorkoutsRepository,
 } from "./workouts.repository";
 
@@ -321,6 +322,64 @@ describe("WorkoutSessionsService", () => {
       await expect(makeService(repository).getById(owner, session().id)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // Phase 3J-c. The arithmetic itself lives in the repository and is proven against real
+  // Postgres; what is tested here is the service's own small job -- passing the caller's zone
+  // and identity through, and turning `Date`s into the ISO strings the contract declares.
+  describe("stats", () => {
+    const statsRow: WorkoutStatsRow = {
+      totalSessions: 42,
+      sessionsThisMonth: 6,
+      weekStreak: 3,
+      thisWeek: { sessionCount: 2, trainedWeekdays: [1, 3] },
+      recentPersonalRecord: {
+        exerciseId,
+        exerciseName: "Bench Press",
+        weightKg: 100,
+        reps: 5,
+        achievedAt: new Date("2026-09-01T09:05:00.000Z"),
+      },
+    };
+
+    const makeStatsRepository = (row = statsRow) => {
+      const calls: Array<{ userId: string; timeZone: string }> = [];
+      const repository = {
+        statsForUser: (userId: string, timeZone: string) => {
+          calls.push({ userId, timeZone });
+          return Promise.resolve(row);
+        },
+      };
+      return Object.assign(repository as unknown as WorkoutsRepository, { statsCalls: calls });
+    };
+
+    it("serialises the record's achievedAt as an ISO string, per the contract", async () => {
+      const repository = makeStatsRepository();
+
+      const result = await makeService(repository).stats(owner, { timeZone: "Africa/Cairo" });
+
+      expect(result.recentPersonalRecord?.achievedAt).toBe("2026-09-01T09:05:00.000Z");
+      expect(result.totalSessions).toBe(42);
+      expect(result.thisWeek).toEqual({ sessionCount: 2, trainedWeekdays: [1, 3] });
+    });
+
+    // The zone decides which month, week and weekday every figure falls in -- dropping it here
+    // would silently answer in UTC for everyone.
+    it("passes the caller's zone and only the caller's own id to the repository", async () => {
+      const repository = makeStatsRepository();
+
+      await makeService(repository).stats(owner, { timeZone: "Africa/Cairo" });
+
+      expect(repository.statsCalls).toEqual([{ userId: ownerId, timeZone: "Africa/Cairo" }]);
+    });
+
+    it("carries a null record through rather than inventing an empty one", async () => {
+      const repository = makeStatsRepository({ ...statsRow, recentPersonalRecord: null });
+
+      const result = await makeService(repository).stats(owner, { timeZone: "UTC" });
+
+      expect(result.recentPersonalRecord).toBeNull();
     });
   });
 

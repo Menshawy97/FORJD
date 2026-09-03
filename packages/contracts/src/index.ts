@@ -1120,3 +1120,99 @@ export const workoutSessionListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 export type WorkoutSessionListQuery = z.infer<typeof workoutSessionListQuerySchema>;
+
+/**
+ * Query for `GET /workouts/stats` (Phase 3J-c).
+ *
+ * **Every figure the stats endpoint returns is a local-calendar concept** -- which month, which
+ * week, which weekday -- and the server has no idea what calendar the device is on. Without an
+ * explicit zone, "this month" would silently mean "this month in UTC", which is wrong for most
+ * of the world for part of every day, and wrong about *which day a workout happened on* for
+ * anyone far enough from Greenwich.
+ *
+ * It is validated rather than passed through because it reaches a `date_trunc(... AT TIME ZONE)`
+ * and Postgres raises on an unknown zone name -- so an unvalidated typo would turn a 400 into
+ * a 500. `Intl` is the authority here rather than a hardcoded list, which would go stale every
+ * time the IANA database changes.
+ */
+export const workoutStatsQuerySchema = z.object({
+  timeZone: z
+    .string()
+    .min(1)
+    .max(64)
+    .refine(
+      (zone) => {
+        try {
+          new Intl.DateTimeFormat('en-US', { timeZone: zone });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: 'Unknown IANA time zone' },
+    )
+    .default('UTC'),
+});
+export type WorkoutStatsQuery = z.infer<typeof workoutStatsQuerySchema>;
+
+/**
+ * The athlete's current best lift, and when they first reached it.
+ *
+ * "Recent" is load-bearing and is not the same as "heaviest ever": this is the record whose
+ * *achievement* is most recent, so an athlete who set a squat PR last week sees that rather
+ * than the heavier deadlift they have held for a year. `achievedAt` is the **first** time they
+ * hit that weight for that exercise, not the last -- repeating a lift does not re-set the
+ * record, and treating it as though it did would make the card change for no reason.
+ *
+ * Weight-measured work only. There is no honest way to rank a timed hold against a lift, and
+ * a card that silently mixed them would be comparing nothing.
+ */
+export const workoutPersonalRecordSchema = z.object({
+  exerciseId: z.string().uuid(),
+  exerciseName: z.string(),
+  weightKg: z.number(),
+  reps: z.number().int(),
+  achievedAt: z.string().datetime(),
+});
+export type WorkoutPersonalRecord = z.infer<typeof workoutPersonalRecordSchema>;
+
+/**
+ * Response for `GET /workouts/stats` -- everything Home's stat strip, "This week" and
+ * "Recent PR" need, in one request (Phase 3J-c).
+ *
+ * One endpoint rather than several, and computed in Postgres rather than on the device,
+ * because all of these are aggregates over the athlete's whole history: the session list is
+ * cursor-paginated and carries no totals, and a personal record needs every *set*, not every
+ * session summary. Deriving them client-side would mean walking the entire history on every
+ * Home render.
+ *
+ * **Counts are of completed sessions only.** An in-progress or cancelled session is not a
+ * workout the athlete did, and counting one would inflate every figure here.
+ */
+export const workoutStatsResponseSchema = z.object({
+  /** Lifetime completed sessions -- Home's "Workouts" counter. */
+  totalSessions: z.number().int().min(0),
+  /** Completed sessions since the first of the current local month -- "This Month". */
+  sessionsThisMonth: z.number().int().min(0),
+  /**
+   * Consecutive weeks, ending with the current or the immediately preceding one, containing at
+   * least one completed session -- Home's "Streak".
+   *
+   * The current week counts as *not yet missed* rather than as a break: a streak measured on
+   * Monday morning would otherwise reset every week before the athlete had a chance to train.
+   */
+  weekStreak: z.number().int().min(0),
+  thisWeek: z.object({
+    sessionCount: z.number().int().min(0),
+    /**
+     * Which days of the current local week were trained, indexed exactly the way
+     * `Date#getDay()` is -- 0 Sunday through 6 Saturday -- so the client compares it against
+     * its own day index with no conversion step that could be got backwards. Ascending, and
+     * distinct: two sessions on one day light one bar.
+     */
+    trainedWeekdays: z.array(z.number().int().min(0).max(6)),
+  }),
+  /** `null` before the athlete has ever completed a weighted set. */
+  recentPersonalRecord: workoutPersonalRecordSchema.nullable(),
+});
+export type WorkoutStatsResponse = z.infer<typeof workoutStatsResponseSchema>;

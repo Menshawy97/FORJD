@@ -5,6 +5,7 @@ import {
   workoutSessionListResponseSchema,
   workoutSessionResponseSchema,
   workoutSessionUploadRequestSchema,
+  workoutStatsResponseSchema,
 } from '@forjd/contracts';
 import { randomUUID } from 'crypto';
 import { inArray } from 'drizzle-orm';
@@ -61,6 +62,11 @@ describe('Workout sessions (e2e)', () => {
   const list = (token = 'owner-token') =>
     request(app.getHttpServer())
       .get('/api/v1/workouts/sessions')
+      .set('Authorization', `Bearer ${token}`);
+
+  const stats = (token = 'owner-token') =>
+    request(app.getHttpServer())
+      .get('/api/v1/workouts/sessions/stats')
       .set('Authorization', `Bearer ${token}`);
 
   const validBody = () => ({
@@ -230,6 +236,69 @@ describe('Workout sessions (e2e)', () => {
     expect(response.body.items.some((item: { id: string }) => item.id === created.body.id)).toBe(
       true,
     );
+  });
+
+  /**
+   * Phase 3J-c. The aggregates themselves are proven against real Postgres in
+   * `workouts.repository.spec.ts`; what only a real HTTP request can prove is the routing and
+   * the query validation below, either of which would ship a dead endpoint with a green unit
+   * suite.
+   */
+  describe('GET /workouts/sessions/stats', () => {
+    it('rejects an unauthenticated request', async () => {
+      await request(app.getHttpServer()).get('/api/v1/workouts/sessions/stats').expect(401);
+    });
+
+    /*
+     * The route-ordering trap. Nest matches in declaration order, so if `@Get("stats")` ever
+     * moves below `@Get(":id")`, this path binds to `getById` with `id: "stats"`, fails its
+     * UUID guard and 404s -- on every Home request, with nothing in either method looking
+     * wrong. A 200 here is the assertion that the ordering is still right.
+     */
+    it('is routed to the stats handler, not matched as a session id', async () => {
+      const response = await stats().expect(200);
+
+      expect(() => workoutStatsResponseSchema.parse(response.body)).not.toThrow();
+    });
+
+    it('counts an uploaded session and parses against the published contract', async () => {
+      const created = await upload(validBody()).expect(201);
+      createdSessionIds.push(created.body.id);
+
+      const response = await stats().expect(200);
+
+      expect(() => workoutStatsResponseSchema.parse(response.body)).not.toThrow();
+      expect(response.body.totalSessions).toBeGreaterThan(0);
+    });
+
+    // The zone reaches a `date_trunc(... at time zone $1)`, and Postgres raises on a name it
+    // does not know -- so without validation at the boundary a typo is a 500, not a 400.
+    it('rejects an unknown time zone at the boundary rather than letting Postgres raise', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/workouts/sessions/stats')
+        .query({ timeZone: 'Mars/Olympus_Mons' })
+        .set('Authorization', 'Bearer owner-token');
+
+      expect(response.status).toBe(400);
+    });
+
+    it('accepts a real zone', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/workouts/sessions/stats')
+        .query({ timeZone: 'Africa/Cairo' })
+        .set('Authorization', 'Bearer owner-token')
+        .expect(200);
+    });
+
+    it("never counts another user's sessions", async () => {
+      const created = await upload(validBody()).expect(201);
+      createdSessionIds.push(created.body.id);
+
+      const response = await stats('stranger-token').expect(200);
+
+      expect(response.body.totalSessions).toBe(0);
+      expect(response.body.recentPersonalRecord).toBeNull();
+    });
   });
 
   describe('cross-user isolation', () => {
