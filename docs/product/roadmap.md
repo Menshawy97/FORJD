@@ -393,10 +393,19 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
 seven times in one session with `ERROR: The process NNNNN not found`. Diagnosed rather than
 guessed at, and the honest version is narrower than it first looked:
 
-- The trigger was **rapid file churn**, not a defect in the project. Each crash followed a burst
-  of `git checkout` / `git pull` during branch merges. Every branch switch rewrites files under
-  `src/`, so `nest start --watch` recompiled and restarted its child repeatedly — the log shows
-  "Found 0 errors" every 5–20 seconds with nobody editing anything.
+- The trigger was **rapid file churn in a working tree shared by two Claude sessions**, not a
+  defect in the project. One session was finishing Phase 3H/3I/3J while another built Phase 3K
+  in the same checkout. Every `git checkout` / `git pull` from the first rewrote files under
+  `apps/api/src` — including the second session's in-flight work — so `nest start --watch`
+  recompiled and restarted its child repeatedly. The log shows "Found 0 errors" every 5–20
+  seconds with nobody deliberately editing anything.
+
+  **The shared tree is the real hazard here; the watcher crashes were only its most visible
+  symptom.** Creating a branch at HEAD (`git checkout -b …`), committing, pushing and merging on
+  GitHub are all safe. **Pulling the result back down while another session has the tree open is
+  not** — prefer leaving local `main` behind and syncing when the tree is idle. Check `git
+  status` and `gh pr list` before starting a phase, never stage or revert files you did not
+  write, and use a dedicated `git worktree` when substantial parallel work is expected.
 - Nest's CLI restarts that child with `taskkill` on Windows. When a restart lands while the
   previous child has already exited, `taskkill` fails and the CLI throws. `nest-cli.json`'s
   `"deleteOutDir": true` makes it worse by deleting `dist/` out from under a running process on
