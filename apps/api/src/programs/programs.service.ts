@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type {
   ProgramEnrollment,
+  ProgramEnrolResponse,
   ProgramEnrollmentResponse,
   ProgramListQuery,
   ProgramListResponse,
@@ -67,6 +68,42 @@ export class ProgramsService {
   async getEnrollment(viewer: User): Promise<ProgramEnrollmentResponse> {
     const found = await this.programsRepository.findActiveEnrollment(viewer.id);
     return { enrollment: found ? this.toEnrollment(found) : null };
+  }
+
+  /**
+   * The design's "Start Following".
+   *
+   * **The one-active-program rule is enforced here as well as by the partial unique index**, per
+   * CLAUDE.md rule 12: a rule that exists only in SQL is a rule that cannot be unit-tested. The
+   * repository ends the previous enrolment and starts the new one in a single transaction, so the
+   * athlete is never following two programs and never briefly following none.
+   *
+   * Enrolling in a program the caller cannot see is the same 404 as reading one -- refusing with a
+   * 403 would confirm that a program exists and belongs to somebody else.
+   */
+  async enrol(viewer: User, id: string): Promise<ProgramEnrolResponse> {
+    if (!UUID_PATTERN.test(id)) {
+      throw this.refuse();
+    }
+
+    const enrolment = await this.programsRepository.enrol(viewer.id, id);
+    if (!enrolment) {
+      throw this.refuse();
+    }
+
+    return { enrollment: this.toEnrollment(enrolment) };
+  }
+
+  /**
+   * The design's "Stop Following".
+   *
+   * Stopping when nothing is active succeeds rather than 404ing: a second tap, or a tap from a
+   * screen whose state is one request stale, is not a client error, and there is nothing a 404
+   * would let the client do differently. The repository reports whether a row was ended; nothing
+   * above needs that yet, which is why this returns void rather than inventing a body for it.
+   */
+  async stopFollowing(viewer: User): Promise<void> {
+    await this.programsRepository.endActiveEnrollment(viewer.id);
   }
 
   /**

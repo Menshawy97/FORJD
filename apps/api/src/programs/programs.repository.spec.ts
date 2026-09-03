@@ -455,4 +455,163 @@ describe("ProgramsRepository", () => {
       expect(await repository.findActiveEnrollment(b)).toBeNull();
     });
   });
+
+  describe("enrol", () => {
+    it("starts following and snapshots the program's current version", async () => {
+      const user = await makeUser("enrol-fresh");
+      const programId = await makeProgram({ slug: "enrol-fresh", name: `${marker} Enrol Fresh` });
+      await db.update(programs).set({ version: 5 }).where(eq(programs.id, programId));
+
+      const enrolment = await repository.enrol(user, programId);
+
+      expect(enrolment?.programId).toBe(programId);
+      expect(enrolment?.programVersion).toBe(5);
+      expect(enrolment?.programName).toBe(`${marker} Enrol Fresh`);
+      expect((await repository.findActiveEnrollment(user))?.id).toBe(enrolment?.id);
+    });
+
+    /**
+     * The design's Start Following has no "you must stop the other one first" step, and
+     * `program_enrollments_one_active_key` would reject an insert made before the previous
+     * enrolment was ended -- so the order inside the transaction is load-bearing, not incidental.
+     */
+    it("ends the previous enrolment and starts the new one, leaving exactly one active", async () => {
+      const user = await makeUser("enrol-switch");
+      const first = await makeProgram({ slug: "switch-a", name: `${marker} Switch A` });
+      const second = await makeProgram({ slug: "switch-b", name: `${marker} Switch B` });
+
+      const before = await repository.enrol(user, first);
+      const after = await repository.enrol(user, second);
+
+      expect(after?.programId).toBe(second);
+      expect(after?.id).not.toBe(before?.id);
+
+      const active = await db
+        .select()
+        .from(programEnrollments)
+        .where(and(eq(programEnrollments.userId, user), isNull(programEnrollments.endedAt)));
+      expect(active).toHaveLength(1);
+      expect(active[0]?.programId).toBe(second);
+
+      // The old one is ended, not deleted -- "you followed this last spring" survives.
+      const [old] = await db
+        .select()
+        .from(programEnrollments)
+        .where(eq(programEnrollments.id, before!.id));
+      expect(old?.endedAt).not.toBeNull();
+    });
+
+    /**
+     * Re-following what you already follow must not move `started_at`: "Recommended next" (K4) is
+     * derived from the sessions performed *since* enrolling, so restarting the enrolment would
+     * silently erase the athlete's progress through the program.
+     */
+    it("is a no-op when re-following the program already being followed", async () => {
+      const user = await makeUser("enrol-again");
+      const programId = await makeProgram({ slug: "again", name: `${marker} Again` });
+
+      const first = await repository.enrol(user, programId);
+      const second = await repository.enrol(user, programId);
+
+      expect(second?.id).toBe(first?.id);
+      expect(second?.startedAt.toISOString()).toBe(first?.startedAt.toISOString());
+
+      const all = await db
+        .select()
+        .from(programEnrollments)
+        .where(eq(programEnrollments.userId, user));
+      expect(all).toHaveLength(1);
+      expect(all[0]?.endedAt).toBeNull();
+    });
+
+    /** Enrolling in something you cannot read must not be a way to reach it. */
+    it("returns null for a stranger's program, a deleted one and an unknown id alike", async () => {
+      const user = await makeUser("enrol-refused");
+      const strangers = await makeProgram({
+        slug: "enrol-hidden",
+        name: `${marker} Enrol Hidden`,
+        ownerUserId: strangerId,
+      });
+      const deleted = await makeProgram({
+        slug: "enrol-gone",
+        name: `${marker} Enrol Gone`,
+        deletedAt: new Date(),
+      });
+
+      expect(await repository.enrol(user, strangers)).toBeNull();
+      expect(await repository.enrol(user, deleted)).toBeNull();
+      expect(await repository.enrol(user, randomUUID())).toBeNull();
+      expect(await repository.findActiveEnrollment(user)).toBeNull();
+    });
+
+    it("lets an athlete follow their own custom program", async () => {
+      const programId = await makeProgram({
+        slug: "enrol-mine",
+        name: `${marker} Enrol Mine`,
+        ownerUserId: ownerId,
+      });
+
+      expect((await repository.enrol(ownerId, programId))?.programId).toBe(programId);
+      await repository.endActiveEnrollment(ownerId);
+    });
+  });
+
+  describe("endActiveEnrollment", () => {
+    it("ends the active enrolment and reports that it did", async () => {
+      const user = await makeUser("stop-following");
+      const programId = await makeProgram({ slug: "stop", name: `${marker} Stop` });
+      await repository.enrol(user, programId);
+
+      expect(await repository.endActiveEnrollment(user)).toBe(true);
+      expect(await repository.findActiveEnrollment(user)).toBeNull();
+    });
+
+    /** A second tap on Stop Following is not an error, and must not invent a row to end. */
+    it("reports false, and changes nothing, when nothing is being followed", async () => {
+      const user = await makeUser("stop-nothing");
+      expect(await repository.endActiveEnrollment(user)).toBe(false);
+    });
+
+    it("never ends another athlete's enrolment", async () => {
+      const mine = await makeUser("stop-mine");
+      const theirs = await makeUser("stop-theirs");
+      const programId = await makeProgram({ slug: "stop-shared", name: `${marker} Stop Shared` });
+
+      await repository.enrol(theirs, programId);
+      expect(await repository.endActiveEnrollment(mine)).toBe(false);
+      expect(await repository.findActiveEnrollment(theirs)).not.toBeNull();
+    });
+
+    /** Ended, never deleted -- the history stays readable. */
+    it("leaves the ended row in place rather than deleting it", async () => {
+      const user = await makeUser("stop-history");
+      const programId = await makeProgram({ slug: "history", name: `${marker} History` });
+      const enrolment = await repository.enrol(user, programId);
+
+      await repository.endActiveEnrollment(user);
+
+      const [row] = await db
+        .select()
+        .from(programEnrollments)
+        .where(eq(programEnrollments.id, enrolment!.id));
+      expect(row).toBeDefined();
+      expect(row?.endedAt).not.toBeNull();
+    });
+
+    /**
+     * Ending then re-following is allowed by the partial unique index, which only constrains rows
+     * with `ended_at is null`. That is the design's unfollow-then-follow-again path.
+     */
+    it("allows following again after stopping", async () => {
+      const user = await makeUser("stop-restart");
+      const programId = await makeProgram({ slug: "restart", name: `${marker} Restart` });
+
+      const first = await repository.enrol(user, programId);
+      await repository.endActiveEnrollment(user);
+      const second = await repository.enrol(user, programId);
+
+      expect(second?.id).not.toBe(first?.id);
+      expect(await repository.findActiveEnrollment(user)).not.toBeNull();
+    });
+  });
 });
