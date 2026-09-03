@@ -51,6 +51,7 @@ import type {
   WorkoutSessionListResponse,
   WorkoutSessionResponse,
   WorkoutSessionUploadRequest,
+  WorkoutStatsResponse,
   WorkoutTemplateResponse,
 } from '@forjd/contracts';
 
@@ -369,6 +370,37 @@ export async function listWorkoutSessions(
 ): Promise<WorkoutSessionListResponse> {
   const response = await apiClient.get<WorkoutSessionListResponse>('/workouts/sessions', {
     params: query,
+  });
+  return response.data;
+}
+
+/**
+ * The device's own IANA time zone, or `UTC` if the runtime cannot say.
+ *
+ * Hermes ships a trimmed ICU, so `Intl` is probed here rather than assumed. Falling back to
+ * `UTC` matches the server's own default: the athlete sees figures bucketed by UTC days rather
+ * than no figures at all.
+ */
+function deviceTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/**
+ * `GET /workouts/sessions/stats` -- everything Home's stat strip, "This week" and "Recent PR"
+ * read, in one request (Phase 3J-c).
+ *
+ * **The zone is sent, not left to the server.** Every figure in the response is a local
+ * calendar concept -- which month, which week, which weekday -- and without it the server
+ * answers in UTC, which is wrong about *which day a workout happened on* for anyone far enough
+ * from Greenwich.
+ */
+export async function getWorkoutStats(): Promise<WorkoutStatsResponse> {
+  const response = await apiClient.get<WorkoutStatsResponse>('/workouts/sessions/stats', {
+    params: { timeZone: deviceTimeZone() },
   });
   return response.data;
 }

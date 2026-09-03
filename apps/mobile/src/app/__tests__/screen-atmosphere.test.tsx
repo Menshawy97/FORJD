@@ -51,6 +51,9 @@ jest.mock('@/auth/apiClient', () => ({
   listWorkoutTemplates: jest.fn().mockResolvedValue({ items: [], nextCursor: null }),
   listWorkoutSessions: jest.fn().mockResolvedValue({ items: [], nextCursor: null }),
   getWorkoutSession: jest.fn(),
+  // Home reads workout stats (Phase 3J-c). Rejected here -- this suite asserts the atmosphere
+  // gradient, and the honest empty state a failed read falls back to renders just as well.
+  getWorkoutStats: jest.fn().mockRejectedValue(new Error("no stats in this suite")),
 }));
 
 import { getCachedHasSession, hasSession } from '@/auth/secureStorage';

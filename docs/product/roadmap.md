@@ -324,10 +324,22 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
      back online" line and nudges the sync queue; `'history'` does neither, because that session
      is already on the server and both would be false.
 
-   **c. Home's stat strip, "This week" and "Recent PR"**
-   (`features/home/stat-strip.tsx`, `this-week.tsx`, `recent-pr.tsx`) — each already renders an
-   honest empty value and takes the shape of a prop, by design. **"City Rank" is the one counter
-   Phase 3 does not supply** (open question 4, still unanswered).
+   ~~**c. Home's stat strip, "This week" and "Recent PR"**~~ **Done.** All three now show real
+   figures, from a new `GET /workouts/sessions/stats` endpoint. Each took a prop and nothing
+   more, which is what the Phase 2 decision to build every Home section at full fidelity with
+   honest empty values was for.
+
+   The endpoint was a deliberate choice over deriving the figures on the device, put to the
+   user and answered by them: the session list is cursor-paginated with no totals, the lifetime
+   count and streak need the whole history, and a personal record needs every *set* of every
+   session. See [`phase-3j-plan.md`](phase-3j-plan.md) for the timezone handling (every figure
+   is a local-calendar concept, so the device sends its own zone), the definition of "Recent PR"
+   (most recently *set*, not heaviest ever), and the Nest route-ordering trap that would 404
+   every Home request if `@Get("stats")` ever moved below `@Get(":id")`.
+
+   **"City Rank" is still the one counter Phase 3 does not supply** — it needs the leaderboard
+   behind the Rank tab, itself a placeholder (open question 4, still unanswered). It keeps its
+   em dash.
 
    **d. `exercise/[id].tsx`'s stat tiles, sparkline and history** — deliberately shipped as
    honest empty states in Phase 2J, waiting on exactly this data.

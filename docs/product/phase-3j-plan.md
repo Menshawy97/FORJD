@@ -141,6 +141,31 @@ on every request Home makes — with nothing in either method looking wrong. An 
 **City Rank remains unsupplied.** It needs the leaderboard behind the Rank tab, which is still a
 placeholder — open question 4 in `phase-3-plan.md`, still unanswered. It keeps its em dash.
 
+### The mobile half
+
+`getWorkoutStats()` joins Home's existing `Promise.allSettled`, so a stats request that fails
+cannot empty the sections the other three requests fill. Its result is held as one nullable
+piece of state, and **`null` renders exactly the empty state a brand new account sees** — which
+is the honest reading whether the request has not resolved, has failed, or the athlete really
+has never trained. Home is the launch screen; it must never look broken.
+
+The three components each took a prop and nothing more, which is what the Phase 2 decision to
+build all eight sections at full fidelity with honest empty values was *for*.
+
+Two things worth keeping:
+
+- **The device sends its own zone.** `Intl` is probed rather than assumed, because Hermes ships
+  a trimmed ICU; a runtime that cannot answer falls back to `UTC`, matching the server's own
+  default, so the athlete sees figures bucketed by UTC days rather than no figures at all.
+- **"This week" supplies two of the design's three bar states**, trained and rest. "Partial"
+  needs a planned week to fall short of, which arrives with programs (Phase 3K) — inventing it
+  now would mean inventing the target it is partial against.
+
+**A missing mock is not a rejected promise.** Four sibling suites render Home and mock
+`@/auth/apiClient`; adding a call without adding it to their mocks throws a `TypeError` *before*
+`Promise.allSettled` is called, which no amount of settling absorbs. Targeted runs did not catch
+it — the full suite did, which is the fourth time that has been the difference.
+
 ## J-d / K — not started
 
 The exercise-detail stat tiles, sparkline and history; then programs.
