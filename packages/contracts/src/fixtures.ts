@@ -10,6 +10,9 @@ import {
   nutritionLogEntryResponseSchema,
   nutritionLogListResponseSchema,
   profileResponseSchema,
+  programEnrollmentResponseSchema,
+  programListResponseSchema,
+  programResponseSchema,
   publicProfileResponseSchema,
   registerResponseSchema,
   savedMealListResponseSchema,
@@ -614,6 +617,83 @@ export const responseFixtures = {
         },
       ],
       nextCursor: null,
+    },
+  },
+
+  /**
+   * The program catalogue (Phase 3K2). `daysPerWeek`/`durationWeeks` are two numbers rather than
+   * the design's rendered `4 days · 8 weeks` line, and `workoutCount` is counted from the join
+   * rows rather than restating `daysPerWeek` -- the two diverge for a custom program with rest
+   * days.
+   */
+  'program-list-response': {
+    schema: programListResponseSchema,
+    sample: {
+      items: [
+        {
+          id: '3f1a4d64-6b2f-4d0e-9d0a-3c2f9a5e1b77',
+          slug: 'upper-lower',
+          name: 'Upper / Lower',
+          category: 'strength' as const,
+          level: 'intermediate' as const,
+          daysPerWeek: 4,
+          durationWeeks: 8,
+          description: 'Balanced strength for 3–5 sessions a week',
+          isOwn: false,
+          workoutCount: 4,
+        },
+      ],
+    },
+  },
+
+  /**
+   * One program's overview. Each workout is identified by its **template** id, because a
+   * program's workout *is* a workout template -- which is what lets the overview's Start button
+   * reuse the existing live-session handoff. `dayOfWeek` is null for a preset, which prescribes a
+   * set of workouts rather than a calendar.
+   */
+  'program-response': {
+    schema: programResponseSchema,
+    sample: {
+      id: '3f1a4d64-6b2f-4d0e-9d0a-3c2f9a5e1b77',
+      slug: 'upper-lower',
+      name: 'Upper / Lower',
+      category: 'strength' as const,
+      level: 'intermediate' as const,
+      daysPerWeek: 4,
+      durationWeeks: 8,
+      description: 'Balanced strength for 3–5 sessions a week',
+      isOwn: false,
+      workoutCount: 1,
+      version: 1,
+      workouts: [
+        {
+          templateId: '0f6c9d9e-58f4-4b2e-8b52-1a4a2c9d8e01',
+          name: 'Upper Body A',
+          activity: 'strength' as const,
+          orderIndex: 0,
+          dayOfWeek: null,
+          exerciseNames: ['Barbell Bench Press - Medium Grip', 'Bent Over Barbell Row'],
+        },
+      ],
+    },
+  },
+
+  /**
+   * What the athlete is following. `programVersion` is the version the enrolment *began* under,
+   * not the program's current one -- the two differ the moment a program is edited.
+   */
+  'program-enrollment-response': {
+    schema: programEnrollmentResponseSchema,
+    sample: {
+      enrollment: {
+        id: 'a2b7c1d4-3e5f-4a6b-8c9d-0e1f2a3b4c5d',
+        programId: '3f1a4d64-6b2f-4d0e-9d0a-3c2f9a5e1b77',
+        programSlug: 'upper-lower',
+        programName: 'Upper / Lower',
+        programVersion: 1,
+        startedAt: '2026-09-01T08:30:00.000Z',
+      },
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;

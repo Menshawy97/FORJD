@@ -356,7 +356,7 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and
    `screen-atmosphere.test.tsx` anchors on per-screen text — that one broke when Train stopped
    saying "coming soon", and CI caught it rather than the targeted runs.
-3. **Phase K — programs. K1 done (PRs #99, #100); K2–K6 next** —
+3. **Phase K — programs. K1 and K2 done (PRs #99, #100, #103); K3–K6 next** —
    [`phase-3k-plan.md`](phase-3k-plan.md) has the schema, the six slices and the reasoning.
    The final Phase 3 slice.
 
@@ -375,7 +375,18 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    hollow out a program. `ACTIVITIES` gained `cross_training` for the two Cross Training programs.
    The seed runs as `programs:seed` in `deploy-api.yml` after `exercises:load`, and is idempotent:
    template ids stay stable across deploys, so sessions performed against a preset are never
-   orphaned. **Next: K2, the read API** (`GET /programs`, `/programs/:id`, `/programs/enrollment`).
+   orphaned.
+
+   **K2 is complete.** `GET /programs`, `GET /programs/:id` and `GET /programs/enrollment`, with
+   contracts, repository, service, controller and e2e. Two decisions were taken with the user:
+   the list takes a `?scope=preset|mine|all` filter defaulting to `preset`, so the catalogue
+   screen can never show a program the athlete built; and it is unpaginated, because nine presets
+   do not need a cursor. `GET /programs/enrollment` is declared above `GET /programs/:id` and an
+   e2e test fails if that is ever reversed. Two bugs the tests caught rather than review:
+   interpolating a drizzle *column object* into a raw `sql` subquery renders its bare name, so the
+   workout count correlated against the wrong table and silently returned zero for every program;
+   and a soft-deleted exercise still appeared in a program overview’s exercise names. **Next: K3,
+   enrolment** (`POST /programs/:id/enrol`, `DELETE /programs/enrollment`).
 
    The plan also corrects this outline's own sketch of the schema. `programs → program_weeks →
    program_days` is not how the design works — a preset program is a *set of named workouts*
