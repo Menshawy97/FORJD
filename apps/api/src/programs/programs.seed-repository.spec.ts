@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { Pool } from "pg";
@@ -13,6 +15,7 @@ import {
   workoutTemplates,
 } from "../database/schema/workouts.schema";
 import { ExercisesRepository } from "../exercises/exercises.repository";
+import { SNAPSHOT_PATH, parseSnapshot } from "../exercises/ingest/load";
 import { ProgramsSeedRepository, UnresolvedExerciseError } from "./programs.seed-repository";
 import { CURATED_EXERCISES } from "./seed/curated-exercises";
 import { EXERCISE_SLUG_BY_NAME, SEED_PROGRAMS, SeedProgram } from "./seed/program-catalogue";
@@ -27,9 +30,10 @@ import { seedPrograms } from "./seed/seed";
  * author's assumptions about all three. Same rationale as `ExercisesRepository.spec.ts` and
  * `workouts.schema.spec.ts`.
  *
- * The catalogue this seeds against is the real one, loaded by `exercises:load` -- so this suite
- * also fails if the 24 mapped slugs are missing from the database, which is the same guard
- * `program-catalogue.spec.ts` applies to the committed snapshot, one layer further down.
+ * The catalogue rows it seeds against come from the same committed snapshot `exercises:load`
+ * reads, inserted only where they are missing and removed again afterwards -- see
+ * `ensureMappedExercisesExist` for why this suite provisions its own narrow set rather than
+ * requiring, or performing, a full catalogue load.
  */
 describe("ProgramsSeedRepository", () => {
   const connectionString =
@@ -86,11 +90,55 @@ describe("ProgramsSeedRepository", () => {
       EXERCISE_SLUG_BY_NAME,
     );
 
+  /**
+   * Catalogue rows this suite inserted itself, and must therefore remove again.
+   *
+   * **It seeds the exercises it needs rather than requiring `exercises:load` to have run.**
+   * Loading all 873 was tried and rejected: the catalogue is visible to every user, so it made
+   * `GET /exercises/catalogue` serialize 873 full detail rows, which widened a latent race in
+   * `exercises.e2e-spec.ts` (two catalogue reads either side of a favourite toggle) from
+   * invisible to reliably red. A suite should not reshape the database every other suite runs
+   * against.
+   *
+   * Nothing is weakened by the narrower set: the rows still come from the *committed snapshot*,
+   * looked up by the exact slug `EXERCISE_SLUG_BY_NAME` names, so a slug that stopped existing
+   * upstream still cannot be seeded here. Proving the map resolves against the snapshot is
+   * `program-catalogue.spec.ts`'s job, and it does it with no database at all; this suite's job
+   * is the SQL.
+   */
+  const insertedExerciseSlugs: string[] = [];
+
+  const ensureMappedExercisesExist = async (): Promise<void> => {
+    const snapshot = parseSnapshot(JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")) as unknown);
+    const bySlug = new Map(snapshot.map((exercise) => [exercise.slug, exercise]));
+
+    const present = await db
+      .select({ slug: exercises.slug })
+      .from(exercises)
+      .where(and(inArray(exercises.slug, allMappedSlugs), isNull(exercises.ownerUserId)));
+    const alreadyThere = new Set(present.map((row) => row.slug));
+
+    for (const slug of new Set(allMappedSlugs)) {
+      // A developer database usually has the whole catalogue loaded already; leaving those rows
+      // alone is what keeps this suite's teardown from deleting real ones.
+      if (alreadyThere.has(slug)) continue;
+
+      const fromSnapshot = bySlug.get(slug);
+      // The four curated additions are deliberately absent from the snapshot -- `seedPrograms`
+      // upserts them itself, and the teardown removes them by their own slugs.
+      if (!fromSnapshot) continue;
+
+      await exercisesRepository.upsertCatalogueExercise(fromSnapshot);
+      insertedExerciseSlugs.push(slug);
+    }
+  };
+
   beforeAll(async () => {
     pool = new Pool({ connectionString });
     db = drizzle(pool);
     repository = new ProgramsSeedRepository(db);
     exercisesRepository = new ExercisesRepository(db);
+    await ensureMappedExercisesExist();
   });
 
   afterAll(async () => {
@@ -101,12 +149,16 @@ describe("ProgramsSeedRepository", () => {
     if (templateIds.length > 0) {
       await db.delete(workoutTemplates).where(inArray(workoutTemplates.id, templateIds));
     }
-    await db.delete(exercises).where(
-      inArray(
-        exercises.slug,
-        CURATED_EXERCISES.map((exercise) => exercise.slug),
-      ),
-    );
+    // Only what this suite put there: the curated additions the seed creates, plus any mapped
+    // catalogue row that was missing before it started. A developer database's own 873 rows are
+    // left untouched.
+    const toRemove = [
+      ...CURATED_EXERCISES.map((exercise) => exercise.slug),
+      ...insertedExerciseSlugs,
+    ];
+    if (toRemove.length > 0) {
+      await db.delete(exercises).where(inArray(exercises.slug, toRemove));
+    }
     await pool.end();
   });
 
