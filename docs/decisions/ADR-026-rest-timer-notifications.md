@@ -85,3 +85,31 @@ and confirm that skipping rest early produces no notification.
 - **Scheduling the notification from the live screen instead of the rest screen** — rejected:
   the rest screen already owns the end timestamp and every exit path, so putting the schedule
   anywhere else would split the pair that has to stay symmetric.
+
+## Addendum — the first device walk found it silent (2026-09-03)
+
+The walk this ADR made mandatory did its job on the first attempt: the phone stayed silent
+through a locked-screen rest. Three separate defects, none of which Jest could have caught.
+
+**1. The trigger was not a valid trigger.** `expo-notifications` 0.32 requires every object
+trigger to name a `SchedulableTriggerInputTypes` value. The code passed a bare
+`{ seconds }`, which schedules nothing at all — silently, with no throw.
+
+**2. A type assertion hid it.** The seam described the input with a hand-written shape and then
+cast it with `as unknown as Notifications.NotificationRequestInput`. That cast silenced the
+exact compile error that would have caught the missing `type`. The seam now types the input as
+the library's own `NotificationRequestInput`, so the compiler checks it — and the fix was
+confirmed by `tsc` accepting the corrected trigger and nothing else changing.
+
+**The general lesson, worth more than the bug:** a seam that exists to make a native module
+testable must still be typed against that module's real interface. Describing the boundary
+loosely and casting across it converts a compile-time error into a runtime silence, and a
+native module's runtime silence is only observable on a device.
+
+**3. Two delivery gaps that would have produced a second false report.** Android drops a
+notification with no channel, so one is created before scheduling; and on iOS a notification
+arriving while the app is foregrounded shows nothing without a `setNotificationHandler`, so an
+athlete watching the countdown would have seen no alert and reasonably called it broken again.
+
+The regression test now asserts the trigger's `type` explicitly rather than deep-equalling the
+whole input, so the field that actually mattered cannot be dropped again unnoticed.
