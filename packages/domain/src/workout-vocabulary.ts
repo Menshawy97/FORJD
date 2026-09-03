@@ -402,3 +402,41 @@ export interface WorkoutDisplayUnits {
   weightUnit: WeightUnit;
   distanceUnit: DistanceUnit;
 }
+
+/**
+ * How the program catalogue files its programs -- the filter chips of the design's own
+ * catalogue screen (Phase 3K).
+ *
+ * Deliberately **not** `ACTIVITIES`. That vocabulary answers "what kind of training is this
+ * session", and its members (`hyrox`, `pilates`, `swimming`) are not how a *catalogue* is
+ * browsed. A program is filed by the shape of the plan, and `hybrid` -- one that lifts and runs
+ * in the same week -- has no single activity to correspond to at all.
+ */
+export const PROGRAM_CATEGORIES = ["strength", "hybrid", "running", "cross_training"] as const;
+export type ProgramCategory = (typeof PROGRAM_CATEGORIES)[number];
+
+export const PROGRAM_CATEGORY_DISPLAY_NAMES: Record<ProgramCategory, string> = {
+  strength: "Strength",
+  hybrid: "Hybrid",
+  running: "Running",
+  cross_training: "Cross Training",
+};
+
+/**
+ * How demanding a program is.
+ *
+ * A separate vocabulary from `LEVELS` in `exercise-vocabulary.ts`, which reads
+ * `beginner | intermediate | expert`. That third member comes from free-exercise-db, the
+ * ingested source; the design's own catalogue says **"Advanced"**. Reusing `LEVELS` would mean
+ * either storing `expert` and displaying "Advanced" -- a label that does not match its value --
+ * or changing a vocabulary hundreds of ingested exercise rows already use. Two small honest
+ * vocabularies beat one dishonest shared one.
+ */
+export const PROGRAM_LEVELS = ["beginner", "intermediate", "advanced"] as const;
+export type ProgramLevel = (typeof PROGRAM_LEVELS)[number];
+
+export const PROGRAM_LEVEL_DISPLAY_NAMES: Record<ProgramLevel, string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+};
