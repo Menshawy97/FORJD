@@ -48,6 +48,8 @@ import type {
   UpdateProfileRequest,
   CreateWorkoutTemplateRequest,
   WorkoutTemplateListResponse,
+  WorkoutSessionListResponse,
+  WorkoutSessionResponse,
   WorkoutSessionUploadRequest,
   WorkoutTemplateResponse,
 } from '@forjd/contracts';
@@ -304,8 +306,8 @@ export async function deleteLogGroup(groupId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Workouts (Phase 3G) -- templates only. Sessions (Phase E's endpoints) are not called from a
-// screen yet; that is Phase H's live-execution work.
+// Workouts -- templates (Phase 3G), plus the session upload (Phase 3I) and the two session
+// reads (Phase 3J) that let a finished workout be shown back to the user.
 // ---------------------------------------------------------------------------------------------
 
 export async function listWorkoutTemplates(): Promise<WorkoutTemplateListResponse> {
@@ -341,4 +343,44 @@ export async function deleteWorkoutTemplate(id: string): Promise<void> {
  */
 export async function uploadWorkoutSession(body: WorkoutSessionUploadRequest): Promise<void> {
   await apiClient.post('/workouts/sessions', body);
+}
+
+/**
+ * Query for `GET /workouts/sessions`. Spelled out here rather than reusing
+ * `WorkoutSessionListQuery` from the contracts, because that type is the schema's *output* --
+ * where `limit` has already been defaulted and is therefore required. What a caller sends is
+ * the input side, where both fields are optional; omitting `limit` is how the client asks the
+ * server for its own default rather than guessing at one.
+ */
+export interface WorkoutSessionListQueryInput {
+  cursor?: string;
+  limit?: number;
+}
+
+/**
+ * `GET /workouts/sessions` -- the workout history list, newest first.
+ *
+ * The counterpart read to `uploadWorkoutSession`. Callers that want only the most recent
+ * session (Train's "Previous Workout" card) pass `{ limit: 1 }` rather than fetching the
+ * default page and discarding all but one row of it.
+ */
+export async function listWorkoutSessions(
+  query: WorkoutSessionListQueryInput = {},
+): Promise<WorkoutSessionListResponse> {
+  const response = await apiClient.get<WorkoutSessionListResponse>('/workouts/sessions', {
+    params: query,
+  });
+  return response.data;
+}
+
+/**
+ * `GET /workouts/sessions/:id` -- one session in full, with every exercise and set.
+ *
+ * The list response is a summary and carries no exercises, so anything that needs what was
+ * actually performed -- the finished-workout summary screen, repeating a previous workout --
+ * reads the session through here.
+ */
+export async function getWorkoutSession(id: string): Promise<WorkoutSessionResponse> {
+  const response = await apiClient.get<WorkoutSessionResponse>(`/workouts/sessions/${id}`);
+  return response.data;
 }

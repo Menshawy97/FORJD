@@ -53,6 +53,19 @@ export interface CompletedSummary {
   completedSetCount: number;
   /** For resolving muscles worked from the on-device catalogue. */
   exerciseIds: string[];
+  /**
+   * Where this summary came from, which decides two things the screen would otherwise get
+   * wrong for a past workout (Phase 3J-b).
+   *
+   * A `'live'` summary is a workout that has just finished on this device: it is sitting in the
+   * sync queue, so the screen says "will sync when you are back online" and nudges the queue
+   * while the athlete is looking at it. A `'history'` summary was read back from the server
+   * via Train's "Previous Workout" card -- it is already uploaded, and repeating either of
+   * those behaviours would be a false claim and a pointless upload attempt.
+   */
+  origin: 'live' | 'history';
+  /** Only a history summary has one -- `Yesterday`, `Last week`. */
+  performedAt?: string;
 }
 
 let completedSummary: CompletedSummary | null = null;

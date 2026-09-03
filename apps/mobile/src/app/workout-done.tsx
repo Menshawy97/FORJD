@@ -8,6 +8,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { clearCompletedSummary, getCompletedSummary } from '@/workouts/live-handoff';
+import { formatSessionDuration } from '@/workouts/previous-workout';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { colors } from '@/theme/tokens';
 
@@ -30,16 +31,6 @@ import { colors } from '@/theme/tokens';
  * by resolving it in the on-device catalogue (ADR-022), so it works offline and needs no new
  * data.
  */
-
-/** `0:01`, `12:30`, `1:02:11` -- the prototype's own `fmt`. */
-function formatDuration(totalSeconds: number): string {
-  const safe = Math.max(0, Math.floor(totalSeconds));
-  const hours = Math.floor(safe / 3600);
-  const minutes = Math.floor((safe % 3600) / 60);
-  const seconds = safe % 60;
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
-}
 
 interface StatTileProps {
   label: string;
@@ -90,7 +81,9 @@ export default function WorkoutDoneScreen() {
    * and the app-foreground trigger picks up anything this misses.
    */
   useEffect(() => {
-    if (!summary) return;
+    // A history summary is already on the server -- there is nothing of it in the queue to
+    // drain, and kicking the queue for it would be a request made on a false premise.
+    if (!summary || summary.origin === 'history') return;
     void syncPendingSessions();
   }, [summary]);
 
@@ -161,11 +154,13 @@ export default function WorkoutDoneScreen() {
           Session complete
         </Text>
         <Text className="mb-[20px] mt-[10px] font-archivo text-[13.5px]" style={{ color: '#9A9A92' }}>
-          {`${summary.name} · logged offline, will sync when you are back online.`}
+          {summary.origin === 'history'
+            ? `${summary.name}${summary.performedAt ? ` · ${summary.performedAt}` : ''}`
+            : `${summary.name} · logged offline, will sync when you are back online.`}
         </Text>
 
         <View className="flex-row" style={{ gap: 8 }}>
-          <StatTile label="Duration" value={formatDuration(summary.durationSeconds)} />
+          <StatTile label="Duration" value={formatSessionDuration(summary.durationSeconds)} />
           <StatTile label="Volume" value={summary.volumeKg.toLocaleString()} unit="kg" />
           <StatTile label="Sets" value={String(summary.completedSetCount)} />
         </View>

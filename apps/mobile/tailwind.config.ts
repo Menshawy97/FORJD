@@ -253,6 +253,10 @@ export default {
         toast: '0 10px 30px rgba(0,0,0,.50)',
         'selected-segment': '0 1px 3px rgba(0,0,0,.40)',
         'fab-action': '0 6px 18px rgba(233,113,47,.25)',
+        // Train's Repeat button. A lighter glow than `primary-button` -- the prototype writes
+        // it as `0 5px 16px rgba(233,113,47,.2)`, a smaller blur at a lower alpha, because it
+        // sits inside a card rather than on the screen ground.
+        'repeat-button': '0 5px 16px rgba(233,113,47,.2)',
       },
       // Android has no CSS shadow model — NativeWind's `getElevation()` maps each `boxShadow`
       // key to an Android `elevation` here, keyed identically. Without an entry it falls back
@@ -266,6 +270,7 @@ export default {
         toast: 8,
         'selected-segment': 1,
         'fab-action': 6,
+        'repeat-button': 3,
       },
     },
   },

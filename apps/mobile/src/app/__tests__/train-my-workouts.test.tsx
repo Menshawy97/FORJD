@@ -25,11 +25,16 @@ jest.mock('expo-router', () => {
   };
 });
 
+// Phase 3J-b: Train also reads the most recent session now. These tests are about the My
+// Workouts list, so the session read is mocked empty -- the card renders nothing and the
+// assertions below stay about one thing.
 jest.mock('@/auth/apiClient', () => ({
   listWorkoutTemplates: jest.fn(),
+  listWorkoutSessions: jest.fn(),
+  getWorkoutSession: jest.fn(),
 }));
 
-import { listWorkoutTemplates } from '@/auth/apiClient';
+import { listWorkoutSessions, listWorkoutTemplates } from '@/auth/apiClient';
 
 import TrainScreen from '../(tabs)/train';
 
@@ -57,6 +62,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockFocusCallback = null;
   (listWorkoutTemplates as jest.Mock).mockResolvedValue({ items: [template()], nextCursor: null });
+  (listWorkoutSessions as jest.Mock).mockResolvedValue({ items: [], nextCursor: null });
 });
 
 describe('the list', () => {

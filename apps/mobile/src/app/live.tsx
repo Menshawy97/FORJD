@@ -481,6 +481,7 @@ export default function LiveScreen() {
                   volumeKg: summary.volumeKg,
                   completedSetCount: summary.completedSetCount,
                   exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
+                  origin: 'live',
                 });
                 router.replace('/workout-done');
               }}

@@ -295,19 +295,34 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
      confirm exactly **one** session syncs (PRs #84/#85).
    - **Android**: the notification channel, importance and vibration have been reasoned about
      but never run.
-2. **Phase J — wire up what is already waiting. Partly done (PR #87).** Train's **My Workouts**
+2. **Phase J — wire up what is already waiting. Mostly done (PRs #87, and J-a/J-b).** Train's **My Workouts**
    now lists real templates, which finally gives a saved workout somewhere to be seen. What is
    **still** placeholder or empty, in the order worth doing:
 
-   **a. The mobile session-list client does not exist.** `GET /workouts/sessions` and
-   `GET /workouts/sessions/:id` are both live on the API (`workout-sessions.controller.ts`), but
-   `apps/mobile/src/auth/apiClient.ts` has no function calling them — the same shape of gap as
-   `uploadWorkoutSession`, which was missing until PR #85. **Everything below is blocked on
-   this**, so add `listWorkoutSessions` / `getWorkoutSession` first.
+   ~~**a. The mobile session-list client does not exist.**~~ **Done** — `listWorkoutSessions` /
+   `getWorkoutSession` are in `apps/mobile/src/auth/apiClient.ts`, and they landed together with
+   (b) so that neither shipped as a function nothing calls.
 
-   **b. Train's "Previous Workout" card** (`train2.png`) — name, `Yesterday · 45:12 · 14,200 kg`,
-   the exercise chips, and the `▶ Repeat` / `Summary` buttons. `Repeat` starts a new session from
-   that session's exercises; `Summary` opens the finished-workout screen.
+   ~~**b. Train's "Previous Workout" card**~~ **Done** (`train2.png`). The first thing in the app
+   that reads a finished session back at all — until now the client could only ever write one.
+   `Repeat` builds a new session from that session's exercises, keeping the logged loads and
+   dropping every tick; `Summary` reuses `workout-done.tsx`.
+
+   Three things about it are worth carrying forward, all recorded in
+   [`phase-3j-plan.md`](phase-3j-plan.md):
+
+   - **It costs two requests.** The list response is a summary and carries neither the volume
+     nor the exercises, so the card reads `listWorkoutSessions({ limit: 1 })` and then
+     `getWorkoutSession(id)`. Widening the list contract was considered and rejected — it would
+     put a per-row aggregate on a list that grows to hundreds of rows to serve one card that
+     only ever wants the first of them. Revisit it if J-c/J-d need those figures for many rows.
+   - **Two elements of the design are deliberately absent**: the meta line's `avg 151 bpm` (no
+     `HealthProvider` feeds this app) and the `PR +` badge (a personal record is a claim about
+     all history, which the device does not have). Same call as `workout-done.tsx`'s three HR
+     tiles. The `PR +` badge should return with J-c/J-d, where the history data arrives.
+   - **`CompletedSummary` gained an `origin` field.** `'live'` keeps the "will sync when you are
+     back online" line and nudges the sync queue; `'history'` does neither, because that session
+     is already on the server and both would be false.
 
    **c. Home's stat strip, "This week" and "Recent PR"**
    (`features/home/stat-strip.tsx`, `this-week.tsx`, `recent-pr.tsx`) — each already renders an

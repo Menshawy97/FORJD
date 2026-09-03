@@ -46,6 +46,11 @@ jest.mock('@/auth/apiClient', () => ({
     },
     privacy: null,
   }),
+  // Phase 3J-b: Train reads templates and the most recent session. Both resolve empty here --
+  // this suite asserts the atmosphere gradient, not either list.
+  listWorkoutTemplates: jest.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  listWorkoutSessions: jest.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  getWorkoutSession: jest.fn(),
 }));
 
 import { getCachedHasSession, hasSession } from '@/auth/secureStorage';
