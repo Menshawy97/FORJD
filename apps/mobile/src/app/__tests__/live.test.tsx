@@ -37,6 +37,15 @@ jest.mock('expo-router', () => {
   };
 });
 
+// The third real I/O boundary, alongside SQLite and the router. The unit chip's *behaviour* is
+// the subject here -- that it flips the exercise and converts what is shown -- while the store's
+// own degrade-don't-throw contract is covered directly in
+// `src/store/__tests__/exercise-unit-preferences.test.ts`.
+jest.mock('@/store/exercise-unit-preferences', () => ({
+  getExerciseUnits: jest.fn().mockResolvedValue({}),
+  setExerciseUnit: jest.fn().mockResolvedValue(true),
+}));
+
 jest.mock('@/store/workout-session', () => ({
   openWorkoutSessionDb: jest.fn(),
   ensureWorkoutSessionSchema: jest.fn(),
@@ -553,6 +562,71 @@ describe('the rest-timer card', () => {
 });
 
 describe('editing the session in flight', () => {
+  /**
+   * The unit chip is a button, not a label. Reported from a device: it looked tappable and did
+   * nothing.
+   *
+   * What matters beyond the label flipping is that **no stored value changes**. Every weight is
+   * kilograms in the log and on the wire (ADR-016); the chip changes the rendering only, so a
+   * session logged in pounds must upload exactly the kilograms it always held.
+   */
+  describe('the unit chip', () => {
+    it('switches one exercise between kg and lb, converting what is shown', async () => {
+      stageSession();
+      const { findByLabelText } = await render(<LiveScreen />);
+      const weight = async () =>
+        (await findByLabelText('Weight for set 1 of Bench Press')).props.value;
+
+      expect(await weight()).toBe('80');
+
+      await fireEvent.press(await findByLabelText('Switch Bench Press to lb'));
+
+      // 80 kg is 176.37 lb, rounded to the nearest half pound.
+      expect(await weight()).toBe('176.5');
+    });
+
+    it('switches back without the weight drifting', async () => {
+      stageSession();
+      const { findByLabelText } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Switch Bench Press to lb'));
+      await fireEvent.press(await findByLabelText('Switch Bench Press to kg'));
+
+      expect((await findByLabelText('Weight for set 1 of Bench Press')).props.value).toBe('80');
+    });
+
+    /** Per exercise, not per app -- kilograms on the bar and pounds on the dumbbells. */
+    it('leaves every other exercise alone', async () => {
+      stageSession();
+      const { findByLabelText, findByDisplayValue } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Switch Bench Press to lb'));
+
+      // Row Machine is a distance exercise and keeps its metres.
+      expect(await findByDisplayValue('500')).toBeTruthy();
+    });
+
+    it('offers miles on a distance exercise rather than pounds', async () => {
+      stageSession();
+      const { findByLabelText, findByDisplayValue } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Switch Row Machine to mi'));
+
+      // 500 m is 0.31 miles.
+      expect(await findByDisplayValue('0.31')).toBeTruthy();
+    });
+
+    /** A timed set has no unit to switch, so the chip is not drawn at all. */
+    it('is absent on a timed exercise', async () => {
+      stageSession();
+      const { queryByLabelText } = await render(<LiveScreen />);
+
+      await waitFor(() => expect(queryByLabelText('Switch Bench Press to lb')).toBeTruthy());
+      expect(queryByLabelText('Switch Plank to lb')).toBeNull();
+      expect(queryByLabelText('Switch Plank to kg')).toBeNull();
+    });
+  });
+
   it('adds a set to an exercise', async () => {
     stageSession();
     const { findByLabelText } = await render(<LiveScreen />);

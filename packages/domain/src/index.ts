@@ -169,3 +169,5 @@ export interface PrivacySettings {
   crashDiagnostics: boolean;
 }
 export * from './training-calculations';
+
+export * from './unit-conversion';
