@@ -134,12 +134,66 @@ Athlete) are built almost entirely on them.
 **Decision, taken with the user: add them as curated catalogue exercises.** The `exercises`
 schema already carries `measure` (`weight | time | distance`), and the app already plans a
 running screen, so a distance-measured `5K Run` and a time-measured `Tempo Intervals` are real
-gaps in the catalogue rather than inventions. `Assault Bike` maps to the existing `Air Bike`;
-`Overhead Press` and `Pistol Squat` exist under other names and need a careful pick, not a
-guess.
+gaps in the catalogue rather than inventions.
 
 Keep these new rows to the smallest set the nine programs actually reference, and give them a
 distinct `source` so they stay distinguishable from ingested ones.
+
+> **`Assault Bike` must NOT map to `air-bike`.** An earlier draft of this plan said it should.
+> In free-exercise-db, "Air Bike" is the **bicycle crunch** — `category: strength`,
+> `primaryMuscles: ["core"]`, `equipment: ["bodyweight"]` — not the fan bike. Mapping it would
+> have put an abdominal crunch into Engine Builder's conditioning days: precisely the
+> confidently-wrong failure this section exists to prevent, and a reminder that a plausible name
+> match still has to be checked against the row's own category and equipment.
+
+Likewise **`Pistol Squat` has no usable match.** The catalogue offers only
+`kettlebell-pistol-squat` and `smith-machine-pistol-squat`, and both contradict the program that
+uses it — "Bodyweight Anywhere", whose whole premise is *no equipment*.
+
+So four exercises are curated additions, not mappings:
+
+| Name | `measure` | Why |
+|---|---|---|
+| `5K Run` | `distance` | No running exercise exists |
+| `Tempo Intervals` | `time` | No interval exercise exists |
+| `Assault Bike` | `time` | `air-bike` is the bicycle crunch, not the machine |
+| `Pistol Squat` | `weight` | Only equipment-based variants exist, in a no-equipment program |
+
+#### The curated map, already researched
+
+Verified against the live catalogue so K1 does not have to redo this:
+
+| Prototype name | Slug |
+|---|---|
+| Bench Press | `barbell-bench-press-medium-grip` |
+| Barbell Row | `bent-over-barbell-row` |
+| Overhead Press | `standing-military-press` |
+| Lat Pulldown | `wide-grip-lat-pulldown` |
+| Back Squat | `barbell-squat` |
+| Romanian Deadlift | `romanian-deadlift` |
+| Leg Press | `leg-press` |
+| Incline DB Press | `incline-dumbbell-press` |
+| Pull-up | `pullups` |
+| Cable Fly | `cable-crossover` |
+| Deadlift | `barbell-deadlift` |
+| Walking Lunge | `barbell-walking-lunge` |
+| Leg Curl | `lying-leg-curls` |
+| Triceps Pushdown | `triceps-pushdown` |
+| Bicep Curl | `barbell-curl` |
+| Calf Raise | `standing-calf-raises` |
+| Dips | `parallel-bar-dip` |
+| Lateral Raise | `side-lateral-raise` |
+| Cable Row | `seated-cable-rows` |
+| Face Pull | `face-pull` |
+| Front Squat | `front-squat-clean-grip` |
+| Ab Wheel | `ab-roller` |
+| Back Extension | `hyperextensions-back-extensions` |
+| Thruster | `kettlebell-thruster` |
+
+Each pick is the *canonical* form of the movement, not the shortest or first match — a barbell
+bench rather than `bench-press-with-bands`, a parallel-bar dip rather than `bench-dips`, a
+wide-grip pulldown rather than `one-arm-lat-pulldown`. **Re-verify each slug before seeding**:
+these were read from a dev catalogue, and the ingest is reproducible but not frozen.
 
 Verify: repository tests against real Postgres, a test asserting all nine programs seed, and —
 most importantly — **a test that fails if any mapped name stops resolving**, since the catalogue
