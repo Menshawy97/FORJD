@@ -24,6 +24,7 @@ import type {
   CreateExerciseRequest,
   CreateSavedMealRequest,
   ExerciseCatalogueResponse,
+  ExerciseHistoryResponse,
   ExerciseResponse,
   FoodListResponse,
   FoodResponse,
@@ -402,6 +403,25 @@ export async function getWorkoutStats(): Promise<WorkoutStatsResponse> {
   const response = await apiClient.get<WorkoutStatsResponse>('/workouts/sessions/stats', {
     params: { timeZone: deviceTimeZone() },
   });
+  return response.data;
+}
+
+/**
+ * `GET /workouts/sessions/exercise/:exerciseId` -- one exercise's history: the best set ever
+ * logged, its estimated one-rep max, and the most recent sessions it was performed in
+ * (Phase 3J-d).
+ *
+ * The default matches the design's own "Top set — last 8 sessions", so the caller only passes a
+ * limit when it wants something other than what the screen draws.
+ */
+export async function getExerciseHistory(
+  exerciseId: string,
+  limit?: number,
+): Promise<ExerciseHistoryResponse> {
+  const response = await apiClient.get<ExerciseHistoryResponse>(
+    `/workouts/sessions/exercise/${exerciseId}`,
+    { params: limit === undefined ? {} : { limit } },
+  );
   return response.data;
 }
 

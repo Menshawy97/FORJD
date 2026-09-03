@@ -20,6 +20,10 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/auth/apiClient', () => ({
   getExerciseCatalogue: jest.fn(),
+  // Phase 3J-d: the screen reads this exercise's history too. Rejected here on purpose --
+  // this suite pins the honest empty states, and a failed history read is exactly the path
+  // that must still produce them.
+  getExerciseHistory: jest.fn().mockRejectedValue(new Error('no history in this suite')),
   setExerciseFavourite: jest.fn(),
   deleteExercise: jest.fn(),
 }));

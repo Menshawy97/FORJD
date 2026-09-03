@@ -63,6 +63,42 @@ export function formatRelativeDay(startedAt: Date, now: Date): string {
   return weeks === 1 ? 'Last week' : `${weeks} weeks ago`;
 }
 
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+/**
+ * A history row's date -- `Yesterday` for something recent, `16 Aug` for anything older
+ * (Phase 3J-d).
+ *
+ * Exactly the mix the prototype's own History list uses: its four rows read `Yesterday`,
+ * `16 Aug`, `12 Aug`, `9 Aug`. "Three weeks ago" is precise but useless for locating a session
+ * in a list, while a bare date for yesterday is colder than it needs to be -- so the relative
+ * form is kept for the stretch where it genuinely reads better and dropped after that.
+ *
+ * Built from a fixed month table rather than `Intl`, for the reason `features/home/date.ts`
+ * already documents: Hermes ships a trimmed ICU on Android, so locale output is not guaranteed
+ * to match what Node prints in a test.
+ */
+export function formatHistoryDate(performedAt: Date, now: Date): string {
+  const relative = formatRelativeDay(performedAt, now);
+  if (relative === 'Today' || relative === 'Yesterday' || relative.endsWith('days ago')) {
+    return relative;
+  }
+  return `${performedAt.getDate()} ${MONTHS[performedAt.getMonth()]}`;
+}
+
 /**
  * Total external load moved, in kilograms -- the meta line's `14,200 kg`.
  *
