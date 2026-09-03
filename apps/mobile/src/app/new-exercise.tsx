@@ -181,7 +181,11 @@ export default function NewExerciseScreen() {
     <ScreenBackground>
       <Header title={editing ? 'Edit Exercise' : 'New Exercise'} onBack={goBack} />
 
-      <ScrollView className="flex-1 px-screen-x" contentContainerStyle={{ paddingBottom: 16 }}>
+      <ScrollView
+        className="flex-1 px-screen-x"
+        contentContainerStyle={{ paddingBottom: 16 }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled">
         <Text className="font-archivo text-section-label font-semibold uppercase text-label">
           Exercise name
         </Text>

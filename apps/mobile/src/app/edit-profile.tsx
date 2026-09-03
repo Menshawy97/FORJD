@@ -175,7 +175,9 @@ export default function EditProfileScreen() {
       <ScrollView
         className="flex-1 px-screen-x"
         contentContainerStyle={{ paddingBottom: 26 }}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled">
         {loadError ? (
           <Text className="mt-3 font-archivo text-inline-error font-medium text-errorText">
             {loadError}
