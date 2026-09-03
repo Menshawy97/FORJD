@@ -2,7 +2,18 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { EXERCISE_GOAL_DISPLAY_NAMES, type ExerciseGoal } from '@forjd/domain';
+import {
+  EXERCISE_GOAL_DISPLAY_NAMES,
+  distanceForDisplay,
+  distanceFromDisplay,
+  nextDistanceUnit,
+  nextWeightUnit,
+  weightForDisplay,
+  weightFromDisplay,
+  type DistanceDisplayUnit,
+  type ExerciseGoal,
+  type WeightDisplayUnit,
+} from '@forjd/domain';
 
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
@@ -26,6 +37,12 @@ import {
   setRestContext,
   setTimerContext,
 } from '@/workouts/live-handoff';
+import {
+  getExerciseUnits,
+  setExerciseUnit,
+  type DisplayUnit,
+  type ExerciseUnitMap,
+} from '@/store/exercise-unit-preferences';
 import { toLiveExercise } from '@/workouts/start-session';
 import {
   addExercise,
@@ -143,6 +160,25 @@ export default function LiveScreen() {
   const [session, setSession] = useState<LiveSession | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [guideOpen, setGuideOpen] = useState(false);
+  /**
+   * Which unit each exercise is displayed in, remembered across workouts.
+   *
+   * Held in state and loaded once rather than read per render: it is a display preference, so a
+   * missing entry is simply the metric default, and a screen that awaited storage before drawing
+   * a set row would stall the workout for a value that changes about once a year.
+   */
+  const [unitByExercise, setUnitByExercise] = useState<ExerciseUnitMap>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    void getExerciseUnits().then((stored) => {
+      if (!cancelled) setUnitByExercise(stored);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   /** True when this screen picked a session back up after a crash rather than starting one. */
   const [resumed, setResumed] = useState(false);
   const toast = useToast();
@@ -409,6 +445,34 @@ export default function LiveScreen() {
   const guideSubtitle = currentExercise
     ? `${currentExercise.name}${currentGoal ? ` · ${EXERCISE_GOAL_DISPLAY_NAMES[currentGoal]}` : ''}`
     : 'Load, reps and rest by goal';
+
+  /**
+   * The unit this exercise is shown in. Metric is the default for anything never toggled, which
+   * is also what an athlete who never finds the chip gets -- and what every stored value already
+   * is (ADR-016).
+   */
+  const weightUnitFor = (exerciseId: string): WeightDisplayUnit =>
+    unitByExercise[exerciseId] === 'lb' ? 'lb' : 'kg';
+  const distanceUnitFor = (exerciseId: string): DistanceDisplayUnit =>
+    unitByExercise[exerciseId] === 'mi' ? 'mi' : 'm';
+
+  /**
+   * Flips one exercise's unit and remembers it.
+   *
+   * State updates first and the write is not awaited: the chip must feel instant, and a failed
+   * write costs one tap next time rather than a wrong number now. **No set is rewritten** --
+   * every weight stays the kilograms it already was, and only the rendering of it changes.
+   */
+  const toggleUnit = (exerciseId: string, measure: string) => {
+    const next: DisplayUnit =
+      measure === 'distance'
+        ? nextDistanceUnit(distanceUnitFor(exerciseId))
+        : nextWeightUnit(weightUnitFor(exerciseId));
+
+    setUnitByExercise((current) => ({ ...current, [exerciseId]: next }));
+    void setExerciseUnit(exerciseId, next);
+  };
+
 
 
   return (
@@ -747,16 +811,32 @@ export default function LiveScreen() {
                     </Text>
                   </Pressable>
                 ) : null}
+                {/*
+                  The unit chip is a button, not a label -- the prototype wires it to
+                  `toggleUnit(e.name, m)` and shows it whenever the measure is not time. It changes
+                  only what is displayed: the set keeps the kilograms it already held.
+                */}
                 {exercise.measure === 'time' ? null : (
-                  <View
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Switch ${exercise.name} to ${
+                      exercise.measure === 'distance'
+                        ? nextDistanceUnit(distanceUnitFor(exercise.exerciseId))
+                        : nextWeightUnit(weightUnitFor(exercise.exerciseId))
+                    }`}
+                    onPress={() => toggleUnit(exercise.exerciseId, exercise.measure)}
+                    hitSlop={6}
                     className="rounded-[8px] px-[9px] py-[5px]"
                     style={{ backgroundColor: 'rgba(255,255,255,.05)', borderWidth: 1, borderColor: colors.border }}>
                     <Text
                       className="font-archivo text-[10px] font-bold uppercase tracking-[.06em]"
                       style={{ color: '#9A9A92' }}>
-                      {exercise.measure === 'distance' ? 'M' : 'KG'}
+                      {(exercise.measure === 'distance'
+                        ? distanceUnitFor(exercise.exerciseId)
+                        : weightUnitFor(exercise.exerciseId)
+                      ).toUpperCase()}
                     </Text>
-                  </View>
+                  </Pressable>
                 )}
                 <Pressable
                   accessibilityRole="button"
@@ -834,12 +914,26 @@ export default function LiveScreen() {
                         <>
                           <TextInput
                             accessibilityLabel={`Weight for set ${setIndex + 1} of ${exercise.name}`}
-                            value={set.weightKg === null ? '' : String(set.weightKg)}
+                            // Displayed in this exercise's unit, stored in kilograms always
+                            // (ADR-016). The conversion is symmetric, so toggling the chip and
+                            // toggling back leaves the bar at exactly the weight it started at --
+                            // `unit-conversion.spec.ts` pins that round trip.
+                            value={
+                              set.weightKg === null
+                                ? ''
+                                : String(weightForDisplay(set.weightKg, weightUnitFor(exercise.exerciseId)))
+                            }
                             keyboardType="decimal-pad"
                             onChangeText={(raw) =>
                               setSession(
                                 updateSet(session, exerciseIndex, setIndex, {
-                                  weightKg: raw === '' ? null : Number(raw.replace(/[^0-9.]/g, '')) || 0,
+                                  weightKg:
+                                    raw === ''
+                                      ? null
+                                      : weightFromDisplay(
+                                          Number(raw.replace(/[^0-9.]/g, '')) || 0,
+                                          weightUnitFor(exercise.exerciseId),
+                                        ),
                                 }),
                               )
                             }
@@ -847,7 +941,7 @@ export default function LiveScreen() {
                             style={{ color: numberColor }}
                           />
                           <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
-                            kg
+                            {weightUnitFor(exercise.exerciseId)}
                           </Text>
                           <Text className="font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
                             ×
@@ -919,12 +1013,29 @@ export default function LiveScreen() {
                         <>
                           <TextInput
                             accessibilityLabel={`Distance for set ${setIndex + 1} of ${exercise.name}`}
-                            value={set.distanceMeters === null ? '' : String(set.distanceMeters)}
-                            keyboardType="number-pad"
+                            // Metres on the wire and in the log, miles only on screen -- the same
+                            // display-only conversion the weight row above does.
+                            value={
+                              set.distanceMeters === null
+                                ? ''
+                                : String(
+                                    distanceForDisplay(
+                                      set.distanceMeters,
+                                      distanceUnitFor(exercise.exerciseId),
+                                    ),
+                                  )
+                            }
+                            keyboardType="decimal-pad"
                             onChangeText={(raw) =>
                               setSession(
                                 updateSet(session, exerciseIndex, setIndex, {
-                                  distanceMeters: raw === '' ? null : Number(raw.replace(/[^0-9.]/g, '')) || 0,
+                                  distanceMeters:
+                                    raw === ''
+                                      ? null
+                                      : distanceFromDisplay(
+                                          Number(raw.replace(/[^0-9.]/g, '')) || 0,
+                                          distanceUnitFor(exercise.exerciseId),
+                                        ),
                                 }),
                               )
                             }
@@ -932,7 +1043,7 @@ export default function LiveScreen() {
                             style={{ color: numberColor }}
                           />
                           <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
-                            m
+                            {distanceUnitFor(exercise.exerciseId)}
                           </Text>
                         </>
                       )}
