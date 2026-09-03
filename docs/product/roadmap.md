@@ -280,10 +280,32 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    **force-kill the app mid-session and confirm it resumes**, finish, then re-enable the network
    and confirm exactly one session syncs. The notification check is *mandatory* — Jest cannot
    prove the OS schedules or delivers anything (ADR-026).
-2. **Phase J — wire up what is already waiting.** Home's stat strip, "This week" and "Recent PR"
-   still render honest empty values; Train's "Previous workouts" and "My workouts" are still the
-   Phase 2 placeholder line, so **a saved workout still has no UI to see it**;
-   `exercise/[id].tsx` still has empty stat tiles and history. All of that data now exists.
+2. **Phase J — wire up what is already waiting. Partly done (PR #87).** Train's **My Workouts**
+   now lists real templates, which finally gives a saved workout somewhere to be seen. What is
+   **still** placeholder or empty, in the order worth doing:
+
+   **a. The mobile session-list client does not exist.** `GET /workouts/sessions` and
+   `GET /workouts/sessions/:id` are both live on the API (`workout-sessions.controller.ts`), but
+   `apps/mobile/src/auth/apiClient.ts` has no function calling them — the same shape of gap as
+   `uploadWorkoutSession`, which was missing until PR #85. **Everything below is blocked on
+   this**, so add `listWorkoutSessions` / `getWorkoutSession` first.
+
+   **b. Train's "Previous Workout" card** (`train2.png`) — name, `Yesterday · 45:12 · 14,200 kg`,
+   the exercise chips, and the `▶ Repeat` / `Summary` buttons. `Repeat` starts a new session from
+   that session's exercises; `Summary` opens the finished-workout screen.
+
+   **c. Home's stat strip, "This week" and "Recent PR"**
+   (`features/home/stat-strip.tsx`, `this-week.tsx`, `recent-pr.tsx`) — each already renders an
+   honest empty value and takes the shape of a prop, by design. **"City Rank" is the one counter
+   Phase 3 does not supply** (open question 4, still unanswered).
+
+   **d. `exercise/[id].tsx`'s stat tiles, sparkline and history** — deliberately shipped as
+   honest empty states in Phase 2J, waiting on exactly this data.
+
+   **Update the existing tests rather than adding around them**: several suites pin the empty
+   states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and
+   `screen-atmosphere.test.tsx` anchors on per-screen text — that one broke when Train stopped
+   saying "coming soon", and CI caught it rather than the targeted runs.
 3. **Phase K — programs.** The final Phase 3 slice.
 4. **Smaller known gaps**, all recorded at the end of
    [`phase-3h-plan.md`](phase-3h-plan.md): abandoned sessions leak `session_events` rows, and
