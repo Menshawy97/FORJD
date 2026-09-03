@@ -389,10 +389,33 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
 5. **The workouts e2e fixture teardown** still leaks rows into the shared dev DB (spun off
    during Phase G, never started).
 
-**Standing environment note.** The local API dev server crashed **four times** in one session
-under `npm run start:dev`; the Nest watcher exits with `The process NNNNN not found` when its
-child is already gone, and does so **while still appearing to run**. That is the same shape as
-the Phase G incident. Check `netstat -ano | grep :3000` before trusting any device walk.
+**Standing environment note — the local API dev server under `npm run start:dev`.** It crashed
+seven times in one session with `ERROR: The process NNNNN not found`. Diagnosed rather than
+guessed at, and the honest version is narrower than it first looked:
+
+- The trigger was **rapid file churn**, not a defect in the project. Each crash followed a burst
+  of `git checkout` / `git pull` during branch merges. Every branch switch rewrites files under
+  `src/`, so `nest start --watch` recompiled and restarted its child repeatedly — the log shows
+  "Found 0 errors" every 5–20 seconds with nobody editing anything.
+- Nest's CLI restarts that child with `taskkill` on Windows. When a restart lands while the
+  previous child has already exited, `taskkill` fails and the CLI throws. `nest-cli.json`'s
+  `"deleteOutDir": true` makes it worse by deleting `dist/` out from under a running process on
+  every rebuild.
+- A normal edit-run-test loop is far less exposed. **Heavy branch switching while the watcher
+  runs is what to avoid** — stop the server first, or expect to restart it after.
+
+Two failure modes, and the second is the dangerous one: usually the watcher and its child die
+together (port 3000 simply goes dead, which is obvious). But it can also die leaving an
+**orphaned child still serving** — the app answers requests while silently running stale code
+and picking up no changes. That is exactly the Phase G incident. **Check
+`netstat -ano | grep :3000` before trusting any device walk**, and if something is listening,
+confirm a `nest.js --watch` process is alive too — a listener with no watcher is the bad state.
+
+If it becomes a recurring nuisance rather than a workflow artefact, swapping `nest start
+--watch` for a `tsx watch` / `nodemon` runner in `apps/api/package.json` would sidestep the
+CLI's `taskkill` restart entirely. Local-only (`start` stays `nest start`, and CI uses `build`
+and `test`), so it is reversible — but it has not been done, because the trigger turned out to
+be workflow rather than the tool.
 
 ### Superseded next steps (as of 2026-09-02)
 
