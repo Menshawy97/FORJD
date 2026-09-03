@@ -144,6 +144,19 @@ jobs:
       # and running the suite without --coverage skips them entirely.
       - run: pnpm --filter @forjd/api test:cov
 
+      # Serial, via `maxWorkers: 1` in test/jest-e2e.json — not a performance oversight.
+      #
+      # Every e2e suite boots the whole AppModule against the *same* Postgres, so in parallel
+      # they mutate each other’s data. `GET /exercises/catalogue` returns a `catalogueVersion`
+      # hashed over every row visible to the caller, and a catalogue row is visible to everyone —
+      # so any other suite inserting or deleting one between two reads changes the hash and fails
+      # "does not change the version when only a favourite toggles". That went red twice on
+      # unrelated pull requests before this was understood.
+      #
+      # Owner-scoping the fixture exercises was tried first and is wrong: workout-sessions’
+      # cross-user test needs an exercise *both* users can see, which is precisely a catalogue
+      # row. Running the suites one at a time removes the whole class of interference instead of
+      # the one instance, and costs a couple of minutes of wall clock.
       - run: pnpm --filter @forjd/api test:e2e
 
   mobile:
