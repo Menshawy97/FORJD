@@ -4,8 +4,14 @@ import type {
   WorkoutSessionListResponse,
   WorkoutSessionResponse,
   WorkoutSessionUploadRequest,
+  WorkoutStatsQuery,
+  WorkoutStatsResponse,
 } from "@forjd/contracts";
-import { workoutSessionListQuerySchema, workoutSessionUploadRequestSchema } from "@forjd/contracts";
+import {
+  workoutSessionListQuerySchema,
+  workoutSessionUploadRequestSchema,
+  workoutStatsQuerySchema,
+} from "@forjd/contracts";
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
@@ -30,6 +36,22 @@ export class WorkoutSessionsController {
     @Query(new ZodValidationPipe(workoutSessionListQuerySchema)) query: WorkoutSessionListQuery,
   ): Promise<WorkoutSessionListResponse> {
     return this.workoutSessionsService.list(request.user, query);
+  }
+
+  /**
+   * Home's stat strip, "This week" and "Recent PR" (Phase 3J-c).
+   *
+   * **Declared above `@Get(":id")` deliberately, and it must stay there.** Nest matches routes
+   * in declaration order, so with these two the other way round `/workouts/sessions/stats`
+   * binds to `getById` with `id: "stats"` -- which fails the UUID guard and answers 404 for
+   * every request Home makes, with nothing in either method looking wrong.
+   */
+  @Get("stats")
+  stats(
+    @Req() request: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(workoutStatsQuerySchema)) query: WorkoutStatsQuery,
+  ): Promise<WorkoutStatsResponse> {
+    return this.workoutSessionsService.stats(request.user, query);
   }
 
   @Get(":id")

@@ -17,6 +17,7 @@ import {
   sessionResponseSchema,
   workoutSessionListResponseSchema,
   workoutSessionResponseSchema,
+  workoutStatsResponseSchema,
   workoutTemplateListResponseSchema,
   workoutTemplateResponseSchema,
 } from './index';
@@ -549,7 +550,30 @@ export const responseFixtures = {
     },
   },
 
-  /** The workout history list row -- what Home's stat strip and "Recent PR" (Phase J) read. */
+  /**
+   * Everything Home reads, in one payload (Phase 3J-c) -- the stat strip's counters, the
+   * "This week" bars and "Recent PR".
+   *
+   * `trainedWeekdays` is indexed like `Date#getDay()`: 1 and 3 are Monday and Wednesday.
+   */
+  'workout-stats-response': {
+    schema: workoutStatsResponseSchema,
+    sample: {
+      totalSessions: 42,
+      sessionsThisMonth: 6,
+      weekStreak: 3,
+      thisWeek: { sessionCount: 2, trainedWeekdays: [1, 3] },
+      recentPersonalRecord: {
+        exerciseId: '33333333-3333-4333-8333-333333333333',
+        exerciseName: 'Bench Press',
+        weightKg: 100,
+        reps: 5,
+        achievedAt: '2026-09-01T09:05:00.000Z',
+      },
+    },
+  },
+
+  /** The workout history list row -- what the "Previous Workout" card (Phase 3J-b) reads. */
   'workout-session-list-response': {
     schema: workoutSessionListResponseSchema,
     sample: {

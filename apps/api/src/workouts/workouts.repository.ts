@@ -22,6 +22,9 @@ import {
 import { and, desc, eq, inArray, isNull, SQL, sql } from "drizzle-orm";
 
 import { Database, DRIZZLE } from "../database/database.module";
+// Read-only, and only to name the exercise behind a personal record -- exercises themselves
+// stay `ExercisesRepository`'s aggregate.
+import { exercises } from "../database/schema/exercises.schema";
 import {
   WorkoutBlockRow,
   WorkoutExerciseRow,
@@ -200,6 +203,94 @@ export interface WorkoutSessionSummaryRow {
 export interface WorkoutSessionPage {
   rows: WorkoutSessionSummaryRow[];
   hasMore: boolean;
+}
+
+/**
+ * The athlete's current best lift and when they first reached it (Phase 3J-c).
+ *
+ * `weightKg` is a bare number, not the `numeric` string Postgres hands back.
+ */
+export interface WorkoutPersonalRecordRow {
+  exerciseId: string;
+  exerciseName: string;
+  weightKg: number;
+  /** Never null: the query excludes weighted sets with no rep count. */
+  reps: number;
+  achievedAt: Date;
+}
+
+/** Everything Home's stat strip, "This week" and "Recent PR" need, in one read. */
+export interface WorkoutStatsRow {
+  totalSessions: number;
+  sessionsThisMonth: number;
+  weekStreak: number;
+  thisWeek: {
+    sessionCount: number;
+    /** Ascending and distinct, indexed like `Date#getDay()` -- 0 Sunday through 6 Saturday. */
+    trainedWeekdays: number[];
+  };
+  recentPersonalRecord: WorkoutPersonalRecordRow | null;
+}
+
+/** `YYYY-MM-DD` in the given zone. `en-CA` is the locale that formats exactly this shape. */
+function localCalendarDate(instant: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instant);
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * A `YYYY-MM-DD` civil date as milliseconds, read as though it were UTC midnight.
+ *
+ * Deliberately *not* the real instant that date began in the athlete's zone. Once a timestamp
+ * has been resolved to a calendar day, everything built on it here -- which weekday, which
+ * Monday, how many weeks back -- is calendar arithmetic, and doing that on a UTC ruler is what
+ * stops a daylight-saving transition from making one week 167 hours long and shifting every
+ * weekday index inside it by one.
+ */
+function civilDateMs(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+}
+
+function civilDateString(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** The Monday of the week a civil date falls in -- the week the mobile app's own strip draws. */
+function weekStartOf(date: string): string {
+  const ms = civilDateMs(date);
+  // getUTCDay() is Sunday-based; adding 6 and taking mod 7 rotates it so Monday is 0.
+  const offset = (new Date(ms).getUTCDay() + 6) % 7;
+  return civilDateString(ms - offset * MS_PER_DAY);
+}
+
+/**
+ * Consecutive weeks, ending with the current one or the one immediately before it, that
+ * contain at least one completed session.
+ *
+ * **The current week is allowed to be empty without breaking the streak.** Measured on a
+ * Monday morning, a streak that required the current week would reset every week before the
+ * athlete had any chance to train -- so a streak that reached last week is still alive, and
+ * only falls to zero once the week before that is empty too.
+ */
+function countWeekStreak(trainedWeekStarts: Set<string>, currentWeekStart: string): number {
+  let cursor = civilDateMs(currentWeekStart);
+  if (!trainedWeekStarts.has(currentWeekStart)) {
+    cursor -= 7 * MS_PER_DAY;
+  }
+
+  let streak = 0;
+  while (trainedWeekStarts.has(civilDateString(cursor))) {
+    streak += 1;
+    cursor -= 7 * MS_PER_DAY;
+  }
+  return streak;
 }
 
 /**
@@ -697,6 +788,165 @@ export class WorkoutsRepository {
         perceivedEffort: keepKnownNullable(row.perceivedEffort, PERCEIVED_EFFORTS),
       })),
       hasMore: rows.length > filter.limit,
+    };
+  }
+
+  /**
+   * Home's stat strip, "This week" and "Recent PR" (Phase 3J-c) -- every aggregate the athlete
+   * sees on Home, in two reads.
+   *
+   * **Computed here rather than on the device** because all of it spans the whole history: the
+   * session list is cursor-paginated and carries no totals, and a personal record needs every
+   * *set*, not every session summary. Deriving these client-side would mean walking the entire
+   * history on every Home render.
+   *
+   * `timeZone` is a parameter and not a constant because every figure here is a *local calendar*
+   * concept. A session at 02:00 UTC on the first of the month happened last month in New York;
+   * without the zone, "this month" silently means "this month in UTC" and is wrong for most of
+   * the world for part of every day.
+   *
+   * `now` is injected rather than read from the clock so the calendar boundaries these
+   * aggregates turn on are testable at all -- a test asserting "two sessions this week" that
+   * reads the clock asserts something different next Monday.
+   */
+  async statsForUser(userId: string, timeZone: string, now: Date): Promise<WorkoutStatsRow> {
+    const today = localCalendarDate(now, timeZone);
+    const currentWeekStart = weekStartOf(today);
+    const currentMonthPrefix = today.slice(0, 7);
+
+    /*
+     * Grouped by local training *day*, not returned row by row. One row per day the athlete
+     * trained is bounded by how often they train rather than by how many sessions they have,
+     * and it is exactly the grain the streak needs anyway -- so the counts, the week and the
+     * streak all fall out of a single scan of the index this table already carries
+     * (`workout_sessions_user_started_idx`).
+     */
+    const dayRows = await this.db.execute<{ local_date: string; sessions: number }>(sql`
+      select
+        to_char((${workoutSessions.startedAt} at time zone ${timeZone})::date, 'YYYY-MM-DD') as local_date,
+        count(*)::int as sessions
+      from ${workoutSessions}
+      where ${workoutSessions.userId} = ${userId}::uuid
+        and ${workoutSessions.deletedAt} is null
+        and ${workoutSessions.status} = 'completed'
+      group by 1
+    `);
+
+    let totalSessions = 0;
+    let sessionsThisMonth = 0;
+    let thisWeekSessions = 0;
+    const trainedWeekStarts = new Set<string>();
+    const trainedWeekdays = new Set<number>();
+
+    for (const row of dayRows.rows) {
+      const sessions = Number(row.sessions);
+      totalSessions += sessions;
+
+      if (row.local_date.startsWith(currentMonthPrefix)) {
+        sessionsThisMonth += sessions;
+      }
+
+      const week = weekStartOf(row.local_date);
+      trainedWeekStarts.add(week);
+
+      if (week === currentWeekStart) {
+        thisWeekSessions += sessions;
+        // Two sessions on one day light one bar, which is why this is a Set.
+        trainedWeekdays.add(new Date(civilDateMs(row.local_date)).getUTCDay());
+      }
+    }
+
+    return {
+      totalSessions,
+      sessionsThisMonth,
+      weekStreak: countWeekStreak(trainedWeekStarts, currentWeekStart),
+      thisWeek: {
+        sessionCount: thisWeekSessions,
+        trainedWeekdays: [...trainedWeekdays].sort((a, b) => a - b),
+      },
+      recentPersonalRecord: await this.recentPersonalRecordForUser(userId),
+    };
+  }
+
+  /**
+   * The record whose *achievement* is most recent -- not the heaviest lift ever.
+   *
+   * An athlete who set a squat PR last week should see that, not the heavier deadlift they
+   * have held for a year. So: the best weight per exercise, dated to the **first** time they
+   * reached it (repeating a lift does not re-set the record, and dating it to the latest
+   * repeat would make the card change for no reason), then the most recent of those.
+   *
+   * Weight-measured sets only, and completed ones only. There is no honest way to rank a timed
+   * hold against a lift, and an unticked set was never performed.
+   */
+  private async recentPersonalRecordForUser(
+    userId: string,
+  ): Promise<WorkoutPersonalRecordRow | null> {
+    const result = await this.db.execute<{
+      exercise_id: string;
+      exercise_name: string;
+      weight_kg: string;
+      reps: number;
+      achieved_at: Date;
+    }>(sql`
+      with completed_sets as (
+        select
+          ${workoutSessionExercises.exerciseId} as exercise_id,
+          ${workoutSets.weightKg} as weight_kg,
+          ${workoutSets.reps} as reps,
+          -- A completed set should always carry completedAt, but a session recovered from the
+          -- event log can be missing it; falling back to the session start keeps the record
+          -- datable rather than dropping the athlete's best lift over a null.
+          coalesce(${workoutSets.completedAt}, ${workoutSessions.startedAt}) as achieved_at
+        from ${workoutSets}
+        join ${workoutSessionExercises}
+          on ${workoutSessionExercises.id} = ${workoutSets.sessionExerciseId}
+        join ${workoutSessions}
+          on ${workoutSessions.id} = ${workoutSessionExercises.sessionId}
+        where ${workoutSessions.userId} = ${userId}::uuid
+          and ${workoutSessions.deletedAt} is null
+          and ${workoutSessions.status} = 'completed'
+          and ${workoutSets.isCompleted} = true
+          and ${workoutSets.weightKg} is not null
+          -- A record is "100 kg × 5". A weighted set with no rep count is not a lift anyone can
+          -- be said to hold a record at, and rendering "100 kg × —" would be worse than
+          -- reporting the next-best set that does have both halves.
+          and ${workoutSets.reps} is not null
+      ),
+      ranked as (
+        select
+          cs.*,
+          max(cs.weight_kg) over (partition by cs.exercise_id) as best_weight
+        from completed_sets cs
+      ),
+      records as (
+        select distinct on (r.exercise_id)
+          r.exercise_id, r.weight_kg, r.reps, r.achieved_at
+        from ranked r
+        where r.weight_kg = r.best_weight
+        order by r.exercise_id, r.achieved_at asc
+      )
+      select
+        rec.exercise_id,
+        ${exercises.name} as exercise_name,
+        rec.weight_kg,
+        rec.reps,
+        rec.achieved_at
+      from records rec
+      join ${exercises} on ${exercises.id} = rec.exercise_id
+      order by rec.achieved_at desc
+      limit 1
+    `);
+
+    const row = result.rows[0];
+    if (!row) return null;
+
+    return {
+      exerciseId: row.exercise_id,
+      exerciseName: row.exercise_name,
+      weightKg: Number(row.weight_kg),
+      reps: Number(row.reps),
+      achievedAt: new Date(row.achieved_at),
     };
   }
 

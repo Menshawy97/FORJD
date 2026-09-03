@@ -9,6 +9,7 @@ import { users } from "../database/schema/users.schema";
 import { workoutSessions, workoutTemplates } from "../database/schema/workouts.schema";
 import { ExercisesRepository } from "../exercises/exercises.repository";
 import {
+  CreateWorkoutSessionExerciseInput,
   CreateWorkoutSessionInput,
   CreateWorkoutTemplateInput,
   WorkoutsRepository,
@@ -667,6 +668,344 @@ describe("WorkoutsRepository", () => {
       const page = await repository.listSessionsForUser({ userId: stranger, limit: 50 });
 
       expect(page.rows.some((r) => r.id === created.id)).toBe(false);
+    });
+  });
+
+  /**
+   * Phase 3J-c -- Home's stat strip, "This week" and "Recent PR".
+   *
+   * Every assertion here fixes a date deliberately rather than reading the clock. These are
+   * calendar aggregates: a test that says "a session today" and runs at 23:58 in a zone the
+   * server is not in tests something different the next minute.
+   */
+  describe("statsForUser", () => {
+    const ZONE = "UTC";
+    // A Thursday. Every fixture below is positioned relative to this instant.
+    const NOW = new Date("2026-09-03T12:00:00Z");
+
+    const sessionAt = (
+      userId: string,
+      startedAt: Date,
+      overrides: Partial<CreateWorkoutSessionInput> = {},
+    ): CreateWorkoutSessionInput => ({
+      id: randomUUID(),
+      userId,
+      templateId: null,
+      name: "Session",
+      activity: "strength",
+      status: "completed",
+      startedAt,
+      endedAt: new Date(startedAt.getTime() + 45 * 60 * 1000),
+      durationSeconds: 2700,
+      perceivedEffort: null,
+      notes: null,
+      city: null,
+      citySlug: null,
+      isLiveTracked: true,
+      exercises: [],
+      ...overrides,
+    });
+
+    const withSet = (
+      exerciseId: string,
+      weightKg: number | null,
+      reps: number | null,
+      completedAt: Date,
+      isCompleted = true,
+    ): CreateWorkoutSessionExerciseInput => ({
+      exerciseId,
+      measure: "weight",
+      notes: null,
+      sets: [
+        {
+          type: "working",
+          isCompleted,
+          weightKg,
+          reps,
+          durationSeconds: null,
+          distanceMeters: null,
+          restSeconds: null,
+          completedAt,
+        },
+      ],
+    });
+
+    const save = async (input: CreateWorkoutSessionInput) => {
+      const saved = await repository.upsertSession(input);
+      createdSessionIds.push(saved.id);
+      return saved;
+    };
+
+    it("counts nothing at all for an account that has never trained", async () => {
+      const owner = await makeUser("stats-empty");
+
+      const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+      expect(stats.totalSessions).toBe(0);
+      expect(stats.sessionsThisMonth).toBe(0);
+      expect(stats.weekStreak).toBe(0);
+      expect(stats.thisWeek.sessionCount).toBe(0);
+      expect(stats.thisWeek.trainedWeekdays).toEqual([]);
+      // Not a zero-weight record: this athlete has no record at all.
+      expect(stats.recentPersonalRecord).toBeNull();
+    });
+
+    it("counts only this user's sessions", async () => {
+      const owner = await makeUser("stats-mine");
+      const stranger = await makeUser("stats-theirs");
+      await save(sessionAt(owner, new Date("2026-09-01T10:00:00Z")));
+      await save(sessionAt(stranger, new Date("2026-09-01T10:00:00Z")));
+
+      const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+      expect(stats.totalSessions).toBe(1);
+    });
+
+    // An in-progress or cancelled session is not a workout the athlete did. Counting one
+    // inflates every figure on Home at once.
+    it("counts completed sessions only", async () => {
+      const owner = await makeUser("stats-status");
+      await save(sessionAt(owner, new Date("2026-09-01T10:00:00Z")));
+      await save(sessionAt(owner, new Date("2026-09-01T12:00:00Z"), { status: "in_progress" }));
+      await save(sessionAt(owner, new Date("2026-09-01T14:00:00Z"), { status: "cancelled" }));
+
+      const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+      expect(stats.totalSessions).toBe(1);
+    });
+
+    it("counts this month from the first of the local month, not the last thirty days", async () => {
+      const owner = await makeUser("stats-month");
+      await save(sessionAt(owner, new Date("2026-09-01T10:00:00Z")));
+      await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z")));
+      // Six days earlier, but the previous month -- inside a rolling thirty days and outside
+      // "this month", which is the distinction being pinned.
+      await save(sessionAt(owner, new Date("2026-08-28T10:00:00Z")));
+
+      const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+      expect(stats.totalSessions).toBe(3);
+      expect(stats.sessionsThisMonth).toBe(2);
+    });
+
+    // The week runs Monday to Sunday, matching the mobile app's own WEEK_DAYS strip.
+    it("reports this week's sessions and which weekdays they fell on", async () => {
+      const owner = await makeUser("stats-week");
+      // 2026-08-31 is a Monday; 2026-09-02 a Wednesday.
+      await save(sessionAt(owner, new Date("2026-08-31T10:00:00Z")));
+      await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z")));
+      // The Sunday before that Monday belongs to the previous week.
+      await save(sessionAt(owner, new Date("2026-08-30T10:00:00Z")));
+
+      const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+      expect(stats.thisWeek.sessionCount).toBe(2);
+      // Indexed like Date#getDay(): Monday is 1, Wednesday 3.
+      expect(stats.thisWeek.trainedWeekdays).toEqual([1, 3]);
+    });
+
+    it("lights a weekday once however many times it was trained", async () => {
+      const owner = await makeUser("stats-twice");
+      await save(sessionAt(owner, new Date("2026-09-02T08:00:00Z")));
+      await save(sessionAt(owner, new Date("2026-09-02T18:00:00Z")));
+
+      const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+      expect(stats.thisWeek.sessionCount).toBe(2);
+      expect(stats.thisWeek.trainedWeekdays).toEqual([3]);
+    });
+
+    // The zone is the whole reason it is a parameter. 2026-09-01T02:00Z is still 31 August in
+    // New York, so the same row falls in a different month depending on it.
+    it("resolves the calendar in the caller's zone, not the server's", async () => {
+      const owner = await makeUser("stats-zone");
+      await save(sessionAt(owner, new Date("2026-09-01T02:00:00Z")));
+
+      const utc = await repository.statsForUser(owner, "UTC", NOW);
+      const newYork = await repository.statsForUser(owner, "America/New_York", NOW);
+
+      expect(utc.sessionsThisMonth).toBe(1);
+      expect(newYork.sessionsThisMonth).toBe(0);
+    });
+
+    describe("weekStreak", () => {
+      it("counts consecutive weeks back from the current one", async () => {
+        const owner = await makeUser("stats-streak");
+        await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z"))); // this week
+        await save(sessionAt(owner, new Date("2026-08-26T10:00:00Z"))); // last week
+        await save(sessionAt(owner, new Date("2026-08-19T10:00:00Z"))); // the week before
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.weekStreak).toBe(3);
+      });
+
+      it("stops at the first missed week", async () => {
+        const owner = await makeUser("stats-streak-gap");
+        await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z")));
+        // The week of 2026-08-24 is skipped entirely.
+        await save(sessionAt(owner, new Date("2026-08-19T10:00:00Z")));
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.weekStreak).toBe(1);
+      });
+
+      // Measured on a Monday morning, a streak that required *this* week would reset every
+      // week before the athlete had any chance to train.
+      it("survives a current week with nothing in it yet", async () => {
+        const owner = await makeUser("stats-streak-grace");
+        await save(sessionAt(owner, new Date("2026-08-26T10:00:00Z")));
+        await save(sessionAt(owner, new Date("2026-08-19T10:00:00Z")));
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.weekStreak).toBe(2);
+      });
+
+      it("is zero once even the previous week is empty", async () => {
+        const owner = await makeUser("stats-streak-stale");
+        await save(sessionAt(owner, new Date("2026-08-19T10:00:00Z")));
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.weekStreak).toBe(0);
+      });
+    });
+
+    describe("recentPersonalRecord", () => {
+      it("names the record whose achievement is most recent, not the heaviest ever", async () => {
+        const owner = await makeUser("stats-pr");
+        const deadlift = await makeExercise("pr-deadlift");
+        const squat = await makeExercise("pr-squat");
+
+        await save(
+          sessionAt(owner, new Date("2026-06-01T10:00:00Z"), {
+            exercises: [withSet(deadlift, 180, 3, new Date("2026-06-01T10:20:00Z"))],
+          }),
+        );
+        await save(
+          sessionAt(owner, new Date("2026-09-01T10:00:00Z"), {
+            exercises: [withSet(squat, 140, 5, new Date("2026-09-01T10:20:00Z"))],
+          }),
+        );
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        // The deadlift is heavier, but the squat is the record they most recently set.
+        expect(stats.recentPersonalRecord?.exerciseId).toBe(squat);
+        expect(stats.recentPersonalRecord?.weightKg).toBe(140);
+        expect(stats.recentPersonalRecord?.reps).toBe(5);
+      });
+
+      // Repeating a lift does not re-set the record. Dating it to the latest repeat would make
+      // the card silently change for no reason.
+      it("dates a record to the first time it was reached, not the last", async () => {
+        const owner = await makeUser("stats-pr-first");
+        const bench = await makeExercise("pr-bench");
+
+        await save(
+          sessionAt(owner, new Date("2026-08-01T10:00:00Z"), {
+            exercises: [withSet(bench, 100, 5, new Date("2026-08-01T10:20:00Z"))],
+          }),
+        );
+        await save(
+          sessionAt(owner, new Date("2026-09-01T10:00:00Z"), {
+            exercises: [withSet(bench, 100, 5, new Date("2026-09-01T10:20:00Z"))],
+          }),
+        );
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.recentPersonalRecord?.achievedAt.toISOString()).toBe(
+          "2026-08-01T10:20:00.000Z",
+        );
+      });
+
+      it("ignores a set that was never completed", async () => {
+        const owner = await makeUser("stats-pr-unticked");
+        const bench = await makeExercise("pr-unticked");
+
+        await save(
+          sessionAt(owner, new Date("2026-09-01T10:00:00Z"), {
+            exercises: [withSet(bench, 200, 1, new Date("2026-09-01T10:20:00Z"), false)],
+          }),
+        );
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.recentPersonalRecord).toBeNull();
+      });
+
+      it("ignores sets with no weight, which cannot be ranked against a lift", async () => {
+        const owner = await makeUser("stats-pr-bw");
+        const dips = await makeExercise("pr-dips");
+
+        await save(
+          sessionAt(owner, new Date("2026-09-01T10:00:00Z"), {
+            exercises: [withSet(dips, null, 12, new Date("2026-09-01T10:20:00Z"))],
+          }),
+        );
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.recentPersonalRecord).toBeNull();
+      });
+
+      // A record reads "100 kg × 5". A weighted set with no rep count is not a lift anyone
+      // holds a record at, and "100 kg × —" would be worse than reporting the next-best set
+      // that has both halves.
+      it("ignores a weighted set with no rep count, preferring one that has both halves", async () => {
+        const owner = await makeUser("stats-pr-noreps");
+        const bench = await makeExercise("pr-noreps");
+
+        await save(
+          sessionAt(owner, new Date("2026-09-01T10:00:00Z"), {
+            exercises: [withSet(bench, 200, null, new Date("2026-09-01T10:20:00Z"))],
+          }),
+        );
+        await save(
+          sessionAt(owner, new Date("2026-09-02T10:00:00Z"), {
+            exercises: [withSet(bench, 90, 5, new Date("2026-09-02T10:20:00Z"))],
+          }),
+        );
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.recentPersonalRecord?.weightKg).toBe(90);
+        expect(stats.recentPersonalRecord?.reps).toBe(5);
+      });
+
+      it("carries the exercise name, so the card needs no second lookup", async () => {
+        const owner = await makeUser("stats-pr-name");
+        const bench = await makeExercise("pr-named");
+
+        await save(
+          sessionAt(owner, new Date("2026-09-01T10:00:00Z"), {
+            exercises: [withSet(bench, 100, 5, new Date("2026-09-01T10:20:00Z"))],
+          }),
+        );
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.recentPersonalRecord?.exerciseName).toContain("Test pr-named");
+      });
+
+      it("never reports another athlete's record", async () => {
+        const owner = await makeUser("stats-pr-owner");
+        const stranger = await makeUser("stats-pr-stranger");
+        const bench = await makeExercise("pr-shared");
+
+        await save(
+          sessionAt(stranger, new Date("2026-09-01T10:00:00Z"), {
+            exercises: [withSet(bench, 300, 1, new Date("2026-09-01T10:20:00Z"))],
+          }),
+        );
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.recentPersonalRecord).toBeNull();
+      });
     });
   });
 });
