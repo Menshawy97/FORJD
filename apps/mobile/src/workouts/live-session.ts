@@ -534,3 +534,37 @@ export function setExerciseMeasure(
 ): LiveSession {
   return mapExercise(session, exerciseIndex, (exercise) => ({ ...exercise, measure }));
 }
+
+/**
+ * Overrides one exercise's training goal for this session.
+ *
+ * The goal arrives from the catalogue, derived server-side from `measure` -- a client must not
+ * invent one, and `createExerciseRequestSchema` has no `goal` field at all. What this changes is
+ * narrower: how the athlete has decided to train *this* exercise *today*, which is what the
+ * design's `sessionGoals` map holds and what decides which row of "How to train this" applies.
+ *
+ * A plain `LiveSession` rather than a `LiveSessionChange`, exactly like `setExerciseMeasure`
+ * above: it logs no event, because the goal is a lens on the prescription rather than a record of
+ * anything performed, and a rebuilt session takes its goals from the catalogue again.
+ */
+export function setExerciseGoal(
+  session: LiveSession,
+  exerciseIndex: number,
+  goal: ExerciseGoal,
+): LiveSession {
+  return mapExercise(session, exerciseIndex, (exercise) => ({ ...exercise, goal }));
+}
+
+/**
+ * The design's "Apply to every exercise in this live workout" checkbox.
+ *
+ * One function rather than a loop over `setExerciseGoal` at the call site, so the whole session is
+ * rewritten in a single state update -- a loop would render once per exercise and, worse, would
+ * read a stale session on every iteration after the first.
+ */
+export function setAllExerciseGoals(session: LiveSession, goal: ExerciseGoal): LiveSession {
+  return {
+    ...session,
+    exercises: session.exercises.map((exercise) => ({ ...exercise, goal })),
+  };
+}
