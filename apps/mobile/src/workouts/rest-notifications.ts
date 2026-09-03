@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 /**
  * The rest-timer notification (Phase 3H, slice H4, ADR-026).
@@ -18,15 +19,27 @@ import * as Notifications from 'expo-notifications';
  * and no new privacy surface.
  */
 
-/** The slice of `expo-notifications` this module actually uses. */
+/** The Android channel rest alerts are delivered on. Android drops a notification with no channel. */
+const REST_CHANNEL_ID = 'workout-rest';
+
+/**
+ * The slice of `expo-notifications` this module actually uses.
+ *
+ * **The trigger must carry its `type`.** `expo-notifications` 0.32 requires every object trigger
+ * to name one of `SchedulableTriggerInputTypes`; a bare `{ seconds }` is not a valid trigger and
+ * schedules nothing at all. Typing this as the library's own `NotificationRequestInput` rather
+ * than a hand-written shape is deliberate: the first version of this file described the input
+ * loosely and then cast it with `as unknown as`, which silenced the exact compile error that
+ * would have caught the missing `type`. It shipped, Jest passed, and the phone stayed silent
+ * through a locked-screen rest — the one thing only a device walk could reveal.
+ */
 export interface NotificationScheduler {
   getPermissionsAsync: () => Promise<{ granted: boolean; canAskAgain: boolean }>;
   requestPermissionsAsync: () => Promise<{ granted: boolean }>;
-  scheduleNotificationAsync: (input: {
-    content: { title: string; body: string; sound?: boolean };
-    trigger: { seconds: number } | null;
-  }) => Promise<string>;
+  scheduleNotificationAsync: (input: Notifications.NotificationRequestInput) => Promise<string>;
   cancelScheduledNotificationAsync: (identifier: string) => Promise<void>;
+  /** No-op on iOS; on Android a channel must exist before anything is delivered. */
+  ensureChannel: () => Promise<void>;
 }
 
 export const defaultScheduler: NotificationScheduler = {
@@ -38,9 +51,33 @@ export const defaultScheduler: NotificationScheduler = {
     const result = await Notifications.requestPermissionsAsync();
     return { granted: result.granted };
   },
-  scheduleNotificationAsync: (input) =>
-    Notifications.scheduleNotificationAsync(input as unknown as Notifications.NotificationRequestInput),
+  scheduleNotificationAsync: (input) => Notifications.scheduleNotificationAsync(input),
   cancelScheduledNotificationAsync: (identifier) => Notifications.cancelScheduledNotificationAsync(identifier),
+  ensureChannel: async () => {
+    /**
+     * Without a handler, iOS shows *nothing* for a notification that arrives while the app is
+     * in the foreground — it is delivered silently to the app instead. The athlete watching the
+     * rest countdown would see no alert and reasonably call it broken, which is the same
+     * complaint as a silent locked screen for a different reason. Idempotent, so setting it
+     * before each schedule is free.
+     */
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    if (Platform.OS !== 'android') return;
+    await Notifications.setNotificationChannelAsync(REST_CHANNEL_ID, {
+      name: 'Rest timer',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      // The point of the alert is to be noticed with the phone face-down in a gym bag.
+      vibrationPattern: [0, 250, 250, 250],
+    });
+  },
 };
 
 /**
@@ -80,13 +117,22 @@ export async function scheduleRestEndNotification(
   const permitted = await ensureRestNotificationPermission(scheduler);
   if (!permitted) return null;
   try {
+    await scheduler.ensureChannel();
     return await scheduler.scheduleNotificationAsync({
       content: {
         title: 'Rest complete',
         body: 'Time for your next set.',
         sound: true,
+        // Delivered while the phone is locked, so it has to be worth feeling, not just seeing.
+        vibrate: [0, 250, 250, 250],
       },
-      trigger: { seconds },
+      trigger: {
+        // Required. Without it the object is not a valid trigger and nothing is scheduled.
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: Math.max(1, Math.round(seconds)),
+        repeats: false,
+        channelId: REST_CHANNEL_ID,
+      },
     });
   } catch {
     return null;

@@ -16,6 +16,10 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn(),
   scheduleNotificationAsync: jest.fn(),
   cancelScheduledNotificationAsync: jest.fn(),
+  setNotificationChannelAsync: jest.fn(),
+  setNotificationHandler: jest.fn(),
+  AndroidImportance: { HIGH: 4 },
+  SchedulableTriggerInputTypes: { TIME_INTERVAL: 'timeInterval' },
 }));
 
 function fakeScheduler(overrides: Partial<NotificationScheduler> = {}): jest.Mocked<NotificationScheduler> {
@@ -24,6 +28,7 @@ function fakeScheduler(overrides: Partial<NotificationScheduler> = {}): jest.Moc
     requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true }),
     scheduleNotificationAsync: jest.fn().mockResolvedValue('notification-1'),
     cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
+    ensureChannel: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   } as jest.Mocked<NotificationScheduler>;
 }
@@ -68,10 +73,36 @@ describe('scheduling', () => {
     const scheduler = fakeScheduler();
 
     await expect(scheduleRestEndNotification(90, scheduler)).resolves.toBe('notification-1');
-    expect(scheduler.scheduleNotificationAsync).toHaveBeenCalledWith({
-      content: { title: 'Rest complete', body: 'Time for your next set.', sound: true },
-      trigger: { seconds: 90 },
+    /**
+     * REGRESSION, found by a device walk and nothing else. `expo-notifications` 0.32 requires
+     * every object trigger to name a `SchedulableTriggerInputTypes` value; a bare `{ seconds }`
+     * is not a valid trigger and schedules *nothing*. That is what shipped — Jest passed, the
+     * typecheck passed (an `as unknown as` cast in the seam silenced it), and the phone stayed
+     * silent through a locked-screen rest.
+     */
+    const input = (scheduler.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
+    expect(input.trigger).toMatchObject({ type: 'timeInterval', seconds: 90, repeats: false });
+    expect(input.content).toMatchObject({
+      title: 'Rest complete',
+      body: 'Time for your next set.',
+      sound: true,
     });
+  });
+
+  it('creates the Android channel first, since Android drops a channel-less notification', async () => {
+    const scheduler = fakeScheduler();
+
+    await scheduleRestEndNotification(90, scheduler);
+
+    expect(scheduler.ensureChannel).toHaveBeenCalled();
+  });
+
+  it('never schedules a sub-second delay the OS would round away', async () => {
+    const scheduler = fakeScheduler();
+
+    await scheduleRestEndNotification(0.4, scheduler);
+
+    expect((scheduler.scheduleNotificationAsync as jest.Mock).mock.calls[0][0].trigger.seconds).toBe(1);
   });
 
   it('schedules nothing when the athlete refused notifications', async () => {
