@@ -231,13 +231,34 @@ Verify: repository tests against real Postgres, a test asserting all nine progra
 most importantly — **a test that fails if any mapped name stops resolving**, since the catalogue
 is re-ingested and a rename would otherwise silently hollow out a program.
 
-### K2 — the read API
+### K2 — the read API — **done** (PR #101)
 
 `GET /programs` (the catalogue, filterable by category), `GET /programs/:id` (overview: metadata
-plus its workouts), and `GET /programs/enrollment` (the active one, or null).
+plus its workouts), and `GET /programs/enrollment` (the active one, or null). Contracts, service,
+controller, e2e. The route-ordering trap held: `@Get("enrollment")` is declared **above**
+`@Get(":id")`, and an e2e test fails if that is ever reversed.
 
-Contracts, service, controller, e2e. Watch the route-ordering trap J-c documents:
-`@Get("enrollment")` must be declared **above** `@Get(":id")`.
+Two decisions were put to the user before building and answered by them:
+
+- **One endpoint with a `scope` filter**, not two endpoints and not client-side filtering. The
+  design draws two program lists — the catalogue shows only the nine presets, Train’s "My
+  programs" only the athlete’s own — and they must not bleed into each other.
+  `?scope=preset|mine|all` defaults to **`preset`**, so a screen that forgets the parameter gets
+  the catalogue rather than a mixed list. `all` never includes a stranger’s program.
+- **Unpaginated.** Nine presets plus however few an athlete builds; a keyset cursor would be
+  machinery with no caller. Adding pagination later is additive, removing it would not be.
+
+Two things worth carrying forward:
+
+- **`workoutCount` is counted from the join rows, never read off `days_per_week`.** They are equal
+  for every seeded preset and would diverge for a custom program with rest days, so a list reading
+  the wrong one is right today and quietly wrong once K6 ships.
+- **Interpolating a drizzle *column object* inside a raw `sql` template renders its bare name.**
+  The workout-count subquery’s correlation came out as `"program_id" = "id"`, where `"id"` binds
+  to `program_workouts.id` rather than to the outer program — a valid comparison that is simply
+  never true, so every program silently reported zero workouts. Postgres cannot catch that; the
+  repository test did. Every column reference in a raw subquery is now table-qualified
+  (`${table}."column"`), the same way `workouts.repository.ts` already documents.
 
 ### K3 — enrolment
 

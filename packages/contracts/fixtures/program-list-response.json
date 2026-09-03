@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": "3f1a4d64-6b2f-4d0e-9d0a-3c2f9a5e1b77",
+      "slug": "upper-lower",
+      "name": "Upper / Lower",
+      "category": "strength",
+      "level": "intermediate",
+      "daysPerWeek": 4,
+      "durationWeeks": 8,
+      "description": "Balanced strength for 3–5 sessions a week",
+      "isOwn": false,
+      "workoutCount": 4
+    }
+  ]
+}
