@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type {
+  ExerciseHistoryQuery,
+  ExerciseHistoryResponse,
   WorkoutSessionListQuery,
   WorkoutSessionListResponse,
   WorkoutSessionResponse,
@@ -93,6 +95,46 @@ export class WorkoutSessionsService {
               ...row.recentPersonalRecord,
               achievedAt: row.recentPersonalRecord.achievedAt.toISOString(),
             },
+    };
+  }
+
+  /**
+   * One exercise's history for the caller (Phase 3J-d) -- the exercise-detail screen's tiles,
+   * trend and History list.
+   *
+   * The id is shape-checked before it reaches Postgres, the same way `getById` does it: a
+   * malformed uuid is refused here rather than becoming a query that errors.
+   *
+   * There is deliberately **no visibility check on the exercise itself**. This answers only
+   * with sessions the caller performed, so an exercise they cannot see necessarily has none --
+   * an empty history, which is both the truthful answer and one that leaks nothing about
+   * whether the id exists.
+   */
+  async exerciseHistory(
+    viewer: User,
+    exerciseId: string,
+    query: ExerciseHistoryQuery,
+  ): Promise<ExerciseHistoryResponse> {
+    if (!UUID_PATTERN.test(exerciseId)) {
+      throw this.refuse();
+    }
+
+    const row = await this.workoutsRepository.exerciseHistoryForUser(
+      viewer.id,
+      exerciseId,
+      query.limit,
+    );
+
+    return {
+      bestSet:
+        row.bestSet === null
+          ? null
+          : { ...row.bestSet, achievedAt: row.bestSet.achievedAt.toISOString() },
+      estimatedOneRepMaxKg: row.estimatedOneRepMaxKg,
+      sessions: row.sessions.map((session) => ({
+        ...session,
+        performedAt: session.performedAt.toISOString(),
+      })),
     };
   }
 

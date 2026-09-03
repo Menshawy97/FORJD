@@ -152,3 +152,4 @@ export interface PrivacySettings {
   aiFeaturesConsentAt: Date | null;
   crashDiagnostics: boolean;
 }
+export * from './training-calculations';

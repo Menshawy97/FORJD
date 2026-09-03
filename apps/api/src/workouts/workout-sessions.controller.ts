@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type {
+  ExerciseHistoryQuery,
+  ExerciseHistoryResponse,
   WorkoutSessionListQuery,
   WorkoutSessionListResponse,
   WorkoutSessionResponse,
@@ -8,6 +10,7 @@ import type {
   WorkoutStatsResponse,
 } from "@forjd/contracts";
 import {
+  exerciseHistoryQuerySchema,
   workoutSessionListQuerySchema,
   workoutSessionUploadRequestSchema,
   workoutStatsQuerySchema,
@@ -52,6 +55,24 @@ export class WorkoutSessionsController {
     @Query(new ZodValidationPipe(workoutStatsQuerySchema)) query: WorkoutStatsQuery,
   ): Promise<WorkoutStatsResponse> {
     return this.workoutSessionsService.stats(request.user, query);
+  }
+
+  /**
+   * One exercise's history (Phase 3J-d) -- the exercise-detail screen's tiles, trend and
+   * History list.
+   *
+   * Three path segments, so unlike `@Get("stats")` above, this one cannot be captured by the
+   * single-segment `@Get(":id")` below however they are ordered. It is kept up here anyway,
+   * beside the other non-parameterised routes, so the file does not have to be read twice to
+   * see which routes are safe from that hazard and which are not.
+   */
+  @Get("exercise/:exerciseId")
+  exerciseHistory(
+    @Req() request: AuthenticatedRequest,
+    @Param("exerciseId") exerciseId: string,
+    @Query(new ZodValidationPipe(exerciseHistoryQuerySchema)) query: ExerciseHistoryQuery,
+  ): Promise<ExerciseHistoryResponse> {
+    return this.workoutSessionsService.exerciseHistory(request.user, exerciseId, query);
   }
 
   @Get(":id")

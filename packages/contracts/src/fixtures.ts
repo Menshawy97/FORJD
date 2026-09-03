@@ -15,6 +15,7 @@ import {
   savedMealListResponseSchema,
   savedMealResponseSchema,
   sessionResponseSchema,
+  exerciseHistoryResponseSchema,
   workoutSessionListResponseSchema,
   workoutSessionResponseSchema,
   workoutStatsResponseSchema,
@@ -545,6 +546,29 @@ export const responseFixtures = {
               completedAt: '2026-09-02T09:05:00.000Z',
             },
           ],
+        },
+      ],
+    },
+  },
+
+  /**
+   * The exercise-detail screen's tiles, trend and History list for one exercise (Phase 3J-d).
+   *
+   * `estimatedOneRepMaxKg` is Epley's estimate from `bestSet`: 100 x 3 gives 106.7, which is
+   * exactly where the design's own demo tile of "106 kg" beside "100 kg x 3" comes from.
+   */
+  'exercise-history-response': {
+    schema: exerciseHistoryResponseSchema,
+    sample: {
+      bestSet: { weightKg: 100, reps: 3, achievedAt: '2026-08-08T10:20:00.000Z' },
+      estimatedOneRepMaxKg: 106.7,
+      sessions: [
+        {
+          sessionId: '11111111-1111-4111-8111-111111111111',
+          sessionName: 'Push Day',
+          performedAt: '2026-08-08T10:00:00.000Z',
+          weightKg: 100,
+          reps: 3,
         },
       ],
     },

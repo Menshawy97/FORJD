@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import {
+  exerciseHistoryResponseSchema,
   workoutSessionListResponseSchema,
   workoutSessionResponseSchema,
   workoutSessionUploadRequestSchema,
@@ -298,6 +299,70 @@ describe('Workout sessions (e2e)', () => {
 
       expect(response.body.totalSessions).toBe(0);
       expect(response.body.recentPersonalRecord).toBeNull();
+    });
+  });
+
+  /**
+   * Phase 3J-d. Same division of labour as the stats block above: the aggregates are proven
+   * against real Postgres in the repository spec, and what only real HTTP proves is that the
+   * route is reachable and its query validated.
+   */
+  describe('GET /workouts/sessions/exercise/:exerciseId', () => {
+    const history = (id: string, token = 'owner-token') =>
+      request(app.getHttpServer())
+        .get(`/api/v1/workouts/sessions/exercise/${id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+    it('rejects an unauthenticated request', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/workouts/sessions/exercise/${exerciseId}`)
+        .expect(401);
+    });
+
+    it('returns an uploaded session and parses against the published contract', async () => {
+      const created = await upload(validBody()).expect(201);
+      createdSessionIds.push(created.body.id);
+
+      const response = await history(exerciseId).expect(200);
+
+      expect(() => exerciseHistoryResponseSchema.parse(response.body)).not.toThrow();
+      // validBody() logs 95kg x 6; Epley from that is 95 * (1 + 5/30) = 110.8.
+      expect(response.body.bestSet.weightKg).toBe(95);
+      expect(response.body.estimatedOneRepMaxKg).toBeCloseTo(110.8, 1);
+      expect(response.body.sessions.length).toBeGreaterThan(0);
+    });
+
+    // Never performed by this athlete, so an empty history -- which is also the answer for an
+    // exercise they cannot see, leaking nothing about whether the id exists.
+    it('answers empty for an exercise with no sessions rather than 404ing', async () => {
+      const response = await history(randomUUID()).expect(200);
+
+      expect(response.body.bestSet).toBeNull();
+      expect(response.body.estimatedOneRepMaxKg).toBeNull();
+      expect(response.body.sessions).toEqual([]);
+    });
+
+    it('refuses a malformed exercise id', async () => {
+      await history('not-a-uuid').expect(404);
+    });
+
+    it('rejects a limit outside the allowed range', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/workouts/sessions/exercise/${exerciseId}`)
+        .query({ limit: 500 })
+        .set('Authorization', 'Bearer owner-token');
+
+      expect(response.status).toBe(400);
+    });
+
+    it("never returns another athlete's history", async () => {
+      const created = await upload(validBody()).expect(201);
+      createdSessionIds.push(created.body.id);
+
+      const response = await history(exerciseId, 'stranger-token').expect(200);
+
+      expect(response.body.bestSet).toBeNull();
+      expect(response.body.sessions).toEqual([]);
     });
   });
 

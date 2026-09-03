@@ -18,6 +18,7 @@ import {
   WorkoutSet,
   WorkoutSetType,
   WorkoutTemplate,
+  estimateOneRepMaxKg,
 } from "@forjd/domain";
 import { and, desc, eq, inArray, isNull, SQL, sql } from "drizzle-orm";
 
@@ -217,6 +218,23 @@ export interface WorkoutPersonalRecordRow {
   /** Never null: the query excludes weighted sets with no rep count. */
   reps: number;
   achievedAt: Date;
+}
+
+/** One session's top set for a single exercise -- a row of the exercise-detail History list. */
+export interface WorkoutExerciseSessionRow {
+  sessionId: string;
+  sessionName: string;
+  performedAt: Date;
+  weightKg: number | null;
+  reps: number | null;
+}
+
+/** Everything the exercise-detail screen's tiles, trend and History list need (Phase 3J-d). */
+export interface WorkoutExerciseHistoryRow {
+  bestSet: { weightKg: number; reps: number; achievedAt: Date } | null;
+  estimatedOneRepMaxKg: number | null;
+  /** Newest first, at most the requested limit. */
+  sessions: WorkoutExerciseSessionRow[];
 }
 
 /** Everything Home's stat strip, "This week" and "Recent PR" need, in one read. */
@@ -865,6 +883,112 @@ export class WorkoutsRepository {
         trainedWeekdays: [...trainedWeekdays].sort((a, b) => a - b),
       },
       recentPersonalRecord: await this.recentPersonalRecordForUser(userId),
+    };
+  }
+
+  /**
+   * One exercise's history for one athlete (Phase 3J-d) -- the exercise-detail screen's
+   * "Best set" and "Est. 1RM" tiles, its top-set trend, and its History list.
+   *
+   * Two reads, for the same reason `statsForUser` needs two: the best set is over *all* history
+   * while the list is the newest `limit` sessions, and folding them together would mean either
+   * scanning everything to render eight rows or capping the record at those eight.
+   *
+   * `estimatedOneRepMaxKg` is derived here rather than on the device so one definition of the
+   * formula serves every client. `estimateOneRepMaxKg` lives in `@forjd/domain` and answers
+   * `null` for a set outside the rep range Epley can speak to, which the screen renders as its
+   * em dash rather than an authoritative-looking wrong number.
+   */
+  async exerciseHistoryForUser(
+    userId: string,
+    exerciseId: string,
+    limit: number,
+  ): Promise<WorkoutExerciseHistoryRow> {
+    const best = await this.db.execute<{
+      weight_kg: string;
+      reps: number;
+      achieved_at: Date;
+    }>(sql`
+      select
+        ${workoutSets.weightKg} as weight_kg,
+        ${workoutSets.reps} as reps,
+        coalesce(${workoutSets.completedAt}, ${workoutSessions.startedAt}) as achieved_at
+      from ${workoutSets}
+      join ${workoutSessionExercises}
+        on ${workoutSessionExercises.id} = ${workoutSets.sessionExerciseId}
+      join ${workoutSessions}
+        on ${workoutSessions.id} = ${workoutSessionExercises.sessionId}
+      where ${workoutSessions.userId} = ${userId}::uuid
+        and ${workoutSessionExercises.exerciseId} = ${exerciseId}::uuid
+        and ${workoutSessions.deletedAt} is null
+        and ${workoutSessions.status} = 'completed'
+        and ${workoutSets.isCompleted} = true
+        and ${workoutSets.weightKg} is not null
+        and ${workoutSets.reps} is not null
+      -- Heaviest first; ties go to the earliest, because that is when the record was set.
+      order by ${workoutSets.weightKg} desc, achieved_at asc
+      limit 1
+    `);
+
+    /*
+     * One row per session, carrying that session's own heaviest completed set of this exercise.
+     * `distinct on` picks it inside the database rather than returning every set for the client
+     * to reduce -- an athlete with twenty years of squatting has a great many sets and only
+     * ever eight rows on screen.
+     */
+    const sessions = await this.db.execute<{
+      session_id: string;
+      session_name: string;
+      performed_at: Date;
+      weight_kg: string | null;
+      reps: number | null;
+    }>(sql`
+      select distinct on (${workoutSessions.id})
+        ${workoutSessions.id} as session_id,
+        ${workoutSessions.name} as session_name,
+        ${workoutSessions.startedAt} as performed_at,
+        ${workoutSets.weightKg} as weight_kg,
+        ${workoutSets.reps} as reps
+      from ${workoutSessions}
+      join ${workoutSessionExercises}
+        on ${workoutSessionExercises.sessionId} = ${workoutSessions.id}
+      join ${workoutSets}
+        on ${workoutSets.sessionExerciseId} = ${workoutSessionExercises.id}
+      where ${workoutSessions.userId} = ${userId}::uuid
+        and ${workoutSessionExercises.exerciseId} = ${exerciseId}::uuid
+        and ${workoutSessions.deletedAt} is null
+        and ${workoutSessions.status} = 'completed'
+        and ${workoutSets.isCompleted} = true
+      order by ${workoutSessions.id}, ${workoutSets.weightKg} desc nulls last
+    `);
+
+    const bestRow = best.rows[0];
+    const bestSet =
+      bestRow === undefined
+        ? null
+        : {
+            weightKg: Number(bestRow.weight_kg),
+            reps: Number(bestRow.reps),
+            achievedAt: new Date(bestRow.achieved_at),
+          };
+
+    return {
+      bestSet,
+      estimatedOneRepMaxKg:
+        bestSet === null ? null : estimateOneRepMaxKg(bestSet.weightKg, bestSet.reps),
+      // `distinct on` dictates its own ordering, so newest-first is applied here rather than in
+      // SQL. The slice is what bounds the response; the query itself is already bounded to this
+      // athlete's own sessions for this one exercise.
+      sessions: sessions.rows
+        .map((row) => ({
+          sessionId: row.session_id,
+          sessionName: row.session_name,
+          performedAt: new Date(row.performed_at),
+          weightKg: row.weight_kg === null ? null : Number(row.weight_kg),
+          reps: row.reps === null ? null : Number(row.reps),
+        }))
+        .sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime())
+        .slice(0, limit),
     };
   }
 

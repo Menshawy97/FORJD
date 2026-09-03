@@ -1216,3 +1216,59 @@ export const workoutStatsResponseSchema = z.object({
   recentPersonalRecord: workoutPersonalRecordSchema.nullable(),
 });
 export type WorkoutStatsResponse = z.infer<typeof workoutStatsResponseSchema>;
+
+/**
+ * One session's top set for a single exercise -- a row of the exercise-detail screen's History
+ * list, and one point of its "Top set — last 8 sessions" trend (Phase 3J-d).
+ *
+ * "Top set" is the heaviest completed set of that exercise *within that session*, which is what
+ * the design's own rows show. Deliberately not the session's total volume: this screen's
+ * subject is one exercise's progression, and a volume figure would move with how many sets were
+ * done rather than with how much was lifted.
+ */
+export const exerciseSessionEntrySchema = z.object({
+  sessionId: z.string().uuid(),
+  sessionName: z.string(),
+  performedAt: z.string().datetime(),
+  weightKg: z.number().nullable(),
+  reps: z.number().int().nullable(),
+});
+export type ExerciseSessionEntry = z.infer<typeof exerciseSessionEntrySchema>;
+
+/**
+ * Query for `GET /workouts/sessions/exercise/:exerciseId`. `limit` bounds the History list and
+ * the trend behind it -- the design draws eight points.
+ */
+export const exerciseHistoryQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(8),
+});
+export type ExerciseHistoryQuery = z.infer<typeof exerciseHistoryQuerySchema>;
+
+/**
+ * Everything the exercise-detail screen's stat tiles, trend and History list need for one
+ * exercise (Phase 3J-d).
+ *
+ * The nullable fields are `null` for an exercise the athlete has never performed, which is what
+ * keeps that screen's shipped empty states honest rather than showing zeroes that would read as
+ * a real, very bad lift.
+ */
+export const exerciseHistoryResponseSchema = z.object({
+  /** The heaviest completed set ever logged for this exercise -- the "Best set" tile. */
+  bestSet: z
+    .object({
+      weightKg: z.number(),
+      reps: z.number().int(),
+      achievedAt: z.string().datetime(),
+    })
+    .nullable(),
+  /**
+   * Epley's estimate from `bestSet`, in kilograms -- the "Est. 1RM" tile.
+   *
+   * `null` whenever no honest estimate exists, including when a best set *does* exist but ran
+   * past the rep range the formula can speak to. See `estimateOneRepMaxKg` in `@forjd/domain`.
+   */
+  estimatedOneRepMaxKg: z.number().nullable(),
+  /** Newest first, at most `limit` long. Empty before the exercise has ever been performed. */
+  sessions: z.array(exerciseSessionEntrySchema),
+});
+export type ExerciseHistoryResponse = z.infer<typeof exerciseHistoryResponseSchema>;

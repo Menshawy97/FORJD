@@ -166,6 +166,54 @@ Two things worth keeping:
 `Promise.allSettled` is called, which no amount of settling absorbs. Targeted runs did not catch
 it — the full suite did, which is the fourth time that has been the difference.
 
-## J-d / K — not started
+## J-d — the exercise-detail screen's tiles, trend and History
 
-The exercise-detail stat tiles, sparkline and history; then programs.
+`GET /workouts/sessions/exercise/:exerciseId` answers all of it for one exercise: the best set
+ever, an estimated one-rep max, and the newest `limit` sessions each carrying that session's own
+top set. Same shape of decision as J-c, and the user's answer there applies unchanged — the
+alternative is fetching every session's detail and reducing it on the device.
+
+### Est. 1RM is domain logic, not a screen detail
+
+`estimateOneRepMaxKg` lives in **`packages/domain`**, the project's first entry under CLAUDE.md
+rule 8 ("unit tests for training/analytics calculations"). It is there rather than in the API or
+the app because both sides will eventually want the same answer, and two implementations of a
+formula are two chances to disagree about an athlete's numbers.
+
+It uses Epley — `weight x (1 + (reps - 1) / 30)`. Two things about that expression are
+deliberate:
+
+- **The exponent is `reps - 1`, not `reps`.** One rep *is* a one-rep max; the unadjusted formula
+  would report a 100 kg single as 103.3.
+- **It returns `null` past twelve reps.** Epley extrapolates a 20-rep set to roughly 1.63x the
+  load, which is not a number to put in front of an athlete as their own max. `null` is a real
+  answer here, not an error path, and the tile renders its em dash — the same call already made
+  for heart rate, City Rank and the PR badge.
+
+A best set and its estimate are therefore **independent**: a real 60 kg x 20 shows the set and
+no estimate.
+
+### Two queries, and a `distinct on`
+
+The best set spans all history while the list is the newest `limit` sessions, so folding them
+together would mean either scanning everything to render eight rows or capping the record at
+those eight. The list query uses `distinct on (session)` to pick each session's heaviest
+completed set **inside the database** — an athlete with twenty years of squatting has a great
+many sets and only ever eight rows on screen.
+
+### The route is three segments, and that matters
+
+`GET /workouts/sessions/exercise/:exerciseId` cannot be captured by the single-segment
+`@Get(":id")`, unlike `@Get("stats")` — so it is safe from the ordering trap J-c documents. It
+is declared beside the other non-parameterised routes anyway, so the file does not have to be
+read twice to see which routes are exposed to that hazard and which are not.
+
+### No visibility check on the exercise
+
+The endpoint answers only with sessions the caller performed, so an exercise they cannot see
+necessarily has none. An empty history is both the truthful answer and one that leaks nothing
+about whether the id exists.
+
+## K — not started
+
+Programs, the final Phase 3 slice.
