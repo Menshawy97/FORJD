@@ -39,6 +39,11 @@ jest.mock('@/store/workout-session', () => ({
   openWorkoutSessionDb: jest.fn(),
   ensureWorkoutSessionSchema: jest.fn(),
   appendSessionEvent: jest.fn(),
+  saveSessionSnapshot: jest.fn(),
+  getUnfinishedSessionSnapshot: jest.fn(),
+  clearSessionSnapshot: jest.fn(),
+  getSessionEvents: jest.fn(),
+  replaySessionState: jest.fn(),
 }));
 
 // Every API function rejects. Nothing in the live flow may depend on one.
@@ -48,7 +53,16 @@ jest.mock('@/auth/apiClient', () => ({
   getExerciseCatalogue: jest.fn().mockRejectedValue(new Error('network is down')),
 }));
 
-import { appendSessionEvent, ensureWorkoutSessionSchema, openWorkoutSessionDb } from '@/store/workout-session';
+import {
+  appendSessionEvent,
+  clearSessionSnapshot,
+  ensureWorkoutSessionSchema,
+  getSessionEvents,
+  getUnfinishedSessionSnapshot,
+  openWorkoutSessionDb,
+  replaySessionState,
+  saveSessionSnapshot,
+} from '@/store/workout-session';
 import {
   consumeCompletedTimedSet,
   consumePendingLiveSession,
@@ -115,6 +129,15 @@ beforeEach(() => {
   (openWorkoutSessionDb as jest.Mock).mockResolvedValue({});
   (ensureWorkoutSessionSchema as jest.Mock).mockResolvedValue(undefined);
   (appendSessionEvent as jest.Mock).mockResolvedValue(undefined);
+  (saveSessionSnapshot as jest.Mock).mockResolvedValue(undefined);
+  (clearSessionSnapshot as jest.Mock).mockResolvedValue(undefined);
+  (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue(null);
+  (getSessionEvents as jest.Mock).mockResolvedValue([]);
+  (replaySessionState as jest.Mock).mockReturnValue({
+    status: 'in_progress',
+    durationSeconds: 0,
+    completedSetKeys: [],
+  });
 });
 
 describe('formatElapsed', () => {
@@ -162,6 +185,130 @@ describe('the header', () => {
     const { findByText } = await render(<LiveScreen />);
 
     expect(await findByText('No workout in progress.')).toBeTruthy();
+  });
+});
+
+/**
+ * Crash recovery -- the reason the log is append-only at all. The architecture doc's promise is
+ * that "the app can be killed mid-session and the state rebuilt by replay"; before this slice
+ * `replaySessionState` existed and was tested, but nothing called it, so a force-kill silently
+ * lost the workout and orphaned its events.
+ */
+describe('resuming after a crash', () => {
+  /**
+   * Relative to the wall clock, not a literal date. The elapsed figure is computed as
+   * `now - startedAt - paused`, so a fixed timestamp would sit in the future or the distant
+   * past depending on when the suite runs, and the assertion would be meaningless.
+   */
+  const STARTED_AT = new Date(Date.now() - 754_000).toISOString();
+
+  const snapshotOf = () => ({
+    sessionId: 'session-1',
+    startedAt: STARTED_AT,
+    payload: {
+      id: 'session-1',
+      templateId: 'template-1',
+      name: 'Upper Body Push',
+      activity: 'strength',
+      status: 'in_progress',
+      restSeconds: 90,
+      startedAt: STARTED_AT,
+      exercises: [
+        {
+          exerciseId: 'ex-1',
+          name: 'Bench Press',
+          measure: 'weight',
+          goal: 'strength',
+          sets: [
+            { setIndex: 0, isCompleted: false, weightKg: 80, reps: 8, durationSeconds: null, distanceMeters: null },
+            { setIndex: 1, isCompleted: false, weightKg: 80, reps: 8, durationSeconds: null, distanceMeters: null },
+          ],
+        },
+      ],
+    },
+  });
+
+  it('snapshots the session at start, so there is something to recover from', async () => {
+    stageSession();
+
+    await render(<LiveScreen />);
+
+    await waitFor(() => expect(saveSessionSnapshot).toHaveBeenCalledTimes(1));
+    const [, sessionId, , startedAt] = (saveSessionSnapshot as jest.Mock).mock.calls[0];
+    expect(sessionId).toBe('session-1');
+    expect(startedAt).toEqual(expect.any(String));
+  });
+
+  it('rebuilds the workout, its ticked sets and its elapsed time', async () => {
+    (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue(snapshotOf());
+    (replaySessionState as jest.Mock).mockReturnValue({
+      status: 'in_progress',
+      durationSeconds: 754,
+      completedSetKeys: ['ex-1:0'],
+    });
+
+    const { findByText } = await render(<LiveScreen />);
+
+    expect(await findByText('Live · Upper Body Push')).toBeTruthy();
+    expect(await findByText('1/2 sets')).toBeTruthy();
+    expect(await findByText('640 kg')).toBeTruthy();
+    expect(await findByText('12:34')).toBeTruthy();
+  });
+
+  it('tells the athlete plainly that nothing was lost', async () => {
+    (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue(snapshotOf());
+
+    const { findByText } = await render(<LiveScreen />);
+
+    expect(await findByText('Session resumed — your logged sets were recovered')).toBeTruthy();
+  });
+
+  it('comes back paused when it was left paused', async () => {
+    (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue(snapshotOf());
+    (replaySessionState as jest.Mock).mockReturnValue({
+      status: 'paused',
+      durationSeconds: 60,
+      completedSetKeys: [],
+    });
+
+    const { findByText } = await render(<LiveScreen />);
+
+    expect(await findByText('Paused · Upper Body Push')).toBeTruthy();
+  });
+
+  it('does not resume a session that already finished, and drops its snapshot', async () => {
+    (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue(snapshotOf());
+    (replaySessionState as jest.Mock).mockReturnValue({
+      status: 'completed',
+      durationSeconds: 900,
+      completedSetKeys: ['ex-1:0', 'ex-1:1'],
+    });
+
+    const { findByText } = await render(<LiveScreen />);
+
+    // A finished session belongs to the sync queue, not to another workout.
+    expect(await findByText('No workout in progress.')).toBeTruthy();
+    await waitFor(() => expect(clearSessionSnapshot).toHaveBeenCalledWith({}, 'session-1'));
+  });
+
+  it('prefers a freshly started session over a recoverable one', async () => {
+    (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue(snapshotOf());
+    stageSession();
+
+    const { findByText } = await render(<LiveScreen />);
+
+    // Four sets is the newly staged session; the snapshot has two.
+    expect(await findByText('0/4 sets')).toBeTruthy();
+    expect(getUnfinishedSessionSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('clears the snapshot when the workout is finished', async () => {
+    stageSession();
+    const { findByLabelText } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Finish workout'));
+
+    await waitFor(() => expect(clearSessionSnapshot).toHaveBeenCalledWith({}, 'session-1'));
   });
 });
 

@@ -129,13 +129,25 @@ row abandoned the workout in progress.
 Recorded deliberately rather than discovered later. None of these block the slices above, but
 all of them are real and two are user-visible.
 
-1. **Crash recovery is not wired up, despite being the reason the event log exists.**
-   `replaySessionState` exists and is tested, but **nothing calls it**. The live screen starts
-   only from the in-memory handoff, so force-killing the app mid-session loses the session
-   entirely — its events stay in `session_events` as orphans. The device walk in this plan
-   ("kill the app mid-session, reopen and confirm the session resumes") **will fail today.**
-   Fixing it needs a resume path: on launch, find an unfinished session, replay its log, and
-   offer to continue.
+1. ~~**Crash recovery is not wired up.**~~ **Fixed** — see `session_snapshot`, `restoreSession` and the live screen's resume path. The original problem, kept for context:
+   `replaySessionState` existed and was tested, but **nothing called it**. The live screen
+   started only from the in-memory handoff, so force-killing the app mid-session lost the
+   session entirely and orphaned its events.
+
+   **How it works now.** The event log records *what happened* but not *what the session is* —
+   its name, exercises and prescribed targets are nowhere in it — so replay alone cannot rebuild
+   a screen. A third table, `session_snapshot`, stores the started session once, at start; the
+   live screen, finding no handoff, reads it back, replays the log over it with
+   `restoreSession`, and comes up with the ticked sets, paused state and elapsed time intact.
+   The snapshot is written **once** rather than per tick, because the mutable part of a session
+   is exactly what the log already carries — rewriting it per change would reintroduce the
+   mutable "current session" row the append-only design exists to avoid. It is dropped when the
+   session finishes, and a session whose replay says `completed` is never resumed: it belongs to
+   the sync queue, not to another workout.
+
+   One subtlety worth keeping: **the stretch the app spent closed counts as paused, not as
+   training.** The elapsed clock is wall-clock based, so without seeding the paused total on
+   resume, an app killed for an hour would add that hour to the workout.
 2. **Finishing a workout does not enqueue it for upload.** `workout-session.ts`'s own module
    docblock says a session "enters this table exactly once, when a `workout_finished` event is
    appended", but `appendSessionEvent` does no such thing — it only inserts into

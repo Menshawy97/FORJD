@@ -7,7 +7,16 @@ import { EXERCISE_GOAL_DISPLAY_NAMES, type ExerciseGoal } from '@forjd/domain';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
-import { appendSessionEvent, ensureWorkoutSessionSchema, openWorkoutSessionDb } from '@/store/workout-session';
+import {
+  appendSessionEvent,
+  clearSessionSnapshot,
+  ensureWorkoutSessionSchema,
+  getSessionEvents,
+  getUnfinishedSessionSnapshot,
+  openWorkoutSessionDb,
+  replaySessionState,
+  saveSessionSnapshot,
+} from '@/store/workout-session';
 import {
   consumeCompletedTimedSet,
   consumePendingLiveSession,
@@ -26,6 +35,7 @@ import {
   pauseSession,
   removeExercise,
   removeSet,
+  restoreSession,
   resumeSession,
   sessionStats,
   setExerciseMeasure,
@@ -130,6 +140,8 @@ export default function LiveScreen() {
   const [session, setSession] = useState<LiveSession | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [guideOpen, setGuideOpen] = useState(false);
+  /** True when this screen picked a session back up after a crash rather than starting one. */
+  const [resumed, setResumed] = useState(false);
   const toast = useToast();
   /** Total milliseconds spent paused, so the elapsed clock can exclude them. */
   const pausedMsRef = useRef(0);
@@ -146,23 +158,76 @@ export default function LiveScreen() {
    */
   const dbRef = useRef<Promise<Awaited<ReturnType<typeof openWorkoutSessionDb>> | null> | null>(null);
 
+  /**
+   * Start a handed-over session, or **resume one a crash interrupted**.
+   *
+   * The resume path is what makes the append-only log more than bookkeeping: the snapshot says
+   * what the session is, the replayed log says what happened to it, and together they rebuild
+   * the screen exactly as the athlete left it -- ticked sets, paused state and elapsed time
+   * included. Without it a force-killed app silently loses the workout and orphans its events.
+   */
   useEffect(() => {
+    let cancelled = false;
     const pending = consumePendingLiveSession();
-    if (!pending) {
-      // Nothing to run. Reached only by opening /live directly, which the app itself never
-      // does -- both entry points set the handoff first.
-      return;
-    }
-    setSession(
-      startSession({
+
+    if (pending) {
+      const started = startSession({
         id: pending.id,
         templateId: pending.templateId,
         name: pending.name,
         activity: pending.activity,
         startedAt: new Date(),
         exercises: pending.exercises,
-      }),
-    );
+      });
+      setSession(started);
+      // Snapshot once, at start. The mutable part of a session is exactly what the event log
+      // already carries, so rewriting this per tick would reintroduce the mutable
+      // "current session" row the append-only design exists to avoid.
+      void (async () => {
+        const db = await dbRef.current;
+        if (!db) return;
+        await saveSessionSnapshot(db, started.id, started as unknown as Record<string, unknown>, started.startedAt.toISOString());
+      })();
+      return;
+    }
+
+    void (async () => {
+      const db = await dbRef.current;
+      if (!db || cancelled) return;
+      const snapshot = await getUnfinishedSessionSnapshot(db);
+      if (!snapshot || cancelled) return;
+
+      const stored = snapshot.payload as unknown as LiveSession;
+      const startedAt = new Date(snapshot.startedAt);
+      const events = await getSessionEvents(db, snapshot.sessionId);
+      const replayed = replaySessionState(startedAt, events);
+
+      if (replayed.status === 'completed') {
+        // Already finished; it belongs to the sync queue, not to another workout.
+        await clearSessionSnapshot(db, snapshot.sessionId);
+        return;
+      }
+      if (cancelled) return;
+
+      setSession(restoreSession({ ...stored, startedAt }, replayed));
+
+      /**
+       * The stretch the app was closed for counts as **paused**, not as training.
+       *
+       * `replaySessionState` gives the working duration up to the last logged event, which is
+       * the honest figure. The elapsed clock is wall-clock based (`now - startedAt - paused`),
+       * so without this the minutes or hours the app spent dead would be added to the workout.
+       * Seeding the paused total with the difference makes the clock read exactly the replayed
+       * duration on resume and tick correctly onward from there.
+       */
+      pausedMsRef.current = Math.max(0, Date.now() - startedAt.getTime() - replayed.durationSeconds * 1000);
+      setElapsedSeconds(replayed.durationSeconds);
+      setResumed(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Started during the first render rather than in an effect, so the promise exists before any
@@ -390,6 +455,12 @@ export default function LiveScreen() {
               accessibilityLabel="Finish workout"
               onPress={() => {
                 apply(finishSession(session, new Date()));
+                // The snapshot exists only to recover an *unfinished* session. Once finished,
+                // leaving it would offer this workout back on the next launch.
+                void (async () => {
+                  const db = await dbRef.current;
+                  if (db) await clearSessionSnapshot(db, session.id);
+                })();
                 router.back();
               }}
               className="h-[34px] items-center justify-center rounded-[10px] px-[14px]"
@@ -442,6 +513,13 @@ export default function LiveScreen() {
             Not saving — this session may be lost if the app closes
           </Text>
         )}
+
+        {/* Says plainly that nothing was lost, rather than leaving the athlete to work it out. */}
+        {resumed ? (
+          <Text className="mt-[8px] font-archivo text-[11px] font-semibold" style={{ color: colors.green }}>
+            Session resumed — your logged sets were recovered
+          </Text>
+        ) : null}
       </View>
 
       {/* Scroll area. Prototype: `padding:'0 22px 26px'`. */}
