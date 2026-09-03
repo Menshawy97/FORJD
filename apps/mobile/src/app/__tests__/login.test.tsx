@@ -25,6 +25,17 @@ jest.mock('@/auth/apiClient', () => ({
   getMe: jest.fn().mockResolvedValue({ id: 'u1', email: 'a@b.com', profile: null, privacy: {} }),
   listNutritionLog: jest.fn().mockResolvedValue({ items: [] }),
   getMacroGoals: jest.fn().mockResolvedValue(null),
+  // These suites land on Home after logging in, and Home reads workout stats (Phase 3J-c).
+  // Resolved empty rather than omitted: an absent mock is not a rejected promise but a
+  // `TypeError` thrown before `Promise.allSettled` is even called, which no amount of
+  // settling can absorb.
+  getWorkoutStats: jest.fn().mockResolvedValue({
+    totalSessions: 0,
+    sessionsThisMonth: 0,
+    weekStreak: 0,
+    thisWeek: { sessionCount: 0, trainedWeekdays: [] },
+    recentPersonalRecord: null,
+  }),
 }));
 
 import * as SecureStore from 'expo-secure-store';

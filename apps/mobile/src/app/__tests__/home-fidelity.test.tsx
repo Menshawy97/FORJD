@@ -32,6 +32,10 @@ jest.mock('@/auth/apiClient', () => ({
   getMe: jest.fn(),
   listNutritionLog: jest.fn(),
   getMacroGoals: jest.fn(),
+  // Phase 3J-c: Home reads workout stats too. Rejected here on purpose -- these suites pin
+  // the honest empty states, and a failed stats read is precisely the path that must still
+  // produce them.
+  getWorkoutStats: jest.fn().mockRejectedValue(new Error('no stats in this suite')),
 }));
 
 import { getMacroGoals, getMe, listNutritionLog } from '@/auth/apiClient';

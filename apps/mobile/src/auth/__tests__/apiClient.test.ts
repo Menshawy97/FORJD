@@ -502,3 +502,74 @@ describe('apiClient - workout session reads', () => {
     );
   });
 });
+
+// Phase 3J-c: Home's counters. The aggregates are computed server-side; the client's only real
+// decision is sending the device's own calendar with the request.
+describe('apiClient - workout stats', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (axios as unknown as { __instances: unknown[] }).__instances.length = 0;
+  });
+
+  function apiClientInstance() {
+    const instances = (axios as unknown as { __instances: Array<Record<string, unknown>> })
+      .__instances;
+    // Construction order in apiClient.ts: public, refresh, api, replay.
+    return instances[2] as unknown as { get: jest.Mock };
+  }
+
+  const body = {
+    totalSessions: 42,
+    sessionsThisMonth: 6,
+    weekStreak: 3,
+    thisWeek: { sessionCount: 2, trainedWeekdays: [1, 3] },
+    recentPersonalRecord: null,
+  };
+
+  it('reads GET /workouts/sessions/stats through the authenticated client', async () => {
+    const { getWorkoutStats } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(getWorkoutStats()).resolves.toEqual(body);
+  });
+
+  // Every figure in the response is a local calendar concept. Omitting the zone would have the
+  // server answer in UTC, which is wrong about which day a workout happened on for anyone far
+  // enough from Greenwich.
+  it('sends the device time zone, so the server does not bucket the athlete by UTC days', async () => {
+    const { getWorkoutStats } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.get.mockResolvedValue({ data: body });
+
+    await getWorkoutStats();
+
+    const [url, config] = instance.get.mock.calls[0];
+    expect(url).toBe('/workouts/sessions/stats');
+    const sent = (config as { params: { timeZone: string } }).params.timeZone;
+    expect(sent).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  });
+
+  // Hermes ships a trimmed ICU, so `Intl` is probed rather than assumed. A runtime that cannot
+  // answer must still get figures, bucketed by UTC, rather than an unhandled throw.
+  it('falls back to UTC rather than throwing when the runtime cannot report a zone', async () => {
+    const realIntl = global.Intl;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).Intl = {
+      DateTimeFormat: () => {
+        throw new Error('no ICU');
+      },
+    };
+    try {
+      const { getWorkoutStats } = loadApiClient();
+      const instance = apiClientInstance();
+      instance.get.mockResolvedValue({ data: body });
+
+      await getWorkoutStats();
+
+      expect(instance.get.mock.calls[0][1].params.timeZone).toBe('UTC');
+    } finally {
+      global.Intl = realIntl;
+    }
+  });
+});

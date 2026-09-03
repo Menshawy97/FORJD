@@ -8,12 +8,13 @@ import { colors } from '@/theme/tokens';
  * Home's two-row stat block: four lifetime/period counters over four health metrics, with a
  * tooltip strip that opens beneath when a metric is tapped.
  *
- * Neither row has a data source yet. The counters need the workout engine (Phase 3) -- there
- * is no `workout_sessions` table to count -- and City Rank additionally needs the leaderboard
- * behind the Rank tab, itself still a placeholder. The metrics need Health Connect /
- * HealthKit (Phase 6). So the counters read 0 (an honest count of the zero workouts this app
- * can currently record), City Rank reads an em dash (unknown, not zeroth), and the metrics
- * read em dashes.
+ * **The counters are real as of Phase 3J-c**, from `GET /workouts/sessions/stats` -- workouts,
+ * this month and the week streak all count completed sessions server-side. City Rank is the
+ * exception and still reads an em dash: it needs the leaderboard behind the Rank tab, itself
+ * still a placeholder, and "#0" would be a rank rather than an absence.
+ *
+ * The four health metrics still read em dashes. They need Health Connect / HealthKit
+ * (Phase 6), and no `HealthProvider` feeds this app yet.
  *
  * The tooltips are the exception: their copy explains what the metric *is*, so it is correct
  * with or without a reading behind it, and it ships now rather than waiting for Phase 6. The
@@ -60,17 +61,38 @@ const METRICS: readonly Metric[] = [
   },
 ];
 
-const COUNTERS: ReadonlyArray<{ key: string; label: string; value: string; unit?: string }> = [
-  { key: 'workouts', label: 'Workouts', value: '0' },
-  { key: 'month', label: 'This Month', value: '0' },
-  // Unknown rather than zero: "#0" would be a rank, and a wrong one.
-  { key: 'rank', label: 'City Rank', value: '—' },
-  { key: 'streak', label: 'Streak', value: '0', unit: 'wk' },
-];
-
 const EMPTY = '—';
 
-export function StatStrip() {
+/**
+ * The three counters Phase 3J-c can supply, from `GET /workouts/sessions/stats`.
+ *
+ * `null` covers both "the request has not resolved yet" and "it failed", and both render the
+ * same zeroes a brand new account sees -- which is the honest reading in every one of those
+ * cases, and keeps Home looking like a new account rather than a broken screen.
+ */
+export interface StatStripProps {
+  totalSessions: number | null;
+  sessionsThisMonth: number | null;
+  weekStreak: number | null;
+}
+
+function counters({
+  totalSessions,
+  sessionsThisMonth,
+  weekStreak,
+}: StatStripProps): ReadonlyArray<{ key: string; label: string; value: string; unit?: string }> {
+  return [
+    { key: 'workouts', label: 'Workouts', value: String(totalSessions ?? 0) },
+    { key: 'month', label: 'This Month', value: String(sessionsThisMonth ?? 0) },
+    // Still unknown rather than zero: City Rank needs the leaderboard behind the Rank tab,
+    // which is a placeholder. "#0" would be a rank, and a wrong one.
+    { key: 'rank', label: 'City Rank', value: EMPTY },
+    { key: 'streak', label: 'Streak', value: String(weekStreak ?? 0), unit: 'wk' },
+  ];
+}
+
+export function StatStrip(props: StatStripProps) {
+  const COUNTERS = counters(props);
   const [openMetric, setOpenMetric] = useState<string | null>(null);
   const tip = METRICS.find((metric) => metric.key === openMetric) ?? null;
 
