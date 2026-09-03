@@ -104,12 +104,46 @@ Each is its own PR: docs first, tests green, merge, confirm CI on `main`.
 
 The migration, the three tables, and the seed of nine programs plus their catalogue templates.
 Content comes verbatim from the prototype's `workoutsForProgram` table and `s_catalog`'s own
-`progs` array (name, category, `4 days · 8 weeks`, description, level). Exercises resolve by
-**slug against the existing catalogue**, and the seed must fail loudly on a slug it cannot
-resolve rather than silently skip an exercise — a program missing a lift is worse than a seed
-that refuses to run.
+`progs` array (name, category, `4 days · 8 weeks`, description, level).
 
-Verify: repository tests against real Postgres, and a test asserting all nine seed and resolve.
+#### The exercise names do not resolve, and this was measured
+
+**Do not assume the prototype's exercise names match the catalogue.** They were checked against
+the real 876-row catalogue before this plan was written, and only **4 of 28 match exactly**.
+
+**Fuzzy matching is not an option** — it is confidently wrong, which is worse than failing. A
+shortest-substring match resolves:
+
+| Prototype name | What fuzzy matching picks | Why that is wrong |
+|---|---|---|
+| `Bench Press` | Machine Bench Press | A machine press in a 5/3/1 Bench Day |
+| `Walking Lunge` | Lunge Sprint | A different exercise entirely |
+| `Dips` | Ring Dips | A much harder variation |
+| `Lat Pulldown` | V-Bar Pulldown | An arbitrary grip |
+
+So the seed carries an **explicit, hand-curated `name → slug` map**, reviewed once, with no
+fuzzy fallback. It **fails loudly on any unresolved entry** rather than skipping it: a program
+missing a lift is worse than a seed that refuses to run.
+
+#### Four names have no catalogue equivalent at all
+
+`5K Run` and `Tempo Intervals` return nothing — free-exercise-db is a *resistance-training*
+database, and three of the nine programs (Race Prep 10K, Couch to 5K, and half of Hybrid
+Athlete) are built almost entirely on them.
+
+**Decision, taken with the user: add them as curated catalogue exercises.** The `exercises`
+schema already carries `measure` (`weight | time | distance`), and the app already plans a
+running screen, so a distance-measured `5K Run` and a time-measured `Tempo Intervals` are real
+gaps in the catalogue rather than inventions. `Assault Bike` maps to the existing `Air Bike`;
+`Overhead Press` and `Pistol Squat` exist under other names and need a careful pick, not a
+guess.
+
+Keep these new rows to the smallest set the nine programs actually reference, and give them a
+distinct `source` so they stay distinguishable from ingested ones.
+
+Verify: repository tests against real Postgres, a test asserting all nine programs seed, and —
+most importantly — **a test that fails if any mapped name stops resolving**, since the catalogue
+is re-ingested and a rename would otherwise silently hollow out a program.
 
 ### K2 — the read API
 
