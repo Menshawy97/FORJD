@@ -8,6 +8,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { clearCompletedSummary, getCompletedSummary } from '@/workouts/live-handoff';
+import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -81,6 +82,17 @@ interface MuscleRow {
 export default function WorkoutDoneScreen() {
   const summary = getCompletedSummary();
   const [muscles, setMuscles] = useState<MuscleRow[]>([]);
+
+  /**
+   * Try to upload straight away, while the athlete is still looking at the summary — the most
+   * likely moment for the session to be online, and the point at which "will sync when you are
+   * back online" is most worth making true. Not awaited and not surfaced: the queue is durable
+   * and the app-foreground trigger picks up anything this misses.
+   */
+  useEffect(() => {
+    if (!summary) return;
+    void syncPendingSessions();
+  }, [summary]);
 
   useEffect(() => {
     if (!summary) return;

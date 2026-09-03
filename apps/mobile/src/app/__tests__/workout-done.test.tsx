@@ -22,6 +22,9 @@ jest.mock('expo-router', () => ({
   usePathname: () => '/workout-done',
 }));
 
+// The sync trigger is covered on its own in workouts/__tests__/sync-sessions.test.ts.
+jest.mock('@/workouts/sync-sessions', () => ({ syncPendingSessions: jest.fn().mockResolvedValue({ uploaded: [], failed: [] }) }));
+
 jest.mock('@/store/exercise-catalogue', () => ({
   openExerciseCatalogueDb: jest.fn(),
   getCachedExercise: jest.fn(),
@@ -29,6 +32,7 @@ jest.mock('@/store/exercise-catalogue', () => ({
 
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { clearCompletedSummary, setCompletedSummary } from '@/workouts/live-handoff';
+import { syncPendingSessions } from '@/workouts/sync-sessions';
 
 import WorkoutDoneScreen from '../workout-done';
 
@@ -152,6 +156,24 @@ describe('muscles worked', () => {
     // The rest of the report still renders; only this one section is lost.
     expect(await findByText('Session complete')).toBeTruthy();
     expect(queryByText('Muscles worked')).toBeNull();
+  });
+});
+
+describe('syncing', () => {
+  it('tries to upload the session while the athlete is still on the summary', async () => {
+    stageSummary();
+
+    await render(<WorkoutDoneScreen />);
+
+    // The most likely moment for the session to be online, and where 'will sync when you are
+    // back online' is most worth making true.
+    expect(syncPendingSessions).toHaveBeenCalled();
+  });
+
+  it('does not try to sync when there is no workout to summarise', async () => {
+    await render(<WorkoutDoneScreen />);
+
+    expect(syncPendingSessions).not.toHaveBeenCalled();
   });
 });
 

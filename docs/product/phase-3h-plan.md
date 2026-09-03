@@ -148,7 +148,7 @@ all of them are real and two are user-visible.
    One subtlety worth keeping: **the stretch the app spent closed counts as paused, not as
    training.** The elapsed clock is wall-clock based, so without seeding the paused total on
    resume, an app killed for an hour would add that hour to the workout.
-2. ~~**Finishing a workout does not enqueue it for upload.**~~ **Fixed in Phase I** — the live screen now builds a `WorkoutSessionUploadRequest` via `toUploadRequest` and calls `enqueueSessionUpload` on Finish. The original problem: `workout-session.ts`'s own module
+2. ~~**Finishing a workout does not enqueue it for upload.**~~ **Fixed in Phase I** — the live screen now builds a `WorkoutSessionUploadRequest` via `toUploadRequest` and calls `enqueueSessionUpload` on Finish. The original problem: `workout-session.ts`'s own module The queue is now drained too, by `workouts/sync-sessions.ts` — called at launch, on every app foreground, and once more on the summary screen. Before that, `drainSyncQueue` existed and was tested but had no caller anywhere in the app.
    docblock says a session "enters this table exactly once, when a `workout_finished` event is
    appended", but `appendSessionEvent` does no such thing — it only inserts into
    `session_events`. Nothing writes to `session_queue`. That wiring is Phase I's job, but the
