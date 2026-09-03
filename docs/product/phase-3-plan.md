@@ -189,7 +189,7 @@ confirm exactly one session syncs.
 
 ## Open questions
 
-1. ~~**Does a rest timer need to survive backgrounding?**~~ **Settled 2026-09-02: yes, with
+1. ~~**Does a rest timer need to survive backgrounding?**~~ **Settled 2026-09-02, implemented 2026-09-03 — see [ADR-026](../decisions/ADR-026-rest-timer-notifications.md). Yes, with
    `expo-notifications`.** The user chose this over the cheaper alternative (recompute the
    remaining time from a stored `restStartedAt` on every foreground, no native dependency),
    accepting the cost so a locked phone actually buzzes when rest ends. Consequences Phase H

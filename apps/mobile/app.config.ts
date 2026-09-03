@@ -45,6 +45,9 @@ const config: ExpoConfig = {
     'expo-secure-store',
     'expo-font',
     'expo-sqlite',
+    // Local notifications only -- the rest timer's "rest complete" alert (ADR-026). No push
+    // registration, no device token, no server involvement.
+    'expo-notifications',
     '@react-native-community/datetimepicker',
     [
       'expo-splash-screen',
