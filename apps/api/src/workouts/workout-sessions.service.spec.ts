@@ -7,6 +7,7 @@ import { WorkoutSessionsService } from "./workout-sessions.service";
 import {
   CreateWorkoutSessionInput,
   ListWorkoutSessionsFilter,
+  WorkoutExerciseHistoryRow,
   WorkoutSessionPage,
   WorkoutStatsRow,
   WorkoutsRepository,
@@ -380,6 +381,88 @@ describe("WorkoutSessionsService", () => {
       const result = await makeService(repository).stats(owner, { timeZone: "UTC" });
 
       expect(result.recentPersonalRecord).toBeNull();
+    });
+  });
+
+  // Phase 3J-d. The SQL is proven against real Postgres in `workouts.repository.spec.ts`;
+  // what is tested here is this service's own two jobs -- refusing a malformed id before it
+  // becomes a query, and serialising as ISO strings the `Date`s the contract declares.
+  describe("exerciseHistory", () => {
+    const historyRow: WorkoutExerciseHistoryRow = {
+      bestSet: { weightKg: 100, reps: 3, achievedAt: new Date("2026-08-08T10:20:00.000Z") },
+      estimatedOneRepMaxKg: 106.7,
+      sessions: [
+        {
+          sessionId: "33333333-3333-4333-8333-333333333333",
+          sessionName: "Push Day",
+          performedAt: new Date("2026-08-08T10:00:00.000Z"),
+          weightKg: 100,
+          reps: 3,
+        },
+      ],
+    };
+
+    const makeHistoryRepository = (row = historyRow) => {
+      const calls: Array<{ userId: string; exerciseId: string; limit: number }> = [];
+      const repository = {
+        exerciseHistoryForUser: (userId: string, exId: string, limit: number) => {
+          calls.push({ userId, exerciseId: exId, limit });
+          return Promise.resolve(row);
+        },
+      };
+      return Object.assign(repository as unknown as WorkoutsRepository, { historyCalls: calls });
+    };
+
+    it("serialises both timestamps as ISO strings, per the contract", async () => {
+      const repository = makeHistoryRepository();
+
+      const result = await makeService(repository).exerciseHistory(owner, exerciseId, { limit: 8 });
+
+      expect(result.bestSet?.achievedAt).toBe("2026-08-08T10:20:00.000Z");
+      expect(result.sessions[0]?.performedAt).toBe("2026-08-08T10:00:00.000Z");
+      expect(result.estimatedOneRepMaxKg).toBe(106.7);
+    });
+
+    it("scopes the read to the caller and forwards the limit", async () => {
+      const repository = makeHistoryRepository();
+
+      await makeService(repository).exerciseHistory(owner, exerciseId, { limit: 3 });
+
+      expect(repository.historyCalls).toEqual([{ userId: ownerId, exerciseId, limit: 3 }]);
+    });
+
+    // A best set can exist while its estimate does not -- Epley refuses past twelve reps. The
+    // two fields are independent, and the screen renders an em dash for the missing one.
+    it("carries a null estimate through beside a real best set", async () => {
+      const repository = makeHistoryRepository({ ...historyRow, estimatedOneRepMaxKg: null });
+
+      const result = await makeService(repository).exerciseHistory(owner, exerciseId, { limit: 8 });
+
+      expect(result.bestSet).not.toBeNull();
+      expect(result.estimatedOneRepMaxKg).toBeNull();
+    });
+
+    it("reports an exercise never performed as empty rather than inventing zeroes", async () => {
+      const repository = makeHistoryRepository({
+        bestSet: null,
+        estimatedOneRepMaxKg: null,
+        sessions: [],
+      });
+
+      const result = await makeService(repository).exerciseHistory(owner, exerciseId, { limit: 8 });
+
+      expect(result.bestSet).toBeNull();
+      expect(result.sessions).toEqual([]);
+    });
+
+    // Same guard as `getById`: a malformed id is refused here and never becomes a query.
+    it("refuses a malformed exercise id before it reaches Postgres", async () => {
+      const repository = makeHistoryRepository();
+
+      await expect(
+        makeService(repository).exerciseHistory(owner, "not-a-uuid", { limit: 8 }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.historyCalls).toEqual([]);
     });
   });
 

@@ -678,6 +678,240 @@ describe("WorkoutsRepository", () => {
    * calendar aggregates: a test that says "a session today" and runs at 23:58 in a zone the
    * server is not in tests something different the next minute.
    */
+  /**
+   * Phase 3J-d -- the exercise-detail screen's "Best set" and "Est. 1RM" tiles, its top-set
+   * trend, and its History list, for one exercise.
+   */
+  describe("exerciseHistoryForUser", () => {
+    const historySession = (
+      userId: string,
+      startedAt: Date,
+      exercises: CreateWorkoutSessionExerciseInput[],
+      overrides: Partial<CreateWorkoutSessionInput> = {},
+    ): CreateWorkoutSessionInput => ({
+      id: randomUUID(),
+      userId,
+      templateId: null,
+      name: "Push Day",
+      activity: "strength",
+      status: "completed",
+      startedAt,
+      endedAt: new Date(startedAt.getTime() + 45 * 60 * 1000),
+      durationSeconds: 2700,
+      perceivedEffort: null,
+      notes: null,
+      city: null,
+      citySlug: null,
+      isLiveTracked: true,
+      exercises,
+      ...overrides,
+    });
+
+    const sets = (
+      exerciseId: string,
+      rows: Array<{ weightKg: number | null; reps: number | null; isCompleted?: boolean }>,
+      completedAt: Date,
+    ): CreateWorkoutSessionExerciseInput => ({
+      exerciseId,
+      measure: "weight",
+      notes: null,
+      sets: rows.map((row) => ({
+        type: "working" as const,
+        isCompleted: row.isCompleted ?? true,
+        weightKg: row.weightKg,
+        reps: row.reps,
+        durationSeconds: null,
+        distanceMeters: null,
+        restSeconds: null,
+        completedAt,
+      })),
+    });
+
+    const store = async (input: CreateWorkoutSessionInput) => {
+      const saved = await repository.upsertSession(input);
+      createdSessionIds.push(saved.id);
+      return saved;
+    };
+
+    it("reports nothing at all for an exercise never performed", async () => {
+      const owner = await makeUser("hist-empty");
+      const bench = await makeExercise("hist-empty");
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      // Not a zero-weight best set: there is no best set. Zeroes would read as a real, very
+      // bad lift, which is exactly what the screen's empty state exists to avoid.
+      expect(history.bestSet).toBeNull();
+      expect(history.estimatedOneRepMaxKg).toBeNull();
+      expect(history.sessions).toEqual([]);
+    });
+
+    it("finds the heaviest completed set across every session", async () => {
+      const owner = await makeUser("hist-best");
+      const bench = await makeExercise("hist-best");
+
+      await store(
+        historySession(owner, new Date("2026-08-01T10:00:00Z"), [
+          sets(bench, [{ weightKg: 90, reps: 5 }], new Date("2026-08-01T10:20:00Z")),
+        ]),
+      );
+      await store(
+        historySession(owner, new Date("2026-08-08T10:00:00Z"), [
+          sets(bench, [{ weightKg: 100, reps: 3 }], new Date("2026-08-08T10:20:00Z")),
+        ]),
+      );
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      expect(history.bestSet?.weightKg).toBe(100);
+      expect(history.bestSet?.reps).toBe(3);
+      // Epley from 100x3: 100 * (1 + 2/30) = 106.7 -- and the design's own demo tile reads
+      // "106 kg" beside a "100 kg x 3" best set, which is where that number comes from.
+      expect(history.estimatedOneRepMaxKg).toBeCloseTo(106.7, 1);
+    });
+
+    // A set the athlete never ticked was never performed, and a record built on one would be a
+    // claim about a lift that did not happen.
+    it("ignores unticked sets when finding the best", async () => {
+      const owner = await makeUser("hist-unticked");
+      const bench = await makeExercise("hist-unticked");
+
+      await store(
+        historySession(owner, new Date("2026-08-01T10:00:00Z"), [
+          sets(
+            bench,
+            [
+              { weightKg: 200, reps: 1, isCompleted: false },
+              { weightKg: 80, reps: 8 },
+            ],
+            new Date("2026-08-01T10:20:00Z"),
+          ),
+        ]),
+      );
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      expect(history.bestSet?.weightKg).toBe(80);
+    });
+
+    // Epley diverges past twelve reps, so `estimateOneRepMaxKg` refuses -- but the best set
+    // itself is still real and still shown. The two fields are independent for this reason.
+    it("reports a best set with no estimate when the rep count is past the formula's range", async () => {
+      const owner = await makeUser("hist-norm");
+      const bench = await makeExercise("hist-norm");
+
+      await store(
+        historySession(owner, new Date("2026-08-01T10:00:00Z"), [
+          sets(bench, [{ weightKg: 60, reps: 20 }], new Date("2026-08-01T10:20:00Z")),
+        ]),
+      );
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      expect(history.bestSet?.weightKg).toBe(60);
+      expect(history.estimatedOneRepMaxKg).toBeNull();
+    });
+
+    it("returns one row per session, carrying that session's own heaviest set", async () => {
+      const owner = await makeUser("hist-rows");
+      const bench = await makeExercise("hist-rows");
+
+      await store(
+        historySession(owner, new Date("2026-08-01T10:00:00Z"), [
+          sets(
+            bench,
+            [
+              { weightKg: 80, reps: 8 },
+              { weightKg: 85, reps: 6 },
+              { weightKg: 80, reps: 8 },
+            ],
+            new Date("2026-08-01T10:20:00Z"),
+          ),
+        ]),
+      );
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      expect(history.sessions).toHaveLength(1);
+      expect(history.sessions[0]?.weightKg).toBe(85);
+      expect(history.sessions[0]?.reps).toBe(6);
+      expect(history.sessions[0]?.sessionName).toBe("Push Day");
+    });
+
+    it("orders sessions newest first and honours the limit", async () => {
+      const owner = await makeUser("hist-limit");
+      const bench = await makeExercise("hist-limit");
+
+      for (const day of ["2026-08-01", "2026-08-08", "2026-08-15"]) {
+        await store(
+          historySession(owner, new Date(`${day}T10:00:00Z`), [
+            sets(bench, [{ weightKg: 80, reps: 5 }], new Date(`${day}T10:20:00Z`)),
+          ]),
+        );
+      }
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 2);
+
+      expect(history.sessions).toHaveLength(2);
+      expect(history.sessions[0]?.performedAt.toISOString()).toBe("2026-08-15T10:00:00.000Z");
+      expect(history.sessions[1]?.performedAt.toISOString()).toBe("2026-08-08T10:00:00.000Z");
+    });
+
+    it("never mixes in another exercise performed in the same session", async () => {
+      const owner = await makeUser("hist-other");
+      const bench = await makeExercise("hist-other-bench");
+      const squat = await makeExercise("hist-other-squat");
+
+      await store(
+        historySession(owner, new Date("2026-08-01T10:00:00Z"), [
+          sets(bench, [{ weightKg: 80, reps: 5 }], new Date("2026-08-01T10:20:00Z")),
+          sets(squat, [{ weightKg: 140, reps: 5 }], new Date("2026-08-01T10:40:00Z")),
+        ]),
+      );
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      expect(history.bestSet?.weightKg).toBe(80);
+      expect(history.sessions[0]?.weightKg).toBe(80);
+    });
+
+    it("never reports another athlete's history for the same exercise", async () => {
+      const owner = await makeUser("hist-owner");
+      const stranger = await makeUser("hist-stranger");
+      const bench = await makeExercise("hist-shared");
+
+      await store(
+        historySession(stranger, new Date("2026-08-01T10:00:00Z"), [
+          sets(bench, [{ weightKg: 300, reps: 1 }], new Date("2026-08-01T10:20:00Z")),
+        ]),
+      );
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      expect(history.bestSet).toBeNull();
+      expect(history.sessions).toEqual([]);
+    });
+
+    it("ignores a session that was never completed", async () => {
+      const owner = await makeUser("hist-inprogress");
+      const bench = await makeExercise("hist-inprogress");
+
+      await store(
+        historySession(
+          owner,
+          new Date("2026-08-01T10:00:00Z"),
+          [sets(bench, [{ weightKg: 90, reps: 5 }], new Date("2026-08-01T10:20:00Z"))],
+          { status: "in_progress" },
+        ),
+      );
+
+      const history = await repository.exerciseHistoryForUser(owner, bench, 8);
+
+      expect(history.bestSet).toBeNull();
+      expect(history.sessions).toEqual([]);
+    });
+  });
+
   describe("statsForUser", () => {
     const ZONE = "UTC";
     // A Thursday. Every fixture below is positioned relative to this instant.
