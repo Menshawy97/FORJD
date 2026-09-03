@@ -248,7 +248,55 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
-### Immediate next steps (as of 2026-09-02)
+### Immediate next steps (as of 2026-09-03)
+
+**Phase 3H and 3I are code-complete and merged.** A workout can now be started, logged entirely
+offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
+
+| Slice | What landed |
+|---|---|
+| H1 | `workouts/live-session.ts` — the pure session reducer (no React, no SQLite, no network) |
+| H2/H3 | `live.tsx`, `rest.tsx`, `set-timer.tsx` |
+| H4 | Rest notifications via `expo-notifications` — [ADR-026](../decisions/ADR-026-rest-timer-notifications.md) |
+| H5 | The two entry points, plus `library.tsx?pick=live` |
+| H6 | Crash recovery — `session_snapshot` + `restoreSession` |
+| I | `workout-done.tsx`, the queue handoff, and `workouts/sync-sessions.ts` |
+
+**Four things that were silently broken and are now fixed** — worth knowing because each was
+"exists and is tested but nothing calls it":
+
+- `replaySessionState` had no caller, so a force-kill lost the workout entirely.
+- `drainSyncQueue` had no caller, so a finished session never uploaded.
+- Finishing a workout never wrote to `session_queue`, despite the store's docblock claiming it
+  happened automatically on `workout_finished`. That docblock was wrong and is corrected.
+- The live screen's `Add exercise` routed to `library.tsx?pick=live`, which the library ignored
+  — tapping a row abandoned the workout in progress.
+
+**What to do next, in order:**
+
+1. **Walk it on a physical device.** This is the largest outstanding item and it is now worth
+   doing, because before this week the flow could only fail. Airplane mode on: start a session
+   from Train, log sets, take a rest, **lock the phone and confirm the notification fires**,
+   **force-kill the app mid-session and confirm it resumes**, finish, then re-enable the network
+   and confirm exactly one session syncs. The notification check is *mandatory* — Jest cannot
+   prove the OS schedules or delivers anything (ADR-026).
+2. **Phase J — wire up what is already waiting.** Home's stat strip, "This week" and "Recent PR"
+   still render honest empty values; Train's "Previous workouts" and "My workouts" are still the
+   Phase 2 placeholder line, so **a saved workout still has no UI to see it**;
+   `exercise/[id].tsx` still has empty stat tiles and history. All of that data now exists.
+3. **Phase K — programs.** The final Phase 3 slice.
+4. **Smaller known gaps**, all recorded at the end of
+   [`phase-3h-plan.md`](phase-3h-plan.md): abandoned sessions leak `session_events` rows, and
+   the per-exercise goal chip renders its chevron but opens no picker.
+5. **The workouts e2e fixture teardown** still leaks rows into the shared dev DB (spun off
+   during Phase G, never started).
+
+**Standing environment note.** The local API dev server crashed **four times** in one session
+under `npm run start:dev`; the Nest watcher exits with `The process NNNNN not found` when its
+child is already gone, and does so **while still appearing to run**. That is the same shape as
+the Phase G incident. Check `netstat -ano | grep :3000` before trusting any device walk.
+
+### Superseded next steps (as of 2026-09-02)
 
 Phase G's device walk is now fully closed out: badge/spacing/error-message bugs fixed and
 merged, and the save failure itself root-caused to a stale local API dev process (see above)
