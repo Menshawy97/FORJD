@@ -93,10 +93,11 @@ describe('every screen is drawn on the ember atmosphere', () => {
     expect(await emberGradientCount('/profile', 'James Mitchell')).toBe(1);
   });
 
-  // The placeholder screen stands in for four of the five tabs, so one assertion here covers
-  // home/train/progress/rank at once.
+  // Train stopped being a placeholder in Phase 3J -- it now lists the athlete's own workouts --
+  // so this anchors on the section heading that is always present rather than on the
+  // "coming soon" line it used to render. The atmosphere assertion itself is unchanged.
   it('the placeholder screens', async () => {
     authenticate();
-    expect(await emberGradientCount('/train', /coming soon/)).toBe(1);
+    expect(await emberGradientCount('/train', /My workouts/)).toBe(1);
   });
 });
