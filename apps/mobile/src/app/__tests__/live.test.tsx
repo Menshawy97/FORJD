@@ -570,6 +570,90 @@ describe('editing the session in flight', () => {
    * kilograms in the log and on the wire (ADR-016); the chip changes the rendering only, so a
    * session logged in pounds must upload exactly the kilograms it always held.
    */
+  /**
+   * The goal pill was drawn from Phase 3H with its chevron and no destination -- reported from a
+   * device as a missing dropdown. The choice is per session: the catalogue's derived goal is
+   * where an exercise starts, and this is how the athlete says what they are doing with it today.
+   */
+  describe('the training goal sheet', () => {
+    it('opens from the goal pill and shows the exercise it is for', async () => {
+      stageSession();
+      const { findByLabelText, findByText } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Training goal for Bench Press'));
+
+      expect(await findByText('Training goal')).toBeTruthy();
+      // Each option carries the guide's own load and reps, so the choice means something.
+      expect(await findByText('60–80% 1RM · 6–15 reps')).toBeTruthy();
+    });
+
+    it('changes that exercise goal and closes', async () => {
+      stageSession();
+      const { findByLabelText, queryByText } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Training goal for Bench Press'));
+      await fireEvent.press(await findByLabelText('Set goal to Power'));
+
+      expect(await findByLabelText('Training goal for Bench Press')).toBeTruthy();
+      await waitFor(() => expect(queryByText('Training goal')).toBeNull());
+    });
+
+    /** Per exercise by default -- the other lifts keep whatever they were. */
+    it('leaves the other exercises alone unless told otherwise', async () => {
+      stageSession();
+      const { findByLabelText, findAllByText } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Training goal for Bench Press'));
+      await fireEvent.press(await findByLabelText('Set goal to Power'));
+
+      // Plank and Row Machine both started as muscular endurance and stay there.
+      expect((await findAllByText('Muscular endurance')).length).toBeGreaterThanOrEqual(2);
+    });
+
+    /**
+     * The checkbox is read when the goal is picked, not when it is ticked, which is why the
+     * design puts it below the options -- ticking it after choosing must not be a silent no-op.
+     */
+    it('applies to every exercise when the checkbox is ticked first', async () => {
+      stageSession();
+      const { findByLabelText, findAllByText } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Training goal for Bench Press'));
+      await fireEvent.press(await findByLabelText('Apply to every exercise in this live workout'));
+      await fireEvent.press(await findByLabelText('Set goal to Power'));
+
+      expect((await findAllByText('Power')).length).toBe(3);
+    });
+
+    it('closes without changing anything when the scrim is tapped', async () => {
+      stageSession();
+      const { findByLabelText, findAllByText, queryByText } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Training goal for Bench Press'));
+      await fireEvent.press(await findByLabelText('Close training goal'));
+
+      await waitFor(() => expect(queryByText('Training goal')).toBeNull());
+      expect((await findAllByText('Strength')).length).toBeGreaterThanOrEqual(1);
+    });
+
+    /** Reopening starts unticked, so a previous 'apply to all' cannot leak into the next pick. */
+    it('resets the apply-to-all checkbox each time it opens', async () => {
+      stageSession();
+      const { findByLabelText, findAllByText } = await render(<LiveScreen />);
+
+      await fireEvent.press(await findByLabelText('Training goal for Bench Press'));
+      await fireEvent.press(await findByLabelText('Apply to every exercise in this live workout'));
+      await fireEvent.press(await findByLabelText('Set goal to Power'));
+
+      await fireEvent.press(await findByLabelText('Training goal for Bench Press'));
+      await fireEvent.press(await findByLabelText('Set goal to Strength'));
+
+      // Only Bench Press moved the second time; the other two stayed on Power.
+      expect((await findAllByText('Power')).length).toBe(2);
+      expect((await findAllByText('Strength')).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe('the unit chip', () => {
     it('switches one exercise between kg and lb, converting what is shown', async () => {
       stageSession();

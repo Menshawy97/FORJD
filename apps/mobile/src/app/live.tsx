@@ -57,6 +57,8 @@ import {
   restoreSession,
   resumeSession,
   sessionStats,
+  setAllExerciseGoals,
+  setExerciseGoal,
   setExerciseMeasure,
   setRestSeconds,
   startSession,
@@ -168,6 +170,10 @@ export default function LiveScreen() {
    * a set row would stall the workout for a value that changes about once a year.
    */
   const [unitByExercise, setUnitByExercise] = useState<ExerciseUnitMap>({});
+  /** Which exercise's goal sheet is open, by index. `null` is closed. */
+  const [goalPickIndex, setGoalPickIndex] = useState<number | null>(null);
+  /** The sheet's "Apply to every exercise" checkbox. Resets with the sheet. */
+  const [goalPickAll, setGoalPickAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -463,6 +469,37 @@ export default function LiveScreen() {
    * write costs one tap next time rather than a wrong number now. **No set is rewritten** --
    * every weight stays the kilograms it already was, and only the rendering of it changes.
    */
+  /**
+   * The exercise whose goal sheet is open, resolved from the index rather than held as a copy --
+   * a copy would go stale the moment the goal changed, and the sheet has to show the new
+   * selection immediately.
+   */
+  const goalPickTarget = goalPickIndex === null ? null : session.exercises[goalPickIndex] ?? null;
+
+  /**
+   * Applies the chosen goal and closes the sheet.
+   *
+   * The checkbox is read here rather than at the option, so ticking it after choosing is not a
+   * silent no-op -- the design puts the checkbox below the options for exactly this reason, and
+   * the athlete's last state of it is what the tap means.
+   */
+  const pickGoal = (goal: ExerciseGoal) => {
+    if (goalPickIndex === null) return;
+    const exercise = session.exercises[goalPickIndex];
+
+    setSession(
+      goalPickAll
+        ? setAllExerciseGoals(session, goal)
+        : setExerciseGoal(session, goalPickIndex, goal),
+    );
+    toast.show(
+      goalPickAll
+        ? `Every exercise set to ${EXERCISE_GOAL_DISPLAY_NAMES[goal]}`
+        : `${exercise?.name ?? 'Exercise'} → ${EXERCISE_GOAL_DISPLAY_NAMES[goal]}`,
+    );
+    setGoalPickIndex(null);
+  };
+
   const toggleUnit = (exerciseId: string, measure: string) => {
     const next: DisplayUnit =
       measure === 'distance'
@@ -761,20 +798,27 @@ export default function LiveScreen() {
                 <Text className="font-archivo text-[15.5px] font-bold text-text">{exercise.name}</Text>
                 <View className="mt-[7px] flex-row flex-wrap items-center" style={{ gap: 7 }}>
                   {/*
-                    The goal chip. Read-only here: `goal` is derived server-side from `measure`
-                    and carried on the catalogue row, never chosen by a client. The prototype's
-                    per-session goal PICKER is a further step, deliberately not in this slice --
-                    the chevron is drawn because the design has it.
+                    The goal chip, and the sheet behind it. `goal` arrives derived server-side
+                    from `measure` -- a client must not invent one -- but the athlete chooses how
+                    to train it *today*, which is the prototype's own `sessionGoals` override.
+                    The chevron was always drawn here; now it leads somewhere.
                   */}
                   {exercise.goal ? (
-                    <View
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Training goal for ${exercise.name}`}
+                      onPress={() => {
+                        setGoalPickAll(false);
+                        setGoalPickIndex(exerciseIndex);
+                      }}
+                      hitSlop={6}
                       className="flex-row items-center rounded-[5px] px-[7px] py-[3px]"
                       style={{ backgroundColor: 'rgba(233,113,47,.13)', gap: 5 }}>
                       <Text className="font-archivo text-[8.5px] font-bold uppercase tracking-[.1em] text-accent">
                         {EXERCISE_GOAL_DISPLAY_NAMES[exercise.goal]}
                       </Text>
                       <Icon name="chevron" size={9} color={colors.accent} />
-                    </View>
+                    </Pressable>
                   ) : null}
                   <Text className="font-archivo text-[11.5px]" style={{ color: '#6E6E66' }}>
                     {`${MEASURE_SUBTITLE[exercise.measure] ?? 'Weight'} · ${exercise.sets.length} sets`}
@@ -1113,6 +1157,89 @@ export default function LiveScreen() {
 
         <View style={{ height: 26 }} />
       </ScrollView>
+
+      {/*
+        The training-goal sheet. Prototype geometry: scrim `rgba(0,0,0,.62)`, panel `#17181a`
+        with a `20px 20px 0 0` radius and `18px 20px 24px` padding, the eyebrow at
+        `600 9.5px/1` letterspaced `.14em`, the exercise name at `700 18px/1.2`, options in a
+        column with `gap:8`, and the apply-to-all row `13px 14px` on `#141517`.
+
+        Each option carries the guide's own load and rep range, so the choice is made against
+        what it actually means rather than against a bare word.
+      */}
+      {goalPickTarget ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close training goal"
+          onPress={() => setGoalPickIndex(null)}
+          className="absolute inset-0 z-30 justify-end"
+          style={{ backgroundColor: 'rgba(0,0,0,.62)' }}>
+          {/* Swallows taps so pressing the panel does not dismiss it -- the prototype's stopProp. */}
+          <Pressable
+            onPress={() => undefined}
+            className="w-full rounded-t-[20px] px-[20px] pb-[24px] pt-[18px]"
+            style={{ backgroundColor: '#17181A', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,.09)' }}>
+            <Text
+              className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
+              style={{ color: '#77776F' }}>
+              Training goal
+            </Text>
+            <Text className="mt-[9px] font-archivo text-[18px] font-bold" style={{ color: colors.text }}>
+              {goalPickTarget.name}
+            </Text>
+
+            <View className="mt-[16px]" style={{ gap: 8 }}>
+              {GOAL_GUIDE.map((row) => {
+                const isSelected = goalPickTarget.goal === row.goal;
+                return (
+                  <Pressable
+                    key={row.goal}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Set goal to ${EXERCISE_GOAL_DISPLAY_NAMES[row.goal]}`}
+                    accessibilityState={{ selected: isSelected }}
+                    onPress={() => pickGoal(row.goal)}
+                    className="rounded-[11px] px-[14px] py-[13px]"
+                    style={{
+                      backgroundColor: isSelected ? 'rgba(233,113,47,.13)' : '#141517',
+                      borderWidth: 1,
+                      borderColor: isSelected ? 'rgba(233,113,47,.45)' : 'rgba(255,255,255,.07)',
+                    }}>
+                    <Text
+                      className="font-archivo text-[13.5px] font-semibold"
+                      style={{ color: isSelected ? colors.accent : colors.text }}>
+                      {EXERCISE_GOAL_DISPLAY_NAMES[row.goal]}
+                    </Text>
+                    <Text className="mt-[3px] font-archivo text-[11.5px]" style={{ color: '#77776F' }}>
+                      {`${row.load} · ${row.reps}`}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityLabel="Apply to every exercise in this live workout"
+              accessibilityState={{ checked: goalPickAll }}
+              onPress={() => setGoalPickAll((on) => !on)}
+              className="mt-[14px] flex-row items-center rounded-[11px] px-[14px] py-[13px]"
+              style={{ backgroundColor: '#141517', borderWidth: 1, borderColor: 'rgba(255,255,255,.07)', gap: 11 }}>
+              <View
+                className="h-[20px] w-[20px] items-center justify-center rounded-[6px]"
+                style={
+                  goalPickAll
+                    ? { backgroundColor: colors.accent }
+                    : { borderWidth: 1.5, borderColor: '#37383C' }
+                }>
+                {goalPickAll ? <Icon name="check" size={12} color="#FFFFFF" /> : null}
+              </View>
+              <Text className="flex-1 font-archivo text-[12.5px] font-semibold" style={{ color: '#D8D8D0' }}>
+                Apply to every exercise in this live workout
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      ) : null}
 
       <Toast message={toast.message} />
     </ScreenBackground>
