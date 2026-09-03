@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import { ScreenBackground } from '@/components/screen-background';
 import { CountdownRing } from '@/workouts/countdown-ring';
 import { getRestContext } from '@/workouts/live-handoff';
+import { cancelRestEndNotification, scheduleRestEndNotification } from '@/workouts/rest-notifications';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -52,6 +53,33 @@ export default function RestScreen() {
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
+  }, [endsAt, isFinished]);
+
+  /**
+   * Schedules the "rest complete" notification, re-scheduling whenever `endsAt` moves (the
+   * ±15/+30 adjusters). Cancelling in the cleanup is what makes the pair symmetric: every exit
+   * -- expiry, Skip Rest, hardware back, or an adjustment that supersedes it -- cancels the
+   * outstanding one, so the phone never buzzes for a rest the athlete already finished.
+   */
+  useEffect(() => {
+    if (isFinished) return;
+    let scheduled: string | null = null;
+    let cancelled = false;
+
+    void scheduleRestEndNotification(Math.max(0, Math.round((endsAt - Date.now()) / 1000))).then((identifier) => {
+      // The screen may already have gone by the time the schedule resolves; cancel immediately
+      // rather than leaving an orphan to fire later.
+      if (cancelled) {
+        void cancelRestEndNotification(identifier);
+        return;
+      }
+      scheduled = identifier;
+    });
+
+    return () => {
+      cancelled = true;
+      void cancelRestEndNotification(scheduled);
+    };
   }, [endsAt, isFinished]);
 
   useEffect(() => {

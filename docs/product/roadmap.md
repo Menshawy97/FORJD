@@ -278,9 +278,25 @@ explicitly Phase J's job, deliberately not pulled forward.
      the visible label. The name `TextInput` also gained the `accessibilityLabel` it lacked.
    - **Not covered, deliberately**: the Save button's `disabled={saving}` double-submit
      guard, and the second stepper's `Math.max(1, …)` floor for the time/distance measures.
-2. **Continue Phase 3** at **Phase H — live execution**. Phases A–G are done (above).
-   **The plan is written: [`phase-3h-plan.md`](phase-3h-plan.md)** — read that, not
-   `phase-3-plan.md`'s Phase H paragraph, which is wrong in two ways it corrects:
+2. ~~**Continue Phase 3** at **Phase H — live execution**.~~ **Phase H is code-complete**
+   (H1–H5 all merged: PRs #79, #80, #81 and the notifications PR). The live workout, rest and
+   timed-set screens exist, both entry points are wired, and the rest timer notifies via
+   `expo-notifications` ([ADR-026](../decisions/ADR-026-rest-timer-notifications.md)).
+
+   **Two things are outstanding and both matter:**
+   - **The device walk has not happened**, and for H4 it is *mandatory* rather than optional —
+     Jest cannot prove the OS schedules or delivers a notification. Walk: start a session, tick
+     a set, lock the phone, confirm the buzz at the end of rest; then repeat and confirm that
+     skipping rest early produces no notification.
+   - **Five known production gaps are recorded** at the end of
+     [`phase-3h-plan.md`](phase-3h-plan.md). The most serious: **crash recovery is not wired
+     up.** `replaySessionState` exists and is tested but nothing calls it, so force-killing the
+     app mid-session loses the session and orphans its events. The plan's own device-walk step
+     ("kill the app mid-session, reopen and confirm it resumes") *will fail today*. Close that
+     before Phase I, or alongside it.
+
+   The plan is [`phase-3h-plan.md`](phase-3h-plan.md) — read that, not `phase-3-plan.md`'s
+   Phase H paragraph, which was wrong in two ways it corrects:
    - **There is no `s_live()`.** `live` is one of nine *template-rendered* screens (see the
      prototype's `renderVals()` `TMPL` array), authored as declarative `{{ }}` markup from
      ~line 504 with its view-model at ~line 3423. Only `s_rest()` and `s_setTimer()` are

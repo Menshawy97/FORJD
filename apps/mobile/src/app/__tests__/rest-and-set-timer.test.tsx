@@ -11,7 +11,7 @@
 // clock and the fake timers together, which is what that design requires.
 //
 // NOTE: RTL v14 -- render() and every fireEvent.* return Promises and must be awaited.
-import { act, fireEvent, render as rtlRender } from '@testing-library/react-native';
+import { act, fireEvent, render as rtlRender, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -21,6 +21,15 @@ const mockUseLocalSearchParams = jest.fn(() => ({}) as Record<string, string>);
 jest.mock('expo-router', () => ({
   router: { back: (...args: unknown[]) => mockBack(...args) },
   useLocalSearchParams: () => mockUseLocalSearchParams(),
+}));
+
+// The notification seam is exercised on its own in workouts/__tests__/rest-notifications.test.ts;
+// here it is mocked so these screen tests stay about the countdown behaviour.
+const mockSchedule = jest.fn().mockResolvedValue('notification-1');
+const mockCancel = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/workouts/rest-notifications', () => ({
+  scheduleRestEndNotification: (...args: unknown[]) => mockSchedule(...args),
+  cancelRestEndNotification: (...args: unknown[]) => mockCancel(...args),
 }));
 
 import { consumeCompletedTimedSet, setRestContext, setTimerContext } from '@/workouts/live-handoff';
@@ -113,6 +122,25 @@ describe('the rest screen', () => {
 
     await fireEvent.press(await findByLabelText('Extend rest by 30 seconds'));
     expect(await findByText('1:45')).toBeTruthy();
+  });
+
+  it('schedules a notification for the end of the rest period', async () => {
+    await render(<RestScreen />);
+
+    await waitFor(() => expect(mockSchedule).toHaveBeenCalledWith(90));
+  });
+
+  it('cancels the notification when the athlete skips rest early', async () => {
+    const { findByLabelText, unmount } = await render(<RestScreen />);
+    await waitFor(() => expect(mockSchedule).toHaveBeenCalled());
+
+    await fireEvent.press(await findByLabelText('Skip rest'));
+    await act(async () => {
+      await unmount();
+    });
+
+    // Otherwise the phone buzzes for a rest the athlete already finished.
+    await waitFor(() => expect(mockCancel).toHaveBeenCalledWith('notification-1'));
   });
 
   it('skips straight back to the workout', async () => {

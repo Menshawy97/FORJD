@@ -107,16 +107,47 @@ started, logged and finished — the explicit offline proof `phase-3-plan.md` as
 `s_setTimer()`: the 200 px progress ring, `−15`/`+30` on rest and `±15` on the timed set,
 "Up next", Skip Rest, and the auto-push into rest when a set is ticked.
 
-**H4 — notifications.** `expo-notifications` behind a small function seam (mirroring how
-`exercise-catalogue.ts` injects its dependencies) so H1–H3 stay testable: schedule on
-`rest_started`, cancel on `rest_completed` or Skip Rest. Permission is requested **at the
-first rest**, not at app launch — the rule in `rules/ecc/react-native/security.md` is minimum
-permissions, at the moment they are needed. **Write the ADR here**, and **walk it on a
-physical device before merge** — Jest cannot exercise scheduling, so a green suite is not
-proof.
+~~**H4 — notifications.**~~ **Done.** `expo-notifications` (`~0.32.17`, pinned by
+`npx expo install`) behind `workouts/rest-notifications.ts`, an injected-scheduler seam
+mirroring ADR-022's. Permission is asked at the **first rest**, never at launch, and a refusal
+leaves the on-screen countdown working. Schedule and cancel are symmetric across every exit —
+expiry, Skip Rest, hardware back, and an adjustment that supersedes the schedule — including
+the race where the screen unmounts before the schedule promise resolves.
+[**ADR-026**](../decisions/ADR-026-rest-timer-notifications.md) records the decision. **The
+device walk is still outstanding and is mandatory**: Jest covers the seam's logic but cannot
+prove the OS schedules or delivers anything.
 
-**H5 — entry points.** Wire the two inert CTAs that Phase G deliberately left dead: `Start
-now` in `builder.tsx` and `Start workout` in `workout/[id].tsx`.
+~~**H5 — entry points.**~~ **Done.** `Start now` (builder) and `Start workout` (workout detail)
+both build a session and push `/live`. Session ids come from `expo-crypto`'s `randomUUID` and
+double as the sync idempotency key. Starting from the builder deliberately does *not* save the
+template first. This slice also fixed a dead end the phase had introduced: the live screen's
+`Add exercise` pushed `/library?pick=live`, which the library explicitly ignored, so tapping a
+row abandoned the workout in progress.
+
+## Known gaps before this is production-ready
+
+Recorded deliberately rather than discovered later. None of these block the slices above, but
+all of them are real and two are user-visible.
+
+1. **Crash recovery is not wired up, despite being the reason the event log exists.**
+   `replaySessionState` exists and is tested, but **nothing calls it**. The live screen starts
+   only from the in-memory handoff, so force-killing the app mid-session loses the session
+   entirely — its events stay in `session_events` as orphans. The device walk in this plan
+   ("kill the app mid-session, reopen and confirm the session resumes") **will fail today.**
+   Fixing it needs a resume path: on launch, find an unfinished session, replay its log, and
+   offer to continue.
+2. **Finishing a workout does not enqueue it for upload.** `workout-session.ts`'s own module
+   docblock says a session "enters this table exactly once, when a `workout_finished` event is
+   appended", but `appendSessionEvent` does no such thing — it only inserts into
+   `session_events`. Nothing writes to `session_queue`. That wiring is Phase I's job, but the
+   docblock currently describes behaviour that does not exist and should be corrected either
+   way.
+3. **Elapsed time and paused time are React state**, so they reset if the screen remounts. They
+   should be derived from the log on resume, alongside gap 1.
+4. **Abandoned sessions leak.** Nothing prunes `session_events` for a session that is never
+   finished, so the table grows without bound.
+5. **The goal picker is not built.** The chip renders with its chevron, matching the design, but
+   tapping it does nothing — the prototype opens a picker with an "apply to all" option.
 
 ## Explicitly out of scope
 
