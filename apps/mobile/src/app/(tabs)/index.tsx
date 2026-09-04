@@ -4,10 +4,16 @@ import type {
   WorkoutStatsResponse,
 } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
-import { getMacroGoals, getMe, getWorkoutStats, listNutritionLog } from '@/auth/apiClient';
+import {
+  getMacroGoals,
+  getMe,
+  getProgramEnrollment,
+  getWorkoutStats,
+  listNutritionLog,
+} from '@/auth/apiClient';
 import { ScreenBackground } from '@/components/screen-background';
 import { formatHomeDate } from '@/features/home/date';
 import { HomeHeader } from '@/features/home/home-header';
@@ -98,6 +104,26 @@ export default function HomeScreen() {
     }, [load]),
   );
 
+  /**
+   * The prototype's `goSuggested`: Start Workout opens the program the athlete is following, and
+   * falls back to Train when they are following nothing.
+   *
+   * `.catch`ed to null -- a failed lookup costs the button its shortcut, never its function.
+   */
+  const [activeProgramId, setActiveProgramId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getProgramEnrollment()
+      .catch(() => ({ enrollment: null }))
+      .then((response) => {
+        if (!cancelled) setActiveProgramId(response.enrollment?.programId ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const totals = useMemo(() => (log.length === 0 ? EMPTY_TOTALS : sumTotals(log)), [log]);
 
   return (
@@ -121,7 +147,13 @@ export default function HomeScreen() {
           weekStreak={stats?.weekStreak ?? null}
         />
         <InsightCard />
-        <StartWorkoutCta onPress={() => router.push('/(tabs)/train')} />
+        <StartWorkoutCta
+          onPress={() =>
+            activeProgramId
+              ? router.push({ pathname: '/program/[id]', params: { id: activeProgramId } })
+              : router.push('/(tabs)/train')
+          }
+        />
         <ThisWeek
           sessionCount={stats?.thisWeek.sessionCount ?? null}
           trainedWeekdays={stats?.thisWeek.trainedWeekdays ?? []}

@@ -25,6 +25,9 @@ jest.mock('@/auth/secureStorage', () => ({
 
 // Phase J: profile.tsx now reads real getMe() data for its identity row.
 jest.mock('@/auth/apiClient', () => ({
+  // Phase 3K5: Home's Start Workout and Train's programs sections both read this.
+  getProgramEnrollment: jest.fn().mockResolvedValue({ enrollment: null }),
+  listPrograms: jest.fn().mockResolvedValue({ items: [] }),
   getMe: jest.fn().mockResolvedValue({
     id: 'u1',
     email: 'a@example.com',

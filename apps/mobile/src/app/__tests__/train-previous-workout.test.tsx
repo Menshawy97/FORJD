@@ -23,6 +23,9 @@ jest.mock('expo-router', () => {
 });
 
 jest.mock('@/auth/apiClient', () => ({
+  // Phase 3K5: Home's Start Workout and Train's programs sections both read this.
+  getProgramEnrollment: jest.fn().mockResolvedValue({ enrollment: null }),
+  listPrograms: jest.fn().mockResolvedValue({ items: [] }),
   listWorkoutTemplates: jest.fn(),
   listWorkoutSessions: jest.fn(),
   getWorkoutSession: jest.fn(),

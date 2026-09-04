@@ -315,7 +315,25 @@ on the mobile API client.
 Follow / Stop Following, and "Recommended next" — the first workout of the program the athlete
 has not completed since enrolling, derived from their sessions.
 
-### K5 — Home and Train
+### K5 — Home and Train — **done** (PR #111)
+
+Train’s "Follow a Program" hero, the "Currently following:" chip, "My programs", and Home’s
+`goSuggested` branch. **The hero’s copy now reads "Nine structured programs"**, not the
+prototype’s "24 structured programs" — nine is what the app can actually back, and a test asserts
+the old number is gone.
+
+- **"My programs" renders nothing at all when empty**, exactly as the prototype’s
+  `progF.length ? … : null` does. It stays invisible until K6’s builder can create one, which is
+  correct rather than a stub.
+- **Both program reads are `.catch`ed to their empty state.** Train is the workout tab; losing
+  the network should cost a chip and a list, not the ability to see the previous workout and
+  start a new one.
+- Home’s Start Workout opens the followed program when there is one and falls through to Train
+  otherwise — both branches of `goSuggested` are now real. The existing test that documented the
+  program branch as pending was updated rather than added around.
+
+#### The original plan for this slice
+
 
 Home's `goSuggested` active-program branch (`Start Workout` routes into the active program's
 recommended workout rather than the generic destination), Train's "Currently following" chip,

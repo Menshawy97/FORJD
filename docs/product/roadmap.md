@@ -376,7 +376,7 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and
    `screen-atmosphere.test.tsx` anchors on per-screen text — that one broke when Train stopped
    saying "coming soon", and CI caught it rather than the targeted runs.
-3. **Phase K — programs. K1–K4 done (PRs #99, #100, #103, #109, #110); K5–K6 next** —
+3. **Phase K — programs. K1–K5 done (PRs #99, #100, #103, #109, #110, #111); K6 next** —
    [`phase-3k-plan.md`](phase-3k-plan.md) has the schema, the six slices and the reasoning.
    The final Phase 3 slice.
 
@@ -421,7 +421,13 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    screenshot — `program.png` is the overview — so the prototype was the authority for it. The
    favourite star, the Favourites chip and Customise are deliberately not shipped: the first two
    have no backing, and Customise belongs to K6. **Both screens are reachable only by direct
-   route until K5 wires Train’s hero and "My programs" list. Next: K5.**
+   route until K5.**
+
+   **K5 is complete.** Train has its "Follow a Program" hero, the "Currently following:" chip and
+   "My programs"; Home’s Start Workout opens the followed program and falls through to Train
+   otherwise. The hero advertises **nine** programs, not the prototype’s 24 — nine is what the
+   app can back, and a test asserts the old number is gone. **Next: K6, the program builder — the
+   last slice of Phase 3.**
 
    The plan also corrects this outline's own sketch of the schema. `programs → program_weeks →
    program_days` is not how the design works — a preset program is a *set of named workouts*

@@ -29,6 +29,9 @@ jest.mock('expo-router', () => {
 // Workouts list, so the session read is mocked empty -- the card renders nothing and the
 // assertions below stay about one thing.
 jest.mock('@/auth/apiClient', () => ({
+  // Phase 3K5: Train reads both for its programs sections.
+  getProgramEnrollment: jest.fn().mockResolvedValue({ enrollment: null }),
+  listPrograms: jest.fn().mockResolvedValue({ items: [] }),
   listWorkoutTemplates: jest.fn(),
   listWorkoutSessions: jest.fn(),
   getWorkoutSession: jest.fn(),

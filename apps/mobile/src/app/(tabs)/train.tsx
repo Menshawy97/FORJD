@@ -1,9 +1,19 @@
-import type { WorkoutSessionResponse, WorkoutTemplateSummary } from '@forjd/contracts';
+import type {
+  ProgramSummary,
+  WorkoutSessionResponse,
+  WorkoutTemplateSummary,
+} from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { getWorkoutSession, listWorkoutSessions, listWorkoutTemplates } from '@/auth/apiClient';
+import {
+  getProgramEnrollment,
+  getWorkoutSession,
+  listPrograms,
+  listWorkoutSessions,
+  listWorkoutTemplates,
+} from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
@@ -148,6 +158,39 @@ export default function TrainScreen() {
    * idempotency key, so reusing the finished session's id would make the server treat this
    * workout as a retry of that one and discard it.
    */
+  /**
+   * The programs sections (Phase 3K5).
+   *
+   * Both reads are `.catch`ed to their empty state rather than allowed to fail the screen: Train
+   * is the workout tab, and losing the network should cost the athlete a chip and a list, not the
+   * ability to see their previous workout and start a new one.
+   */
+  const [activeProgram, setActiveProgram] = useState<{ id: string; name: string } | null>(null);
+  const [myPrograms, setMyPrograms] = useState<ProgramSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const [enrollment, mine] = await Promise.all([
+        getProgramEnrollment().catch(() => ({ enrollment: null })),
+        listPrograms({ scope: 'mine' }).catch(() => ({ items: [] })),
+      ]);
+      if (cancelled) return;
+
+      setActiveProgram(
+        enrollment.enrollment
+          ? { id: enrollment.enrollment.programId, name: enrollment.enrollment.programName }
+          : null,
+      );
+      setMyPrograms(mine.items);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const onRepeat = () => {
     if (!previous) return;
     setPendingLiveSession({
@@ -194,6 +237,117 @@ export default function TrainScreen() {
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/*
+          "Follow a Program". Prototype: a `150deg` gradient from `#241710` to `#17181a` inside a
+          `rgba(233,113,47,.32)` border at radius 16 with `17px 18px` padding, a 42px icon tile on
+          `rgba(233,113,47,.16)` at radius 12, the title `700 17px/1` letterspaced `-.01em`, and
+          the subtitle `400 12px/1.35` in `#a08167`.
+
+          **The subtitle says nine, not the prototype’s "24 structured programs".** The design
+          specifies nine programs in full and no more; seeding fifteen others would mean writing
+          training progressions and labelling them `5/3/1`. Correcting the copy to the number the
+          app can actually back was decided when Phase K was planned -- see `phase-3k-plan.md`.
+        */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Follow a Program"
+          onPress={() => router.push('/programs')}
+          className="mt-6 flex-row items-center rounded-[16px] px-[18px] py-[17px]"
+          style={{
+            backgroundColor: '#1E1510',
+            borderWidth: 1,
+            borderColor: 'rgba(233,113,47,.32)',
+            gap: 14,
+          }}>
+          <View
+            className="h-[42px] w-[42px] flex-none items-center justify-center rounded-[12px]"
+            style={{ backgroundColor: 'rgba(233,113,47,.16)' }}>
+            <Icon name="target" size={22} color={colors.accent} />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text
+              className="font-archivo text-[17px] font-bold"
+              style={{ color: colors.text, letterSpacing: -0.17 }}>
+              Follow a Program
+            </Text>
+            <Text className="mt-[7px] font-archivo text-[12px]" style={{ color: '#A08167', lineHeight: 16 }}>
+              Nine structured programs — strength, hybrid, running, cross training
+            </Text>
+          </View>
+          <Icon name="chevron" size={18} color={colors.accent} />
+        </Pressable>
+
+        {/* "Currently following:" -- shown only while an enrolment is active, as in the design. */}
+        {activeProgram ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Currently following: ${activeProgram.name}`}
+            onPress={() =>
+              router.push({ pathname: '/program/[id]', params: { id: activeProgram.id } })
+            }
+            className="mt-[8px] flex-row items-center justify-between rounded-[12px] px-[14px] py-[11px]"
+            style={{
+              backgroundColor: 'rgba(233,113,47,.07)',
+              borderWidth: 1,
+              borderColor: 'rgba(233,113,47,.25)',
+            }}>
+            <Text className="font-archivo text-[12px] font-semibold" style={{ color: colors.accent }}>
+              {`Currently following: ${activeProgram.name}`}
+            </Text>
+            <Icon name="chevron" size={15} color={colors.accent} />
+          </Pressable>
+        ) : null}
+
+        {/*
+          "My programs" -- the athlete’s own, never the presets. Rendered only when non-empty,
+          exactly as the prototype’s `progF.length ? ... : null` does, which is why it is invisible
+          until K6’s builder can actually create one.
+        */}
+        {myPrograms.length > 0 ? (
+          <>
+            <Text
+              className="mb-[10px] mt-6 font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
+              style={{ color: '#77776F' }}>
+              My programs
+            </Text>
+            <View style={{ gap: 8 }}>
+              {myPrograms.map((program) => (
+                <Pressable
+                  key={program.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${program.name}`}
+                  onPress={() =>
+                    router.push({ pathname: '/program/[id]', params: { id: program.id } })
+                  }
+                  className="flex-row items-center rounded-[13px] px-[15px] py-[14px]"
+                  style={{
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    gap: 12,
+                  }}>
+                  <View
+                    className="h-[38px] w-[38px] flex-none items-center justify-center rounded-[10px]"
+                    style={{ backgroundColor: 'rgba(233,113,47,.12)' }}>
+                    <Icon name="target" size={19} color={colors.accent} />
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <Text
+                      className="font-archivo text-[14.5px] font-semibold"
+                      style={{ color: colors.text }}>
+                      {program.name}
+                    </Text>
+                    <Text className="mt-[6px] font-archivo text-[11.5px]" style={{ color: '#6E6E66' }}>
+                      {`${program.daysPerWeek} days · ${program.durationWeeks} weeks`}
+                    </Text>
+                  </View>
+                  <Icon name="chevron" size={16} color={colors.accent} />
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
+
         {previous ? (
           <>
             <Text
