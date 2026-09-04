@@ -582,6 +582,29 @@ export default function LiveScreen() {
                   volumeKg: summary.volumeKg,
                   completedSetCount: summary.completedSetCount,
                   exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
+                  // Completed sets only, and in the unit the athlete was reading -- this is a
+                  // record of what they did, not of what was prescribed.
+                  exercises: finished.exercises
+                    .map((exercise) => {
+                      const done = exercise.sets.filter((set) => set.isCompleted);
+                      const first = done[0];
+                      const unit = weightUnitFor(exercise.exerciseId);
+                      const detail =
+                        first === undefined
+                          ? ''
+                          : exercise.measure === 'time'
+                            ? `${first.durationSeconds ?? 0} s`
+                            : exercise.measure === 'distance'
+                              ? `${distanceForDisplay(first.distanceMeters ?? 0, distanceUnitFor(exercise.exerciseId))} ${distanceUnitFor(exercise.exerciseId)}`
+                              : `${weightForDisplay(first.weightKg ?? 0, unit)} ${unit}`;
+                      return {
+                        exerciseId: exercise.exerciseId,
+                        name: exercise.name,
+                        setCount: done.length,
+                        detail,
+                      };
+                    })
+                    .filter((line) => line.setCount > 0),
                   origin: 'live',
                 });
                 router.replace('/workout-done');
