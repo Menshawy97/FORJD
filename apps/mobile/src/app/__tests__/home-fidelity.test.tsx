@@ -29,6 +29,9 @@ jest.mock('expo-router', () => {
 });
 
 jest.mock('@/auth/apiClient', () => ({
+  // Phase 3K5: Home's Start Workout and Train's programs sections both read this.
+  getProgramEnrollment: jest.fn().mockResolvedValue({ enrollment: null }),
+  listPrograms: jest.fn().mockResolvedValue({ items: [] }),
   getMe: jest.fn(),
   listNutritionLog: jest.fn(),
   getMacroGoals: jest.fn(),
@@ -38,7 +41,7 @@ jest.mock('@/auth/apiClient', () => ({
   getWorkoutStats: jest.fn().mockRejectedValue(new Error('no stats in this suite')),
 }));
 
-import { getMacroGoals, getMe, listNutritionLog } from '@/auth/apiClient';
+import { getMacroGoals, getMe, listNutritionLog, getProgramEnrollment } from '@/auth/apiClient';
 import { formatHomeDate } from '@/features/home/date';
 
 import HomeScreen from '../(tabs)/index';
@@ -172,15 +175,37 @@ describe('Insight card', () => {
 });
 
 describe('Start Workout', () => {
-  // The prototype's `goSuggested` (line 1150) opens the user's active program if there is one
-  // and falls through to Train otherwise. There is no programs backend yet, so every user
-  // takes the fallback branch today; the program branch lands with Phase 3.
+  // The prototype's `goSuggested` (line 1150) opens the athlete's active program if there is one
+  // and falls through to Train otherwise. Both branches are real as of Phase 3K5.
   it('routes to the Train tab, the design fallback when no program is active', async () => {
     const screen = await render(<HomeScreen />);
 
     fireEvent.press(screen.getByText('Start Workout'));
 
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/train');
+  });
+
+  it('opens the program the athlete is following instead, when there is one', async () => {
+    (getProgramEnrollment as jest.Mock).mockResolvedValueOnce({
+      enrollment: {
+        id: 'enr-1',
+        programId: 'program-1',
+        programSlug: 'upper-lower',
+        programName: 'Upper / Lower',
+        programVersion: 1,
+        startedAt: '2026-09-01T08:00:00.000Z',
+      },
+    });
+
+    const screen = await render(<HomeScreen />);
+    await waitFor(() => expect(getProgramEnrollment).toHaveBeenCalled());
+
+    fireEvent.press(screen.getByText('Start Workout'));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/program/[id]',
+      params: { id: 'program-1' },
+    });
   });
 });
 

@@ -21,6 +21,9 @@ jest.mock('expo-secure-store');
 // the tabs after a successful login exercises its three requests. They are stubbed here so
 // this test stays about login, not about what Home shows.
 jest.mock('@/auth/apiClient', () => ({
+  // Phase 3K5: Home's Start Workout and Train's programs sections both read this.
+  getProgramEnrollment: jest.fn().mockResolvedValue({ enrollment: null }),
+  listPrograms: jest.fn().mockResolvedValue({ items: [] }),
   login: jest.fn(),
   getMe: jest.fn().mockResolvedValue({ id: 'u1', email: 'a@b.com', profile: null, privacy: {} }),
   listNutritionLog: jest.fn().mockResolvedValue({ items: [] }),
