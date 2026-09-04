@@ -64,6 +64,8 @@ describe("ProgramsService", () => {
       listForUser: jest.fn().mockResolvedValue([summaryRow]),
       findByIdForUser: jest.fn().mockResolvedValue(detailRow),
       findActiveEnrollment: jest.fn().mockResolvedValue(null),
+      enrol: jest.fn().mockResolvedValue(enrollmentRow),
+      endActiveEnrollment: jest.fn().mockResolvedValue(true),
       ...overrides,
     } as unknown as ProgramsRepository;
 
@@ -165,6 +167,55 @@ describe("ProgramsService", () => {
       const { repository, service } = build();
       await service.getById(viewer, summaryRow.id);
       expect(repository.findByIdForUser).toHaveBeenCalledWith(summaryRow.id, viewer.id);
+    });
+  });
+
+  describe("enrol", () => {
+    it("returns the new enrolment", async () => {
+      const { service } = build();
+      const response = await service.enrol(viewer, summaryRow.id);
+
+      expect(response.enrollment.programId).toBe(summaryRow.id);
+      expect(response.enrollment.startedAt).toBe("2026-09-01T08:30:00.000Z");
+    });
+
+    it("refuses a malformed id without reaching the database", async () => {
+      const { repository, service } = build();
+
+      await expect(service.enrol(viewer, "not-a-uuid")).rejects.toBeInstanceOf(NotFoundException);
+      expect(repository.enrol).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Enrolling in a program the caller cannot see is the same 404 as reading one -- a 403 would
+     * confirm that a program exists and belongs to somebody else.
+     */
+    it("turns a repository null into a 404 rather than a 403 when enrolling", async () => {
+      const { service } = build({ enrol: jest.fn().mockResolvedValue(null) });
+
+      await expect(
+        service.enrol(viewer, "55555555-5555-4555-8555-555555555555"),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("enrols as this viewer, never as anybody else", async () => {
+      const { repository, service } = build();
+      await service.enrol(viewer, summaryRow.id);
+      expect(repository.enrol).toHaveBeenCalledWith(viewer.id, summaryRow.id);
+    });
+  });
+
+  describe("stopFollowing", () => {
+    it("ends this viewer active enrolment", async () => {
+      const { repository, service } = build();
+      await service.stopFollowing(viewer);
+      expect(repository.endActiveEnrollment).toHaveBeenCalledWith(viewer.id);
+    });
+
+    /** A second tap, or a tap from a screen one request stale, is not a client error. */
+    it("succeeds even when nothing was being followed", async () => {
+      const { service } = build({ endActiveEnrollment: jest.fn().mockResolvedValue(false) });
+      await expect(service.stopFollowing(viewer)).resolves.toBeUndefined();
     });
   });
 

@@ -65,6 +65,16 @@ describe('Programs (e2e)', () => {
       .get(`/api/v1/programs/${id}`)
       .set('Authorization', `Bearer ${token}`);
 
+  const enrol = (id: string, token = 'owner-token') =>
+    request(app.getHttpServer())
+      .post(`/api/v1/programs/${id}/enrol`)
+      .set('Authorization', `Bearer ${token}`);
+
+  const stopFollowing = (token = 'owner-token') =>
+    request(app.getHttpServer())
+      .delete('/api/v1/programs/enrollment')
+      .set('Authorization', `Bearer ${token}`);
+
   const enrollment = (token = 'owner-token') =>
     request(app.getHttpServer())
       .get('/api/v1/programs/enrollment')
@@ -352,6 +362,85 @@ describe('Programs (e2e)', () => {
       await detail(strangersProgramId).expect(404);
       await detail(randomUUID()).expect(404);
       await detail('not-a-uuid').expect(404);
+    });
+  });
+  /**
+   * Follow / Stop Following, over real HTTP. The one-active-program rule is enforced in the
+   * service and by a partial unique index, and what only this suite proves is that the two
+   * endpoints behave as the design's buttons do -- Start Following has no "stop the other one
+   * first" step, and Stop Following can be tapped twice.
+   */
+  describe('following a program', () => {
+    afterEach(async () => {
+      await stopFollowing();
+      await stopFollowing('stranger-token');
+    });
+
+    it('requires authentication on both endpoints', async () => {
+      await request(app.getHttpServer()).post(`/api/v1/programs/${presetId}/enrol`).expect(401);
+      await request(app.getHttpServer()).delete('/api/v1/programs/enrollment').expect(401);
+    });
+
+    it('starts following and then reports it as the active enrolment', async () => {
+      const response = await enrol(presetId).expect(201);
+
+      expect(response.body.enrollment.programId).toBe(presetId);
+      expect((await enrollment().expect(200)).body.enrollment.programId).toBe(presetId);
+    });
+
+    /** The design's Start Following has no "you must stop the other one first" step. */
+    it('switches directly from one program to another', async () => {
+      await enrol(presetId).expect(201);
+      await enrol(ownProgramId).expect(201);
+
+      expect((await enrollment().expect(200)).body.enrollment.programId).toBe(ownProgramId);
+    });
+
+    /**
+     * Re-following what you already follow must not move `startedAt`: "Recommended next" is
+     * derived from the sessions performed since enrolling, so restarting would erase progress.
+     */
+    it('does not restart an enrolment when the same program is followed again', async () => {
+      const first = await enrol(presetId).expect(201);
+      const again = await enrol(presetId).expect(201);
+
+      expect(again.body.enrollment.id).toBe(first.body.enrollment.id);
+      expect(again.body.enrollment.startedAt).toBe(first.body.enrollment.startedAt);
+    });
+
+    it('stops following, and stopping twice is not an error', async () => {
+      await enrol(presetId).expect(201);
+
+      await stopFollowing().expect(204);
+      await stopFollowing().expect(204);
+
+      expect((await enrollment().expect(200)).body.enrollment).toBeNull();
+    });
+
+    it('lets an athlete follow again after stopping', async () => {
+      await enrol(presetId).expect(201);
+      await stopFollowing().expect(204);
+      await enrol(presetId).expect(201);
+
+      expect((await enrollment().expect(200)).body.enrollment.programId).toBe(presetId);
+    });
+
+    /** Enrolling in something you cannot read must not be a way to reach it. */
+    it('404s alike for a stranger program, an unknown id, and a malformed one', async () => {
+      await enrol(strangersProgramId).expect(404);
+      await enrol(randomUUID()).expect(404);
+      await enrol('not-a-uuid').expect(404);
+
+      expect((await enrollment().expect(200)).body.enrollment).toBeNull();
+    });
+
+    it('never ends another athlete enrolment', async () => {
+      await enrol(presetId, 'stranger-token').expect(201);
+      await stopFollowing().expect(204);
+
+      expect(
+        (await enrollment('stranger-token').expect(200)).body.enrollment.programId,
+      ).toBe(presetId);
     });
   });
 });
