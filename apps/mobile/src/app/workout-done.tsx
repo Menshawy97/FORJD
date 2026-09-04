@@ -143,7 +143,7 @@ export default function WorkoutDoneScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Share workout"
-            onPress={() => router.push('/nutrition-share')}
+            onPress={() => router.push('/workout-share')}
             className="h-[44px] w-[44px] items-center justify-center rounded-[13px]"
             style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <Icon name="share" size={19} color="#C8C8C0" />

@@ -54,6 +54,18 @@ export interface CompletedSummary {
   /** For resolving muscles worked from the on-device catalogue. */
   exerciseIds: string[];
   /**
+   * Per-exercise lines for the share screen's Exercise List card.
+   *
+   * **Optional, and absent for a `'history'` summary.** Train's "Previous Workout" card builds
+   * one of those from the list endpoint, which carries no per-exercise breakdown -- so rather
+   * than invent lines or fetch a session just to draw a card, the share screen simply does not
+   * offer that layout when this is missing. An absent layout is honest; a fabricated one is not.
+   *
+   * `detail` is formatted where the session is (`live.tsx`), because that is the only place that
+   * knows the exercise's measure *and* the unit the athlete was reading it in.
+   */
+  exercises?: { exerciseId: string; name: string; setCount: number; detail: string }[];
+  /**
    * Where this summary came from, which decides two things the screen would otherwise get
    * wrong for a past workout (Phase 3J-b).
    *
