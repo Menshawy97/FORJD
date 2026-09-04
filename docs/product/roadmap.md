@@ -248,6 +248,26 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Device findings, 2026-09-04 — all fixed, one follow-up open
+
+A walkthrough on a physical iPhone found four things, all now merged (PRs #104, #106, #107,
+#108) and written up in [`live-screen-device-findings.md`](live-screen-device-findings.md):
+the keypad covered the set row being edited, the `KG` pill was inert, the per-exercise
+training-goal picker was missing, and finishing a workout and sharing opened the *nutrition*
+cards. Two CI fixes came with them (#105 — the API e2e suites now run serially, after a
+`catalogueVersion` race went red twice on unrelated pull requests).
+
+**Open follow-up: real image export on both share screens.** Save Image / Instagram / More
+still only show a toast. The user asked for them to work, which reverses the scope reduction
+`nutrition-share.tsx` records in its own docblock — so it needs an ADR, and it needs the
+Expo Go question answered first (`react-native-view-shot` and `expo-media-library` may force
+a development build, which would change how this project is tested day to day). Both screens
+must be done together.
+
+Three of the four findings were the same failure: a control drawn faithfully from the design
+and shipped without its behaviour, with an honest comment in the `.tsx` explaining why. The
+comment is invisible from a phone. Gaps like that belong here, not only in the source.
+
 ### Immediate next steps (as of 2026-09-03)
 
 **Phase 3H and 3I are code-complete and merged.** A workout can now be started, logged entirely
