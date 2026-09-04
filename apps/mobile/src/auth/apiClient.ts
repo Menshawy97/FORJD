@@ -54,6 +54,11 @@ import type {
   WorkoutSessionUploadRequest,
   WorkoutStatsResponse,
   WorkoutTemplateResponse,
+  ProgramEnrolResponse,
+  ProgramEnrollmentResponse,
+  ProgramListQuery,
+  ProgramListResponse,
+  ProgramResponse,
 } from '@forjd/contracts';
 
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
@@ -320,6 +325,39 @@ export async function listWorkoutTemplates(): Promise<WorkoutTemplateListRespons
 export async function getWorkoutTemplate(id: string): Promise<WorkoutTemplateResponse> {
   const response = await apiClient.get<WorkoutTemplateResponse>(`/workouts/templates/${id}`);
   return response.data;
+}
+
+/**
+ * The program catalogue (Phase 3K).
+ *
+ * `scope` defaults to `preset` server-side, so the catalogue screen sends nothing and cannot
+ * accidentally show a program the athlete built. Train's "My programs" (K5) passes `mine`.
+ */
+export async function listPrograms(query: ProgramListQuery = { scope: 'preset' }): Promise<ProgramListResponse> {
+  const response = await apiClient.get<ProgramListResponse>('/programs', { params: query });
+  return response.data;
+}
+
+export async function getProgram(id: string): Promise<ProgramResponse> {
+  const response = await apiClient.get<ProgramResponse>(`/programs/${id}`);
+  return response.data;
+}
+
+/** The active enrolment, or `{ enrollment: null }` -- following nothing is a 200, not a 404. */
+export async function getProgramEnrollment(): Promise<ProgramEnrollmentResponse> {
+  const response = await apiClient.get<ProgramEnrollmentResponse>('/programs/enrollment');
+  return response.data;
+}
+
+/** Start Following. Ends whatever was being followed before, server-side, in one transaction. */
+export async function enrolInProgram(id: string): Promise<ProgramEnrolResponse> {
+  const response = await apiClient.post<ProgramEnrolResponse>(`/programs/${id}/enrol`);
+  return response.data;
+}
+
+/** Stop Following. A 204 whether or not anything was actually being followed. */
+export async function stopFollowingProgram(): Promise<void> {
+  await apiClient.delete('/programs/enrollment');
 }
 
 export async function createWorkoutTemplate(

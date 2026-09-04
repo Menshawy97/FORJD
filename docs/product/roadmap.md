@@ -376,7 +376,7 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    states *on purpose* (`home-fidelity.test.tsx`, `exercise-detail-fidelity.test.tsx`), and
    `screen-atmosphere.test.tsx` anchors on per-screen text — that one broke when Train stopped
    saying "coming soon", and CI caught it rather than the targeted runs.
-3. **Phase K — programs. K1–K3 done (PRs #99, #100, #103, #109); K4–K6 next** —
+3. **Phase K — programs. K1–K4 done (PRs #99, #100, #103, #109, #110); K5–K6 next** —
    [`phase-3k-plan.md`](phase-3k-plan.md) has the schema, the six slices and the reasoning.
    The final Phase 3 slice.
 
@@ -413,7 +413,15 @@ offline, finished, recovered after a crash, and uploaded. PRs #79–#85.
    one transaction — the design’s Start Following has no "stop the other one first" step — but
    re-following the program you *already* follow is a no-op, because restarting would move
    `started_at` and erase the progress K4’s "Recommended next" is derived from. Stopping when
-   nothing is active is a 204, not a 404. **Next: K4, the catalogue and overview screens.**
+   nothing is active is a 204, not a 404.
+
+   **K4 is complete.** `/programs` and `/program/[id]`, plus the five program functions on the
+   mobile API client. "Recommended next" is derived from the athlete’s sessions since enrolling,
+   matched by name because the session list carries no template id. The catalogue has no
+   screenshot — `program.png` is the overview — so the prototype was the authority for it. The
+   favourite star, the Favourites chip and Customise are deliberately not shipped: the first two
+   have no backing, and Customise belongs to K6. **Both screens are reachable only by direct
+   route until K5 wires Train’s hero and "My programs" list. Next: K5.**
 
    The plan also corrects this outline's own sketch of the schema. `programs → program_weeks →
    program_days` is not how the design works — a preset program is a *set of named workouts*

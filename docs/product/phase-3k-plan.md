@@ -289,7 +289,27 @@ enforced in the service, not only by the index. Enrolling while already enrolled
 previous enrolment and starts the new one in a single transaction — the design's Start Following
 has no "you must stop the other one first" step.
 
-### K4 — the catalogue and overview screens
+### K4 — the catalogue and overview screens — **done** (PR #110)
+
+`/programs` (the catalogue) and `/program/[id]` (the overview), plus the five program functions
+on the mobile API client.
+
+- **The catalogue has no screenshot.** `screenshots/program.png` is the *overview*, one level
+  down, so the prototype is the authority for `s_catalog()` and its geometry was transcribed
+  rather than approximated.
+- **"Recommended next" is derived from sessions, matched by name.** The session *list* endpoint
+  carries no template id, and the session’s `name` is snapshotted from the template at start —
+  which is also exactly what the prototype’s `progDone` is keyed by. Sessions performed before
+  the enrolment started are ignored: they belong to a previous attempt.
+- **The favourite star and the Favourites chip are not shipped.** Program favourites have no
+  backing anywhere in this system — the gap Train’s header star has had since Phase G. A star
+  that forgot every tap, or a chip that always showed an empty list, would be worse than neither.
+- **Customise is not shipped**; it routes into the builder, which is K6.
+- Both screens are reachable only by direct route until **K5** wires Train’s "Follow a Program"
+  hero and "My programs" list to them.
+
+#### The original plan for this slice
+
 
 `s_catalog()` and `s_programOverview()`, against `program.png`. The category filter chips,
 Follow / Stop Following, and "Recommended next" — the first workout of the program the athlete
