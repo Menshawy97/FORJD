@@ -284,4 +284,103 @@ export class ProgramsRepository {
 
     return row ?? null;
   }
+
+  /**
+   * Starts following a program, ending whatever the athlete was following before.
+   *
+   * **One transaction, and the end comes first.** `program_enrollments_one_active_key` is a
+   * partial unique index over `(user_id) where ended_at is null`, so inserting before ending would
+   * violate it rather than replace anything. Doing both in one transaction is also what makes the
+   * design's Start Following honest: at no point is the athlete following two programs, and at no
+   * point are they following none.
+   *
+   * **Re-following the program you already follow is a no-op**, returning the existing enrolment
+   * untouched. Ending and restarting would move `started_at`, and "Recommended next" (K4) is
+   * derived from the sessions performed *since* enrolling -- so a second tap on Start Following
+   * would silently erase the athlete's progress through the program. The prototype agrees: its
+   * `progDone` is keyed by program and survives unfollowing entirely.
+   *
+   * Returns `null` when the program is not visible to this user, so the service can refuse it the
+   * same way it refuses an unreadable one -- rather than enrolling someone in a program they are
+   * not allowed to see.
+   */
+  async enrol(userId: string, programId: string): Promise<ProgramEnrollmentRow | null> {
+    return this.db.transaction(async (tx) => {
+      const [program] = await tx
+        .select({ id: programs.id, slug: programs.slug, name: programs.name, version: programs.version })
+        .from(programs)
+        .where(
+          and(eq(programs.id, programId), isNull(programs.deletedAt), visibleTo(userId)),
+        );
+
+      if (!program) {
+        return null;
+      }
+
+      const [active] = await tx
+        .select()
+        .from(programEnrollments)
+        .where(and(eq(programEnrollments.userId, userId), isNull(programEnrollments.endedAt)));
+
+      if (active?.programId === programId) {
+        return {
+          id: active.id,
+          programId: active.programId,
+          programSlug: program.slug,
+          programName: program.name,
+          programVersion: active.programVersion,
+          startedAt: active.startedAt,
+        };
+      }
+
+      if (active) {
+        await tx
+          .update(programEnrollments)
+          .set({ endedAt: sql`now()` })
+          .where(eq(programEnrollments.id, active.id));
+      }
+
+      const [created] = await tx
+        .insert(programEnrollments)
+        .values({
+          userId,
+          programId,
+          // Snapshotted from the program's *current* version, which is the whole point of the
+          // column: what the athlete signed up to, not what it later became.
+          programVersion: program.version,
+        })
+        .returning();
+
+      if (!created) {
+        throw new Error(`enrol(${programId}): insert returned no row`);
+      }
+
+      return {
+        id: created.id,
+        programId: created.programId,
+        programSlug: program.slug,
+        programName: program.name,
+        programVersion: created.programVersion,
+        startedAt: created.startedAt,
+      };
+    });
+  }
+
+  /**
+   * Stops following, and reports whether anything was actually stopped.
+   *
+   * Ended, never deleted: "you followed this for six weeks last spring" is history worth keeping,
+   * the same soft-history reasoning `workout_sessions.deleted_at` documents. The boolean is for
+   * the service, which turns "nothing was active" into the same 204 as a successful stop -- a
+   * second tap on Stop Following is not an error.
+   */
+  async endActiveEnrollment(userId: string): Promise<boolean> {
+    const rows = await this.db
+      .update(programEnrollments)
+      .set({ endedAt: sql`now()` })
+      .where(and(eq(programEnrollments.userId, userId), isNull(programEnrollments.endedAt)))
+      .returning({ id: programEnrollments.id });
+
+    return rows.length > 0;
+  }
 }

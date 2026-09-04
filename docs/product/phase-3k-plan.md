@@ -260,7 +260,29 @@ Two things worth carrying forward:
   repository test did. Every column reference in a raw subquery is now table-qualified
   (`${table}."column"`), the same way `workouts.repository.ts` already documents.
 
-### K3 — enrolment
+### K3 — enrolment — **done** (PR #109)
+
+`POST /programs/:id/enrol` (201) and `DELETE /programs/enrollment` (204). Three things the
+outline did not settle, decided here:
+
+- **Re-following the program you already follow is a no-op**, returning the existing enrolment
+  untouched. Ending and restarting would move `started_at`, and K4’s "Recommended next" is
+  derived from the sessions performed *since* enrolling — so a second tap on Start Following
+  would silently erase the athlete’s progress through the program. The prototype agrees: its
+  `progDone` is keyed by program and survives unfollowing entirely.
+- **The end comes before the insert**, inside one transaction. `program_enrollments_one_active_key`
+  is partial over `(user_id) where ended_at is null`, so inserting first would violate it rather
+  than replace anything. In one transaction the athlete is never following two programs and never
+  briefly following none.
+- **Stopping when nothing is active is a 204, not a 404.** A second tap, or a tap from a screen
+  one request stale, is not a client error, and there is nothing a 404 would let a client do
+  differently.
+
+Enrolling in a program the caller cannot see is the same 404 as reading one — a 403 would confirm
+that a program exists and belongs to somebody else.
+
+#### The original plan for this slice
+
 
 `POST /programs/:id/enrol` and `DELETE /programs/enrollment`. The one-active-program rule
 enforced in the service, not only by the index. Enrolling while already enrolled ends the

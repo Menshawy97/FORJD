@@ -1407,3 +1407,20 @@ export const programEnrollmentResponseSchema = z.object({
   enrollment: programEnrollmentSchema.nullable(),
 });
 export type ProgramEnrollmentResponse = z.infer<typeof programEnrollmentResponseSchema>;
+
+/**
+ * `POST /programs/:id/enrol` — the design's "Start Following".
+ *
+ * No request body: the program is named by the path, and there is nothing else to choose. The
+ * response is the same envelope `GET /programs/enrollment` returns, minus the nullability —
+ * enrolling either produces an enrolment or fails, so a client never has to branch on null here.
+ *
+ * **Enrolling while already following something else is not an error.** It ends the previous
+ * enrolment and starts the new one, in one transaction: the design's Start Following has no "you
+ * must stop the other one first" step, and a screen that had to discover the rule by being
+ * refused would be a worse screen.
+ */
+export const programEnrolResponseSchema = z.object({
+  enrollment: programEnrollmentSchema,
+});
+export type ProgramEnrolResponse = z.infer<typeof programEnrolResponseSchema>;
