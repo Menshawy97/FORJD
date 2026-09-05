@@ -186,4 +186,61 @@ describe('navigation', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/library');
   });
+  /**
+   * Seeding the nine programs put 38 catalogue templates into this list -- they are visible to
+   * every user, so `listWorkoutTemplates` returns them and they buried anything the athlete had
+   * actually built. Their own come first now, and the list is capped.
+   */
+  describe('ordering and the cap', () => {
+    const six = [
+      template({ id: 'p1', name: 'Conditioning A', isCustom: false }),
+      template({ id: 'p2', name: 'Conditioning B', isCustom: false }),
+      template({ id: 'm1', name: 'My Push Day', isCustom: true }),
+      template({ id: 'p3', name: 'Conditioning C', isCustom: false }),
+      template({ id: 'm2', name: 'My Pull Day', isCustom: true }),
+      template({ id: 'p4', name: 'Conditioning D', isCustom: false }),
+    ];
+
+    it('shows the athlete own workouts before the program ones', async () => {
+      (listWorkoutTemplates as jest.Mock).mockResolvedValue({ items: six, nextCursor: null });
+      const screen = await render(<TrainScreen />);
+
+      // Both of the athlete own workouts survive the four-item cap; two program ones fill it.
+      expect(await screen.findByText('My Push Day')).toBeTruthy();
+      expect(await screen.findByText('My Pull Day')).toBeTruthy();
+    });
+
+    it('shows only four by default and offers to see the rest', async () => {
+      (listWorkoutTemplates as jest.Mock).mockResolvedValue({ items: six, nextCursor: null });
+      const screen = await render(<TrainScreen />);
+
+      expect(await screen.findByLabelText('See all 6 workouts')).toBeTruthy();
+      // The fifth and sixth rows are hidden until it is tapped.
+      expect(screen.queryByText('Conditioning C')).toBeNull();
+      expect(screen.queryByText('Conditioning D')).toBeNull();
+    });
+
+    it('expands to everything, then collapses again', async () => {
+      (listWorkoutTemplates as jest.Mock).mockResolvedValue({ items: six, nextCursor: null });
+      const screen = await render(<TrainScreen />);
+
+      await fireEvent.press(await screen.findByLabelText('See all 6 workouts'));
+      expect(await screen.findByText('Conditioning D')).toBeTruthy();
+
+      await fireEvent.press(await screen.findByLabelText('Show less'));
+      expect(screen.queryByText('Conditioning D')).toBeNull();
+    });
+
+    /** Nothing hidden means no control -- the design only draws it when it does something. */
+    it('does not offer see-all when everything already fits', async () => {
+      (listWorkoutTemplates as jest.Mock).mockResolvedValue({
+        items: six.slice(0, 3),
+        nextCursor: null,
+      });
+      const screen = await render(<TrainScreen />);
+
+      await screen.findByText('My Push Day');
+      expect(screen.queryByLabelText(/See all/)).toBeNull();
+    });
+  });
 });
