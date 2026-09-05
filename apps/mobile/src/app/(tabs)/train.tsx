@@ -166,6 +166,8 @@ export default function TrainScreen() {
    * ability to see their previous workout and start a new one.
    */
   const [activeProgram, setActiveProgram] = useState<{ id: string; name: string } | null>(null);
+  /** "See all" expands the capped My Workouts list. Collapsed on every visit, as the design has it. */
+  const [showAllWorkouts, setShowAllWorkouts] = useState(false);
   const [myPrograms, setMyPrograms] = useState<ProgramSummary[]>([]);
 
   useEffect(() => {
@@ -203,6 +205,31 @@ export default function TrainScreen() {
     });
     router.push('/live');
   };
+
+  /**
+   * The athlete's own workouts first, then everything else.
+   *
+   * `listWorkoutTemplates` returns every template *visible* to the caller, and a program's
+   * workouts are catalogue templates with no owner -- so they are visible to everyone. Seeding
+   * the nine programs therefore put 38 of them into this list, burying anything the athlete had
+   * actually built. Sorting by `isCustom` puts their own back on top without hiding the rest,
+   * which is what was asked for; a stable sort keeps each group in the order the API returned.
+   */
+  const orderedTemplates = templates === null
+    ? null
+    : [...templates].sort((a, b) => Number(b.isCustom) - Number(a.isCustom));
+
+  /**
+   * Four, then a "See all". The prototype caps at three (`const CAP=3`); four was asked for
+   * directly, so that is what this uses -- the control itself is the prototype's own.
+   */
+  const WORKOUT_CAP = 4;
+  const visibleTemplates =
+    orderedTemplates === null
+      ? null
+      : showAllWorkouts
+        ? orderedTemplates
+        : orderedTemplates.slice(0, WORKOUT_CAP);
 
   const onSummary = () => {
     if (!previous) return;
@@ -415,7 +442,7 @@ export default function TrainScreen() {
               No workouts yet. Tap + to build your first.
             </Text>
           ) : (
-            templates.map((template) => (
+            visibleTemplates!.map((template) => (
               <View
                 key={template.id}
                 className="mb-[10px] rounded-card px-[16px] py-[15px]"
@@ -452,6 +479,34 @@ export default function TrainScreen() {
               </View>
             ))
           )}
+
+          {/*
+            The prototype's `seeAll()`: a 40px dashed accent-bordered row, `borderRadius:11`,
+            `marginTop:8`, reading "See all N" or "Show less" beside a chevron that rotates 90
+            degrees one way or the other. Rendered only when there is actually something hidden.
+          */}
+          {orderedTemplates !== null && orderedTemplates.length > WORKOUT_CAP ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                showAllWorkouts ? 'Show less' : `See all ${orderedTemplates.length} workouts`
+              }
+              onPress={() => setShowAllWorkouts((open) => !open)}
+              className="mt-[8px] h-[40px] flex-row items-center justify-center rounded-[11px]"
+              style={{
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: 'rgba(233,113,47,.4)',
+                gap: 7,
+              }}>
+              <Text className="font-archivo text-[12px] font-semibold" style={{ color: colors.accent }}>
+                {showAllWorkouts ? 'Show less' : `See all ${orderedTemplates.length}`}
+              </Text>
+              <View style={{ transform: [{ rotate: showAllWorkouts ? '-90deg' : '90deg' }] }}>
+                <Icon name="chevron" size={14} color={colors.accent} />
+              </View>
+            </Pressable>
+          ) : null}
         </View>
         <View style={{ height: 16 }} />
       </ScrollView>

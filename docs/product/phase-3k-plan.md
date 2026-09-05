@@ -342,6 +342,22 @@ is corrected to nine here.**
 
 ### K6 — the builder
 
+**Two things found on a device that belong to this slice:**
+
+- **Train’s header `+` must open the program builder, not the workout builder.** The prototype is
+  explicit: `h('div',{key:'new',onClick:this.go('programBuilder')...})`. Ours currently pushes
+  `/builder` and is labelled "New workout", which duplicates the "+ New workout" link beside MY
+  WORKOUTS — that link is the correct workout entry point and stays as it is. The header button
+  is left pointing at `/builder` until this slice exists, rather than routed at a screen that
+  does not.
+- **A program’s workouts appear in Train’s "My Workouts".** They are catalogue templates with a
+  null owner, so `listWorkoutTemplates` returns them to everyone; the nine seeded programs put 38
+  of them in that list. Mitigated for now by sorting the athlete’s own first and capping the list
+  at four — decided with the user, who chose "show mine first, then the rest" over hiding them.
+  If the builder makes that list longer still, revisit whether program workouts belong there at
+  all.
+
+
 `s_programBuilder()`, against `custom program1.png` / `custom program2.png`. Name, week count,
 and the `Mon`–`Sun` assignment of the athlete's own templates. The largest single screen of the
 phase, which is why it is last: everything under it is proven by then.
