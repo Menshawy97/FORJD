@@ -9,6 +9,16 @@ graph — only its blast radius was closed — and because the fix's mechanism i
 rather than fully isolated. Read this before touching `apps/mobile/metro.config.js`'s
 `resolver.blockList` or any Expo/react-native dependency version in this workspace.
 
+> **Update, 2026-09-05 (ADR-027).** The app has since moved to Expo SDK 57 (`react-native`
+> 0.86.3). Everything below describes the incident as it happened under the SDK 54 pin, and is
+> left in those terms deliberately — rewriting a past incident in today’s version numbers would
+> make it unreadable as a record of what actually occurred.
+>
+> One thing did change in the fix itself: the `blockList` react-native pin is no longer a
+> hardcoded literal. It is derived from `apps/mobile/package.json`, because the SDK 57 upgrade
+> showed that a hardcoded pin silently inverts — a filter written to exclude strays became one
+> that excluded the app’s own react-native and admitted the stray.
+
 ## Symptom (both now gone)
 
 Opening the app in Expo Go produced a full-screen red error, in two forms seen in sequence —

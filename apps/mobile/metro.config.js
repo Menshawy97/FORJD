@@ -24,24 +24,35 @@ let config = getDefaultConfig(projectRoot);
 // one thing that needs excluding without breaking resolution.
 config.watchFolders = [workspaceRoot];
 
-// Metro does not resolve symlinks by default; pnpm's whole node_modules strategy
-// is built on them (both for the workspace packages above and for pnpm's internal
-// dependency layout).
-config.resolver.unstable_enableSymlinks = true;
+// `resolver.unstable_enableSymlinks` used to be set here, because Metro did not follow
+// symlinks by default and pnpm's whole node_modules strategy is built on them. From SDK 57 it
+// is the default, and `expo-doctor` flags the override as config drift -- so it is gone rather
+// than left as a no-op somebody would later have to work out the status of.
 
-// The workspace's shared pnpm store can contain more than one react-native version --
-// e.g. a stray one pulled in purely as apps/api's drizzle-orm's optional peer on
-// expo-sqlite, unrelated to this app, which pins react-native@0.81.5 directly. Metro's
-// codegen scans every react-native copy its file watcher can see for native spec files,
-// not just the one this app's own import graph resolves to, and a newer copy's spec
-// syntax (e.g. `ReadonlyArray`) can be unparseable by an older RN's codegen -- producing a
-// crash in Expo Go from a package this app never actually imports. Confirmed by tracing a
-// real crash to exactly this: node_modules/.pnpm/react-native@0.86.2.../specs_DEPRECATED/
-// DebuggingOverlayNativeComponent.js. `getDefaultConfig`'s own blockList is an array
-// (confirmed at runtime), appended to rather than replaced.
+// The workspace's shared pnpm store can contain more than one react-native version -- e.g. a
+// stray one pulled in purely as apps/api's drizzle-orm's optional peer on expo-sqlite,
+// unrelated to this app. Metro's codegen scans every react-native copy its file watcher can
+// see for native spec files, not just the one this app's own import graph resolves to, and a
+// mismatched copy's spec syntax can be unparseable by the active RN's codegen -- producing a
+// crash in Expo Go from a package this app never actually imports.
+//
+// **The version is read from this app's own package.json, never hardcoded.** It was a literal
+// `0.81.5` until the SDK 57 upgrade, at which point the app moved to 0.86.3 and this blockList
+// silently began excluding the app's *own* react-native -- the one copy it must never exclude.
+// Deriving it means the pin cannot rot behind an upgrade again.
+//
+// `getDefaultConfig`'s own blockList is an array (confirmed at runtime), appended to rather
+// than replaced.
+const activeReactNative = require('./package.json').dependencies['react-native'].replace(
+  /^[\^~]/,
+  '',
+);
+
 config.resolver.blockList = [
   ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : [config.resolver.blockList]),
-  /node_modules[\\/]\.pnpm[\\/]react-native@(?!0\.81\.5)/,
+  new RegExp(
+    `node_modules[\\\\/]\\.pnpm[\\\\/]react-native@(?!${activeReactNative.replace(/\./g, '\\.')})`,
+  ),
   // `watchFolders = [workspaceRoot]` above sweeps in `.claude/worktrees/*` too, since those
   // git worktrees live inside the repo root. Each worktree has its own independent
   // node_modules; when a *different* session's worktree is mid-install or mid-cleanup while

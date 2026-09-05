@@ -3,6 +3,8 @@
 **Status:** Accepted
 **Date:** 2026-08
 **Supersedes:** ADR-001
+**Version pin now lives in:** ADR-027 (Expo SDK 54 → 57, 2026-09-05) — this ADR
+establishes *why* the app tracks Expo Go’s SDK; ADR-027 records *which* one it currently is.
 
 ## Context
 

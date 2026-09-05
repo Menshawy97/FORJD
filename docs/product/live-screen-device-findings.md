@@ -46,7 +46,8 @@ it is built:
 - It needs `react-native-view-shot` (capture a view as an image), `expo-media-library` (write to
   Photos, plus `NSPhotoLibraryAddUsageDescription`) and `expo-sharing` (the share sheet).
 - **The open question that must be answered first: do those run under Expo Go?** The app is
-  developed and tested on Expo Go against a pinned SDK 54 (`apps/mobile/AGENTS.md`, ADR-013),
+  developed and tested on Expo Go against a pinned SDK (54 when this was written; 57 as of
+  ADR-027) (`apps/mobile/AGENTS.md`, ADR-013),
   and a module that forces a development build changes how this project is tested day to day.
   That is a decision for the user, not an assumption to make while installing.
 - Whatever is built must cover **both** screens in one go. Leaving the nutrition one faking it
