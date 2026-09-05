@@ -141,24 +141,28 @@ describe("ProgramsSeedRepository", () => {
     await ensureMappedExercisesExist();
   });
 
+  /**
+   * **Restores the catalogue rather than deleting it**, which is the opposite of what this
+   * teardown used to do.
+   *
+   * The rows this suite exercises are not fixtures. The nine programs, their 38 templates and the
+   * four curated exercises are exactly what `pnpm --filter @forjd/api programs:seed` produces, so
+   * deleting them by slug -- which is what this did -- silently wiped the real catalogue out of
+   * whatever database the suite ran against. On a developer machine that is somebody's app going
+   * empty mid-session, with the cause several steps removed from the symptom; it happened, and
+   * that is why this is written the way it is now.
+   *
+   * Re-running the seed is safe precisely because it is idempotent: a program is keyed by slug
+   * through the `programs_preset_slug_key` partial unique index and its templates are found again
+   * through the `program_workouts` join rows, so this recreates whatever the tests removed and
+   * leaves untouched whatever they did not. It ends in the canonical state either way.
+   *
+   * The genuinely test-only rows -- the users the versioning test creates, and the template its
+   * shrink test orphans -- are still cleaned up inline, where the test that made them knows
+   * exactly what it made.
+   */
   afterAll(async () => {
-    // Unlink before deleting templates: `program_workouts.template_id` is `restrict`, which is
-    // the point of that FK and which this teardown must respect like any other caller.
-    const templateIds = await templateIdsOfSeededPrograms();
-    await db.delete(programs).where(inArray(programs.slug, seededSlugs));
-    if (templateIds.length > 0) {
-      await db.delete(workoutTemplates).where(inArray(workoutTemplates.id, templateIds));
-    }
-    // Only what this suite put there: the curated additions the seed creates, plus any mapped
-    // catalogue row that was missing before it started. A developer database's own 873 rows are
-    // left untouched.
-    const toRemove = [
-      ...CURATED_EXERCISES.map((exercise) => exercise.slug),
-      ...insertedExerciseSlugs,
-    ];
-    if (toRemove.length > 0) {
-      await db.delete(exercises).where(inArray(exercises.slug, toRemove));
-    }
+    await seedPrograms(exercisesRepository, repository);
     await pool.end();
   });
 
