@@ -248,6 +248,35 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-05
+
+**Expo SDK 54 → 57** (PR #112, ADR-027). Expo Go on the test iPhone updated to 57, which makes
+every SDK 54 bundle unloadable — the pin moving is ADR-013’s constraint working as designed, not
+a drift. Verified with a real iOS bundle export, not a typecheck. The Metro `blockList` had a
+hardcoded `react-native@0.81.5` that inverted on the bump (it began excluding the app’s own copy
+while admitting the stray it was written to block); it now derives from `package.json`.
+
+**Phase 3K: K1–K5 merged** (PRs #99, #100, #103, #109, #110, #111). Programs are reachable from
+Train, following works, and "Recommended next" derives from the athlete’s sessions. **K6, the
+program builder, is the only slice left in Phase 3.**
+
+**Two things the seed got wrong, both since fixed:**
+
+- `programs.seed-repository.spec.ts` deleted the nine real programs by slug in teardown, emptying
+  the development database mid-session (PR #113). It now restores by re-running the idempotent
+  seed instead of deleting.
+- A program’s 38 catalogue templates flooded Train’s "My Workouts", because they have a null
+  owner and are therefore visible to everyone (PR #114). Mitigated by sorting the athlete’s own
+  first and capping at four; whether they belong in that list at all is an open question for K6.
+
+**Environment notes worth keeping.** Metro watches the whole workspace root, so `git checkout` and
+`git pull` while it runs will hang or kill it — do git work between device sessions, not during.
+Its file-map cache is also unreadable across the SDK change, so every start cold-crawls for about
+five minutes; clearing `%LOCALAPPDATA%Tempmetro-file-map-*` and `metro-cache` fixes that. The
+API dev server now runs without `--watch` for the same reason. And the dev server publishes an
+`@anonymous/…` manifest, which a signed-in Expo Go rejects — signing out of Expo Go is the
+reliable way past it.
+
 ### Device findings, 2026-09-04 — all fixed, one follow-up open
 
 A walkthrough on a physical iPhone found four things, all now merged (PRs #104, #106, #107,
