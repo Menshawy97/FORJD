@@ -48,6 +48,9 @@ const config: ExpoConfig = {
     // Local notifications only -- the rest timer's "rest complete" alert (ADR-026). No push
     // registration, no device token, no server involvement.
     'expo-notifications',
+    // Required as a config plugin from SDK 57; it was implicit before. The app opens the WHOOP
+    // OAuth flow and external links through it.
+    'expo-web-browser',
     '@react-native-community/datetimepicker',
     [
       'expo-splash-screen',

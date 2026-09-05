@@ -250,21 +250,21 @@ export default function NutritionShareScreen() {
                   testID="share-card-background-photo"
                   source={{ uri: backgroundPhotoUri }}
                   resizeMode="cover"
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                 />
               ) : (
                 <LinearGradient
                   colors={activeLayout.gradientColors}
                   start={SHARE_GRADIENT_START}
                   end={SHARE_GRADIENT_END}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                 />
               )}
               {/* The legibility scrim -- only over a photo background, since the gradients are
                   already dark enough on their own. Reuses `colors.scrim`, the exact token every
                   other modal backdrop in this app already uses for a dark overlay. */}
               {backgroundPhotoUri && (
-                <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.scrim }]} />
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
               )}
               <View style={{ flex: 1, paddingVertical: 26, paddingHorizontal: 20 }}>
                 <Text className="font-archivo text-[13px] font-extrabold uppercase text-accent" style={{ letterSpacing: 0.8 }}>
