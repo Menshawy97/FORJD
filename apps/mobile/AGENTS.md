@@ -36,3 +36,17 @@ A green `tsc --noEmit` and a green Jest run are **not** sufficient. Jest does no
 NativeWind or native modules, so it cannot tell you the bundle builds. Run a real Metro export
 (`npx expo export --platform ios`) and then load the app on the physical device before calling
 an upgrade done.
+
+## Testing loop: a dev-client build, not plain Expo Go (ADR-028)
+
+Since ADR-028, the physical-device testing loop uses a **development-client build**
+(`expo-dev-client`), not the plain Expo Go app from the App/Play Store. This changed because
+`react-native-view-shot` — needed for real Save Image / share-card export on the share screens —
+is a third-party native module, not one of the modules bundled into Expo Go.
+
+The SDK-pinning discipline above is unchanged: a dev-client build still targets this exact SDK
+57 pin, and the same "the trigger is always the Expo Go client on the test device" rule for
+upgrades still applies (it now applies to the dev-client build instead). What changed is which
+app icon on the test device you open: `npx expo start --dev-client` instead of scanning into
+Expo Go. A new dev-client build is only needed when a *native* dependency changes — everyday
+JS/TSX edits still hot-reload exactly as they did under Expo Go.

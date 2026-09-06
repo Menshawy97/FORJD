@@ -1,12 +1,15 @@
 import { MUSCLE_GROUP_DISPLAY_NAMES, type MuscleGroup } from '@forjd/domain';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import type { ViewShotRef } from 'react-native-view-shot';
 
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { SharePermissionDeniedError, isExpoGo, saveShareCardToPhotos, shareShareCard } from '@/media/share-capture';
+import { ShareCardShot } from '@/media/share-card-shot';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { getCompletedSummary, type CompletedSummary } from '@/workouts/live-handoff';
 import { formatSessionDuration } from '@/workouts/previous-workout';
@@ -38,11 +41,10 @@ import { colors } from '@/theme/tokens';
  * session *list* endpoint, which has no per-exercise breakdown, so that layout is offered only
  * when `summary.exercises` is present rather than fetched-for or faked.
  *
- * **Save Image / Instagram / More are mocked**, exactly as `nutrition-share.tsx`'s are and as the
- * prototype's own `flash(...)` calls are. Real capture-and-share was chosen as a follow-up
- * covering *both* share screens together so they cannot diverge -- it needs
- * `react-native-view-shot` and `expo-media-library`, a native-dependency decision worth its own
- * ADR rather than a side effect of this fix.
+ * **Save Image / Instagram / More are real**, per ADR-028: the preview card is wrapped in a
+ * `ViewShot`, Save Image writes the capture to Photos, and Instagram/More both open the OS share
+ * sheet through the same `src/media/share-capture.ts` module `nutrition-share.tsx` uses, so the
+ * two screens cannot diverge.
  */
 
 type LayoutId = 'stats' | 'muscles' | 'exercises';
@@ -85,6 +87,7 @@ export default function WorkoutShareScreen() {
   const [selected, setSelected] = useState<LayoutId>('stats');
   const [muscles, setMuscles] = useState<{ muscle: MuscleGroup; count: number }[]>([]);
   const toast = useToast();
+  const shotRef = useRef<ViewShotRef>(null);
 
   useEffect(() => {
     setSummary(getCompletedSummary());
@@ -125,6 +128,39 @@ export default function WorkoutShareScreen() {
     };
   }, [summary]);
 
+  // Expo Go cannot load `react-native-view-shot` at all (see `share-capture.ts`'s addendum), so
+  // the real capture path is skipped there in favour of the toast-only mock this feature replaced
+  // -- keeping Expo Go a valid way to test everything else in the app until a dev-client build
+  // (which needs a paid Apple Developer account, deferred until closer to production) exists.
+  const saveImage = async () => {
+    if (isExpoGo()) {
+      toast.show('Image saved to Photos');
+      return;
+    }
+    try {
+      await saveShareCardToPhotos(shotRef);
+      toast.show('Image saved to Photos');
+    } catch (cause) {
+      toast.show(
+        cause instanceof SharePermissionDeniedError
+          ? 'Photo access is needed to save the image.'
+          : 'Could not save the image. Please try again.',
+      );
+    }
+  };
+
+  const shareTo = async (label: string) => {
+    if (isExpoGo()) {
+      toast.show(`Sharing to ${label}…`);
+      return;
+    }
+    try {
+      await shareShareCard(shotRef, `Share to ${label}`);
+    } catch {
+      toast.show('Could not open the share sheet. Please try again.');
+    }
+  };
+
   const exerciseLines = summary?.exercises ?? [];
   // Offered only when the summary actually carries the lines -- see this file's docblock.
   const layouts = LAYOUTS.filter((layout) => layout.id !== 'exercises' || exerciseLines.length > 0);
@@ -158,7 +194,9 @@ export default function WorkoutShareScreen() {
         className="flex-1 px-screen-x"
         contentContainerStyle={{ paddingBottom: 26 }}
         showsVerticalScrollIndicator={false}>
-        {/* The preview card. Prototype: radius 18, `26px 20px` padding, 4:5 aspect. */}
+        {/* The preview card. Prototype: radius 18, `26px 20px` padding, 4:5 aspect. Wrapped in a
+            `ViewShot` (ADR-028) so Save Image / Instagram / More capture exactly this view. */}
+        <ShareCardShot ref={shotRef} options={{ format: 'jpg', quality: 0.92 }}>
         <LinearGradient
           accessibilityLabel={`${active.label} preview`}
           colors={active.gradient}
@@ -261,6 +299,7 @@ export default function WorkoutShareScreen() {
             ) : null}
           </View>
         </LinearGradient>
+        </ShareCardShot>
 
         <Text
           className="mb-[10px] mt-[22px] font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
@@ -312,7 +351,7 @@ export default function WorkoutShareScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Save Image"
-            onPress={() => toast.show('Image saved to Photos')}
+            onPress={() => void saveImage()}
             className="h-[48px] items-center justify-center rounded-[11px]"
             style={{ backgroundColor: colors.accent }}>
             <Text className="font-archivo text-[14px] font-bold text-white">Save Image</Text>
@@ -324,7 +363,7 @@ export default function WorkoutShareScreen() {
                 key={label}
                 accessibilityRole="button"
                 accessibilityLabel={label}
-                onPress={() => toast.show(`Sharing to ${label}…`)}
+                onPress={() => void shareTo(label)}
                 className="h-[48px] flex-1 items-center justify-center rounded-[11px]"
                 style={{
                   backgroundColor: colors.surface,

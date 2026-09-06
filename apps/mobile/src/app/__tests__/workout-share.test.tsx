@@ -1,8 +1,15 @@
 import { fireEvent, render as rtlRender, waitFor } from '@testing-library/react-native';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockBack = jest.fn();
+
+/** See `nutrition-share-fidelity.test.tsx`'s identical `mockShareCardShot` for why this must be a
+ * `function` declaration -- fully hoisted, body included -- rather than a `const` assignment. */
+function mockShareCardShot(props: { children?: ReactNode; style?: unknown }) {
+  return <View style={props.style as never}>{props.children}</View>;
+}
 
 jest.mock('expo-router', () => ({
   router: { back: (...args: unknown[]) => mockBack(...args), push: jest.fn(), replace: jest.fn() },
@@ -21,6 +28,24 @@ jest.mock('@/store/exercise-catalogue', () => ({
   ),
 }));
 
+// ADR-028: `expo-media-library` and `expo-sharing` have no usable JS implementation under Jest
+// (importing them crashes outright), so the mock is at this screen's own seam,
+// `@/media/share-capture`, matching `nutrition-share-fidelity.test.tsx`.
+jest.mock('@/media/share-capture', () => {
+  class SharePermissionDeniedError extends Error {}
+  return {
+    saveShareCardToPhotos: jest.fn(),
+    shareShareCard: jest.fn(),
+    isExpoGo: jest.fn().mockReturnValue(false),
+    SharePermissionDeniedError,
+  };
+});
+
+// See `nutrition-share-fidelity.test.tsx`'s identical mock for why: `share-card-shot.tsx` would
+// otherwise `require` the real `react-native-view-shot` at module scope under Jest.
+jest.mock('@/media/share-card-shot', () => ({ ShareCardShot: mockShareCardShot }));
+
+import { saveShareCardToPhotos, shareShareCard } from '@/media/share-capture';
 import { clearCompletedSummary, setCompletedSummary } from '@/workouts/live-handoff';
 
 import WorkoutShareScreen from '../workout-share';
@@ -59,8 +84,32 @@ function stageSummary(overrides: Record<string, unknown> = {}) {
  * have to invent numbers to fill.
  */
 describe('WorkoutShareScreen', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (saveShareCardToPhotos as jest.Mock).mockResolvedValue(undefined);
+    (shareShareCard as jest.Mock).mockResolvedValue(undefined);
+  });
+
   afterEach(() => {
     clearCompletedSummary();
+  });
+
+  it('captures and saves the card, then opens the share sheet for Instagram and More', async () => {
+    stageSummary();
+    const { getByText, getByLabelText } = await render(<WorkoutShareScreen />);
+    await getByText('Workout Complete');
+
+    fireEvent.press(getByLabelText('Save Image'));
+    await waitFor(() => expect(saveShareCardToPhotos).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getByText('Image saved to Photos')).toBeTruthy());
+
+    fireEvent.press(getByLabelText('Instagram'));
+    await waitFor(() =>
+      expect(shareShareCard).toHaveBeenCalledWith(expect.anything(), 'Share to Instagram'),
+    );
+
+    fireEvent.press(getByLabelText('More'));
+    await waitFor(() => expect(shareShareCard).toHaveBeenCalledWith(expect.anything(), 'Share to More'));
   });
 
   it('shows the Share Workout header, not the nutrition one', async () => {

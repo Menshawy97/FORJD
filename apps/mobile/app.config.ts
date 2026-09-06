@@ -60,6 +60,17 @@ const config: ExpoConfig = {
         imageWidth: 76,
       },
     ],
+    // ADR-028: real Save Image / Instagram / More on both share screens. `savePhotosPermission`
+    // is the only string actually needed -- the screens only ever write to the library, never
+    // read from it, unlike the nutrition background-photo picker's separate gallery permission.
+    [
+      'expo-media-library',
+      {
+        savePhotosPermission: 'FORJD saves your share card to Photos when you tap Save Image.',
+        isAccessMediaLocationEnabled: false,
+      },
+    ],
+    'expo-sharing',
   ],
   experiments: {
     typedRoutes: true,

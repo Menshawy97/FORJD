@@ -31,27 +31,26 @@ requests that could not have caused it.
   against history. A share card is the one artefact that leaves the app and is seen by other
   people, which raises rather than lowers the bar on inventing anything on it.
 
-## The one thing left: real image export
+## Real image export — done (2026-09-06), see ADR-028
 
 **The user asked for Save Image / Instagram / More to actually work, on _both_ share screens.**
-Today both only show a toast.
+Both used to only show a toast.
 
-This is not a small follow-up, and it reverses a documented decision, so it needs an ADR before
-it is built:
+This reversed a documented decision, so it got an ADR first, per CLAUDE.md's "add a new ADR
+before overturning one" — `docs/decisions/ADR-028-real-share-card-export.md`.
 
-- `nutrition-share.tsx`'s own docblock records the mock as **a deliberate scope reduction**
-  ("real device capture/sharing is out of scope for this lowest-priority phase, not a bug to
-  silently 'fix' by reaching for new native permissions"). Overturning that is exactly what
-  CLAUDE.md means by "add a new ADR before overturning one".
-- It needs `react-native-view-shot` (capture a view as an image), `expo-media-library` (write to
-  Photos, plus `NSPhotoLibraryAddUsageDescription`) and `expo-sharing` (the share sheet).
-- **The open question that must be answered first: do those run under Expo Go?** The app is
-  developed and tested on Expo Go against a pinned SDK (54 when this was written; 57 as of
-  ADR-027) (`apps/mobile/AGENTS.md`, ADR-013),
-  and a module that forces a development build changes how this project is tested day to day.
-  That is a decision for the user, not an assumption to make while installing.
-- Whatever is built must cover **both** screens in one go. Leaving the nutrition one faking it
-  while the workout one is real is the divergence this note exists to prevent.
+- The open question this note originally raised — **do `react-native-view-shot` /
+  `expo-media-library` run under Expo Go?** — was put to the user directly, including the actual
+  cost (no new paid service; Android dev-client builds are free and local, iOS reuses the
+  existing EAS/Codemagic TestFlight pipeline). The user chose to switch: `apps/mobile`'s
+  day-to-day testing loop now uses a **development-client build**
+  (`expo-dev-client`) rather than plain Expo Go — see `apps/mobile/AGENTS.md`.
+- Both screens now go through one shared module, `src/media/share-capture.ts`: Save Image
+  captures the card (`ViewShot`) and writes it to Photos via `expo-media-library`; Instagram and
+  More both open the OS share sheet via `expo-sharing` rather than a platform-specific Instagram
+  deep link (ADR-028 explains why that was rejected).
+- **Still needs a physical-device walk** before this is fully closed — Jest cannot exercise real
+  pixel capture, the Photos permission prompt, or the share sheet actually listing Instagram.
 
 ## The pattern worth remembering
 
