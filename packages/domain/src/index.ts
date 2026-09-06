@@ -3,6 +3,7 @@
  * may be imported here (CLAUDE.md rules 1-2, enforced by the CI conformance check).
  */
 
+export * from "./body-vocabulary";
 export * from "./exercise-vocabulary";
 export * from "./nutrition-vocabulary";
 export * from "./workout-vocabulary";
