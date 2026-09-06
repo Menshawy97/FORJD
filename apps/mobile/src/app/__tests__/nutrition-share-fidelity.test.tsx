@@ -6,8 +6,26 @@ import { cleanup, fireEvent, render as rtlRender, waitFor } from '@testing-libra
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+/**
+ * A `function` declaration, deliberately not `const ... = forwardRef(...)`: a `jest.mock()` call
+ * for `'../nutrition-share'` further down this file is hoisted by Jest, but that hoisting moves
+ * only the *registration* above the imports -- the screen's own `import NutritionShareScreen`
+ * (also transformed to a `require`) still runs before a plain `const` assignment lower in this
+ * file would, which left `mockShareCardShot` `undefined` the first time this was tried (found by
+ * instrumenting the factory directly). A function *declaration* is fully hoisted by the language
+ * itself, body included, so it is defined before anything in this file can run, import order or
+ * not. It is also referenced by name only, never its own JSX, from inside the factory below --
+ * a factory body may not reference the `_ReactNativeCSSInterop` helper NativeWind's babel
+ * transform injects wherever `react-native` view components are touched, and that helper is
+ * exactly what a `View`/JSX reference written *inside* the factory would need.
+ */
+function mockShareCardShot(props: { children?: ReactNode; style?: unknown }) {
+  return <View style={props.style as never}>{props.children}</View>;
+}
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
@@ -37,10 +55,31 @@ jest.mock('expo-image-manipulator', () => ({
   SaveFormat: { JPEG: 'jpeg' },
 }));
 
+// ADR-028: `expo-media-library` and `expo-sharing` have no usable JS implementation under Jest
+// (importing them crashes outright, the same class-hierarchy problem ADR-026 hit with
+// `expo-notifications`), so the mock is at this screen's own seam, `@/media/share-capture`,
+// rather than at the native packages themselves.
+jest.mock('@/media/share-capture', () => {
+  class SharePermissionDeniedError extends Error {}
+  return {
+    saveShareCardToPhotos: jest.fn(),
+    shareShareCard: jest.fn(),
+    isExpoGo: jest.fn().mockReturnValue(false),
+    SharePermissionDeniedError,
+  };
+});
+
+// `share-card-shot.tsx` itself `require`s the real `react-native-view-shot` at module scope
+// whenever `isExpoGo()` is false, which would hit the same "no native module under Jest" crash
+// `share-capture.ts`'s own addendum describes. Mocked away entirely here, as a plain forwarding
+// View -- what is under test in this file is the screen, not the capture library.
+jest.mock('@/media/share-card-shot', () => ({ ShareCardShot: mockShareCardShot }));
+
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
 import { getFood, getMacroGoals, listNutritionLog } from '@/auth/apiClient';
+import { SharePermissionDeniedError, saveShareCardToPhotos, shareShareCard } from '@/media/share-capture';
 
 import { todayLocalDate } from '@/nutrition/date';
 
@@ -237,22 +276,40 @@ describe('Nutrition share screen', () => {
     expect(getAllByText('10 kcal').length).toBe(7);
   });
 
-  it('fires toast confirmations for Save Image, Instagram, and More without any real device action', async () => {
+  it('captures and saves the card, then opens the share sheet for Instagram and More', async () => {
     (listNutritionLog as jest.Mock).mockResolvedValue({ items: [entryA, entryB] });
     (getMacroGoals as jest.Mock).mockResolvedValue(GOALS);
     mockFoods();
+    (saveShareCardToPhotos as jest.Mock).mockResolvedValue(undefined);
+    (shareShareCard as jest.Mock).mockResolvedValue(undefined);
 
     const { getByText } = await render(<NutritionShareScreen />);
     await waitFor(() => expect(getByText('Today’s intake')).toBeTruthy());
 
     fireEvent.press(getByText('Save Image'));
+    await waitFor(() => expect(saveShareCardToPhotos).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(getByText('Image saved to Photos')).toBeTruthy());
 
     fireEvent.press(getByText('Instagram'));
-    await waitFor(() => expect(getByText('Sharing to Instagram…')).toBeTruthy());
+    await waitFor(() =>
+      expect(shareShareCard).toHaveBeenCalledWith(expect.anything(), 'Share to Instagram'),
+    );
 
     fireEvent.press(getByText('More'));
-    await waitFor(() => expect(getByText('Sharing to More…')).toBeTruthy());
+    await waitFor(() => expect(shareShareCard).toHaveBeenCalledWith(expect.anything(), 'Share to More'));
+  });
+
+  it('tells the user when photo access is denied, rather than a generic failure message', async () => {
+    (listNutritionLog as jest.Mock).mockResolvedValue({ items: [entryA, entryB] });
+    (getMacroGoals as jest.Mock).mockResolvedValue(GOALS);
+    mockFoods();
+    (saveShareCardToPhotos as jest.Mock).mockRejectedValue(new SharePermissionDeniedError());
+
+    const { getByText } = await render(<NutritionShareScreen />);
+    await waitFor(() => expect(getByText('Today’s intake')).toBeTruthy());
+
+    fireEvent.press(getByText('Save Image'));
+    await waitFor(() => expect(getByText('Photo access is needed to save the image.')).toBeTruthy());
   });
 
   it('prompts to set goals first instead of dividing by a missing goal, and does not crash', async () => {

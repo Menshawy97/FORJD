@@ -2,8 +2,9 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { ViewShotRef } from 'react-native-view-shot';
 
 import { getFood, getMacroGoals, listNutritionLog } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
@@ -11,6 +12,8 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { SharePermissionDeniedError, isExpoGo, saveShareCardToPhotos, shareShareCard } from '@/media/share-capture';
+import { ShareCardShot } from '@/media/share-card-shot';
 import { ConcentricRings, type RingBand } from '@/nutrition/concentric-rings';
 import { todayLocalDate } from '@/nutrition/date';
 import { type MacroTotals, sumTotals } from '@/nutrition/totals';
@@ -42,12 +45,10 @@ import type { FoodResponse, MacroGoalsResponse, NutritionLogEntryResponse } from
  * this screen shows an honest prompt back to the dashboard instead of the preview -- the same
  * honest-empty-state principle `nutrition.tsx`'s own goals card already applies, not a new one.
  *
- * **Adaptation, a deliberate scope reduction, decided up front (see `nutrition-plan.md`):**
- * Save Image / Instagram / More are mocked exactly as the prototype's own `flash(...)` calls
- * are -- a toast-only confirmation, nothing written to the device and nothing shared. This
- * codebase has no `expo-media-library`, `react-native-view-shot`, or `react-native-share`
- * dependency, and none is added here: real device capture/sharing is out of scope for this
- * lowest-priority phase, not a bug to silently "fix" by reaching for new native permissions.
+ * **Save Image / Instagram / More are real**, per ADR-028, which overturns the scope reduction
+ * this docblock used to record. The preview card is wrapped in a `ViewShot`; Save Image writes
+ * the capture to Photos and Instagram/More both open the OS share sheet, through the same
+ * `src/media/share-capture.ts` module `workout-share.tsx` uses.
  *
  * No TabBar: like the prototype, this screen has no `this.tabbar()` call -- it is a sub-screen
  * reached via the dashboard's header icon, not a tab destination.
@@ -140,6 +141,7 @@ export default function NutritionShareScreen() {
   // preview is showing, per the feature's own "shared, not per-layout" requirement.
   const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
+  const shotRef = useRef<ViewShotRef>(null);
 
   const loadAll = useCallback(async () => {
     try {
@@ -169,8 +171,37 @@ export default function NutritionShareScreen() {
   const activeLayout = SHARE_LAYOUTS.find((candidate) => candidate.id === layout) ?? SHARE_LAYOUTS[0];
 
   const selectLayout = (id: ShareLayoutId) => () => setLayout(id);
-  const saveImage = () => toast.show('Image saved to Photos');
-  const shareTo = (label: string) => () => toast.show(`Sharing to ${label}…`);
+  // Expo Go cannot load `react-native-view-shot` at all (see `share-capture.ts`'s addendum), so
+  // the real capture path is skipped there in favour of the toast-only mock this feature replaced
+  // -- keeping Expo Go a valid way to test everything else in the app until a dev-client build
+  // (which needs a paid Apple Developer account, deferred until closer to production) exists.
+  const saveImage = async () => {
+    if (isExpoGo()) {
+      toast.show('Image saved to Photos');
+      return;
+    }
+    try {
+      await saveShareCardToPhotos(shotRef);
+      toast.show('Image saved to Photos');
+    } catch (cause) {
+      toast.show(
+        cause instanceof SharePermissionDeniedError
+          ? 'Photo access is needed to save the image.'
+          : 'Could not save the image. Please try again.',
+      );
+    }
+  };
+  const shareTo = (label: string) => async () => {
+    if (isExpoGo()) {
+      toast.show(`Sharing to ${label}…`);
+      return;
+    }
+    try {
+      await shareShareCard(shotRef, `Share to ${label}`);
+    } catch {
+      toast.show('Could not open the share sheet. Please try again.');
+    }
+  };
 
   const openPhotoSheet = () => setPhotoSheetOpen(true);
   const closePhotoSheet = () => setPhotoSheetOpen(false);
@@ -245,41 +276,46 @@ export default function NutritionShareScreen() {
             <View
               className="border border-border"
               style={{ aspectRatio: 4 / 5, borderRadius: 18, overflow: 'hidden' }}>
-              {backgroundPhotoUri ? (
-                <Image
-                  testID="share-card-background-photo"
-                  source={{ uri: backgroundPhotoUri }}
-                  resizeMode="cover"
-                  style={StyleSheet.absoluteFill}
-                />
-              ) : (
-                <LinearGradient
-                  colors={activeLayout.gradientColors}
-                  start={SHARE_GRADIENT_START}
-                  end={SHARE_GRADIENT_END}
-                  style={StyleSheet.absoluteFill}
-                />
-              )}
-              {/* The legibility scrim -- only over a photo background, since the gradients are
-                  already dark enough on their own. Reuses `colors.scrim`, the exact token every
-                  other modal backdrop in this app already uses for a dark overlay. */}
-              {backgroundPhotoUri && (
-                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
-              )}
-              <View style={{ flex: 1, paddingVertical: 26, paddingHorizontal: 20 }}>
-                <Text className="font-archivo text-[13px] font-extrabold uppercase text-accent" style={{ letterSpacing: 0.8 }}>
-                  FORJD
-                </Text>
-                <View className="flex-1">
-                  {layout === 'summary' ? (
-                    <SummaryPreview totals={totals} goals={goals} />
-                  ) : layout === 'macros' ? (
-                    <MacrosPreview totals={totals} goals={goals} />
-                  ) : (
-                    <MealsPreview totals={totals} items={log} foodsById={foodsById} />
-                  )}
+              {/* Everything the export should actually capture goes inside this ViewShot
+                  (ADR-028) -- the "Background photo" button below it deliberately does not,
+                  since a captured share card must never show its own editing chrome. */}
+              <ShareCardShot ref={shotRef} style={StyleSheet.absoluteFill} options={{ format: 'jpg', quality: 0.92 }}>
+                {backgroundPhotoUri ? (
+                  <Image
+                    testID="share-card-background-photo"
+                    source={{ uri: backgroundPhotoUri }}
+                    resizeMode="cover"
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={activeLayout.gradientColors}
+                    start={SHARE_GRADIENT_START}
+                    end={SHARE_GRADIENT_END}
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
+                {/* The legibility scrim -- only over a photo background, since the gradients are
+                    already dark enough on their own. Reuses `colors.scrim`, the exact token every
+                    other modal backdrop in this app already uses for a dark overlay. */}
+                {backgroundPhotoUri && (
+                  <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
+                )}
+                <View style={{ flex: 1, paddingVertical: 26, paddingHorizontal: 20 }}>
+                  <Text className="font-archivo text-[13px] font-extrabold uppercase text-accent" style={{ letterSpacing: 0.8 }}>
+                    FORJD
+                  </Text>
+                  <View className="flex-1">
+                    {layout === 'summary' ? (
+                      <SummaryPreview totals={totals} goals={goals} />
+                    ) : layout === 'macros' ? (
+                      <MacrosPreview totals={totals} goals={goals} />
+                    ) : (
+                      <MealsPreview totals={totals} items={log} foodsById={foodsById} />
+                    )}
+                  </View>
                 </View>
-              </View>
+              </ShareCardShot>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Background photo"
@@ -331,7 +367,7 @@ export default function NutritionShareScreen() {
             <View style={{ gap: 10, marginTop: 24, marginBottom: 24 }}>
               <Pressable
                 accessibilityRole="button"
-                onPress={saveImage}
+                onPress={() => void saveImage()}
                 className="h-[52px] items-center justify-center rounded-button bg-accent">
                 <Text className="font-archivo text-[14px] font-bold text-white">Save Image</Text>
               </Pressable>
@@ -340,7 +376,7 @@ export default function NutritionShareScreen() {
                   <Pressable
                     key={label}
                     accessibilityRole="button"
-                    onPress={shareTo(label)}
+                    onPress={() => void shareTo(label)()}
                     className="h-12 flex-1 items-center justify-center rounded-[11px] border border-border bg-surface">
                     <Text className="font-archivo text-[12.5px] font-semibold text-text">{label}</Text>
                   </Pressable>
