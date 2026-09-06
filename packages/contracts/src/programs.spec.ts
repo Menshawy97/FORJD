@@ -1,4 +1,5 @@
 import {
+  createProgramRequestSchema,
   programEnrollmentResponseSchema,
   programListQuerySchema,
   programListResponseSchema,
@@ -186,6 +187,43 @@ describe('program contracts', () => {
           enrollment: { ...enrollment, startedAt: '2026-09-01' },
         }).success,
       ).toBe(false);
+    });
+  });
+
+  describe('createProgramRequestSchema', () => {
+    const request = {
+      name: 'Off-season block',
+      durationWeeks: 4,
+      workouts: [{ templateId: '0f6c9d9e-58f4-4b2e-8b52-1a4a2c9d8e01', dayOfWeek: 1 }],
+    };
+
+    it('accepts a minimal valid request', () => {
+      expect(createProgramRequestSchema.safeParse(request).success).toBe(true);
+    });
+
+    it('rejects an empty or whitespace-only name', () => {
+      expect(createProgramRequestSchema.safeParse({ ...request, name: '' }).success).toBe(false);
+      expect(createProgramRequestSchema.safeParse({ ...request, name: '   ' }).success).toBe(false);
+    });
+
+    it('requires at least one workout -- the screen already refuses to submit with none', () => {
+      expect(createProgramRequestSchema.safeParse({ ...request, workouts: [] }).success).toBe(false);
+    });
+
+    it('bounds dayOfWeek to 0-6 and requires it -- a preset may omit it, the builder never does', () => {
+      const withDay = (dayOfWeek: unknown) => ({
+        ...request,
+        workouts: [{ ...request.workouts[0], dayOfWeek }],
+      });
+      expect(createProgramRequestSchema.safeParse(withDay(0)).success).toBe(true);
+      expect(createProgramRequestSchema.safeParse(withDay(6)).success).toBe(true);
+      expect(createProgramRequestSchema.safeParse(withDay(7)).success).toBe(false);
+      expect(createProgramRequestSchema.safeParse(withDay(null)).success).toBe(false);
+    });
+
+    it('has no category or level -- the builder screen never asks for either', () => {
+      expect(request).not.toHaveProperty('category');
+      expect(request).not.toHaveProperty('level');
     });
   });
 });

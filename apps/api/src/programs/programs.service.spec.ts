@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { User } from "@forjd/domain";
 
 import {
@@ -66,6 +66,7 @@ describe("ProgramsService", () => {
       findActiveEnrollment: jest.fn().mockResolvedValue(null),
       enrol: jest.fn().mockResolvedValue(enrollmentRow),
       endActiveEnrollment: jest.fn().mockResolvedValue(true),
+      createCustom: jest.fn().mockResolvedValue(detailRow),
       ...overrides,
     } as unknown as ProgramsRepository;
 
@@ -261,6 +262,37 @@ describe("ProgramsService", () => {
       const { repository, service } = build();
       await service.getEnrollment(viewer);
       expect(repository.findActiveEnrollment).toHaveBeenCalledWith(viewer.id);
+    });
+  });
+
+  describe("create", () => {
+    const request = {
+      name: "Off-season block",
+      durationWeeks: 4,
+      workouts: [{ templateId: detailRow.workouts[0]!.templateId, dayOfWeek: 1 }],
+    };
+
+    it("passes the request straight through to the repository as this viewer", async () => {
+      const { repository, service } = build();
+      await service.create(viewer, request);
+
+      expect(repository.createCustom).toHaveBeenCalledWith(viewer.id, request);
+    });
+
+    it("returns the created program's overview", async () => {
+      const { service } = build();
+      const response = await service.create(viewer, request);
+      expect(response.workouts).toEqual(detailRow.workouts);
+    });
+
+    /**
+     * The only way `createCustom` returns null is a template id that does not resolve for this
+     * caller -- which a legitimate client cannot produce, since the builder only ever offers the
+     * athlete's own workouts. A 400 says so without hiding behind a 404 meant for a stranger's row.
+     */
+    it("turns a repository null into a 400, not a 404", async () => {
+      const { service } = build({ createCustom: jest.fn().mockResolvedValue(null) });
+      await expect(service.create(viewer, request)).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

@@ -340,7 +340,22 @@ recommended workout rather than the generic destination), Train's "Currently fol
 its "My programs" list, and the "Follow a Program" hero — **whose "24 structured programs" copy
 is corrected to nine here.**
 
-### K6 — the builder
+### K6 — the builder — done
+
+`POST /programs` (contracts, repository `createCustom`, service, controller) plus
+`program-builder.tsx`, matched to `custom program1.png` / `custom program2.png`. **Phase 3 is now
+closed** — K1 through K6 are all merged.
+
+- **No `category` or `level` in the request.** The builder screen never asks for either, so
+  `createProgramRequestSchema` doesn't either; the service fills both with a fixed placeholder
+  (`strength` / `beginner`) that no custom-program screen ever reads back.
+- **A template id is checked against the caller's own visibility inside the same transaction**
+  that inserts the program, returning a 400 rather than creating a partial program if any
+  template does not resolve — the builder's own pickers only ever offer the athlete's own
+  workouts, so this can only fire on a malformed or stale request.
+- **Both device findings below are fixed**: Train's header `+` now opens `/program-builder`, and
+  the "own workouts first, capped at four" mitigation for the My Workouts list (PR #114) stands as
+  the long-term answer — revisited and kept rather than changed.
 
 **Two things found on a device that belong to this slice:**
 

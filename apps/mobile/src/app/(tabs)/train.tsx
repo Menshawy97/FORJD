@@ -45,8 +45,9 @@ import { colors } from '@/theme/tokens';
  * instruction ("render the card, route it nowhere yet"), so it is not wired to `onPress` at
  * all. `Exercise library` is real: it is `library.tsx`, shipped this same phase.
  *
- * **The header "+" button** (`train1.png`) is Phase 3G's own minimal, screenshot-faithful
- * addition -- the one real entry point to `/builder` this phase ships.
+ * **The header "+" button** (`train1.png`) opened `/builder` from Phase 3G until Phase 3K6,
+ * which found the prototype disagreed: `this.go('programBuilder')`. The workout builder's own
+ * entry point is unchanged -- the "+ New workout" link beside MY WORKOUTS still opens `/builder`.
  */
 const QUICK_ACTIONS: ReadonlyArray<{ key: string; label: string; icon: IconName; href: '/library' | null }> = [
   { key: 'run', label: 'Start a run', icon: 'runner', href: null },
@@ -256,8 +257,8 @@ export default function TrainScreen() {
         <Text className="font-archivo text-screen-header font-bold text-text">Train</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="New workout"
-          onPress={() => router.push('/builder')}
+          accessibilityLabel="New program"
+          onPress={() => router.push('/program-builder')}
           className="h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-accent">
           <Icon name="plus" size={18} color="#fff" />
         </Pressable>
