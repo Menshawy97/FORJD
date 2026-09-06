@@ -248,6 +248,53 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-07 (Phase 5)
+
+**Phase 5 (InBody) built and merged, immediately after Phase 4.** The user obtained a free
+NVIDIA API key mid-session, which unblocked Spike B (previously stuck on a missing
+credential) and became this phase's vision-extraction vendor. Every layer, in order:
+
+- **Domain** (`@forjd/domain/body-vocabulary.ts`): the nine `BODY_METRICS` matching the
+  design's confirm screen exactly, `SEGMENTAL_SITES`, a `SCAN_SOURCES` tuple left open for
+  Phase 6, and `CONFIDENCE_PREFILL_THRESHOLD` (0.9) + `shouldPrefill()`.
+- **Schema** (migration `0014`): `body_scans` / `body_measurements`, the tall
+  one-row-per-metric shape `docs/architecture/health-data.md` specifies — a new InBody field
+  needs a domain-tuple edit, never a migration.
+- **AI adapter** (`apps/api/src/ai/`): `VisionProvider` behind one symbol, `NvidiaVisionProvider`
+  the only implementation, contract-tested against recorded fixtures (no live call in CI).
+  See ADR-032 for the vendor's terms-of-service constraint and every prompt-reliability
+  decision the real API forced — model choice, prompt shape, retries, unit conversion — each
+  found by testing against the live endpoint, not assumed from documentation.
+- **API** (`apps/api/src/body/`): `POST /body-scans/extract` (saves nothing),
+  `POST /body-scans` (the only write path, multipart photo + confirmed values),
+  `GET /body-scans`, `GET /body-scans/:id`, `GET /body-scans/series`. Full path covered
+  end-to-end in `apps/api/test/body.e2e-spec.ts` against real Postgres.
+- **Mobile**: `inbody.tsx`, `inbody-confirm.tsx`, `scan/[id].tsx`, `inbody-compare.tsx`, and
+  the Progress → Body tab (`features/body/body-view.tsx`) replacing its placeholder.
+
+**Two scope trims made to land the whole phase in one session, both recorded in ADR-032, not
+silently dropped:** segmental lean analysis (five more fields the schema/prompt don't capture
+yet) and the Body tab's configurable widget picker (fixed to Weight/Body fat for now — the
+domain vocabulary already supports the other three, only the picker UI is missing).
+
+**Not done this session, and explicitly why:** a real device walk (this phase was built and
+verified via Jest/e2e/Postgres only — the standing device-walk rule still applies before
+calling the mobile side trustworthy), and running Spike B's full 20-photo set to completion
+(the user was still hand-labelling truth files as this session closed; partial early results
+already showed `llama-vision`'s confidence is weakly-but-really calibrated while
+`nemotron-omni`'s is backwards on the labelled-so-far sample — see ADR-032's own note to
+revisit once labelling finishes). **The production AI vendor is still not decided** — NVIDIA
+is explicitly development-only per its own terms of service; the user said they'll switch to
+OpenAI later, and ADR-032 records exactly what has to move when that happens.
+
+A mobile-side environment note hit during this session, not new but worth repeating: `pnpm
+install`/`tsc --noEmit` run against a concurrently-open Metro/session in this same checkout
+returned "cannot find module" for packages that do exist on disk (confirmed present, `ls`
+just truncated misleadingly at first) — Jest's own transform resolved them fine throughout.
+Treat a `tsc`-only failure that Jest doesn't reproduce as a symptom of the shared-worktree
+situation described elsewhere in this doc, not a real missing dependency, before spending
+time chasing it.
+
 ### Session close, 2026-09-06 (Phase 4)
 
 **Phase 4 (Progress — Strength) built and merged, same day Phase 3 closed.** With Phase 3
@@ -1883,7 +1930,7 @@ failure).
 | 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | **Complete** — [planned](phase-3-plan.md); Phases A-K done, including programs (originally its own row below) |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
-| 5 — InBody | 22-24 | Upload, Claude extraction, confirmation, BullMQ | Not started |
+| 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
 | 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | Not started |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | Not started |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |

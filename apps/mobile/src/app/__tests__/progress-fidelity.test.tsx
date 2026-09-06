@@ -16,9 +16,10 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/auth/apiClient', () => ({
   getProgressStrength: jest.fn(),
+  getBodyScanSeries: jest.fn(),
 }));
 
-import { getProgressStrength } from '@/auth/apiClient';
+import { getBodyScanSeries, getProgressStrength } from '@/auth/apiClient';
 
 import ProgressScreen from '../(tabs)/progress';
 
@@ -109,12 +110,13 @@ describe('Progress screen chrome', () => {
 
   it('switches to the Body tab and shows an honest-empty explanation, not the Strength cards', async () => {
     (getProgressStrength as jest.Mock).mockResolvedValue(EMPTY_RESPONSE);
+    (getBodyScanSeries as jest.Mock).mockResolvedValue({ series: [] });
     const screen = await render(<ProgressScreen />);
     await waitFor(() => expect(getProgressStrength).toHaveBeenCalled());
 
     fireEvent.press(screen.getByText('Body'));
 
-    await waitFor(() => expect(screen.getByText(/InBody/)).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('No scans yet').length).toBeGreaterThan(0));
     expect(screen.queryByText('Muscle group split')).toBeNull();
   });
 });

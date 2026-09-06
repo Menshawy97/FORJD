@@ -66,10 +66,12 @@ BodyCompositionMeasurement
 ## InBody photo pipeline
 
 First-class domain (`BodyScan`), not a generic file upload. See ADR-006 for
-the extraction-approach decision.
+the original extraction-approach decision, ADR-014 for the OpenAI vendor
+choice, and ADR-032 (Phase 5) for the development-time NVIDIA vendor and
+every prompt/reliability decision the built pipeline actually needed.
 
 ```
-Photo upload → image quality check → Claude vision extraction
+Photo upload → image quality check → vision extraction
 (structured JSON + per-field confidence) → confidence scoring
 → mandatory confirmation screen → user-confirmed BodyScan record
 ```
@@ -79,8 +81,8 @@ Spike B: nothing saves unconfirmed. High-confidence fields pre-fill but
 still require an explicit tap to confirm; low-confidence fields render
 blank, forcing the user to type the value. This is the mechanism that keeps
 "AI is a validator, never the sole source of truth" true even though the
-extraction method itself (Claude vision) was chosen specifically because it
-skips building a deterministic layout parser.
+extraction method itself (a vision-capable LLM) was chosen specifically
+because it skips building a deterministic layout parser.
 
 Golden-fixture tests (`tests/fixtures/inbody/`: anonymized report images +
 expected extraction JSON) run in CI from Phase 5 onward, and are the

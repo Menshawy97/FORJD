@@ -52,13 +52,14 @@ pre-resize, then a mandatory server-side canonical re-encode.**
 on its caching behavior) supports it natively on both platforms — no new client capability
 required to display what this ADR produces.
 
-**Per-asset-type targets** (avatar is the only shipped consumer today; future uploads such as
-InBody scan photos get their own row in this table when that phase is built, following the
-same two-stage pipeline rather than re-deciding it):
+**Per-asset-type targets** (avatar was the only shipped consumer when this ADR was written;
+InBody scan photos joined it in Phase 5, following the same two-stage pipeline rather than
+re-deciding it):
 
 | Asset | Max dimension | Quality | Rationale |
 |---|---|---|---|
 | Avatar | 512×512 | 80 | Never rendered larger than a few dozen px anywhere in the current design (profile header, athlete cards, future leaderboard rows); 512px is generous headroom for retina displays without storing invisible resolution. Quality 80 is WebP's standard sweet spot — no visible artifacting at the sizes this is actually displayed. |
+| InBody scan | 1600×1600 | 85 | A photographed document, not a face — the printed numbers must stay legible on the scan-detail screen and to the vision extractor that reads it first. Larger dimension and one quality step above the avatar's for that reason. Stored in the private `inbody` bucket, read back only via `getSignedUrl` (ADR-032) — unlike the avatar's public bucket, this asset is health data about an identifiable person. |
 
 ## Alternatives rejected
 

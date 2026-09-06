@@ -1,12 +1,13 @@
-import type { ProgressStrengthResponse } from '@forjd/contracts';
+import type { BodyScanSeriesResponse, ProgressStrengthResponse } from '@forjd/contracts';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { getProgressStrength } from '@/auth/apiClient';
+import { getBodyScanSeries, getProgressStrength } from '@/auth/apiClient';
 import { ScreenBackground } from '@/components/screen-background';
 import { SegmentedControl } from '@/components/segmented-control';
 import { Sparkline } from '@/components/sparkline';
+import { BodyView } from '@/features/body/body-view';
 import { Card } from '@/features/progress/card';
 import { InsightCard } from '@/features/progress/insight-card';
 import { MuscleSplit } from '@/features/progress/muscle-split';
@@ -42,6 +43,7 @@ const TABS = [
 export default function ProgressScreen() {
   const [tab, setTab] = useState<ProgressTab>('strength');
   const [strength, setStrength] = useState<ProgressStrengthResponse | null>(null);
+  const [bodySeries, setBodySeries] = useState<BodyScanSeriesResponse | null>(null);
   const loadGeneration = useRef(0);
 
   const load = useCallback(async () => {
@@ -53,6 +55,12 @@ export default function ProgressScreen() {
       // A failed read leaves the screen in its honest-empty state, exactly as a fresh account
       // renders -- never an error toast on a tab whose whole subject is the athlete's own past.
       if (generation === loadGeneration.current) setStrength(null);
+    }
+    try {
+      const response = await getBodyScanSeries();
+      if (generation === loadGeneration.current) setBodySeries(response);
+    } catch {
+      if (generation === loadGeneration.current) setBodySeries(null);
     }
   }, []);
 
@@ -98,11 +106,7 @@ export default function ProgressScreen() {
         {tab === 'strength' ? (
           <StrengthView data={strength} />
         ) : tab === 'body' ? (
-          <Card>
-            <Text style={{ fontFamily: 'Archivo', fontSize: 13, color: '#9A9A92' }}>
-              Body composition needs an InBody scan. This arrives with a later phase.
-            </Text>
-          </Card>
+          <BodyView series={bodySeries} hasAnyScan={(bodySeries?.series.length ?? 0) > 0} />
         ) : (
           <Card>
             <Text style={{ fontFamily: 'Archivo', fontSize: 13, color: '#9A9A92' }}>

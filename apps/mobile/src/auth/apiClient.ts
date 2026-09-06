@@ -61,6 +61,11 @@ import type {
   ProgramListQuery,
   ProgramListResponse,
   ProgramResponse,
+  BodyScanListResponse,
+  BodyScanResponse,
+  BodyScanSeriesResponse,
+  ConfirmBodyScanRequest,
+  ExtractBodyScanResponse,
 } from '@forjd/contracts';
 
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
@@ -495,5 +500,63 @@ export async function getExerciseHistory(
  */
 export async function getWorkoutSession(id: string): Promise<WorkoutSessionResponse> {
   const response = await apiClient.get<WorkoutSessionResponse>(`/workouts/sessions/${id}`);
+  return response.data;
+}
+
+/** Builds the multipart `file` field for a scan photo, same `{uri,name,type}` idiom as
+ *  `uploadAvatar` above. Kept as its own helper since both extract and confirm need it. */
+function scanPhotoFormPart(imageUri: string): { uri: string; name: string; type: string } {
+  const filename = imageUri.split('/').pop() ?? 'scan.jpg';
+  const extensionMatch = /\.(\w+)$/.exec(filename);
+  const mimeType = extensionMatch ? `image/${extensionMatch[1].toLowerCase()}` : 'image/jpeg';
+  return { uri: imageUri, name: filename, type: mimeType };
+}
+
+/**
+ * `POST /body-scans/extract` -- saves nothing server-side (BodyController.extract's own
+ * docblock). Route and response shape match `extractBodyScanResponseSchema`.
+ */
+export async function extractBodyScan(imageUri: string): Promise<ExtractBodyScanResponse> {
+  const formData = new FormData();
+  formData.append('file', scanPhotoFormPart(imageUri) as unknown as Blob);
+
+  const response = await apiClient.post<ExtractBodyScanResponse>('/body-scans/extract', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+}
+
+/**
+ * `POST /body-scans` -- the only write path. `imageUri` is the same photo `extractBodyScan`
+ * already read; the server stores nothing from that first call, so it is sent again here
+ * alongside the user's confirmed values as a `data` JSON field (`BodyController.confirm`'s
+ * own docblock explains why this is multipart, not a plain JSON POST).
+ */
+export async function confirmBodyScan(
+  imageUri: string,
+  body: ConfirmBodyScanRequest,
+): Promise<BodyScanResponse> {
+  const formData = new FormData();
+  formData.append('file', scanPhotoFormPart(imageUri) as unknown as Blob);
+  formData.append('data', JSON.stringify(body));
+
+  const response = await apiClient.post<BodyScanResponse>('/body-scans', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+}
+
+export async function listBodyScans(): Promise<BodyScanListResponse> {
+  const response = await apiClient.get<BodyScanListResponse>('/body-scans');
+  return response.data;
+}
+
+export async function getBodyScan(id: string): Promise<BodyScanResponse> {
+  const response = await apiClient.get<BodyScanResponse>(`/body-scans/${id}`);
+  return response.data;
+}
+
+export async function getBodyScanSeries(): Promise<BodyScanSeriesResponse> {
+  const response = await apiClient.get<BodyScanSeriesResponse>('/body-scans/series');
   return response.data;
 }
