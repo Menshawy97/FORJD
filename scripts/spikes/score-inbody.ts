@@ -14,13 +14,18 @@ const SAMPLES = join(import.meta.dirname, "inbody-samples");
 const TRUTH = join(SAMPLES, "truth");
 const OUT = join(SAMPLES, "out");
 
+// Nine fields, matching the design's confirm screen (s_inbodyConfirm) and
+// inbody-vision.ts's extraction schema — expanded from the original six.
 const FIELDS = [
   "weight_kg",
-  "body_fat_percent",
   "skeletal_muscle_mass_kg",
-  "bmi",
+  "body_fat_mass_kg",
+  "body_fat_percent",
   "visceral_fat_level",
   "total_body_water_l",
+  "bmi",
+  "basal_metabolic_rate_kcal",
+  "inbody_score",
 ] as const;
 
 /** Values are printed to 1 decimal place; this only absorbs float representation. */
@@ -48,23 +53,26 @@ function pct(n: number, d: number): string {
   return d === 0 ? "n/a" : `${((n / d) * 100).toFixed(1)}%`;
 }
 
-async function main() {
-  const outFiles = (await readdir(OUT).catch(() => [])).filter((f) => f.endsWith(".json"));
-  if (outFiles.length === 0) {
-    console.error(`No extraction results in ${OUT}. Run \`pnpm extract\` first.`);
-    process.exit(1);
-  }
+/** out/<photo-stem>.<model-label>.json -> {photoStem, modelLabel} */
+function parseOutFilename(file: string): { photoStem: string; modelLabel: string } {
+  const withoutExt = basename(file, ".json");
+  const lastDot = withoutExt.lastIndexOf(".");
+  return { photoStem: withoutExt.slice(0, lastDot), modelLabel: withoutExt.slice(lastDot + 1) };
+}
+
+async function scoreModel(modelLabel: string, outFiles: string[]): Promise<void> {
+  console.log(`\n${"=".repeat(60)}\nMODEL: ${modelLabel}\n${"=".repeat(60)}`);
 
   const comparisons: Comparison[] = [];
   const missingTruth: string[] = [];
 
   for (const file of outFiles) {
-    const stem = basename(file, ".json");
+    const { photoStem } = parseOutFilename(file);
     let raw: string;
     try {
-      raw = await readFile(join(TRUTH, file), "utf8");
+      raw = await readFile(join(TRUTH, `${photoStem}.json`), "utf8");
     } catch {
-      missingTruth.push(stem);
+      missingTruth.push(photoStem);
       continue;
     }
     // Editors on Windows commonly save JSON with a UTF-8 BOM, which JSON.parse rejects.
@@ -72,7 +80,7 @@ async function main() {
     try {
       truth = JSON.parse(raw.replace(/^﻿/, ""));
     } catch (err) {
-      console.error(`  ${stem}: truth file is not valid JSON — ${(err as Error).message}`);
+      console.error(`  ${photoStem}: truth file is not valid JSON — ${(err as Error).message}`);
       process.exit(1);
     }
     const extracted = JSON.parse((await readFile(join(OUT, file), "utf8")).replace(/^﻿/, ""));
@@ -80,7 +88,7 @@ async function main() {
     for (const field of FIELDS) {
       const got = extracted.fields?.[field];
       comparisons.push({
-        photo: stem,
+        photo: photoStem,
         field,
         expected: truth.fields?.[field] ?? null,
         got: got?.value ?? null,
@@ -156,6 +164,26 @@ async function main() {
     console.log("  Confidence separates correct from incorrect readings. The gate carries real");
     console.log("  signal, but check the high-confidence errors above: those are the readings a");
     console.log("  pre-filled confirmation screen would invite the user to accept without looking.");
+  }
+}
+
+async function main() {
+  const allOutFiles = (await readdir(OUT).catch(() => [])).filter((f) => f.endsWith(".json"));
+  if (allOutFiles.length === 0) {
+    console.error(`No extraction results in ${OUT}. Run \`pnpm extract\` first.`);
+    process.exit(1);
+  }
+
+  const byModel = new Map<string, string[]>();
+  for (const file of allOutFiles) {
+    const { modelLabel } = parseOutFilename(file);
+    const list = byModel.get(modelLabel) ?? [];
+    list.push(file);
+    byModel.set(modelLabel, list);
+  }
+
+  for (const [modelLabel, files] of byModel) {
+    await scoreModel(modelLabel, files);
   }
 }
 

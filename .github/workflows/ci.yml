@@ -77,6 +77,13 @@ jobs:
       # fake value is correct here, not a workaround for a real credential.
       SUPABASE_URL: https://ci-placeholder.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      # Same reasoning as the two Supabase values above, for AiModule's NVIDIA client
+      # (Phase 5, ADR-032): nvidia-vision-client.ts's factory calls config.getOrThrow at
+      # module construction, so it runs even in body.e2e-spec.ts, which overrides
+      # VISION_PROVIDER itself but not the separate NVIDIA_VISION_CLIENT provider the
+      # module tree still eagerly instantiates. No network call happens at construction,
+      # and no test invokes this client, so a well-formed but fake value is correct here.
+      NVIDIA_API_KEY: ci-placeholder-nvidia-key
 
     steps:
       - uses: actions/checkout@v4

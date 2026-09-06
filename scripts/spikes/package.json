@@ -2,13 +2,13 @@
   "name": "forjd-spikes",
   "private": true,
   "type": "module",
-  "description": "Throwaway Phase 0 spike scripts. Deliberately outside the pnpm workspace - no app code imports these.",
+  "description": "Throwaway Phase 0/5 spike scripts. Deliberately outside the pnpm workspace - no app code imports these.",
   "scripts": {
     "extract": "tsx inbody-vision.ts",
     "score": "tsx score-inbody.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.117.1"
+    "openai": "^4.104.0"
   },
   "devDependencies": {
     "tsx": "^4.19.2"

@@ -1,5 +1,6 @@
 import {
   ACTIVITIES,
+  BODY_METRICS,
   DISTANCE_UNITS,
   ENERGY_UNITS,
   EQUIPMENT,
@@ -17,6 +18,8 @@ import {
   PLANS,
   PROGRAM_CATEGORIES,
   PROGRAM_LEVELS,
+  SCAN_SOURCES,
+  SEGMENTAL_SITES,
   SEXES,
   TRAINING_GOALS,
   UNIT_SYSTEMS,
@@ -1586,3 +1589,118 @@ export const progressStrengthResponseSchema = z.object({
   insight: progressInsightSchema.nullable(),
 });
 export type ProgressStrengthResponse = z.infer<typeof progressStrengthResponseSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Body (Phase 5, InBody) -- built from body-vocabulary.ts's tuples, so a metric added there
+// only needs a z.enum(...) here to stay in sync, same pattern as Workouts above.
+// ---------------------------------------------------------------------------------------------
+
+export const bodyMetricSchema = z.enum(BODY_METRICS);
+export const segmentalSiteSchema = z.enum(SEGMENTAL_SITES);
+export const scanSourceSchema = z.enum(SCAN_SOURCES);
+
+/**
+ * One field's reading from `POST /body-scans/extract`. `value` is nullable -- either the
+ * sheet doesn't print this field, or the vision model could not read it -- and pre-filling
+ * is a client-side decision (`shouldPrefill` in @forjd/domain), not something this schema
+ * encodes as true/false, so a future change to the threshold needs no contract change.
+ */
+export const extractedMeasurementSchema = z.object({
+  value: z.number().nullable(),
+  confidence: z.number().min(0).max(1),
+  readingNote: z.string(),
+});
+export type ExtractedMeasurement = z.infer<typeof extractedMeasurementSchema>;
+
+/**
+ * Response for `POST /body-scans/extract`. Deliberately saves nothing -- see
+ * `docs/architecture/health-data.md`'s "nothing saves unconfirmed" rule -- this response
+ * only ever backs the confirm screen, never a stored record on its own.
+ */
+export const extractBodyScanResponseSchema = z.object({
+  inbodyModel: z.string().nullable(),
+  testDate: z.string().nullable(),
+  fields: z.object(
+    Object.fromEntries(BODY_METRICS.map((metric) => [metric, extractedMeasurementSchema])) as Record<
+      (typeof BODY_METRICS)[number],
+      typeof extractedMeasurementSchema
+    >,
+  ),
+  imageQualityNotes: z.string(),
+});
+export type ExtractBodyScanResponse = z.infer<typeof extractBodyScanResponseSchema>;
+
+/** One field the user has confirmed, sent to `POST /body-scans`. `value` is required here
+ *  (unlike `extractedMeasurementSchema`) -- a field the user left blank is simply absent
+ *  from this array, never sent as a confirmed null. */
+export const confirmedMeasurementSchema = z.object({
+  metric: bodyMetricSchema,
+  value: z.number(),
+  unit: z.string(),
+  confidence: z.number().min(0).max(1),
+});
+export type ConfirmedMeasurement = z.infer<typeof confirmedMeasurementSchema>;
+
+/**
+ * Request body for `POST /body-scans`, sent as a multipart `data` field (JSON string)
+ * alongside the same photo re-sent as the `file` part -- the extract step stores nothing,
+ * so there is no server-side reference to finalize; the confirm step's photo upload is a
+ * second, independent write.
+ */
+export const confirmBodyScanRequestSchema = z.object({
+  measuredAt: z.string().datetime(),
+  measurements: z.array(confirmedMeasurementSchema).min(1),
+});
+export type ConfirmBodyScanRequest = z.infer<typeof confirmBodyScanRequestSchema>;
+
+export const bodyMeasurementResponseSchema = z.object({
+  metric: bodyMetricSchema,
+  value: z.number(),
+  unit: z.string(),
+  confidence: z.number(),
+});
+export type BodyMeasurementResponse = z.infer<typeof bodyMeasurementResponseSchema>;
+
+/** A single confirmed scan, as returned by `POST /body-scans` and `GET /body-scans/:id`. */
+export const bodyScanResponseSchema = z.object({
+  id: z.string().uuid(),
+  measuredAt: z.string().datetime(),
+  source: scanSourceSchema,
+  measurements: z.array(bodyMeasurementResponseSchema),
+});
+export type BodyScanResponse = z.infer<typeof bodyScanResponseSchema>;
+
+/** One row of `GET /body-scans` -- the history list. Lighter than the full scan: a headline
+ *  weight + body-fat pair, matching the design's scan-history row, not every measurement. */
+export const bodyScanSummarySchema = z.object({
+  id: z.string().uuid(),
+  measuredAt: z.string().datetime(),
+  weightKg: z.number().nullable(),
+  bodyFatPercent: z.number().nullable(),
+});
+export type BodyScanSummary = z.infer<typeof bodyScanSummarySchema>;
+
+export const bodyScanListResponseSchema = z.object({
+  scans: z.array(bodyScanSummarySchema),
+});
+export type BodyScanListResponse = z.infer<typeof bodyScanListResponseSchema>;
+
+/** One metric's time series for the Progress Body tab's sparkline cards. */
+export const bodyMetricSeriesPointSchema = z.object({
+  measuredAt: z.string().datetime(),
+  value: z.number(),
+});
+export const bodyMetricSeriesSchema = z.object({
+  metric: bodyMetricSchema,
+  unit: z.string(),
+  points: z.array(bodyMetricSeriesPointSchema),
+});
+export type BodyMetricSeries = z.infer<typeof bodyMetricSeriesSchema>;
+
+/** Response for `GET /body-scans/series`. One entry per metric that has at least one
+ *  confirmed reading -- a metric with zero history is simply absent, not an empty array,
+ *  so the Body tab can distinguish "never measured" from "measured but flat". */
+export const bodyScanSeriesResponseSchema = z.object({
+  series: z.array(bodyMetricSeriesSchema),
+});
+export type BodyScanSeriesResponse = z.infer<typeof bodyScanSeriesResponseSchema>;
