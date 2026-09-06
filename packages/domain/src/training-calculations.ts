@@ -17,9 +17,15 @@ const EPLEY_DIVISOR = 30;
 /**
  * Beyond this the formula stops meaning anything. Epley extrapolates a 20-rep set to roughly
  * 1.63x the load, which is not a number to put in front of an athlete as their own one-rep
- * max. Twelve is the conventional upper bound for estimators in this family.
+ * max.
+ *
+ * **Ten, not the more commonly quoted twelve** (ADR-030, R7/R8): DiStasio's validation of the
+ * Brzycki and Epley equations against a measured back-squat 1RM, and the seven-equation
+ * accuracy comparison in sedentary older adults, both find these estimators meaningfully more
+ * accurate under ten reps, with error growing fastest just past it. Ten is the boundary the
+ * evidence actually supports.
  */
-const MAX_ESTIMABLE_REPS = 12;
+const MAX_ESTIMABLE_REPS = 10;
 
 /**
  * Estimated one-rep max in kilograms, or `null` when no honest estimate exists.

@@ -16,7 +16,7 @@ import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
-import { Sparkline } from '@/features/exercise/sparkline';
+import { Sparkline } from '@/components/sparkline';
 import { trainingTip } from '@/exercises/training-tip';
 import {
   ensureExerciseCatalogueSchema,

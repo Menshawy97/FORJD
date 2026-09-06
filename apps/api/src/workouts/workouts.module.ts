@@ -4,6 +4,8 @@ import { AuthProviderModule } from "../auth/auth-provider.module";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ExercisesModule } from "../exercises/exercises.module";
 import { UsersModule } from "../users/users.module";
+import { ProgressRepository } from "./progress.repository";
+import { ProgressService } from "./progress.service";
 import { WorkoutSessionsController } from "./workout-sessions.controller";
 import { WorkoutSessionsService } from "./workout-sessions.service";
 import { WorkoutsController } from "./workouts.controller";
@@ -26,6 +28,13 @@ import { WorkoutsService } from "./workouts.service";
 @Module({
   imports: [AuthProviderModule, UsersModule, ExercisesModule],
   controllers: [WorkoutsController, WorkoutSessionsController],
-  providers: [WorkoutsService, WorkoutSessionsService, WorkoutsRepository, JwtAuthGuard],
+  providers: [
+    WorkoutsService,
+    WorkoutSessionsService,
+    WorkoutsRepository,
+    ProgressService,
+    ProgressRepository,
+    JwtAuthGuard,
+  ],
 })
 export class WorkoutsModule {}

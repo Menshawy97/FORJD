@@ -13,6 +13,15 @@ import { colors } from '@/theme/tokens';
  * Rendering it would be putting a fabricated claim about the user's own training in front of
  * them, so the card keeps its chrome and says what is actually true: there is nothing to
  * report yet, and here is how to change that.
+ *
+ * **Titled "FORJD Insight", not "AI insight"** (ADR-030) -- the same rename applies here and
+ * on the Progress tab's own insight card, which *does* call `evaluateInsight` in
+ * `@forjd/domain` with real numbers. **This one does not; it takes no props and computes
+ * nothing.** Home has no workout-stats fetch feeding this card, so there is no data to pass
+ * it yet -- it is static copy under the corrected heading, not a wired instance of the same
+ * function. Whichever component eventually wires Home to `evaluateInsight` should replace
+ * this static string with a real `insight: ProgressInsight | null` prop, matching the
+ * pattern `features/progress/insight-card.tsx` already establishes.
  */
 export function InsightCard() {
   return (
@@ -22,7 +31,7 @@ export function InsightCard() {
       </View>
       <View className="flex-1">
         <Text className="mb-[7px] font-archivo text-section-label font-semibold uppercase text-accent">
-          Insight
+          FORJD Insight
         </Text>
         <Text className="font-archivo text-insight-body font-medium text-insightBody">
           Log a few workouts and we&apos;ll start spotting patterns.

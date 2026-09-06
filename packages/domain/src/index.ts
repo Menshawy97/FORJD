@@ -171,3 +171,6 @@ export interface PrivacySettings {
 export * from './training-calculations';
 
 export * from './unit-conversion';
+
+export * from "./progress-calculations";
+export * from "./progress-insight";

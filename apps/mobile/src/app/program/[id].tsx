@@ -190,7 +190,11 @@ export default function ProgramOverviewScreen() {
         <View style={{ gap: 8 }}>
           {program.workouts.map((workout, index) => (
             <Pressable
-              key={workout.templateId}
+              // Not `workout.templateId` alone: `createProgramRequestSchema`'s own docblock
+              // says template ids are deliberately not deduplicated across a program's
+              // schedule, so the same workout performed on two different weekdays (a common,
+              // valid program shape) repeats the same id and duplicates this key.
+              key={`${workout.templateId}-${index}`}
               accessibilityRole="button"
               accessibilityLabel={`Open ${workout.name}`}
               onPress={() => router.push({ pathname: '/workout/[id]', params: { id: workout.templateId } })}

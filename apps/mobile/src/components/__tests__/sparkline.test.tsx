@@ -5,7 +5,7 @@
 // NOTE: RTL v14 -- render() returns a Promise and must be awaited.
 import { render as rtlRender } from '@testing-library/react-native';
 
-import { Sparkline } from '../exercise/sparkline';
+import { Sparkline } from '../sparkline';
 
 interface HostNode {
   type: string;

@@ -24,6 +24,7 @@ import {
   workoutStatsResponseSchema,
   workoutTemplateListResponseSchema,
   workoutTemplateResponseSchema,
+  progressStrengthResponseSchema,
 } from './index';
 
 /**
@@ -693,6 +694,78 @@ export const responseFixtures = {
         programName: 'Upper / Lower',
         programVersion: 1,
         startedAt: '2026-09-01T08:30:00.000Z',
+      },
+    },
+  },
+
+  /**
+   * The Progress tab's Strength view (Phase 4) -- two PR tiles, an 8-week estimated-1RM
+   * trend, a Monday-first weekly-volume week, a training calendar and a muscle split that
+   * sums to 100, plus a rules-based (not AI) insight. `insight` is populated here to pin the
+   * fully-lit shape; the honest-empty `null` case is asserted separately in `progress.spec.ts`.
+   */
+  'progress-strength-response': {
+    schema: progressStrengthResponseSchema,
+    sample: {
+      personalRecords: [
+        {
+          exerciseId: '44444444-4444-4444-8444-444444444444',
+          exerciseName: 'Back Squat',
+          weightKg: 140,
+          reps: 1,
+          achievedAt: '2026-08-19T09:00:00.000Z',
+          deltaKgSinceLastMonth: 7.5,
+        },
+        {
+          exerciseId: '55555555-5555-4555-8555-555555555555',
+          exerciseName: 'Bench Press',
+          weightKg: 100,
+          reps: 1,
+          achievedAt: '2026-08-12T09:00:00.000Z',
+          deltaKgSinceLastMonth: 5,
+        },
+      ],
+      oneRepMaxTrend: [
+        { weekStart: '2026-07-06', estimatedOneRepMaxKg: 88 },
+        { weekStart: '2026-07-13', estimatedOneRepMaxKg: 89 },
+        { weekStart: '2026-07-20', estimatedOneRepMaxKg: 91 },
+        { weekStart: '2026-07-27', estimatedOneRepMaxKg: 92 },
+        { weekStart: '2026-08-03', estimatedOneRepMaxKg: 94 },
+        { weekStart: '2026-08-10', estimatedOneRepMaxKg: 95 },
+        { weekStart: '2026-08-17', estimatedOneRepMaxKg: 97 },
+        { weekStart: '2026-08-24', estimatedOneRepMaxKg: 100 },
+      ],
+      weeklyVolumeKg: [
+        { dayOfWeek: 1, volumeKg: 8200 },
+        { dayOfWeek: 2, volumeKg: 5400 },
+        { dayOfWeek: 3, volumeKg: 0 },
+        { dayOfWeek: 4, volumeKg: 0 },
+        { dayOfWeek: 5, volumeKg: 11200 },
+        { dayOfWeek: 6, volumeKg: 4500 },
+        { dayOfWeek: 7, volumeKg: 0 },
+      ],
+      trainingCalendar: {
+        month: '2026-08',
+        days: [
+          { date: '2026-08-01', activity: 'run' },
+          { date: '2026-08-03', activity: 'strength' },
+          { date: '2026-08-04', activity: 'strength' },
+          { date: '2026-08-06', activity: 'run' },
+          { date: '2026-08-07', activity: 'strength' },
+        ],
+        daysTrained: 13,
+      },
+      muscleSplit: [
+        { bucket: 'legs', percent: 28 },
+        { bucket: 'back', percent: 22 },
+        { bucket: 'chest', percent: 18 },
+        { bucket: 'shoulders', percent: 14 },
+        { bucket: 'arms', percent: 12 },
+        { bucket: 'core', percent: 6 },
+      ],
+      insight: {
+        headline: 'Training volume up 14% this week.',
+        body: 'Total load moved with it. Gains track weekly volume, though the returns taper as it climbs.',
       },
     },
   },

@@ -26,18 +26,21 @@ describe('estimateOneRepMaxKg', () => {
   });
 
   /*
-   * Epley diverges badly past about ten reps -- a 20-rep set extrapolates to roughly 1.63x the
-   * load, which is not a number to show an athlete as their own one-rep max. Refusing is the
-   * honest answer; a wrong estimate presented as a fact is exactly what this project has
-   * declined to do everywhere else.
+   * The literature caps this family of estimators at ten reps, not twelve: accuracy studies
+   * (DiStasio's Brzycki/Epley back-squat validation; the seven-equation sedentary-older-adults
+   * comparison) both find Epley and Brzycki meaningfully more accurate under ten reps, with
+   * error growing fastest just past it -- see ADR-030 (R7, R8). Refusing past ten is the honest
+   * answer; a wrong estimate presented as a fact is exactly what this project has declined to
+   * do everywhere else.
    */
   it('refuses to estimate from a set too long for the formula to mean anything', () => {
+    expect(estimateOneRepMaxKg(60, 11)).toBeNull();
     expect(estimateOneRepMaxKg(60, 13)).toBeNull();
     expect(estimateOneRepMaxKg(60, 20)).toBeNull();
   });
 
   it('estimates at the edge of the supported range', () => {
-    expect(estimateOneRepMaxKg(60, 12)).not.toBeNull();
+    expect(estimateOneRepMaxKg(60, 10)).not.toBeNull();
   });
 
   it('refuses a set that describes no lift at all', () => {
