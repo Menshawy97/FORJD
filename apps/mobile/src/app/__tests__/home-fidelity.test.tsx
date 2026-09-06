@@ -168,7 +168,10 @@ describe('Insight card', () => {
   it('invites the user to log workouts instead of inventing an insight', async () => {
     const screen = await render(<HomeScreen />);
 
-    expect(screen.getByText('Insight')).toBeTruthy();
+    // "FORJD Insight", not "AI insight" (ADR-030) -- the card's copy is assembled from the
+    // athlete's own numbers against published thresholds, not a model's output, and the
+    // heading must not claim otherwise.
+    expect(screen.getByText('FORJD Insight')).toBeTruthy();
     expect(screen.getByText("Log a few workouts and we'll start spotting patterns.")).toBeTruthy();
     expect(screen.queryByText(/Training load up 14%/)).toBeNull();
   });

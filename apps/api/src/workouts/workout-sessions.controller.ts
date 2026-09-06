@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nest
 import type {
   ExerciseHistoryQuery,
   ExerciseHistoryResponse,
+  ProgressStrengthQuery,
+  ProgressStrengthResponse,
   WorkoutSessionListQuery,
   WorkoutSessionListResponse,
   WorkoutSessionResponse,
@@ -11,6 +13,7 @@ import type {
 } from "@forjd/contracts";
 import {
   exerciseHistoryQuerySchema,
+  progressStrengthQuerySchema,
   workoutSessionListQuerySchema,
   workoutSessionUploadRequestSchema,
   workoutStatsQuerySchema,
@@ -18,6 +21,7 @@ import {
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
+import { ProgressService } from "./progress.service";
 import { WorkoutSessionsService } from "./workout-sessions.service";
 
 /**
@@ -31,7 +35,10 @@ import { WorkoutSessionsService } from "./workout-sessions.service";
 @Controller("workouts/sessions")
 @UseGuards(JwtAuthGuard)
 export class WorkoutSessionsController {
-  constructor(private readonly workoutSessionsService: WorkoutSessionsService) {}
+  constructor(
+    private readonly workoutSessionsService: WorkoutSessionsService,
+    private readonly progressService: ProgressService,
+  ) {}
 
   @Get()
   list(
@@ -66,6 +73,20 @@ export class WorkoutSessionsController {
    * beside the other non-parameterised routes, so the file does not have to be read twice to
    * see which routes are safe from that hazard and which are not.
    */
+  /**
+   * The Progress tab's Strength view (Phase 4). Same reason `stats` sits above `:id`: `id`
+   * only matches a single path segment, but this route is kept beside the other
+   * non-parameterised routes for the reason the file already gives -- so it does not have to
+   * be re-checked against that hazard every time this file is read.
+   */
+  @Get("progress/strength")
+  progressStrength(
+    @Req() request: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(progressStrengthQuerySchema)) query: ProgressStrengthQuery,
+  ): Promise<ProgressStrengthResponse> {
+    return this.progressService.strength(request.user, query);
+  }
+
   @Get("exercise/:exerciseId")
   exerciseHistory(
     @Req() request: AuthenticatedRequest,

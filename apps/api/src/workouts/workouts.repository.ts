@@ -251,7 +251,7 @@ export interface WorkoutStatsRow {
 }
 
 /** `YYYY-MM-DD` in the given zone. `en-CA` is the locale that formats exactly this shape. */
-function localCalendarDate(instant: Date, timeZone: string): string {
+export function localCalendarDate(instant: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
@@ -271,17 +271,17 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * stops a daylight-saving transition from making one week 167 hours long and shifting every
  * weekday index inside it by one.
  */
-function civilDateMs(date: string): number {
+export function civilDateMs(date: string): number {
   const [year, month, day] = date.split("-").map(Number);
   return Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1);
 }
 
-function civilDateString(ms: number): string {
+export function civilDateString(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
 /** The Monday of the week a civil date falls in -- the week the mobile app's own strip draws. */
-function weekStartOf(date: string): string {
+export function weekStartOf(date: string): string {
   const ms = civilDateMs(date);
   // getUTCDay() is Sunday-based; adding 6 and taking mod 7 rotates it so Monday is 0.
   const offset = (new Date(ms).getUTCDay() + 6) % 7;
