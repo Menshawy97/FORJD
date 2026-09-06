@@ -89,12 +89,12 @@ export function TrainingCalendar({ data, today }: TrainingCalendarProps) {
         </Text>
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
+      <View style={{ flexDirection: 'row', gap: 5 }}>
         {WEEKDAY_HEADS.map((head, index) => (
           <Text
             key={`head-${index}`}
             style={{
-              width: `${100 / 7}%`,
+              flex: 1,
               textAlign: 'center',
               fontFamily: 'Archivo',
               fontSize: 9,
@@ -106,50 +106,66 @@ export function TrainingCalendar({ data, today }: TrainingCalendarProps) {
             {head}
           </Text>
         ))}
-        {cells.map((cell, index) => {
-          if (cell.date === null) {
-            return <View key={`blank-${index}`} style={{ width: `${100 / 7}%`, height: CELL_SIZE }} />;
-          }
-          const activity = activityByDate.get(cell.date);
-          const isToday = cell.date === today;
-          const background =
-            activity === 'strength' ? '#E9712F' : activity === 'run' ? '#79B98A' : '#1A1B1D';
-          const color = activity === 'strength' ? '#FFFFFF' : activity === 'run' ? '#101011' : '#77776F';
-
-          return (
-            <View
-              key={cell.date}
-              accessible
-              accessibilityRole="text"
-              accessibilityLabel={
-                activity === undefined
-                  ? `${cell.date}, rest day`
-                  : `${cell.date}, ${activity === 'run' ? 'run' : 'strength'} day`
-              }
-              style={{
-                width: `${100 / 7}%`,
-                height: CELL_SIZE,
-                borderRadius: 7,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: background,
-                borderWidth: 1.5,
-                borderColor: isToday ? '#F6F5F3' : 'transparent',
-              }}>
-              <Text
-                style={{
-                  fontFamily: 'Archivo',
-                  fontSize: 11,
-                  fontWeight: activity === undefined ? '500' : '700',
-                  color,
-                  fontVariant: ['tabular-nums'],
-                }}>
-                {cell.day}
-              </Text>
-            </View>
-          );
-        })}
       </View>
+
+      {/*
+       * Explicit rows of exactly seven, each its own non-wrapping flex row -- not a single
+       * `flexWrap` container. `width: 100/7 + '%'` plus a `gap` between siblings overflows the
+       * row by `(columns - 1) * gap` px (RN's `gap` adds to each item's own width, the same way
+       * CSS flexbox gap works), which silently wraps the 7th cell of every row onto its own
+       * line -- confirmed on a physical device. `flex: 1` on a fixed set of siblings in one
+       * non-wrapping row divides the available width correctly, gap included.
+       */}
+      {Array.from({ length: Math.ceil(cells.length / 7) }, (_, rowIndex) =>
+        cells.slice(rowIndex * 7, rowIndex * 7 + 7),
+      ).map((row, rowIndex) => (
+        <View key={`row-${rowIndex}`} style={{ flexDirection: 'row', gap: 5, marginTop: 5 }}>
+          {row.map((cell, cellIndex) => {
+            if (cell.date === null) {
+              return <View key={`blank-${rowIndex}-${cellIndex}`} style={{ flex: 1, height: CELL_SIZE }} />;
+            }
+            const activity = activityByDate.get(cell.date);
+            const isToday = cell.date === today;
+            const background =
+              activity === 'strength' ? '#E9712F' : activity === 'run' ? '#79B98A' : '#1A1B1D';
+            const color =
+              activity === 'strength' ? '#FFFFFF' : activity === 'run' ? '#101011' : '#77776F';
+
+            return (
+              <View
+                key={cell.date}
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={
+                  activity === undefined
+                    ? `${cell.date}, rest day`
+                    : `${cell.date}, ${activity === 'run' ? 'run' : 'strength'} day`
+                }
+                style={{
+                  flex: 1,
+                  height: CELL_SIZE,
+                  borderRadius: 7,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: background,
+                  borderWidth: 1.5,
+                  borderColor: isToday ? '#F6F5F3' : 'transparent',
+                }}>
+                <Text
+                  style={{
+                    fontFamily: 'Archivo',
+                    fontSize: 11,
+                    fontWeight: activity === undefined ? '500' : '700',
+                    color,
+                    fontVariant: ['tabular-nums'],
+                  }}>
+                  {cell.day}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      ))}
 
       <View
         style={{

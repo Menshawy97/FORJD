@@ -82,6 +82,22 @@ describe("ProgressService", () => {
     expect(result.insight?.headline).toContain("Back Squat");
   });
 
+  it("maps the estimated-1RM trend into evaluateInsight's input, not just passes it through raw", async () => {
+    const row = emptyRow();
+    row.weeksOfHistory = 6;
+    row.sessionsThisWeek = 3;
+    row.oneRepMaxTrend = [
+      { weekStart: "2026-07-06", estimatedOneRepMaxKg: 88 },
+      { weekStart: "2026-08-24", estimatedOneRepMaxKg: 100 },
+    ];
+    const { service } = makeService(row);
+
+    const result = await service.strength(viewer, { timeZone: "UTC" });
+
+    expect(result.oneRepMaxTrend).toEqual(row.oneRepMaxTrend);
+    expect(result.insight?.headline.toLowerCase()).toContain("estimated one-rep max");
+  });
+
   it("passes through the muscle split and weekly volume untouched", async () => {
     const row = emptyRow();
     row.muscleSplit = [{ bucket: "legs", percent: 100 }];

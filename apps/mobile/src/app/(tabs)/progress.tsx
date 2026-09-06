@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { getProgressStrength } from '@/auth/apiClient';
+import { ScreenBackground } from '@/components/screen-background';
 import { SegmentedControl } from '@/components/segmented-control';
 import { Sparkline } from '@/components/sparkline';
 import { Card } from '@/features/progress/card';
@@ -65,7 +66,7 @@ export default function ProgressScreen() {
   );
 
   return (
-    <>
+    <ScreenBackground>
       <Text
         style={{
           paddingHorizontal: 22,
@@ -111,7 +112,7 @@ export default function ProgressScreen() {
           </Card>
         )}
       </ScrollView>
-    </>
+    </ScreenBackground>
   );
 }
 
