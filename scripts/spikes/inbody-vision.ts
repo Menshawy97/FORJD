@@ -83,12 +83,19 @@ const FIELD_NAMES = [
 // Deliberately does NOT tell the model to be confident. The spike is measuring
 // whether confidence tracks real errors — coaching it toward high confidence
 // would destroy the only signal we're here to collect.
-const PROMPT = `This is a photograph of an InBody body-composition result sheet.
+// The exact international avoirdupois pound, in kilograms — the same constant
+// packages/domain/src/unit-conversion.ts uses (KG_PER_LB), so a converted reading
+// here matches what the app itself would compute, not an independently invented factor.
+const KG_PER_LB = 0.45359237;
 
-Read these values exactly as printed:
-- Weight (kg)
-- Skeletal Muscle Mass (kg)
-- Body Fat Mass (kg)
+const PROMPT = `This is a photograph of an InBody body-composition result sheet. InBody
+machines print weight-related fields (Weight, Skeletal Muscle Mass, Body Fat Mass) in
+either kg OR lb depending on the machine's configured unit — never assume which.
+
+Read these values, converting to the units below if the sheet prints a different unit:
+- Weight (kg) — if the sheet shows lb, multiply by ${KG_PER_LB} to get kg.
+- Skeletal Muscle Mass (kg) — same lb-to-kg conversion if needed.
+- Body Fat Mass (kg) — same lb-to-kg conversion if needed.
 - Percent Body Fat (%)
 - Visceral Fat Level
 - Total Body Water (L)
@@ -99,6 +106,13 @@ Read these values exactly as printed:
 Rules:
 - Transcribe only what is printed. Never compute or infer a value from the others.
 - If a field is not on this sheet or you cannot read it, set value to null.
+- If you converted a value from lb to kg, say so in reading_note (e.g. "sheet printed
+  153.5 lb, converted to kg") so a human reviewing this can double-check the conversion.
+- Never report an lb number as if it were kg — a wrong unit is as wrong as a wrong digit.
+- A conversion is not a reason for value to be null. If the sheet printed lb, you can
+  read the number, and you know the conversion factor: multiply it out and report the
+  resulting kg number as value. Only use null when you cannot read the printed number at
+  all — never as a way to avoid doing the multiplication.
 - Set confidence honestly, per field. Lower it for anything blurry, glared, cropped,
   or where a digit could be misread (e.g. 84.6 vs 34.6).
 
