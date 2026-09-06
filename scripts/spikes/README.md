@@ -25,25 +25,32 @@ looked right from public docs but were unavailable or unresponsive):
   scope here) — but it is the most document-capable option this key can
   actually reach.
 
-Structured output uses **prompted JSON with lenient parsing**, not NVIDIA's
-`nvext.guided_json` — during verification, `guided_json` did not reliably
-constrain either model's output (one returned plain prose describing an image
-even with a schema attached), so the prompt asks for JSON directly and the
-script strips an occasional markdown fence or surrounding prose before parsing.
+**Structured output and reliability, the short version:** three different
+JSON-enforcement mechanisms were tried against the live API before landing on
+the current approach — `nvext.guided_json` didn't constrain either model at
+all, and OpenAI's `response_format: json_object` mode measurably made the
+weaker model (`llama-vision`) *less* reliable once the prompt included the
+full field list and an example (it started echoing the literal example back
+instead of reading the photo). What actually works is a **plain-language
+prompt with a filled example** (not an abstract schema — embedding the schema
+itself made the weaker model parrot it back verbatim) plus **lenient parsing**
+that tolerates prose wrapping, **plus up to 3 retries per photo per model** —
+`llama-vision` genuinely fails to return parseable JSON on a real fraction of
+individual calls, and a retry absorbs that rather than losing the photo.
 
-**Known issues found while verifying this script, before you run the full set:**
+**Two more things worth knowing before you run the full set:**
 - A single real photo can take anywhere from ~2 seconds to over a minute per
-  model — much slower than the sub-2-second response to a trivial test image.
-  Budget real time for 20 photos × 2 models.
-- A model occasionally fails to return valid JSON at all (refusal-shaped prose,
-  or truncated output). The script logs `FAILED` for that photo/model pair and
-  keeps going — it does not crash the whole run. `score-inbody.ts` treats a
-  missing output file as "no reading," not as a wrong answer.
+  model, and NVIDIA's free tier has occasional outright connection errors —
+  both are covered by the retry logic, but the full 20-photo × 2-model run
+  can still take a while. Be patient rather than assuming it's hung.
 - On one real test photo, `nemotron-omni` returned the **identical value
   (120.5) for three unrelated fields** (body fat %, total body water, BMI),
   each at confidence 1.0 — a textbook confidently-wrong reading. This is
   exactly the failure the confidence-calibration score below is built to
-  surface; expect more of these once you score the full set.
+  surface; expect more of these once you score the full set. If a model still
+  fails after 3 attempts, the script logs `FAILED after 3 attempts` for that
+  photo/model pair and moves on — `score-inbody.ts` treats a missing output
+  file as "no reading," not as a wrong answer.
 
 These scripts are throwaway. No application code imports them, and this directory
 is deliberately outside the pnpm workspace.

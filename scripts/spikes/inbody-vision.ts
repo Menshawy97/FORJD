@@ -80,51 +80,6 @@ const FIELD_NAMES = [
   "inbody_score",
 ] as const;
 
-const measuredField = {
-  type: "object",
-  properties: {
-    value: {
-      anyOf: [{ type: "number" }, { type: "null" }],
-      description: "The numeric value as printed, or null if not present/unreadable.",
-    },
-    confidence: {
-      type: "number",
-      description:
-        "0.0-1.0. How certain you are that every digit is correct. Lower this when glare, blur, crop, or ambiguous digit shapes make a misread plausible.",
-    },
-    reading_note: {
-      type: "string",
-      description:
-        "If confidence is below 0.9, what specifically is uncertain (e.g. 'could be 84.6 or 34.6, leading digit partly obscured by glare'). Empty string otherwise.",
-    },
-  },
-  required: ["value", "confidence", "reading_note"],
-  additionalProperties: false,
-} as const;
-
-const schema = {
-  type: "object",
-  properties: {
-    inbody_model: {
-      type: "string",
-      description: "Model printed on the sheet (e.g. '270', '570', '770'), or 'unknown'.",
-    },
-    test_date: { anyOf: [{ type: "string" }, { type: "null" }] },
-    fields: {
-      type: "object",
-      properties: Object.fromEntries(FIELD_NAMES.map((f) => [f, measuredField])),
-      required: [...FIELD_NAMES],
-      additionalProperties: false,
-    },
-    image_quality_notes: {
-      type: "string",
-      description: "Glare, blur, angle, crop — anything affecting legibility.",
-    },
-  },
-  required: ["inbody_model", "test_date", "fields", "image_quality_notes"],
-  additionalProperties: false,
-} as const;
-
 // Deliberately does NOT tell the model to be confident. The spike is measuring
 // whether confidence tracks real errors — coaching it toward high confidence
 // would destroy the only signal we're here to collect.
@@ -142,18 +97,32 @@ Read these values exactly as printed:
 - InBody Score
 
 Rules:
-- Transcribe only what is printed. Never infer, estimate, or compute a value from the others.
-- If a field is absent from this sheet or you cannot read it, set value to null.
-- Report per-field confidence honestly. A single wrong digit permanently corrupts a
-  user's long-term progress graph, so a plausible misread must be reflected as lower
-  confidence rather than hidden behind a confident-looking number.
-- Digit confusion is the specific failure that matters (e.g. 84.6 vs 34.6 vs 84.8).
-  Where a digit's identity is genuinely ambiguous, say so in reading_note.
+- Transcribe only what is printed. Never compute or infer a value from the others.
+- If a field is not on this sheet or you cannot read it, set value to null.
+- Set confidence honestly, per field. Lower it for anything blurry, glared, cropped,
+  or where a digit could be misread (e.g. 84.6 vs 34.6).
 
-Respond with ONLY the JSON object below, nothing else — no markdown code fence, no
-commentary before or after it:
+Respond with ONLY a JSON object shaped exactly like this example, nothing else.
+Every number in this example is fake filler from an unrelated sheet:
 
-${JSON.stringify(schema, null, 2)}`;
+${JSON.stringify(
+  {
+    inbody_model: "570",
+    test_date: "2026-01-15",
+    fields: Object.fromEntries(
+      // Deliberately distinct confidences (no repeated value) so there is nothing
+      // uniform for a weaker model to anchor on and copy verbatim instead of
+      // reasoning per field — this was measured to be a real failure mode.
+      FIELD_NAMES.map((f, i) => [
+        f,
+        { value: 10 + i * 7.3, confidence: [0.99, 0.62, 0.85, 0.97, 0.71, 0.9, 0.55, 0.93, 0.8][i], reading_note: "" },
+      ]),
+    ),
+    image_quality_notes: "",
+  },
+  null,
+  2,
+)}`;
 
 type ModelSpec = { id: string; label: string };
 
@@ -238,36 +207,57 @@ async function main() {
       const data = await readFile(join(PHOTOS, photo));
       const dataUrl = `data:${MEDIA_TYPES[extname(photo).toLowerCase()]};base64,${data.toString("base64")}`;
 
-      try {
-        const response = await client.chat.completions.create({
-          model: model.id,
-          max_tokens: 2048,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: PROMPT },
-                { type: "image_url", image_url: { url: dataUrl } },
-              ],
-            },
-          ],
-        });
+      // Retried, not just attempted once: verified against the live API that failures
+      // here are two different, both-real phenomena rather than a bug to fix once —
+      // (1) a transient network/gateway error on an otherwise reliable model, and
+      // (2) meta/llama-3.2-11b-vision-instruct genuinely not returning parseable JSON
+      // on a meaningful fraction of calls, regardless of prompt wording (tried several).
+      // A retry absorbs both without pretending either problem doesn't exist; the
+      // per-model success rate this prints across the full 20-photo set is itself real
+      // spike information about how production-viable each model is.
+      const MAX_ATTEMPTS = 3;
+      let lastError = "";
+      let succeeded = false;
 
-        const text = response.choices[0]?.message?.content;
-        if (!text) {
-          console.log("no content in response");
-          continue;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS && !succeeded; attempt++) {
+        try {
+          const response = await client.chat.completions.create({
+            model: model.id,
+            max_tokens: 2048,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: PROMPT },
+                  { type: "image_url", image_url: { url: dataUrl } },
+                ],
+              },
+            ],
+            // Deliberately no response_format / guided_json: tried both against the
+            // live API and neither reliably improved on prompted JSON for these two
+            // models — json_object mode measurably made the weaker model *less*
+            // reliable once the prompt included the full field list and an example,
+            // and nvext.guided_json didn't constrain either model at all.
+          });
+
+          const text = response.choices[0]?.message?.content;
+          if (!text) {
+            lastError = "no content in response";
+            continue;
+          }
+
+          const parsed = extractJson(text);
+          await writeFile(
+            join(OUT, `${stem}.${model.label}.json`),
+            JSON.stringify(parsed, null, 2) + "\n",
+          );
+          succeeded = true;
+        } catch (err) {
+          lastError = (err as Error).message;
         }
-
-        const parsed = extractJson(text);
-        await writeFile(
-          join(OUT, `${stem}.${model.label}.json`),
-          JSON.stringify(parsed, null, 2) + "\n",
-        );
-        console.log("ok");
-      } catch (err) {
-        console.log(`FAILED — ${(err as Error).message}`);
       }
+
+      console.log(succeeded ? "ok" : `FAILED after ${MAX_ATTEMPTS} attempts — ${lastError}`);
     }
     console.log("");
   }
