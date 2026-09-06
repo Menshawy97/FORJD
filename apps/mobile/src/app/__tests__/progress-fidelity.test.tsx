@@ -133,6 +133,24 @@ describe('Strength view, empty account', () => {
       screen.getByText(/Keep logging sessions and this card will start reporting/),
     ).toBeTruthy();
   });
+
+  // Regression test: the PR row and the muscle-split card used to vanish entirely for an
+  // account with no data, rather than showing their chrome honestly empty like every other
+  // card in this app -- found on a physical device, not by these tests, which is why this
+  // case is pinned explicitly now.
+  it('still shows the PR tile row and the muscle-split card chrome when there is no data', async () => {
+    (getProgressStrength as jest.Mock).mockResolvedValue(EMPTY_RESPONSE);
+    const screen = await render(<ProgressScreen />);
+
+    await waitFor(() => expect(getProgressStrength).toHaveBeenCalled());
+
+    expect(screen.getAllByText('PR')).toHaveLength(2);
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Muscle group split')).toBeTruthy();
+    expect(
+      screen.getByText(/Log a weighted set this month to see which muscle groups/),
+    ).toBeTruthy();
+  });
 });
 
 describe('Strength view, populated account', () => {

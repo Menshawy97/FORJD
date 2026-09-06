@@ -25,6 +25,14 @@ interface MuscleSplitProps {
 }
 
 export function MuscleSplit({ rows }: MuscleSplitProps) {
+  if (rows.length === 0) {
+    return (
+      <Text style={{ fontFamily: 'Archivo', fontSize: 13, color: '#9A9A92' }}>
+        Log a weighted set this month to see which muscle groups you are training.
+      </Text>
+    );
+  }
+
   return (
     <View>
       {rows.map((row) => (

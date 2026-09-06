@@ -126,15 +126,20 @@ function StrengthView({ data }: { data: ProgressStrengthResponse | null }) {
     data?.trainingCalendar ?? { month: todayLocalDate().slice(0, 7), days: [], daysTrained: 0 };
   const muscleSplit = data?.muscleSplit ?? [];
 
+  // Always exactly two slots, honest-empty rather than hidden -- an account with fewer than
+  // two personal records still sees the tile row's full chrome (PrTile's own docblock).
+  const prSlots: (typeof personalRecords)[number][] | null[] = [
+    personalRecords[0] ?? null,
+    personalRecords[1] ?? null,
+  ];
+
   return (
     <>
-      {personalRecords.length > 0 ? (
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {personalRecords.map((record) => (
-            <PrTile key={record.exerciseId} record={record} />
-          ))}
-        </View>
-      ) : null}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {prSlots.map((record, index) => (
+          <PrTile key={record?.exerciseId ?? `empty-${index}`} record={record} />
+        ))}
+      </View>
 
       <Card title="Estimated 1RM — 8 weeks">
         {oneRepMaxTrend.length >= 2 ? (
@@ -154,11 +159,9 @@ function StrengthView({ data }: { data: ProgressStrengthResponse | null }) {
         <TrainingCalendar data={trainingCalendar} today={todayLocalDate()} />
       </Card>
 
-      {muscleSplit.length > 0 ? (
-        <Card title="Muscle group split">
-          <MuscleSplit rows={muscleSplit} />
-        </Card>
-      ) : null}
+      <Card title="Muscle group split">
+        <MuscleSplit rows={muscleSplit} />
+      </Card>
 
       <Card title="Avg step count">
         <StepCountCard />
