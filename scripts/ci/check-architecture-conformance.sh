@@ -39,6 +39,19 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# Phase 5C / ADR-032: same rule as above, for the API side. NVIDIA's API is OpenAI-compatible,
+# so the vision extractor imports the `openai` SDK too -- pinned to the one file allowed to
+# know which vendor is behind VisionProvider, so swapping to OpenAI itself later (ADR-032's
+# deferred production decision) is a change to this file and nvidia-vision-client.ts alone.
+if [ -d apps/api/src ]; then
+  hits=$(grep -rln --include='*.ts' "['\"]openai['\"]" apps/api/src \
+    | grep -v '^apps/api/src/ai/providers/nvidia-vision.provider.ts$' \
+    | grep -v '^apps/api/src/ai/providers/nvidia-vision-client.ts$' || true)
+  if [ -n "$hits" ]; then
+    report "openai imported outside apps/api/src/ai/providers/{nvidia-vision.provider,nvidia-vision-client}.ts" "$hits"
+  fi
+fi
+
 # ADR-011: session tokens live in the platform keystore and nowhere else. Pinning the
 # module to one file is what makes that checkable — a second caller could read or write a
 # token without the reasoning in secureStorage.ts applying to it. Tests are exempt
