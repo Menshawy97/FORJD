@@ -443,4 +443,60 @@ describe('Programs (e2e)', () => {
       ).toBe(presetId);
     });
   });
+
+  describe('POST /programs', () => {
+    const create = (body: Record<string, unknown>, token = 'owner-token') =>
+      request(app.getHttpServer())
+        .post('/api/v1/programs')
+        .set('Authorization', `Bearer ${token}`)
+        .send(body);
+
+    it('requires authentication', async () => {
+      await request(app.getHttpServer()).post('/api/v1/programs').send({}).expect(401);
+    });
+
+    it('creates a program owned by the caller and returns a body matching the contract', async () => {
+      const ownerId = await userIdFor(ownerEmail);
+      const [ownTemplate] = await db
+        .insert(workoutTemplates)
+        .values({ ownerUserId: ownerId, name: `${suiteId} Builder Push Day`, activity: 'strength' })
+        .returning();
+      if (!ownTemplate) throw new Error('template insert returned no row');
+      createdTemplateIds.push(ownTemplate.id);
+      const templateId = ownTemplate.id;
+
+      const response = await create({
+        name: `${suiteId} Off-season block`,
+        durationWeeks: 6,
+        workouts: [{ templateId, dayOfWeek: 1 }],
+      }).expect(201);
+      createdProgramIds.push(response.body.id);
+
+      expect(() => programResponseSchema.parse(response.body)).not.toThrow();
+      expect(response.body.isOwn).toBe(true);
+      expect(response.body.workouts[0].dayOfWeek).toBe(1);
+    });
+
+    it('rejects an empty name and an empty workout list', async () => {
+      await create({ name: '', durationWeeks: 4, workouts: [{ templateId: randomUUID(), dayOfWeek: 0 }] }).expect(400);
+      await create({ name: 'Nothing', durationWeeks: 4, workouts: [] }).expect(400);
+    });
+
+    /** A stranger's private template must not be usable to build a program around. */
+    it('refuses a template that does not belong to and is not visible to the caller', async () => {
+      const strangerId = await userIdFor(strangerEmail);
+      const [privateTemplate] = await db
+        .insert(workoutTemplates)
+        .values({ ownerUserId: strangerId, name: `${suiteId} Not Yours`, activity: 'strength' })
+        .returning();
+      if (!privateTemplate) throw new Error('template insert returned no row');
+      createdTemplateIds.push(privateTemplate.id);
+
+      await create({
+        name: `${suiteId} Should Not Exist`,
+        durationWeeks: 4,
+        workouts: [{ templateId: privateTemplate.id, dayOfWeek: 0 }],
+      }).expect(400);
+    });
+  });
 });

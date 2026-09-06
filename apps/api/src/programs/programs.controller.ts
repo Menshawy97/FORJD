@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -11,13 +12,14 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import type {
+  CreateProgramRequest,
   ProgramEnrolResponse,
   ProgramEnrollmentResponse,
   ProgramListQuery,
   ProgramListResponse,
   ProgramResponse,
 } from "@forjd/contracts";
-import { programListQuerySchema } from "@forjd/contracts";
+import { createProgramRequestSchema, programListQuerySchema } from "@forjd/contracts";
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
@@ -40,6 +42,19 @@ export class ProgramsController {
     @Query(new ZodValidationPipe(programListQuerySchema)) query: ProgramListQuery,
   ): Promise<ProgramListResponse> {
     return this.programsService.list(request.user, query);
+  }
+
+  /**
+   * `s_programBuilder()`'s "Save Program" -- the only write into `programs` outside the seed.
+   * 201: every call that succeeds creates exactly one program, unlike `enrol`'s "maybe replaces
+   * an existing enrolment" 201.
+   */
+  @Post()
+  create(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(createProgramRequestSchema)) body: CreateProgramRequest,
+  ): Promise<ProgramResponse> {
+    return this.programsService.create(request.user, body);
   }
 
   /**

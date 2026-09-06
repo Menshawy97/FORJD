@@ -54,6 +54,7 @@ import type {
   WorkoutSessionUploadRequest,
   WorkoutStatsResponse,
   WorkoutTemplateResponse,
+  CreateProgramRequest,
   ProgramEnrolResponse,
   ProgramEnrollmentResponse,
   ProgramListQuery,
@@ -358,6 +359,12 @@ export async function enrolInProgram(id: string): Promise<ProgramEnrolResponse> 
 /** Stop Following. A 204 whether or not anything was actually being followed. */
 export async function stopFollowingProgram(): Promise<void> {
   await apiClient.delete('/programs/enrollment');
+}
+
+/** `s_programBuilder()`'s "Save Program" (Phase 3K6). Returns the created program's overview. */
+export async function createProgram(body: CreateProgramRequest): Promise<ProgramResponse> {
+  const response = await apiClient.post<ProgramResponse>('/programs', body);
+  return response.data;
 }
 
 export async function createWorkoutTemplate(

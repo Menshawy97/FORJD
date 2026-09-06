@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type {
+  CreateProgramRequest,
   ProgramEnrollment,
   ProgramEnrolResponse,
   ProgramEnrollmentResponse,
@@ -104,6 +105,28 @@ export class ProgramsService {
    */
   async stopFollowing(viewer: User): Promise<void> {
     await this.programsRepository.endActiveEnrollment(viewer.id);
+  }
+
+  /**
+   * `s_programBuilder()`'s "Save Program".
+   *
+   * **A 400, not a 404, when a template does not resolve.** `getById`'s 404 hides whether a
+   * program exists at all, which matters for a stranger's row -- but every template id here was
+   * just offered to this same caller by their own "My workouts" list, so a failure can only mean
+   * a malformed or stale request, which is what 400 means everywhere else in this API.
+   */
+  async create(viewer: User, request: CreateProgramRequest): Promise<ProgramResponse> {
+    const created = await this.programsRepository.createCustom(viewer.id, {
+      name: request.name,
+      durationWeeks: request.durationWeeks,
+      workouts: request.workouts,
+    });
+
+    if (!created) {
+      throw new BadRequestException("One or more workouts could not be found");
+    }
+
+    return this.toDetail(created);
   }
 
   /**

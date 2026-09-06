@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { SQL, and, asc, eq, isNull, sql } from "drizzle-orm";
+import { SQL, and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Activity, ProgramCategory, ProgramLevel } from "@forjd/domain";
 import type { ProgramScope } from "@forjd/contracts";
 
@@ -13,6 +13,32 @@ import {
   workoutExercises,
   workoutTemplates,
 } from "../database/schema/workouts.schema";
+
+/**
+ * A custom program's category and level. The builder screen (`s_programBuilder()`) never asks
+ * for either -- it only collects a name, a week count and a weekday assignment -- so there is no
+ * athlete choice to store here. `strength` and `beginner` are placeholders a custom program's own
+ * screens never read: the overview shows the level pill, but only the catalogue's nine presets
+ * are ever reached by a category filter, and "My programs" renders neither.
+ */
+const CUSTOM_PROGRAM_CATEGORY: ProgramCategory = "strength";
+const CUSTOM_PROGRAM_LEVEL: ProgramLevel = "beginner";
+
+/**
+ * Not `slugify` from `exercises/ingest/mappings.ts` -- that module's uniqueness disclaimer is the
+ * point: two different names can collapse to the same slug, which is exactly why
+ * `programs_preset_slug_key` is a *partial* unique index that excludes every owned program. A
+ * collision here costs nothing.
+ */
+function slugifyProgramName(name: string): string {
+  const slug = name
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "program";
+}
 
 export interface ProgramSummaryRow {
   id: string;
@@ -45,6 +71,17 @@ export interface ListProgramsFilter {
   userId: string;
   category?: ProgramCategory;
   scope: ProgramScope;
+}
+
+export interface CreateProgramWorkoutInput {
+  templateId: string;
+  dayOfWeek: number;
+}
+
+export interface CreateProgramInput {
+  name: string;
+  durationWeeks: number;
+  workouts: CreateProgramWorkoutInput[];
 }
 
 export interface ProgramEnrollmentRow {
@@ -382,5 +419,76 @@ export class ProgramsRepository {
       .returning({ id: programEnrollments.id });
 
     return rows.length > 0;
+  }
+
+  /**
+   * `s_programBuilder()`'s "Save Program" -- the design's only write into `programs` outside the
+   * seed. One transaction: the program row, then its `program_workouts`, then a read back through
+   * the same `findByIdForUser` the overview screen already uses, so the response the mobile app
+   * gets is provably the same shape it would get by reopening the program a moment later.
+   *
+   * **Returns `null` when any referenced template is not visible to this user.** The builder's own
+   * "pick" chips only ever offer `myWorkouts`, so a legitimate client never sends an id that fails
+   * this -- but the service has no other way to stop a request naming somebody else's private
+   * template, and a 404 here is the same refusal `enrol` and `getById` already give a stranger's
+   * row.
+   *
+   * **`daysPerWeek` is the count of rows actually inserted**, not the request's `workouts.length`
+   * restated: they are the same number today because the schema has no way to send a duplicate
+   * weekday, but deriving it from what was actually written is the same discipline
+   * `workoutCountSubquery` documents for reading it back.
+   */
+  async createCustom(userId: string, input: CreateProgramInput): Promise<ProgramWithWorkouts | null> {
+    const createdId = await this.db.transaction(async (tx) => {
+      const templateIds = [...new Set(input.workouts.map((workout) => workout.templateId))];
+      const visible = await tx
+        .select({ id: workoutTemplates.id })
+        .from(workoutTemplates)
+        .where(
+          and(
+            inArray(workoutTemplates.id, templateIds),
+            isNull(workoutTemplates.deletedAt),
+            sql`(${workoutTemplates.ownerUserId} is null or ${workoutTemplates.ownerUserId} = ${userId}::uuid)`,
+          ),
+        );
+
+      if (visible.length !== templateIds.length) {
+        return null;
+      }
+
+      const [created] = await tx
+        .insert(programs)
+        .values({
+          ownerUserId: userId,
+          name: input.name,
+          slug: slugifyProgramName(input.name),
+          category: CUSTOM_PROGRAM_CATEGORY,
+          level: CUSTOM_PROGRAM_LEVEL,
+          daysPerWeek: input.workouts.length,
+          durationWeeks: input.durationWeeks,
+        })
+        .returning({ id: programs.id });
+
+      if (!created) {
+        throw new Error("createCustom: insert into programs returned no row");
+      }
+
+      await tx.insert(programWorkouts).values(
+        input.workouts.map((workout, index) => ({
+          programId: created.id,
+          templateId: workout.templateId,
+          orderIndex: index,
+          dayOfWeek: workout.dayOfWeek,
+        })),
+      );
+
+      return created.id;
+    });
+
+    if (!createdId) {
+      return null;
+    }
+
+    return this.findByIdForUser(createdId, userId);
   }
 }

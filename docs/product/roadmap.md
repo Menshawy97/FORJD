@@ -248,6 +248,35 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-06
+
+**Phase 3K6 merged — Phase 3 is closed.** `POST /programs` (contracts, repository, service,
+controller, tests at every layer) plus `program-builder.tsx`. Train's header `+` now opens the
+program builder instead of `/builder`. See `phase-3k-plan.md`'s K6 section for the two decisions
+made building it (no category/level in the request; a 400, not a 404, for an unresolvable
+template).
+
+**ADR-028: real Save Image / Instagram / More on both share screens, then an Expo Go addendum.**
+Both screens capture their preview card via `react-native-view-shot` and go through one shared
+seam, `src/media/share-capture.ts`. The user had not yet enrolled in the Apple Developer Program
+(needed to sign a dev-client build for a physical iPhone) and did not want to block on that, so
+the ADR gained an addendum the same session: `react-native-view-shot` calls
+`TurboModuleRegistry.getEnforcing`, which throws the instant the module is imported if unregistered
+— true in Expo Go — so a plain top-level import would have crashed both share screens outright,
+not just on a button press. `src/media/share-capture.ts` now exports `isExpoGo()`
+(`Constants.appOwnership === AppOwnership.Expo`), and `src/media/share-card-shot.tsx` wraps a
+guarded, lazy `require('react-native-view-shot')` behind it, falling back to a plain `View` and
+the screens' own pre-ADR-028 toast-only mock in Expo Go. **Net effect: Expo Go remains a fully
+valid way to test this app, including everything in Phase 3K**, and the real export path is
+reachable only from a dev-client build whenever that gets built.
+
+**A real environment trap, found and fixed this session, worth repeating:** `apps/mobile/.env`'s
+`API_BASE_URL` had a stale LAN IP from a previous session (the dev machine's DHCP lease had
+changed). Expo Go loaded the JS bundle fine and only failed at the network boundary ("Cannot
+reach FORJD"), which reads identically to a dead API server -- check `ipconfig`'s current IPv4
+against `.env` before assuming the API itself is the problem. A changed `.env` needs Metro
+restarted, not just an in-app reload: `API_BASE_URL` is baked in at bundle time.
+
 ### Session close, 2026-09-05
 
 **Expo SDK 54 → 57** (PR #112, ADR-027). Expo Go on the test iPhone updated to 57, which makes

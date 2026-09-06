@@ -169,14 +169,14 @@ describe('navigation', () => {
     expect(mockPush).toHaveBeenCalledWith('/workout/template-1');
   });
 
-  it('offers both routes into the builder', async () => {
+  it('opens the workout builder from the My Workouts link and the program builder from the header', async () => {
     const { findByLabelText } = await render(<TrainScreen />);
 
     await fireEvent.press(await findByLabelText('New workout link'));
     expect(mockPush).toHaveBeenCalledWith('/builder');
 
-    await fireEvent.press(await findByLabelText('New workout'));
-    expect(mockPush).toHaveBeenCalledTimes(2);
+    await fireEvent.press(await findByLabelText('New program'));
+    expect(mockPush).toHaveBeenCalledWith('/program-builder');
   });
 
   it('keeps the exercise library quick action working', async () => {

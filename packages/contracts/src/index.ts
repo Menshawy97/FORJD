@@ -1424,3 +1424,33 @@ export const programEnrolResponseSchema = z.object({
   enrollment: programEnrollmentSchema,
 });
 export type ProgramEnrolResponse = z.infer<typeof programEnrolResponseSchema>;
+
+/**
+ * `POST /programs` — `s_programBuilder()`'s "Save Program" (Phase 3K6).
+ *
+ * **No `category` or `level`.** The builder screen never asks for either — it only collects a
+ * name, a week count, and which of the athlete's own workouts fall on which weekday — so there
+ * is nothing honest to validate here. The service fills both with a fixed default; a custom
+ * program has never had a "browse by category" reader; only the catalogue's nine presets do.
+ *
+ * **Each entry names a `dayOfWeek`, never `null`.** A preset's `program_workouts.day_of_week`
+ * is null because it prescribes a set of workouts, not a calendar — but the builder's whole
+ * premise is pinning workouts to weekdays, so an entry that skipped one would silently defeat
+ * the "Weekly schedule" the screen just built. A rest day is not a row at all: the builder never
+ * sends one, matching `assigned=Object.values(np.assign).filter(v=>v&&v!=='REST')`.
+ *
+ * **At least one workout, and `templateId`s are not deduplicated here.** The screen already
+ * refuses to submit with none (`if(!np.name||!assigned.length)`); the service is where a
+ * template id gets checked against the caller's own visibility, not this schema.
+ */
+export const createProgramWorkoutSchema = z.object({
+  templateId: z.string().uuid(),
+  dayOfWeek: z.number().int().min(0).max(6),
+});
+
+export const createProgramRequestSchema = z.object({
+  name: z.string().trim().min(1),
+  durationWeeks: z.number().int().min(1),
+  workouts: z.array(createProgramWorkoutSchema).min(1),
+});
+export type CreateProgramRequest = z.infer<typeof createProgramRequestSchema>;

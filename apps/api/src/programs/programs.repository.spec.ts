@@ -614,4 +614,81 @@ describe("ProgramsRepository", () => {
       expect(await repository.findActiveEnrollment(user)).not.toBeNull();
     });
   });
+
+  describe("createCustom", () => {
+    /** An athlete's own template -- the only kind `s_programBuilder()`'s pickers ever offer. */
+    const makeOwnTemplate = async (owner: string, name: string): Promise<string> => {
+      const [row] = await db
+        .insert(workoutTemplates)
+        .values({ ownerUserId: owner, name: `${marker} ${name}`, activity: "strength" })
+        .returning();
+      if (!row) throw new Error("insert did not return a row");
+      createdTemplateIds.push(row.id);
+      return row.id;
+    };
+
+    it("creates a program owned by the caller, with each workout on its requested weekday", async () => {
+      const user = await makeUser("create-basic");
+      const monday = await makeOwnTemplate(user, "Push Day");
+      const wednesday = await makeOwnTemplate(user, "Pull Day");
+
+      const created = await repository.createCustom(user, {
+        name: `${marker} Off-season block`,
+        durationWeeks: 6,
+        workouts: [
+          { templateId: monday, dayOfWeek: 1 },
+          { templateId: wednesday, dayOfWeek: 3 },
+        ],
+      });
+      if (created) createdProgramIds.push(created.id);
+
+      expect(created?.isOwn).toBe(true);
+      expect(created?.durationWeeks).toBe(6);
+      expect(created?.workouts.map((workout) => workout.dayOfWeek)).toEqual([1, 3]);
+      expect(created?.workouts.map((workout) => workout.templateId)).toEqual([monday, wednesday]);
+    });
+
+    /**
+     * The count comes from what was actually inserted, not from re-deriving it another way --
+     * the same discipline `workoutCountSubquery` documents for reading a program back.
+     */
+    it("derives daysPerWeek from the workouts actually written", async () => {
+      const user = await makeUser("create-count");
+      const template = await makeOwnTemplate(user, "Solo Day");
+
+      const created = await repository.createCustom(user, {
+        name: `${marker} One Day`,
+        durationWeeks: 4,
+        workouts: [{ templateId: template, dayOfWeek: 5 }],
+      });
+      if (created) createdProgramIds.push(created.id);
+
+      expect(created?.daysPerWeek).toBe(1);
+      expect(created?.workoutCount).toBe(1);
+    });
+
+    /**
+     * A malformed or stale request naming a template the caller cannot see -- a stranger's
+     * private workout -- creates nothing at all, rather than a half-built program.
+     */
+    it("returns null and creates nothing when a template is not visible to the caller", async () => {
+      const user = await makeUser("create-refused");
+      const stranger = await makeUser("create-refused-owner");
+      const theirs = await makeOwnTemplate(stranger, "Not Yours");
+
+      const created = await repository.createCustom(user, {
+        name: `${marker} Should Not Exist`,
+        durationWeeks: 4,
+        workouts: [{ templateId: theirs, dayOfWeek: 0 }],
+      });
+
+      expect(created).toBeNull();
+
+      const rows = await db
+        .select()
+        .from(programs)
+        .where(eq(programs.name, `${marker} Should Not Exist`));
+      expect(rows).toHaveLength(0);
+    });
+  });
 });
