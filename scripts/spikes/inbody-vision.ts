@@ -1,17 +1,62 @@
 /**
- * Spike B — InBody photo extraction via Claude vision (ADR-006).
+ * Spike B — InBody photo extraction via NVIDIA-hosted vision models (Phase 5).
  * Throwaway measurement script, not production code. Nothing here is imported
- * by the app; Phase 5 builds the real pipeline once this ADR is Accepted.
+ * by the app; Phase 5's real pipeline uses whichever model this spike shows to
+ * have real, well-calibrated confidence.
+ *
+ * ADR history: ADR-006 proposed Claude vision. ADR-014 moved the vendor to
+ * OpenAI. The user has since switched to NVIDIA's hosted API (free, but see
+ * README's terms-of-service note — development/spike use only, not for real
+ * users' health data). This script targets NVIDIA's OpenAI-compatible
+ * endpoint. See ADR-032 for the full reasoning.
+ *
+ * Runs TWO model families per photo, per the user's decision to let the
+ * numbers pick the winner rather than assume:
+ *   - a document/OCR-specialised VLM (nvidia/llama-3.1-nemotron-nano-vl-8b-v1)
+ *   - a general-purpose vision model (meta/llama-3.2-90b-vision-instruct)
  *
  * Usage: pnpm extract   (see README.md in this directory)
  */
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, extname, basename } from "node:path";
-import Anthropic from "@anthropic-ai/sdk";
+import { join, extname, basename, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import OpenAI from "openai";
 
 const SAMPLES = join(import.meta.dirname, "inbody-samples");
 const PHOTOS = join(SAMPLES, "photos");
 const OUT = join(SAMPLES, "out");
+
+// The API server's .env already holds NVIDIA_API_KEY (apps/api/.env). This
+// spike lives outside the pnpm workspace and does not otherwise see that
+// file, so it loads it directly rather than asking the user to set the key
+// a second time in a shell. A plain parse is enough — no need for `dotenv`
+// as a dependency for one file.
+const API_ENV_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "apps",
+  "api",
+  ".env",
+);
+
+async function loadApiEnv(): Promise<void> {
+  let raw: string;
+  try {
+    raw = await readFile(API_ENV_PATH, "utf8");
+  } catch {
+    return; // apps/api/.env not present — fall back to whatever is already in process.env
+  }
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const value = trimmed.slice(eq + 1).trim();
+    if (key && !(key in process.env)) process.env[key] = value;
+  }
+}
 
 const MEDIA_TYPES: Record<string, "image/jpeg" | "image/png" | "image/webp"> = {
   ".jpg": "image/jpeg",
@@ -19,6 +64,21 @@ const MEDIA_TYPES: Record<string, "image/jpeg" | "image/png" | "image/webp"> = {
   ".png": "image/png",
   ".webp": "image/webp",
 };
+
+// Nine fields, matching the design's confirm screen (s_inbodyConfirm) rather
+// than the original six-field harness — the field-count mismatch a Phase 5
+// plan found between the spike and what the app actually needs to show.
+const FIELD_NAMES = [
+  "weight_kg",
+  "skeletal_muscle_mass_kg",
+  "body_fat_mass_kg",
+  "body_fat_percent",
+  "visceral_fat_level",
+  "total_body_water_l",
+  "bmi",
+  "basal_metabolic_rate_kcal",
+  "inbody_score",
+] as const;
 
 const measuredField = {
   type: "object",
@@ -52,22 +112,8 @@ const schema = {
     test_date: { anyOf: [{ type: "string" }, { type: "null" }] },
     fields: {
       type: "object",
-      properties: {
-        weight_kg: measuredField,
-        body_fat_percent: measuredField,
-        skeletal_muscle_mass_kg: measuredField,
-        bmi: measuredField,
-        visceral_fat_level: measuredField,
-        total_body_water_l: measuredField,
-      },
-      required: [
-        "weight_kg",
-        "body_fat_percent",
-        "skeletal_muscle_mass_kg",
-        "bmi",
-        "visceral_fat_level",
-        "total_body_water_l",
-      ],
+      properties: Object.fromEntries(FIELD_NAMES.map((f) => [f, measuredField])),
+      required: [...FIELD_NAMES],
       additionalProperties: false,
     },
     image_quality_notes: {
@@ -86,11 +132,14 @@ const PROMPT = `This is a photograph of an InBody body-composition result sheet.
 
 Read these values exactly as printed:
 - Weight (kg)
-- Percent Body Fat (%)
 - Skeletal Muscle Mass (kg)
-- BMI
+- Body Fat Mass (kg)
+- Percent Body Fat (%)
 - Visceral Fat Level
 - Total Body Water (L)
+- BMI
+- Basal Metabolic Rate (kcal)
+- InBody Score
 
 Rules:
 - Transcribe only what is printed. Never infer, estimate, or compute a value from the others.
@@ -99,9 +148,29 @@ Rules:
   user's long-term progress graph, so a plausible misread must be reflected as lower
   confidence rather than hidden behind a confident-looking number.
 - Digit confusion is the specific failure that matters (e.g. 84.6 vs 34.6 vs 84.8).
-  Where a digit's identity is genuinely ambiguous, say so in reading_note.`;
+  Where a digit's identity is genuinely ambiguous, say so in reading_note.
+
+Respond with JSON matching the required schema, nothing else.`;
+
+type ModelSpec = { id: string; label: string };
+
+const MODELS: ModelSpec[] = [
+  { id: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1", label: "nemotron-vl" },
+  { id: "meta/llama-3.2-90b-vision-instruct", label: "llama-vision" },
+];
 
 async function main() {
+  await loadApiEnv();
+
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) {
+    console.error(
+      "NVIDIA_API_KEY not found. Set it in apps/api/.env (the API server's own env file — " +
+        "this script reads it directly) or export it in your shell before running.",
+    );
+    process.exit(1);
+  }
+
   await mkdir(OUT, { recursive: true });
 
   let entries: string[];
@@ -118,56 +187,72 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new Anthropic();
-  console.log(`Extracting ${photos.length} photo(s)...\n`);
-
-  for (const photo of photos) {
-    const stem = basename(photo, extname(photo));
-    process.stdout.write(`  ${photo} ... `);
-
-    const data = await readFile(join(PHOTOS, photo));
-    const response = await client.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 16000,
-      output_config: { format: { type: "json_schema", schema } },
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: MEDIA_TYPES[extname(photo).toLowerCase()],
-                data: data.toString("base64"),
-              },
-            },
-            { type: "text", text: PROMPT },
-          ],
-        },
-      ],
-    });
-
-    if (response.stop_reason === "refusal") {
-      console.log("REFUSED");
-      continue;
-    }
-
-    const text = response.content.find((b) => b.type === "text");
-    if (!text) {
-      console.log(`no text block (stop_reason: ${response.stop_reason})`);
-      continue;
-    }
-
-    await writeFile(
-      join(OUT, `${stem}.json`),
-      JSON.stringify(JSON.parse(text.text), null, 2) + "\n",
-    );
-    console.log("ok");
+  // A CLI flag lets a single model be targeted for a quick re-run:
+  //   pnpm extract -- --model=nemotron-vl
+  const modelArg = process.argv.find((a) => a.startsWith("--model="))?.split("=")[1];
+  const models = modelArg ? MODELS.filter((m) => m.label === modelArg) : MODELS;
+  if (models.length === 0) {
+    console.error(`Unknown --model. Choices: ${MODELS.map((m) => m.label).join(", ")}`);
+    process.exit(1);
   }
 
-  console.log(`\nWrote results to ${OUT}`);
-  console.log("Next: hand-label ground truth, then run `pnpm score`.");
+  const client = new OpenAI({
+    apiKey,
+    baseURL: "https://integrate.api.nvidia.com/v1",
+  });
+
+  console.log(`Extracting ${photos.length} photo(s) x ${models.length} model(s)...\n`);
+
+  for (const model of models) {
+    console.log(`== ${model.label} (${model.id}) ==`);
+    for (const photo of photos) {
+      const stem = basename(photo, extname(photo));
+      process.stdout.write(`  ${photo} ... `);
+
+      const data = await readFile(join(PHOTOS, photo));
+      const dataUrl = `data:${MEDIA_TYPES[extname(photo).toLowerCase()]};base64,${data.toString("base64")}`;
+
+      try {
+        const response = await client.chat.completions.create({
+          model: model.id,
+          max_tokens: 2048,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: PROMPT },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+          // NVIDIA's documented way to constrain NIM VLM output to a JSON
+          // schema. Preferred over response_format:{type:"json_object"},
+          // which NVIDIA's own docs say to avoid for structured extraction.
+          // nvext is NVIDIA's OpenAI-schema extension for guided JSON output, not in the
+          // openai SDK's types — the `as never` cast below covers it.
+          nvext: { guided_json: schema },
+        } as never);
+
+        const text = response.choices[0]?.message?.content;
+        if (!text) {
+          console.log("no content in response");
+          continue;
+        }
+
+        await writeFile(
+          join(OUT, `${stem}.${model.label}.json`),
+          JSON.stringify(JSON.parse(text), null, 2) + "\n",
+        );
+        console.log("ok");
+      } catch (err) {
+        console.log(`FAILED — ${(err as Error).message}`);
+      }
+    }
+    console.log("");
+  }
+
+  console.log(`Wrote results to ${OUT}`);
+  console.log("Next: hand-label ground truth in truth/, then run `pnpm score`.");
 }
 
 main();
