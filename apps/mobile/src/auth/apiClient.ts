@@ -37,6 +37,7 @@ import type {
   NutritionLogListResponse,
   PrivacySettingsResponse,
   ProfileResponse,
+  ProgressStrengthResponse,
   PublicProfileResponse,
   RegisterRequest,
   RegisterResponse,
@@ -446,6 +447,21 @@ function deviceTimeZone(): string {
  */
 export async function getWorkoutStats(): Promise<WorkoutStatsResponse> {
   const response = await apiClient.get<WorkoutStatsResponse>('/workouts/sessions/stats', {
+    params: { timeZone: deviceTimeZone() },
+  });
+  return response.data;
+}
+
+/**
+ * `GET /workouts/sessions/progress/strength` -- the Progress tab's Strength view (Phase 4):
+ * two personal records, an estimated-1RM trend, weekly volume, a training calendar, a
+ * muscle-group split, and FORJD Insight.
+ *
+ * The zone is sent for the same reason `getWorkoutStats` sends it -- every figure here is a
+ * local calendar concept, and without it the server answers in UTC.
+ */
+export async function getProgressStrength(): Promise<ProgressStrengthResponse> {
+  const response = await apiClient.get<ProgressStrengthResponse>('/workouts/sessions/progress/strength', {
     params: { timeZone: deviceTimeZone() },
   });
   return response.data;

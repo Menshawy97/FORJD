@@ -248,6 +248,33 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-06 (Phase 4)
+
+**Phase 4 (Progress — Strength) built and merged, same day Phase 3 closed.** With Phase 3
+done, the roadmap's next two rows (Phase 5 InBody, Phase 6 Health Connect) were both found to
+be externally blocked — Spike B has never run and needs the user's own hand-labelling plus an
+OpenAI key; Health Connect needs a physical Android device the user does not currently have.
+Progress-Strength was picked instead: no device, no credential, no paid service needed, and it
+is fed entirely by Phase 3's own tables.
+
+Delivers `GET /workouts/sessions/progress/strength` (recent PRs, an 8-week estimated-1RM
+trend, weekly volume, a training calendar, a muscle-group split) and the real Progress →
+Strength screen. See [`phase-4-plan.md`](phase-4-plan.md) for the full build record.
+
+**Two decisions worth knowing about if you touch this area:** the PR tiles show the athlete's
+two most-recently-achieved records headed by exercise name, not the design's literal fixed
+Bench/Squat pair; and the "AI insight" card — on **both** Home and Progress — is titled
+**"FORJD Insight"**, because its copy is rules-based (`evaluateInsight` in `@forjd/domain`),
+never an LLM call. Every claim it can make is backed by a specific published source, and two
+claims the design's own demo copy makes (a prescribed deload, an injury-risk framing from a
+volume spike) are evidence-contradicted and were deliberately left out. Full reference list in
+[ADR-030](../decisions/ADR-030-forjd-insight-rules-based-not-ai.md). The same research pass
+also produced [ADR-031](../decisions/ADR-031-readiness-score-methodology.md) for Home's
+readiness score, recorded now so Phase 6 starts from evidence rather than re-deriving it.
+
+Also tightened `estimateOneRepMaxKg`'s rep cap from 12 to 10 reps, per the 1RM-accuracy
+literature — a correctness fix to existing Phase 3 code, not new-feature scope creep.
+
 ### Session close, 2026-09-06
 
 **Phase 3K6 merged — Phase 3 is closed.** `POST /programs` (contracts, repository, service,
@@ -1816,9 +1843,9 @@ failure).
 | 1 — Foundation | 4-6 | AuthProvider/StorageProvider, users/profile, CI, flavors | **Complete** |
 | 2 — Exercise database | 7-9 | Ingest dataset, canonical model, browse/search | **Complete** — [re-planned](phase-2-plan.md); all phases (0, A-K) done, screen work complete |
 | 2.5 — Nutrition | +3 | Food database, logging, saved meals, macro goals | **Complete** — [planned](nutrition-plan.md); Phases A-J done, and Phase I (the Home entry-point card) shipped as part of the Home dashboard |
-| 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | Not started — [planned](phase-3-plan.md) |
+| 3 — Walking skeleton | 10-15 | Templates, sessions, offline-first execution | **Complete** — [planned](phase-3-plan.md); Phases A-K done, including programs (originally its own row below) |
 | Dogfood gate | 16-17 | Real training with the app | Not started |
-| 4 — Programs | 18-21 | Program/week/day, enrollment, progression | Not started |
+| 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, Claude extraction, confirmation, BullMQ | Not started |
 | 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | Not started |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | Not started |
