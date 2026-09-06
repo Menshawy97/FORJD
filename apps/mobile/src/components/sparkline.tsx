@@ -15,12 +15,22 @@ import { colors } from '@/theme/tokens';
  * **A single point draws nothing.** One session is not a trend, and the prototype's own
  * `(pts.length - 1)` divisor is a division by zero there — so the caller renders its "log a set"
  * copy instead, and this guards the case rather than emitting `NaN` into a path.
+ *
+ * **Moved here from `features/exercise/` for Phase 4**, once the Progress tab's Strength view
+ * became this component's second consumer: the exercise-detail screen's own call always drew
+ * `colors.accent`, but the prototype's `sparkline()` helper takes a colour argument, and
+ * Progress needs several -- `O` for estimated 1RM, `#8FB4C9` for steps. Every existing call
+ * site must now pass `height` explicitly (previously defaulted to 80); Progress's own calls
+ * use the prototype's `86`, and leaving the default in place would have silently drawn a
+ * differently-proportioned chart than the one being matched pixel for pixel.
  */
 interface SparklineProps {
   /** In series order, oldest first -- the direction the line is read. */
   points: readonly number[];
   width?: number;
   height?: number;
+  /** Defaults to `colors.accent`, the only colour the exercise-detail screen ever needed. */
+  color?: string;
 }
 
 /** The prototype's own `sparkline(pts, O, 300, 80, true)` call at this one call site. */
@@ -33,6 +43,7 @@ export function Sparkline({
   points,
   width = VIEWBOX_WIDTH,
   height = VIEWBOX_HEIGHT,
+  color = colors.accent,
 }: SparklineProps) {
   if (points.length < 2) return null;
 
@@ -61,12 +72,8 @@ export function Sparkline({
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none">
-        <Path
-          d={`${line} L${width} ${height} L0 ${height} Z`}
-          fill={colors.accent}
-          fillOpacity={0.1}
-        />
-        <Path d={line} fill="none" stroke={colors.accent} strokeWidth={1.8} strokeLinecap="round" />
+        <Path d={`${line} L${width} ${height} L0 ${height} Z`} fill={color} fillOpacity={0.1} />
+        <Path d={line} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
       </Svg>
     </View>
   );
