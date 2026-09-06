@@ -65,8 +65,24 @@ all green as of this phase's merge. One pre-existing, unrelated flake
 unrelated by reverting this phase's one touched line in that file and reproducing the failure
 identically; spun off separately rather than fixed here.
 
-**Device walk** (handed over, not waited on): confirm the calendar lands sessions on the day
-trained in the device's own zone, and that Body/Health read as deliberately empty.
+**Device walk: done, on a physical iPhone, same session.** Found and fixed four real bugs:
+`progress.tsx` missing `ScreenBackground` (white background, title under the status bar);
+`TrainingCalendar`'s 7-column grid overflowing and wrapping its 7th cell (percentage widths
+plus `gap` inside `flexWrap`, RN's `gap` adds to each item's width the same way CSS does);
+the PR tile row and muscle-split card vanishing entirely instead of rendering honest-empty;
+and a pre-existing, unrelated duplicate-React-key crash in `ProgramOverviewScreen`. All four
+fixed, tested, and merged. See the roadmap's "Session close, 2026-09-06 (Phase 4)" entry for
+the full account, including a mid-session API-server outage that briefly looked like a
+broken login button (it was the API process, not the code).
+
+**Evidence re-audit, same session, at the user's request.** Every equation FORJD Insight
+uses was hand-verified: the 1RM estimator, the volume-load formula, and the largest-remainder
+percentage rounding are all confirmed correct with no residual doubt. Two ADR-030 citations
+(the exact "2-10%" wording; the precise rep-count cutoff behind the 12→10 change) could not
+be confirmed against primary text this session — every primary source was paywalled — though
+independent secondary sources converge on the same figures. User reviewed and chose to keep
+the copy as-is. `insight-card.tsx`'s docblock was also corrected: it overstated that Home's
+card calls `evaluateInsight`; it does not, and only Progress's card is wired to real data.
 
 ## Follow-ups recorded for later phases
 

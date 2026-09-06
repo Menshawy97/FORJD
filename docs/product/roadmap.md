@@ -275,6 +275,43 @@ readiness score, recorded now so Phase 6 starts from evidence rather than re-der
 Also tightened `estimateOneRepMaxKg`'s rep cap from 12 to 10 reps, per the 1RM-accuracy
 literature — a correctness fix to existing Phase 3 code, not new-feature scope creep.
 
+**Device walk on a physical iPhone (same session) found four real bugs, all fixed and
+merged with [PR #117](https://github.com/Menshawy97/FORJD/pull/117):**
+
+- `progress.tsx` never wrapped its content in `ScreenBackground`, so it rendered on the OS
+  default white background with no safe-area top inset — the title overlapped the status
+  bar clock. Every screen must wrap in `ScreenBackground`; this is now the second time a
+  screen has shipped without it (worth grepping for on any new screen going forward).
+- `TrainingCalendar`'s 7-column grid combined percentage-width cells with `gap` inside a
+  `flexWrap` row. React Native's `gap` adds to each item's own width the same way CSS
+  flexbox does, so the row silently overflowed and wrapped the 7th column onto its own
+  line — visible on device as the weekday header's "S" floating alone above the dates.
+  Rebuilt as explicit rows of seven non-wrapping `flex: 1` cells.
+- The PR tile row and the muscle-split card **vanished entirely** for an account with fewer
+  than two personal records or no monthly volume, instead of showing their chrome honestly
+  empty like every other card in this app. Both now always render, following
+  `recent-pr.tsx`'s own established precedent.
+- `ProgramOverviewScreen` (`app/program/[id].tsx`, pre-existing, unrelated to this phase)
+  keyed its workouts list by `templateId` alone, which repeats — and threw a real React
+  "duplicate key" error on device — whenever a program schedules the same template on more
+  than one weekday, a shape the create-program contract explicitly permits.
+
+Also: mid-session, the API server (not Metro) had silently stopped responding, which
+surfaced as "Cannot reach FORJD" on the login screen and briefly looked like a broken login
+button. Worth checking `curl localhost:3000/api/v1/health` before assuming an auth bug when
+a network-boundary error shows up on a working screen.
+
+Re-audited every equation FORJD Insight uses at the user's explicit request: the 1RM
+estimator, volume-load formula, and largest-remainder percentage rounding are all
+hand-verified correct with no residual doubt. Two of ADR-030's citations (the exact "2-10%"
+wording, and the precise rep-count cutoff behind the 12→10 change) could not be confirmed
+against primary text — PubMed, the journal itself, ResearchGate and Academia.edu were all
+paywalled during this session — though multiple independent secondary sources converge on
+the same figures. The user reviewed this gap and chose to keep the current copy rather than
+soften it. Revisit if primary-source access ever becomes available. Also corrected
+`insight-card.tsx`'s docblock, which overstated that Home's card calls `evaluateInsight` —
+it does not; only Progress's own insight card is wired to real numbers today.
+
 ### Session close, 2026-09-06
 
 **Phase 3K6 merged — Phase 3 is closed.** `POST /programs` (contracts, repository, service,
