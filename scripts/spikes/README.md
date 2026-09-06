@@ -11,12 +11,39 @@ terms-of-service note below: development/spike use only, not for real users'
 health data. See ADR-032 for the full reasoning.
 
 **Runs two model families per photo**, so the numbers — not an assumption —
-decide which one Phase 5 builds on:
+decide which one Phase 5 builds on. Both are confirmed present in this key's
+`/v1/models` list and confirmed to respond to a real photo (verified while
+building this script — see "Known issues" below for two other model ids that
+looked right from public docs but were unavailable or unresponsive):
 
-- `nemotron-vl` (`nvidia/llama-3.1-nemotron-nano-vl-8b-v1`) — a document/OCR-
-  specialised vision-language model.
-- `llama-vision` (`meta/llama-3.2-90b-vision-instruct`) — a general-purpose
+- `llama-vision` (`meta/llama-3.2-11b-vision-instruct`) — general-purpose
   vision-language model.
+- `nemotron-omni` (`nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`) — NVIDIA's
+  omni-modal reasoning model. Not a dedicated document/OCR model — this key's
+  catalog does not currently expose one as a chat-completions endpoint
+  (`nvidia/nemotron-parse` exists but is a separate, non-chat API, out of
+  scope here) — but it is the most document-capable option this key can
+  actually reach.
+
+Structured output uses **prompted JSON with lenient parsing**, not NVIDIA's
+`nvext.guided_json` — during verification, `guided_json` did not reliably
+constrain either model's output (one returned plain prose describing an image
+even with a schema attached), so the prompt asks for JSON directly and the
+script strips an occasional markdown fence or surrounding prose before parsing.
+
+**Known issues found while verifying this script, before you run the full set:**
+- A single real photo can take anywhere from ~2 seconds to over a minute per
+  model — much slower than the sub-2-second response to a trivial test image.
+  Budget real time for 20 photos × 2 models.
+- A model occasionally fails to return valid JSON at all (refusal-shaped prose,
+  or truncated output). The script logs `FAILED` for that photo/model pair and
+  keeps going — it does not crash the whole run. `score-inbody.ts` treats a
+  missing output file as "no reading," not as a wrong answer.
+- On one real test photo, `nemotron-omni` returned the **identical value
+  (120.5) for three unrelated fields** (body fat %, total body water, BMI),
+  each at confidence 1.0 — a textbook confidently-wrong reading. This is
+  exactly the failure the confidence-calibration score below is built to
+  surface; expect more of these once you score the full set.
 
 These scripts are throwaway. No application code imports them, and this directory
 is deliberately outside the pnpm workspace.

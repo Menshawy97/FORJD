@@ -150,14 +150,40 @@ Rules:
 - Digit confusion is the specific failure that matters (e.g. 84.6 vs 34.6 vs 84.8).
   Where a digit's identity is genuinely ambiguous, say so in reading_note.
 
-Respond with JSON matching the required schema, nothing else.`;
+Respond with ONLY the JSON object below, nothing else — no markdown code fence, no
+commentary before or after it:
+
+${JSON.stringify(schema, null, 2)}`;
 
 type ModelSpec = { id: string; label: string };
 
+// Verified against this key's actual /v1/models list — the two model ids originally
+// chosen from public docs (nvidia/llama-3.1-nemotron-nano-vl-8b-v1, meta/llama-3.2-90b-
+// vision-instruct) turned out to be either unavailable to this key or unresponsive on
+// the free tier (410 / indefinite hang respectively). These two respond in 1-2 seconds.
 const MODELS: ModelSpec[] = [
-  { id: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1", label: "nemotron-vl" },
-  { id: "meta/llama-3.2-90b-vision-instruct", label: "llama-vision" },
+  { id: "meta/llama-3.2-11b-vision-instruct", label: "llama-vision" },
+  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", label: "nemotron-omni" },
 ];
+
+/**
+ * Extracts a JSON object from a model's text response. NVIDIA's `nvext.guided_json`
+ * (their documented structured-output mechanism) did not reliably constrain output on
+ * either model above during testing — one returned plain prose even with a schema
+ * attached. Prompting for JSON directly and parsing leniently works across both models
+ * regardless of structured-output support, at the cost of needing to strip an occasional
+ * markdown code fence or leading/trailing prose.
+ */
+function extractJson(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1] : text;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error("no JSON object found in response");
+  }
+  return JSON.parse(candidate.slice(start, end + 1));
+}
 
 async function main() {
   await loadApiEnv();
@@ -188,7 +214,7 @@ async function main() {
   }
 
   // A CLI flag lets a single model be targeted for a quick re-run:
-  //   pnpm extract -- --model=nemotron-vl
+  //   pnpm extract -- --model=llama-vision
   const modelArg = process.argv.find((a) => a.startsWith("--model="))?.split("=")[1];
   const models = modelArg ? MODELS.filter((m) => m.label === modelArg) : MODELS;
   if (models.length === 0) {
@@ -225,13 +251,7 @@ async function main() {
               ],
             },
           ],
-          // NVIDIA's documented way to constrain NIM VLM output to a JSON
-          // schema. Preferred over response_format:{type:"json_object"},
-          // which NVIDIA's own docs say to avoid for structured extraction.
-          // nvext is NVIDIA's OpenAI-schema extension for guided JSON output, not in the
-          // openai SDK's types — the `as never` cast below covers it.
-          nvext: { guided_json: schema },
-        } as never);
+        });
 
         const text = response.choices[0]?.message?.content;
         if (!text) {
@@ -239,9 +259,10 @@ async function main() {
           continue;
         }
 
+        const parsed = extractJson(text);
         await writeFile(
           join(OUT, `${stem}.${model.label}.json`),
-          JSON.stringify(JSON.parse(text), null, 2) + "\n",
+          JSON.stringify(parsed, null, 2) + "\n",
         );
         console.log("ok");
       } catch (err) {
