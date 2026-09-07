@@ -5,6 +5,7 @@
 
 export * from "./body-vocabulary";
 export * from "./exercise-vocabulary";
+export * from "./health-vocabulary";
 export * from "./nutrition-vocabulary";
 export * from "./workout-vocabulary";
 
