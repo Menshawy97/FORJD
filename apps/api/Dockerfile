@@ -1,10 +1,14 @@
 # syntax=docker/dockerfile:1
 #
 # Multi-stage build for @forjd/api (Cloud Run staging/production, ADR-015).
-# `pnpm fetch` populates the store from pnpm-lock.yaml alone (no package.json needed yet),
-# so the lockfile-derived layer caches even when app source changes. The final image ships
-# only @forjd/api's production dependency tree via `pnpm deploy --prod`, not the whole
-# monorepo workspace (apps/mobile's React Native deps never reach the runtime image).
+# `pnpm fetch` populates the store from pnpm-lock.yaml and pnpm-workspace.yaml alone (no
+# package.json needed yet), so this layer caches even when app source changes. Both files are
+# copied -- not just the lockfile -- because pnpm-workspace.yaml carries the `allowBuilds`
+# approvals (esbuild, for drizzle-kit's postinstall) that `pnpm fetch` needs; without it pnpm
+# 11 refuses to fetch at all (ERR_PNPM_IGNORED_BUILDS) instead of silently skipping the
+# scripts. The final image ships only @forjd/api's production dependency tree via
+# `pnpm deploy --prod`, not the whole monorepo workspace (apps/mobile's React Native deps
+# never reach the runtime image).
 
 FROM node:22-slim AS base
 ENV PNPM_HOME="/pnpm"
@@ -13,7 +17,7 @@ RUN corepack enable
 
 FROM base AS fetch
 WORKDIR /workspace
-COPY pnpm-lock.yaml ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm fetch
 
 FROM fetch AS build
