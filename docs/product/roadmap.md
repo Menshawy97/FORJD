@@ -248,6 +248,69 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-07 (post-Phase-5: golden fixtures + deploy pipeline fixed)
+
+**Three PRs merged, then a live GCP infrastructure gap found and fixed with the user.**
+
+- **PR #122 — golden-fixture tests for the InBody extraction prompt and parser (CLAUDE.md
+  rule 8).** The prompt grew from 9 to 14 fields during the Phase 5 device walk (PR #119) with
+  nothing pinning it. `NvidiaVisionProvider`'s prompt-building and response-parsing logic were
+  extracted into vendor-agnostic `inbody-extraction-prompt.ts` / `inbody-response-parser.ts`,
+  so the eventual OpenAI production provider (ADR-032's deferred decision) reuses both instead
+  of copying them. `tests/fixtures/inbody/extraction-prompt.golden.txt` is generated and
+  diff-gated in CI, the same idiom `packages/contracts/fixtures` already uses.
+  `tests/fixtures/inbody/responses/` pins the parser against real recorded Spike B responses
+  (including two real extraction errors: a value copied into the wrong field, and a null
+  confidence) plus a hand-authored 14-field case, since no real recording covers segmental yet
+  — see that directory's README for full provenance. `nvidia-vision.provider.ts` (previously
+  the conspicuous gap among Phase 5's services) is now in the 100%-coverage list alongside the
+  two new files. Three stale docs corrected to describe what actually ships (no live
+  vision-model call ever reaches CI, per ADR-032): `health-data.md`, ADR-006,
+  `scripts/spikes/README.md`.
+- **PR #121 — the "Deploy API to Cloud Run" workflow's `ERR_PNPM_IGNORED_BUILDS` failure**,
+  red since at least 2026-09-06. `apps/api/Dockerfile`'s `fetch` stage copied only
+  `pnpm-lock.yaml`, so `pnpm fetch` inside the image never saw `pnpm-workspace.yaml`'s
+  `allowBuilds` approvals and pnpm 11 refused to fetch. Fix: copy both files into that stage.
+  (A same-PR attempt to also pin `packageManager` in root `package.json` broke
+  `pnpm/action-setup@v4` — "Multiple versions of pnpm specified" — and was reverted in a
+  follow-up commit before merge; ci.yml's own `version: 11` input is sufficient.)
+- **PR #123 — the deploy still crashed, one step further in.** With #121's fix landing, the
+  workflow reached `gcloud run deploy` for the first time since Phase 5 added the AI module —
+  and the container failed to bind its port, because `nvidia-vision-client.ts`'s client
+  provider calls `ConfigService.getOrThrow("NVIDIA_API_KEY")` inside a `useFactory`, which
+  NestJS runs at module init. `deploy-api.yml`'s `--set-secrets` had never been updated to
+  include it. Fixed by adding `NVIDIA_API_KEY=forjd-${TARGET}-nvidia-api-key:latest` to the
+  flag, with a comment recording ADR-032's constraint that this must stay staging-only
+  infrastructure, never production, until that ADR is revisited.
+- **The actual GCP secret and IAM grant did not exist and had to be created live, with the
+  user, in Cloud Shell** (I cannot execute privileged IAM/Secret Manager writes myself). Two
+  commands, run by the user:
+  ```bash
+  printf '%s' "<the NVIDIA_API_KEY value>" | gcloud secrets create forjd-staging-nvidia-api-key \
+    --data-file=- --project=forjd-506508
+  gcloud secrets add-iam-policy-binding forjd-staging-nvidia-api-key \
+    --member="serviceAccount:772363715082-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor" --project=forjd-506508
+  ```
+  A first read of the failure (`Permission denied on secret...`) looked like a missing IAM
+  grant on an existing secret; `gcloud secrets add-iam-policy-binding` returning **404 secret
+  not found** corrected that — Cloud Run's "permission denied" wording doesn't distinguish
+  "exists, no access" from "doesn't exist," by design (avoids leaking resource existence to an
+  unauthorized caller). Worth remembering next time a Cloud Run secret error looks like a pure
+  IAM problem: verify existence first, don't assume the permission-denied wording is literal.
+
+**Verified live, not just green:** a manual `gh workflow run deploy-api.yml -f target=staging`
+after the grant completed all 15 steps successfully, and
+`curl https://forjd-api-staging-772363715082.us-central1.run.app/api/v1/health` returned
+`{"status":"ok","database":"up"}`.
+
+**Production note, not addressed this session:** the equivalent `forjd-production-*` secrets
+almost certainly don't exist yet either — this session only provisioned staging. Confirm before
+ever running `workflow_dispatch` with `target=production`.
+
+Read this section first when resuming — it says exactly what's done and what to do next.
+Don't re-derive this from scratch; verify it's still accurate and continue.
+
 ### Session close, 2026-09-07 (Phase 5 device walk — PRs #119, #120)
 
 **A real device walk on the physical iPhone, same day Phase 5 merged, found and fixed real
