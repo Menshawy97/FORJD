@@ -1,0 +1,52 @@
+{
+  "inbody_model": "570",
+  "test_date": "2026-01-15",
+  "fields": {
+    "weight_kg": {
+      "value": 54.43,
+      "confidence": 0.99,
+      "reading_note": "sheet printed 120.5 lb, converted to kg"
+    },
+    "skeletal_muscle_mass_kg": {
+      "value": 22.58,
+      "confidence": 0.62,
+      "reading_note": "sheet printed 49.8 lb, converted to kg"
+    },
+    "body_fat_mass_kg": {
+      "value": 13.22,
+      "confidence": 0.85,
+      "reading_note": "sheet printed 29.2 lb, converted to kg"
+    },
+    "body_fat_percent": {
+      "value": 24.2,
+      "confidence": 0.97,
+      "reading_note": ""
+    },
+    "visceral_fat_level": {
+      "value": null,
+      "confidence": 0,
+      "reading_note": "value not visible"
+    },
+    "total_body_water_l": {
+      "value": 30.25,
+      "confidence": 0.9,
+      "reading_note": ""
+    },
+    "bmi": {
+      "value": 24,
+      "confidence": 0.55,
+      "reading_note": ""
+    },
+    "basal_metabolic_rate_kcal": {
+      "value": 1265,
+      "confidence": 0.93,
+      "reading_note": ""
+    },
+    "inbody_score": {
+      "value": null,
+      "confidence": 0,
+      "reading_note": "value not visible"
+    }
+  },
+  "image_quality_notes": ""
+}

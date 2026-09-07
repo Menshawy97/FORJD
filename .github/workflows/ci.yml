@@ -142,6 +142,15 @@ jobs:
 
       - run: git diff --exit-code apps/api/src/exercises/ingest/data/normalized-exercises.json
 
+      # Same gate again, for the InBody vision-extraction prompt (CLAUDE.md rule 8, ADR-032).
+      # Regenerating the golden prompt must be a no-op. When it is not, buildInBodyExtractionPrompt()
+      # changed and the committed golden file is stale -- the diff is the review, since a
+      # rephrasing here is a real behaviour change against a live vision model (see ADR-032's
+      # own account of how much this exact wording mattered).
+      - run: pnpm --filter @forjd/api prompt:golden
+
+      - run: git diff --exit-code tests/fixtures/inbody
+
       # The Postgres service container starts empty. users.repository.spec.ts and the
       # e2e suite both need the real schema, not just a reachable server.
       - run: pnpm --filter @forjd/api db:migrate

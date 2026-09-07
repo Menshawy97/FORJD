@@ -1,0 +1,112 @@
+This is a photograph of an InBody body-composition result sheet. InBody
+machines print weight-related fields (Weight, Skeletal Muscle Mass, Body Fat Mass) in
+either kg OR lb depending on the machine's configured unit — never assume which.
+
+Read these values, converting to the units below if the sheet prints a different unit:
+- Weight (kg) — if the sheet shows lb, multiply by 0.45359237 to get kg.
+- Skeletal Muscle Mass (kg) — same lb-to-kg conversion if needed.
+- Body Fat Mass (kg) — same lb-to-kg conversion if needed.
+- Percent Body Fat (%)
+- Visceral Fat Level
+- Total Body Water (L)
+- BMI
+- Basal Metabolic Rate (kcal)
+- InBody Score
+
+Also read the "Segmental Lean Analysis" section (five body parts, always in kg,
+same lb-to-kg conversion rule if the sheet prints lb there):
+- Right arm, Left arm, Trunk, Right leg, Left leg
+
+Rules:
+- Transcribe only what is printed. Never compute or infer a value from the others.
+- If a field is not on this sheet or you cannot read it, set value to null.
+- If you converted a value from lb to kg, say so in reading_note.
+- Never report an lb number as if it were kg.
+- A conversion is not a reason for value to be null. If the sheet printed lb, you can
+  read the number, and you know the conversion factor: multiply it out and report the
+  resulting kg number as value. Only use null when you cannot read the printed number at
+  all — never as a way to avoid doing the multiplication.
+- Set confidence honestly, per field.
+
+Respond with ONLY a JSON object shaped exactly like this example, nothing else.
+Every number in this example is fake filler from an unrelated sheet:
+
+{
+  "inbody_model": "570",
+  "test_date": "2026-01-15",
+  "fields": {
+    "weight_kg": {
+      "value": 10,
+      "confidence": 0.99,
+      "reading_note": ""
+    },
+    "skeletal_muscle_mass_kg": {
+      "value": 17.3,
+      "confidence": 0.62,
+      "reading_note": ""
+    },
+    "body_fat_mass_kg": {
+      "value": 24.6,
+      "confidence": 0.85,
+      "reading_note": ""
+    },
+    "body_fat_percent": {
+      "value": 31.9,
+      "confidence": 0.97,
+      "reading_note": ""
+    },
+    "visceral_fat_level": {
+      "value": 39.2,
+      "confidence": 0.71,
+      "reading_note": ""
+    },
+    "total_body_water_l": {
+      "value": 46.5,
+      "confidence": 0.9,
+      "reading_note": ""
+    },
+    "bmi": {
+      "value": 53.8,
+      "confidence": 0.55,
+      "reading_note": ""
+    },
+    "basal_metabolic_rate_kcal": {
+      "value": 61.1,
+      "confidence": 0.93,
+      "reading_note": ""
+    },
+    "inbody_score": {
+      "value": 68.4,
+      "confidence": 0.8,
+      "reading_note": ""
+    }
+  },
+  "segmental": {
+    "right_arm": {
+      "value": 3,
+      "confidence": 0.9,
+      "reading_note": ""
+    },
+    "left_arm": {
+      "value": 9.1,
+      "confidence": 0.88,
+      "reading_note": ""
+    },
+    "trunk": {
+      "value": 15.2,
+      "confidence": 0.95,
+      "reading_note": ""
+    },
+    "right_leg": {
+      "value": 21.299999999999997,
+      "confidence": 0.86,
+      "reading_note": ""
+    },
+    "left_leg": {
+      "value": 27.4,
+      "confidence": 0.83,
+      "reading_note": ""
+    }
+  },
+  "image_quality_notes": ""
+}

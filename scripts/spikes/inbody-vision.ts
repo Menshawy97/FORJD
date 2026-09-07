@@ -260,6 +260,12 @@ async function main() {
             continue;
           }
 
+          // Raw text preserved alongside the parsed JSON so a future fixture set (e.g. once
+          // the production vendor switches away from NVIDIA) can pin the parser against the
+          // exact bytes a model returned, fence/prose wrapper included -- this out/ set
+          // predates that need and only has the already-parsed object.
+          await writeFile(join(OUT, `${stem}.${model.label}.raw.txt`), text);
+
           const parsed = extractJson(text);
           await writeFile(
             join(OUT, `${stem}.${model.label}.json`),

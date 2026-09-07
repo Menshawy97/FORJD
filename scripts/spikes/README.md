@@ -77,8 +77,10 @@ scripts/spikes/inbody-samples/
 ```
 
 `inbody-samples/` is gitignored — **real InBody sheets are personal health data
-and must never be committed.** Only anonymized golden fixtures reach the repo, in
-`tests/fixtures/inbody/`, once this spike concludes.
+and must never be committed.** `tests/fixtures/inbody/` carries the anonymized fixtures that
+do reach the repo: a generated prompt golden file plus real recorded model response text and
+its expected parsed output — never a report image, and never a live vision-model call in CI
+(ADR-032). See that directory's README for provenance.
 
 Collect **10-15 photos**, deliberately varied: different InBody models (270/570/770),
 good and bad lighting, straight-on and angled, glare, and partial crops. A clean
