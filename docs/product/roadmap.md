@@ -248,6 +248,53 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-07 (Phase 5 device walk — PRs #119, #120)
+
+**A real device walk on the physical iPhone, same day Phase 5 merged, found and fixed real
+gaps** — the standing rule that a green CI build is not the same as a working feature held
+again. In order:
+
+- **The API server the phone was talking to was running stale, pre-merge code** twice in this
+  walk (once right after the Phase 5 merge, once again after the confirm-screen rework) —
+  a NestJS process doesn't hot-reload the way Metro does, so every merge to `main` that
+  touches `apps/api` needs the running server process restarted, not just the branch pulled.
+  Symptom was a `404` on a route that definitely exists in the merged code; `curl .../health`
+  looking fine is not enough to rule this out — check the actual new route.
+- **The confirm screen and the Progress Body tab's segmental section were both built against
+  an incomplete view of the design.** Two real screenshots (`confirm-inbody.png`,
+  `confirm-inbody2.png`) existed in `FORJD mobile app design/screenshots/` and were missed
+  when Phase 5 was first built — the exact failure the project's design-fidelity standard
+  warns about (never conclude an asset doesn't exist without checking hard). Rebuilt to match:
+  the extraction banner, an editable scan date/time section (previously silently used upload
+  time instead), the "Extracted values" label, segmental lean analysis as five more editable
+  fields, and "Confirm & Save" / "Retake Photo" buttons. This required widening every layer
+  that only knew about the nine `BODY_METRICS` fields — `VisionProvider` now also extracts
+  the five segmental sites, contracts accept a segmental site as a measurement `metric`
+  alongside a `BodyMetric` (stored the same way; `body_measurements.metric` was already free
+  text, no migration needed), and the AI prompt reuses the same anti-anchoring technique
+  (varied example confidences) already proven for the original nine fields. PR #119.
+- **The keyboard covered the lower confirm-screen fields** with no way to scroll them into
+  view — fixed with `automaticallyAdjustKeyboardInsets` + `keyboardShouldPersistTaps="handled"`,
+  the same fix `edit-profile.tsx`/`edit-meal.tsx` already use. PR #119.
+- **The Body tab's widget picker (`progress body change widget.png`) was the one remaining
+  documented scope trim from ADR-032 and is now built** — tapping either headline tile opens
+  the design's own "Choose widget" bottom sheet (Weight / Body fat / Muscle mass / Visceral
+  fat / BMI), matching the prototype's `widgetCatalogs().body` catalog exactly. Session-only
+  state, matching the prototype's own lack of persistence for this preference. PR #120.
+- **The segmental section was hiding entirely for a new account instead of showing an
+  honest-empty message** — the same "show the chrome, explain what's missing" rule every
+  other empty state in this app already follows (PR tiles, muscle split). Fixed alongside
+  the widget picker in PR #120.
+
+**Confirmed working end-to-end on the physical device** after these fixes: capture → extract
+(real NVIDIA call) → confirm (with editable date/time and segmental fields) → visible on the
+Body tab with real percentage bars and a working widget picker.
+
+**Still open, unchanged from the original Phase 5 close below:** Spike B's full 20-photo
+label/score pass was not finished this session either; the production AI vendor is still
+undecided (NVIDIA remains development-only per ADR-032); no golden-fixture regression tests
+exist yet for the extraction prompt now that it covers 14 fields instead of 9.
+
 ### Session close, 2026-09-07 (Phase 5)
 
 **Phase 5 (InBody) built and merged, immediately after Phase 4.** The user obtained a free
