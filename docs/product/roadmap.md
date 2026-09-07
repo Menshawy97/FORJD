@@ -308,6 +308,50 @@ after the grant completed all 15 steps successfully, and
 almost certainly don't exist yet either — this session only provisioned staging. Confirm before
 ever running `workflow_dispatch` with `target=production`.
 
+**Phase 6 (Health Connect + analytics) started, slices 6A-6C merged.** Plan written first at
+[`phase-6-plan.md`](phase-6-plan.md), including two decisions the phase owns before 6E starts
+(the Health Connect RN library is unresolved, and aggregation strategy is deferred to the
+dashboards). 6A (PR #124): `packages/domain/src/health-vocabulary.ts` — `HEALTH_METRIC_TYPES`
+(the doc's own nine plus four sleep-stage types ADR-031 requires), `HEALTH_SOURCES`, the
+`HealthObservation` interface, and `resolveByPriority()` implementing the read-time
+reconciliation policy as data. 6B (PR #125): migration `0015` — `health_observations` /
+`health_connections`, with a partial unique index proven (against real Postgres, including the
+`targetWhere` an `ON CONFLICT` upsert needs to actually use it) to support idempotent
+re-ingestion. 6C (PR #126): the wire contracts — batch ingest request, series response,
+connection response — following the "nothing the server already owns is client-supplied"
+precedent. **6D (the API module) is not started.** Still fully documented, 0% implemented
+before this session; now ~40% through the planned slices.
+
+**A process slip worth noting for next time:** 6C's and the OpenAI-switch work were both
+started directly on an unrelated unmerged branch's checkout rather than a fresh branch off
+`main`, twice, caught before committing both times via `git status` showing files the branch
+shouldn't own. `git stash` + `checkout main` + new branch + `stash pop` recovered cleanly each
+time with no lost work, but the fix should be to explicitly `git checkout main` (or confirm
+which branch a session is on) before starting a slice that was scoped as independent, not to
+rely on catching it after the fact.
+
+**The user changed ADR-032's deferred vendor decision mid-session (PR #127, ADR-033): InBody
+extraction now runs on OpenAI (`gpt-4o-mini`), not NVIDIA, in production.** `AiModule` binds
+`VISION_PROVIDER` to a new `OpenAiVisionProvider` that reuses the same vendor-agnostic prompt
+and parser NVIDIA's provider uses — exactly the payoff ADR-032 predicted for pulling those two
+files out during the golden-fixtures work earlier this same session. `NvidiaVisionProvider`
+is untouched and still available as a development-only option. Model choice was constrained by
+an unreliable automated pricing lookup (some fetched OpenAI pricing-page summaries returned
+model names — `gpt-6-astra`, `gpt-5.6-sol/terra/luna` — that could not be corroborated
+anywhere else and read as fabricated by the fetch tool's own summarization step); `gpt-4o-mini`
+was the one option multiple independent sources actually agreed was real, current, and
+vision-capable, so it was chosen over an unverifiable "maybe cheaper" alternative. See ADR-033
+for the full account, including the two follow-ups only the user can complete:
+
+1. **The OpenAI account has no billing credits.** A real live smoke-test call (one request,
+   confirmed the integration itself is correct) failed on `insufficient_quota` /
+   `credit_balance_exhausted`. Add credits at
+   `platform.openai.com/settings/organization/billing` before this can do real work.
+2. **`forjd-staging-openai-api-key` does not exist in GCP Secret Manager yet.** Same two-command
+   pattern as the NVIDIA secret earlier this session, substituting the secret name. Until it
+   exists, the next deploy fails cleanly on "secret not found" (not a container-startup
+   timeout — that failure mode is what PR #123 fixed, and the fix generalizes).
+
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
@@ -2041,7 +2085,7 @@ failure).
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
-| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | Not started |
+| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6C (vocabulary, schema, contracts) done, 6D (API) not started, 6E-6F device-gated |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | Not started |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
 | Limited Android beta | 35 | 12+ testers | Not started |
