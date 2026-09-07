@@ -9,6 +9,8 @@ import {
   EXERCISE_MEASURES,
   FOOD_CATEGORIES,
   FORCES,
+  HEALTH_METRIC_TYPES,
+  HEALTH_SOURCES,
   LEVELS,
   MEAL_SLOTS,
   MECHANICS,
@@ -1714,3 +1716,89 @@ export const bodyScanSeriesResponseSchema = z.object({
   series: z.array(bodyMetricSeriesSchema),
 });
 export type BodyScanSeriesResponse = z.infer<typeof bodyScanSeriesResponseSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Health (Phase 6). @forjd/domain's HEALTH_METRIC_TYPES / HEALTH_SOURCES tuples are the source
+// of truth for the closed sets; this file only needs a z.enum(...) here to stay in sync, same
+// pattern as Body/Workouts above.
+// ---------------------------------------------------------------------------------------------
+
+export const healthMetricTypeSchema = z.enum(HEALTH_METRIC_TYPES);
+export const healthSourceSchema = z.enum(HEALTH_SOURCES);
+
+/**
+ * One observation to ingest, sent to `POST /health-data/observations`. Deliberately does
+ * NOT accept `id`, `userId`, or `createdAt` -- the server owns all three (the athlete
+ * authenticated by JWT is always the owner, and a client-supplied id/createdAt would be a
+ * forgeable claim about who recorded the reading and when), the same division
+ * `createExerciseRequestSchema` draws around fields the server already owns elsewhere in
+ * this file. `value`/`unit` arrive already normalized to @forjd/domain's canonical unit --
+ * that conversion is the provider adapter's job (ADR-003/ADR-004), not this contract's.
+ */
+export const ingestHealthObservationSchema = z.object({
+  metricType: healthMetricTypeSchema,
+  value: z.number(),
+  unit: z.string().min(1),
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime(),
+  source: healthSourceSchema,
+  providerRecordId: z.string().nullable().optional(),
+  deviceId: z.string().nullable().optional(),
+  quality: z.number().min(0).max(1).nullable().optional(),
+});
+export type IngestHealthObservation = z.infer<typeof ingestHealthObservationSchema>;
+
+/** Request body for `POST /health-data/observations` -- one sync batch from a provider
+ *  adapter. A batch, not one-observation-per-request, because a single Health Connect sync
+ *  call routinely returns many readings and per-observation round trips would not scale. */
+export const batchIngestHealthObservationsRequestSchema = z.object({
+  observations: z.array(ingestHealthObservationSchema).min(1),
+});
+export type BatchIngestHealthObservationsRequest = z.infer<typeof batchIngestHealthObservationsRequestSchema>;
+
+/** One observation as returned to a client -- the source-priority-resolved winner for its
+ *  metric type and time window, per health-data.md's read-time reconciliation policy.
+ *  Internal bookkeeping fields (providerRecordId, deviceId, quality, the row's own id) are
+ *  deliberately omitted; nothing in the mobile UI needs them today (YAGNI), and omitting
+ *  them keeps this response shape independent of exactly which provider won. */
+export const healthObservationResponseSchema = z.object({
+  metricType: healthMetricTypeSchema,
+  value: z.number(),
+  unit: z.string(),
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime(),
+  source: healthSourceSchema,
+});
+export type HealthObservationResponse = z.infer<typeof healthObservationResponseSchema>;
+
+export const healthMetricSeriesPointSchema = z.object({
+  startTime: z.string().datetime(),
+  value: z.number(),
+});
+export const healthMetricSeriesSchema = z.object({
+  metricType: healthMetricTypeSchema,
+  unit: z.string(),
+  points: z.array(healthMetricSeriesPointSchema),
+});
+export type HealthMetricSeries = z.infer<typeof healthMetricSeriesSchema>;
+
+/** Response for `GET /health-data/observations/series`. One entry per metric type that has
+ *  at least one observation in range -- an unmeasured metric is simply absent, not an empty
+ *  array, mirroring `bodyScanSeriesResponseSchema`'s "never measured" vs "measured but
+ *  flat" distinction. */
+export const healthObservationSeriesResponseSchema = z.object({
+  series: z.array(healthMetricSeriesSchema),
+});
+export type HealthObservationSeriesResponse = z.infer<typeof healthObservationSeriesResponseSchema>;
+
+/** One provider connection's state, as returned by `GET /health-data/connections`. */
+export const healthConnectionResponseSchema = z.object({
+  source: healthSourceSchema,
+  lastSuccessfulSyncAt: z.string().datetime().nullable(),
+});
+export type HealthConnectionResponse = z.infer<typeof healthConnectionResponseSchema>;
+
+export const healthConnectionListResponseSchema = z.object({
+  connections: z.array(healthConnectionResponseSchema),
+});
+export type HealthConnectionListResponse = z.infer<typeof healthConnectionListResponseSchema>;

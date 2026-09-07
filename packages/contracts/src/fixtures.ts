@@ -25,6 +25,8 @@ import {
   workoutTemplateListResponseSchema,
   workoutTemplateResponseSchema,
   progressStrengthResponseSchema,
+  healthObservationSeriesResponseSchema,
+  healthConnectionListResponseSchema,
 } from './index';
 
 /**
@@ -767,6 +769,44 @@ export const responseFixtures = {
         headline: 'Training volume up 14% this week.',
         body: 'Total load moved with it. Gains track weekly volume, though the returns taper as it climbs.',
       },
+    },
+  },
+
+  /**
+   * Phase 6's observation series -- one entry for a measured metric (HRV, two points) and
+   * one for a metric type with a connection but zero readings yet (steps, empty points),
+   * pinning the "absent metric vs. measured-but-empty" distinction the schema's own
+   * docblock describes.
+   */
+  'health-observation-series-response': {
+    schema: healthObservationSeriesResponseSchema,
+    sample: {
+      series: [
+        {
+          metricType: 'hrv',
+          unit: 'ms',
+          points: [
+            { startTime: '2026-09-06T04:00:00.000Z', value: 58 },
+            { startTime: '2026-09-07T04:00:00.000Z', value: 62 },
+          ],
+        },
+        {
+          metricType: 'steps',
+          unit: 'steps',
+          points: [],
+        },
+      ],
+    },
+  },
+
+  /** One provider connected (with a sync history), one connected but never yet synced. */
+  'health-connection-list-response': {
+    schema: healthConnectionListResponseSchema,
+    sample: {
+      connections: [
+        { source: 'health_connect', lastSuccessfulSyncAt: '2026-09-07T06:15:00.000Z' },
+        { source: 'whoop', lastSuccessfulSyncAt: null },
+      ],
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;
