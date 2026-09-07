@@ -77,12 +77,16 @@ jobs:
       # fake value is correct here, not a workaround for a real credential.
       SUPABASE_URL: https://ci-placeholder.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
-      # Same reasoning as the two Supabase values above, for AiModule's NVIDIA client
-      # (Phase 5, ADR-032): nvidia-vision-client.ts's factory calls config.getOrThrow at
-      # module construction, so it runs even in body.e2e-spec.ts, which overrides
-      # VISION_PROVIDER itself but not the separate NVIDIA_VISION_CLIENT provider the
-      # module tree still eagerly instantiates. No network call happens at construction,
-      # and no test invokes this client, so a well-formed but fake value is correct here.
+      # Same reasoning as the two Supabase values above, for AiModule's vision client
+      # (Phase 5, ADR-032/ADR-033): the client provider's factory calls config.getOrThrow
+      # at module construction, so it runs even in body.e2e-spec.ts, which overrides
+      # VISION_PROVIDER itself but not the separate *_VISION_CLIENT provider the module
+      # tree still eagerly instantiates. No network call happens at construction, and no
+      # test invokes this client, so a well-formed but fake value is correct here.
+      # OPENAI_API_KEY is what AiModule actually needs to boot (ADR-033, production
+      # vendor); NVIDIA_API_KEY is kept for nvidia-vision.provider.ts, still present as a
+      # development-only option even though it is no longer the default binding.
+      OPENAI_API_KEY: ci-placeholder-openai-key
       NVIDIA_API_KEY: ci-placeholder-nvidia-key
 
     steps:
