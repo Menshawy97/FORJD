@@ -1,12 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import type { BodyMetric } from "@forjd/domain";
+import type { BodyMetric, SegmentalSite } from "@forjd/domain";
 
 import { Database, DRIZZLE } from "../database/database.module";
 import { bodyMeasurements, bodyScans } from "../database/schema/body.schema";
 
 export interface NewMeasurementInput {
-  metric: BodyMetric;
+  metric: BodyMetric | SegmentalSite;
   value: number;
   unit: string;
   confidence: number;

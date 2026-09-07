@@ -38,6 +38,14 @@ const FIXTURE_FIELDS = {
   inbody_score: { value: 79, confidence: 0.93, readingNote: "" },
 };
 
+const FIXTURE_SEGMENTAL = {
+  right_arm: { value: 3.62, confidence: 0.86, readingNote: "" },
+  left_arm: { value: 3.55, confidence: 0.85, readingNote: "" },
+  trunk: { value: 31.4, confidence: 0.92, readingNote: "" },
+  right_leg: { value: 10.28, confidence: 0.86, readingNote: "" },
+  left_leg: { value: 10.11, confidence: 0.84, readingNote: "" },
+};
+
 /**
  * The full InBody path over real HTTP: extract -> confirm -> read back -> series. Unit
  * suites already cover each layer's own logic in isolation (nvidia-vision.provider.spec.ts,
@@ -82,6 +90,7 @@ describe("Body scans (e2e)", () => {
           inbodyModel: "570",
           testDate: "2026-01-15",
           fields: FIXTURE_FIELDS,
+          segmental: FIXTURE_SEGMENTAL,
           imageQualityNotes: "Clear",
         }),
       })

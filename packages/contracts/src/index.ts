@@ -1626,15 +1626,25 @@ export const extractBodyScanResponseSchema = z.object({
       typeof extractedMeasurementSchema
     >,
   ),
+  /** The confirm screen's "Segmental lean analysis" section -- always kg, no confidence
+   *  bar shown in the UI, but the extraction confidence still governs pre-fill. */
+  segmental: z.object(
+    Object.fromEntries(SEGMENTAL_SITES.map((site) => [site, extractedMeasurementSchema])) as Record<
+      (typeof SEGMENTAL_SITES)[number],
+      typeof extractedMeasurementSchema
+    >,
+  ),
   imageQualityNotes: z.string(),
 });
 export type ExtractBodyScanResponse = z.infer<typeof extractBodyScanResponseSchema>;
 
 /** One field the user has confirmed, sent to `POST /body-scans`. `value` is required here
  *  (unlike `extractedMeasurementSchema`) -- a field the user left blank is simply absent
- *  from this array, never sent as a confirmed null. */
+ *  from this array, never sent as a confirmed null. `metric` accepts either a BODY_METRICS
+ *  entry or a segmental site -- both are stored the same way (`body_measurements.metric` is
+ *  free text), so the wire shape does not need two parallel arrays. */
 export const confirmedMeasurementSchema = z.object({
-  metric: bodyMetricSchema,
+  metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
   value: z.number(),
   unit: z.string(),
   confidence: z.number().min(0).max(1),
@@ -1654,7 +1664,7 @@ export const confirmBodyScanRequestSchema = z.object({
 export type ConfirmBodyScanRequest = z.infer<typeof confirmBodyScanRequestSchema>;
 
 export const bodyMeasurementResponseSchema = z.object({
-  metric: bodyMetricSchema,
+  metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
   value: z.number(),
   unit: z.string(),
   confidence: z.number(),
@@ -1691,7 +1701,7 @@ export const bodyMetricSeriesPointSchema = z.object({
   value: z.number(),
 });
 export const bodyMetricSeriesSchema = z.object({
-  metric: bodyMetricSchema,
+  metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
   unit: z.string(),
   points: z.array(bodyMetricSeriesPointSchema),
 });

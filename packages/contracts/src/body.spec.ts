@@ -1,5 +1,6 @@
 import {
   bodyMetricSchema,
+  segmentalSiteSchema,
   extractBodyScanResponseSchema,
   confirmBodyScanRequestSchema,
   bodyScanResponseSchema,
@@ -19,6 +20,12 @@ const NINE_METRICS = [
   "inbody_score",
 ] as const;
 
+const FIVE_SEGMENTAL_SITES = ["right_arm", "left_arm", "trunk", "right_leg", "left_leg"] as const;
+
+const emptySegmental = Object.fromEntries(
+  FIVE_SEGMENTAL_SITES.map((s) => [s, { value: null, confidence: 0, readingNote: "" }]),
+);
+
 describe("body contracts", () => {
   it("bodyMetricSchema accepts exactly the nine confirm-screen fields", () => {
     for (const metric of NINE_METRICS) {
@@ -35,6 +42,7 @@ describe("body contracts", () => {
       inbodyModel: "570",
       testDate: "2026-01-15",
       fields,
+      segmental: emptySegmental,
       imageQualityNotes: "Blurry",
     };
     expect(extractBodyScanResponseSchema.safeParse(response).success).toBe(true);
@@ -48,9 +56,25 @@ describe("body contracts", () => {
       inbodyModel: null,
       testDate: null,
       fields: incompleteFields,
+      segmental: emptySegmental,
       imageQualityNotes: "",
     };
     expect(extractBodyScanResponseSchema.safeParse(response).success).toBe(false);
+  });
+
+  it("segmentalSiteSchema accepts exactly the five segmental sites", () => {
+    for (const site of FIVE_SEGMENTAL_SITES) {
+      expect(segmentalSiteSchema.safeParse(site).success).toBe(true);
+    }
+    expect(segmentalSiteSchema.safeParse("not_a_real_site").success).toBe(false);
+  });
+
+  it("confirmBodyScanRequestSchema accepts a segmental site as a measurement metric", () => {
+    const payload = {
+      measuredAt: "2026-01-15T09:00:00.000Z",
+      measurements: [{ metric: "right_arm", value: 3.62, unit: "kg", confidence: 0.9 }],
+    };
+    expect(confirmBodyScanRequestSchema.safeParse(payload).success).toBe(true);
   });
 
   it("confirmBodyScanRequestSchema requires at least one measurement", () => {

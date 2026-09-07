@@ -1,4 +1,4 @@
-import type { BodyMetric } from "@forjd/domain";
+import type { BodyMetric, SegmentalSite } from "@forjd/domain";
 
 /**
  * Bucket/key addressing on StorageProvider is deliberately vendor-agnostic (S3-shaped); this
@@ -27,6 +27,10 @@ export interface ExtractedBodyScan {
   /** ISO date string as printed on the sheet, or null. */
   testDate: string | null;
   fields: Record<BodyMetric, ExtractedMeasurement>;
+  /** The five segmental lean-mass sites (`s_inbodyConfirm`'s own second section), always kg.
+   *  No confidence bar is shown for these on the confirm screen, but the underlying
+   *  extraction confidence still exists and still governs the pre-fill threshold. */
+  segmental: Record<SegmentalSite, ExtractedMeasurement>;
   imageQualityNotes: string;
 }
 

@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import { BODY_METRICS, type User } from "@forjd/domain";
+import type { BodyMetric, SegmentalSite, User } from "@forjd/domain";
 import type {
   BodyScanListResponse,
   BodyScanResponse,
@@ -56,6 +56,7 @@ export class BodyService {
       inbodyModel: extracted.inbodyModel,
       testDate: extracted.testDate,
       fields: extracted.fields,
+      segmental: extracted.segmental,
       imageQualityNotes: extracted.imageQualityNotes,
     };
   }
@@ -80,7 +81,7 @@ export class BodyService {
       measuredAt: scan.measuredAt.toISOString(),
       source: "inbody",
       measurements: scan.measurements.map((m) => ({
-        metric: m.metric as (typeof BODY_METRICS)[number],
+        metric: m.metric as BodyMetric | SegmentalSite,
         value: m.value,
         unit: m.unit,
         confidence: m.confidence,
@@ -113,7 +114,7 @@ export class BodyService {
       measuredAt: scan.measuredAt.toISOString(),
       source: "inbody",
       measurements: scan.measurements.map((m) => ({
-        metric: m.metric as (typeof BODY_METRICS)[number],
+        metric: m.metric as BodyMetric | SegmentalSite,
         value: m.value,
         unit: m.unit,
         confidence: m.confidence,
@@ -126,7 +127,7 @@ export class BodyService {
 
     return {
       series: series.map((s) => ({
-        metric: s.metric as (typeof BODY_METRICS)[number],
+        metric: s.metric as BodyMetric | SegmentalSite,
         unit: s.unit,
         points: s.points.map((p) => ({ measuredAt: p.measuredAt.toISOString(), value: p.value })),
       })),
