@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, Text, View } from 'react-native';
 import type { BodyScanSeriesResponse } from '@forjd/contracts';
 import {
   BODY_METRIC_DISPLAY_NAMES,
@@ -29,15 +30,27 @@ const SEGMENTAL_REFERENCE_KG: Record<SegmentalSite, number> = {
   left_leg: 12,
 };
 
+/** The prototype's own `widgetCatalogs().body` (`FORJD Mobile.dc.html:3322`) -- the five
+ *  options the "Choose widget" sheet offers, transcribed verbatim (`progress body change
+ *  widget.png`). Each maps directly onto an existing BODY_METRICS entry; nothing new to
+ *  capture, only a UI to pick which two of the five surface as headline tiles. */
+const WIDGET_CATALOG: ReadonlyArray<{ metric: BodyMetric; label: string }> = [
+  { metric: 'weight_kg', label: 'Weight' },
+  { metric: 'body_fat_percent', label: 'Body fat' },
+  { metric: 'skeletal_muscle_mass_kg', label: 'Muscle mass' },
+  { metric: 'visceral_fat_level', label: 'Visceral fat' },
+  { metric: 'bmi', label: 'BMI' },
+];
+
 /**
- * Progress → Body tab (Phase 5F), built against `progress body 1.png`, `progress body 2.png`
- * and `progress body 3.png`, with `s_progress()`'s Body-tab markup and `metricVals()` as the
- * second authority.
+ * Progress → Body tab (Phase 5F), built against `progress body 1.png`, `progress body 2.png`,
+ * `progress body 3.png` and `progress body change widget.png`, with `s_progress()`'s
+ * Body-tab markup and `metricVals()`/`widgetCatalogs()` as the second authority.
  *
- * **One remaining scope trim from the design**, recorded in ADR-032: the two headline tiles
- * are fixed to Weight and Body fat rather than the design's configurable widget picker
- * (long-press to swap in muscle mass / visceral fat / BMI). `BODY_METRICS`' domain
- * vocabulary already supports any of the five; only the picker UI is missing.
+ * The two headline tiles are configurable (`WIDGET_CATALOG`, above), matching the design's
+ * bottom-sheet picker exactly -- tapping a tile opens "Choose widget" with the same five
+ * options the prototype offers. The selection is session-only local state, matching the
+ * prototype's own lack of a persistence layer for this preference.
  */
 interface BodyViewProps {
   series: BodyScanSeriesResponse | null;
@@ -63,8 +76,8 @@ function formatDelta(metric: BodyMetric, points: ReadonlyArray<{ value: number }
 }
 
 export function BodyView({ series, hasAnyScan }: BodyViewProps) {
-  const weight = seriesFor(series, 'weight_kg');
-  const bodyFat = seriesFor(series, 'body_fat_percent');
+  const [bodyWidgets, setBodyWidgets] = useState<[BodyMetric, BodyMetric]>(['weight_kg', 'body_fat_percent']);
+  const [pickerSlot, setPickerSlot] = useState<0 | 1 | null>(null);
 
   const metrics: BodyMetric[] = [
     'weight_kg',
@@ -80,17 +93,17 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
   return (
     <>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-        {(
-          [
-            ['weight_kg', weight],
-            ['body_fat_percent', bodyFat],
-          ] as const
-        ).map(([metric, s]) => {
+        {bodyWidgets.map((metric, slot) => {
+          const s = seriesFor(series, metric);
           const latest = s && s.points.length > 0 ? s.points[s.points.length - 1].value : null;
           const { text: deltaText, good } = s ? formatDelta(metric, s.points, s.unit) : { text: '—', good: null };
+          const label = WIDGET_CATALOG.find((w) => w.metric === metric)?.label ?? BODY_METRIC_DISPLAY_NAMES[metric];
           return (
-            <View
-              key={metric}
+            <Pressable
+              key={slot}
+              accessibilityRole="button"
+              accessibilityLabel={`Change ${label} widget`}
+              onPress={() => setPickerSlot(slot as 0 | 1)}
               style={{
                 flex: 1,
                 backgroundColor: '#17181A',
@@ -108,7 +121,7 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
                   textTransform: 'uppercase',
                   color: '#77776F',
                 }}>
-                {metric === 'weight_kg' ? 'Weight' : 'Body fat'}
+                {label}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 6 }}>
                 <Text style={{ fontFamily: 'Archivo', fontSize: 25, fontWeight: '700', color: colors.green }}>
@@ -130,10 +143,60 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
                 }}>
                 {latest != null ? `${deltaText} since first scan` : 'No scans yet'}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>
+
+      <Modal visible={pickerSlot !== null} transparent animationType="slide" onRequestClose={() => setPickerSlot(null)}>
+        <Pressable
+          onPress={() => setPickerSlot(null)}
+          style={{ flex: 1, backgroundColor: 'rgba(10,10,11,.72)', justifyContent: 'flex-end' }}>
+          <Pressable
+            style={{
+              backgroundColor: '#17181a',
+              borderTopWidth: 1,
+              borderTopColor: 'rgba(255,255,255,.07)',
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              paddingTop: 20,
+              paddingHorizontal: 22,
+              paddingBottom: 24,
+              gap: 8,
+            }}>
+            <Text style={{ marginBottom: 6, fontFamily: 'Archivo', fontSize: 18, fontWeight: '700', lineHeight: 18 * 1.2, color: colors.text }}>
+              Choose widget
+            </Text>
+            {WIDGET_CATALOG.map((option) => (
+              <Pressable
+                key={option.metric}
+                accessibilityRole="button"
+                onPress={() => {
+                  if (pickerSlot !== null) {
+                    setBodyWidgets((current) => {
+                      const next: [BodyMetric, BodyMetric] = [...current];
+                      next[pickerSlot] = option.metric;
+                      return next;
+                    });
+                  }
+                  setPickerSlot(null);
+                }}
+                style={{
+                  paddingVertical: 14,
+                  paddingHorizontal: 15,
+                  borderRadius: 11,
+                  backgroundColor: '#141517',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,.07)',
+                }}>
+                <Text style={{ fontFamily: 'Archivo', fontSize: 14, fontWeight: '700', color: colors.text }}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Text
         style={{
@@ -198,21 +261,21 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
         );
       })}
 
+      <Text
+        style={{
+          fontFamily: 'Archivo',
+          fontSize: 9.5,
+          fontWeight: '600',
+          letterSpacing: 0.14 * 9.5,
+          textTransform: 'uppercase',
+          color: '#77776F',
+          marginTop: 22,
+          marginBottom: 10,
+        }}>
+        Segmental lean analysis
+      </Text>
       {SEGMENTAL_SITES.some((site) => (seriesFor(series, site)?.points.length ?? 0) > 0) ? (
         <>
-          <Text
-            style={{
-              fontFamily: 'Archivo',
-              fontSize: 9.5,
-              fontWeight: '600',
-              letterSpacing: 0.14 * 9.5,
-              textTransform: 'uppercase',
-              color: '#77776F',
-              marginTop: 22,
-              marginBottom: 10,
-            }}>
-            Segmental lean analysis
-          </Text>
           {SEGMENTAL_SITES.map((site) => {
             const s = seriesFor(series, site);
             const latest = s && s.points.length > 0 ? s.points[s.points.length - 1].value : null;
@@ -261,7 +324,13 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
             );
           })}
         </>
-      ) : null}
+      ) : (
+        <Text style={{ fontFamily: 'Archivo', fontSize: 12.5, color: colors.dim, paddingVertical: 4 }}>
+          {hasAnyScan
+            ? 'This scan didn’t include segmental data.'
+            : 'Confirm an InBody scan to see your arm, leg and trunk breakdown here.'}
+        </Text>
+      )}
 
       <Pressable
         accessibilityRole="button"
