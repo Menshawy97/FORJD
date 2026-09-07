@@ -20,7 +20,8 @@
     "nutrition:fetch-usda": "ts-node src/nutrition/ingest/fetch-usda.ts",
     "nutrition:normalize": "ts-node src/nutrition/ingest/normalize.ts",
     "nutrition:load": "ts-node src/nutrition/ingest/load.ts",
-    "programs:seed": "ts-node src/programs/seed/seed.ts"
+    "programs:seed": "ts-node src/programs/seed/seed.ts",
+    "prompt:golden": "ts-node scripts/write-inbody-prompt-golden.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",
@@ -152,6 +153,24 @@
         "lines": 100
       },
       "./src/workouts/progress.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/ai/providers/nvidia-vision.provider.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/ai/providers/inbody-extraction-prompt.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/ai/providers/inbody-response-parser.ts": {
         "statements": 100,
         "branches": 100,
         "functions": 100,

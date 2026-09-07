@@ -84,10 +84,13 @@ blank, forcing the user to type the value. This is the mechanism that keeps
 extraction method itself (a vision-capable LLM) was chosen specifically
 because it skips building a deterministic layout parser.
 
-Golden-fixture tests (`tests/fixtures/inbody/`: anonymized report images +
-expected extraction JSON) run in CI from Phase 5 onward, and are the
-tripwire for silent extraction-quality drift over time — see `CLAUDE.md`
-rule 8.
+Golden-fixture tests (`tests/fixtures/inbody/`) run in CI from Phase 5 onward and are the
+tripwire for silent extraction-quality drift over time — see `CLAUDE.md` rule 8. Not report
+images: ADR-032 forbids ever sending a live vision-model call from CI (NVIDIA's Trial Terms of
+Service, and the same would hold for any production vendor), so the fixtures are a generated
+prompt golden file (diff-gated the same way `packages/contracts/fixtures` is) plus recorded
+model response text paired with its expected parsed output. See
+`tests/fixtures/inbody/README.md` for exactly what each fixture pins and where it came from.
 
 ## Data minimization for AI calls
 

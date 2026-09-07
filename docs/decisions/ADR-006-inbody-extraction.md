@@ -55,7 +55,8 @@ deterministic parser would otherwise have carried.
 - Confidence-score/error correlation: _TBD_
 - Any field types requiring a fallback (manual-only entry, no AI pre-fill): _TBD_
 
-The golden-fixture test suite (`tests/fixtures/inbody/`) starts from the
-Spike B images (anonymized) and their expected-output JSON, and runs in CI
-from Phase 5 onward as the tripwire for silent extraction drift
-(`CLAUDE.md` rule 8).
+The golden-fixture test suite (`tests/fixtures/inbody/`) runs in CI from Phase 5 onward as the
+tripwire for silent extraction drift (`CLAUDE.md` rule 8). It does not start from Spike B's
+images -- ADR-032 forbids a live vision-model call from CI -- but from a generated prompt
+golden file plus real recorded model responses paired with their expected parsed output; see
+`tests/fixtures/inbody/README.md` for the exact fixtures and where each came from.

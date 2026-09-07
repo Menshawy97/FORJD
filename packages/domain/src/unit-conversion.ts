@@ -16,7 +16,7 @@
  */
 
 /** The exact international avoirdupois pound, in kilograms. Not an approximation. */
-const KG_PER_LB = 0.45359237;
+export const KG_PER_LB = 0.45359237;
 const LB_PER_KG = 1 / KG_PER_LB;
 const METRES_PER_MILE = 1609.344;
 
