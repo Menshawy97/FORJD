@@ -1,0 +1,12 @@
+{
+  "connections": [
+    {
+      "source": "health_connect",
+      "lastSuccessfulSyncAt": "2026-09-07T06:15:00.000Z"
+    },
+    {
+      "source": "whoop",
+      "lastSuccessfulSyncAt": null
+    }
+  ]
+}
