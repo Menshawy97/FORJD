@@ -1,7 +1,14 @@
 import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import type { BodyScanSeriesResponse } from '@forjd/contracts';
-import { BODY_METRIC_DISPLAY_NAMES, BODY_METRIC_UNITS, type BodyMetric } from '@forjd/domain';
+import {
+  BODY_METRIC_DISPLAY_NAMES,
+  BODY_METRIC_UNITS,
+  SEGMENTAL_SITES,
+  SEGMENTAL_SITE_DISPLAY_NAMES,
+  type BodyMetric,
+  type SegmentalSite,
+} from '@forjd/domain';
 
 import { Card } from '@/features/progress/card';
 import { Sparkline } from '@/components/sparkline';
@@ -11,27 +18,33 @@ import { colors } from '@/theme/tokens';
 /** Metrics where a lower number is the improvement -- same rule `inbody-compare.tsx` uses. */
 const HIGHER_IS_BETTER = new Set<BodyMetric>(['skeletal_muscle_mass_kg', 'inbody_score']);
 
+/** The prototype's own `segRef` (`FORJD Mobile.dc.html:3397`) -- each segmental bar's fill
+ *  percentage is the confirmed kg value divided by this reference max, not an absolute
+ *  scale. Transcribed verbatim, not re-derived. */
+const SEGMENTAL_REFERENCE_KG: Record<SegmentalSite, number> = {
+  right_arm: 4.2,
+  left_arm: 4.2,
+  trunk: 34,
+  right_leg: 12,
+  left_leg: 12,
+};
+
 /**
  * Progress → Body tab (Phase 5F), built against `progress body 1.png`, `progress body 2.png`
  * and `progress body 3.png`, with `s_progress()`'s Body-tab markup and `metricVals()` as the
  * second authority.
  *
- * **Two scope trims from the design, both deliberate and both recorded in ADR-032:**
- * - **Segmental lean analysis is not rendered.** It needs its own capture step (five more
- *   confirm-screen fields FORJD does not currently collect) that this phase did not build --
- *   adding a section with permanently-empty bars would be worse than the design's own
- *   honest-empty pattern for a section with nothing behind it at all.
- * - **The two headline tiles are fixed to Weight and Body fat**, not the design's
- *   configurable widget picker (long-press to swap in muscle mass / visceral fat / BMI).
- *   `BODY_METRICS`' domain vocabulary already supports any of the five, so the picker itself
- *   is the only piece not built -- a UI-only follow-up, not a data-model gap.
+ * **One remaining scope trim from the design**, recorded in ADR-032: the two headline tiles
+ * are fixed to Weight and Body fat rather than the design's configurable widget picker
+ * (long-press to swap in muscle mass / visceral fat / BMI). `BODY_METRICS`' domain
+ * vocabulary already supports any of the five; only the picker UI is missing.
  */
 interface BodyViewProps {
   series: BodyScanSeriesResponse | null;
   hasAnyScan: boolean;
 }
 
-function seriesFor(series: BodyScanSeriesResponse | null, metric: BodyMetric) {
+function seriesFor(series: BodyScanSeriesResponse | null, metric: BodyMetric | SegmentalSite) {
   return series?.series.find((s) => s.metric === metric) ?? null;
 }
 
@@ -184,6 +197,71 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
           </Card>
         );
       })}
+
+      {SEGMENTAL_SITES.some((site) => (seriesFor(series, site)?.points.length ?? 0) > 0) ? (
+        <>
+          <Text
+            style={{
+              fontFamily: 'Archivo',
+              fontSize: 9.5,
+              fontWeight: '600',
+              letterSpacing: 0.14 * 9.5,
+              textTransform: 'uppercase',
+              color: '#77776F',
+              marginTop: 22,
+              marginBottom: 10,
+            }}>
+            Segmental lean analysis
+          </Text>
+          {SEGMENTAL_SITES.map((site) => {
+            const s = seriesFor(series, site);
+            const latest = s && s.points.length > 0 ? s.points[s.points.length - 1].value : null;
+            const pct = latest != null ? Math.round((latest / SEGMENTAL_REFERENCE_KG[site]) * 100) : 0;
+            return (
+              <View
+                key={site}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 11,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: 'rgba(255,255,255,.05)',
+                }}>
+                <Text style={{ width: 66, fontFamily: 'Archivo', fontSize: 12.5, fontWeight: '500', color: '#b4b4ac' }}>
+                  {SEGMENTAL_SITE_DISPLAY_NAMES[site]}
+                </Text>
+                <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: '#26272a', overflow: 'hidden' }}>
+                  <View style={{ width: `${Math.min(pct, 100)}%`, height: 6, backgroundColor: colors.accent }} />
+                </View>
+                <Text
+                  style={{
+                    width: 56,
+                    textAlign: 'right',
+                    fontFamily: 'Archivo',
+                    fontSize: 12.5,
+                    fontWeight: '600',
+                    color: colors.text,
+                    fontVariant: ['tabular-nums'],
+                  }}>
+                  {latest != null ? `${latest} kg` : '—'}
+                </Text>
+                <Text
+                  style={{
+                    width: 34,
+                    textAlign: 'right',
+                    fontFamily: 'Archivo',
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: colors.accent,
+                  }}>
+                  {latest != null ? `${pct}%` : ''}
+                </Text>
+              </View>
+            );
+          })}
+        </>
+      ) : null}
 
       <Pressable
         accessibilityRole="button"

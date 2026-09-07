@@ -1,6 +1,6 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import OpenAI from "openai";
-import { BODY_METRICS, type BodyMetric } from "@forjd/domain";
+import { BODY_METRICS, SEGMENTAL_SITES, type BodyMetric, type SegmentalSite } from "@forjd/domain";
 
 import { NVIDIA_VISION_CLIENT } from "./nvidia-vision-client";
 import type { ExtractedBodyScan, ExtractedMeasurement, VisionProvider } from "./vision-provider.interface";
@@ -88,6 +88,12 @@ export class NvidiaVisionProvider implements VisionProvider {
           },
         ]),
       ),
+      segmental: Object.fromEntries(
+        SEGMENTAL_SITES.map((site, i) => [
+          site,
+          { value: 3 + i * 6.1, confidence: [0.9, 0.88, 0.95, 0.86, 0.83][i], reading_note: "" },
+        ]),
+      ),
       image_quality_notes: "",
     };
 
@@ -105,6 +111,10 @@ Read these values, converting to the units below if the sheet prints a different
 - BMI
 - Basal Metabolic Rate (kcal)
 - InBody Score
+
+Also read the "Segmental Lean Analysis" section (five body parts, always in kg,
+same lb-to-kg conversion rule if the sheet prints lb there):
+- Right arm, Left arm, Trunk, Right leg, Left leg
 
 Rules:
 - Transcribe only what is printed. Never compute or infer a value from the others.
@@ -141,22 +151,33 @@ ${JSON.stringify(example, null, 2)}`;
       inbody_model?: unknown;
       test_date?: unknown;
       fields?: Record<string, { value?: unknown; confidence?: unknown; reading_note?: unknown }>;
+      segmental?: Record<string, { value?: unknown; confidence?: unknown; reading_note?: unknown }>;
       image_quality_notes?: unknown;
     };
 
+    const readMeasurement = (
+      raw_field: { value?: unknown; confidence?: unknown; reading_note?: unknown } | undefined,
+    ): ExtractedMeasurement => ({
+      value: typeof raw_field?.value === "number" ? raw_field.value : null,
+      confidence: typeof raw_field?.confidence === "number" ? raw_field.confidence : 0,
+      readingNote: typeof raw_field?.reading_note === "string" ? raw_field.reading_note : "",
+    });
+
     const fields = {} as Record<BodyMetric, ExtractedMeasurement>;
     for (const metric of BODY_METRICS) {
-      const rawField = raw.fields?.[metric];
-      const value = typeof rawField?.value === "number" ? rawField.value : null;
-      const confidence = typeof rawField?.confidence === "number" ? rawField.confidence : 0;
-      const readingNote = typeof rawField?.reading_note === "string" ? rawField.reading_note : "";
-      fields[metric] = { value, confidence, readingNote };
+      fields[metric] = readMeasurement(raw.fields?.[metric]);
+    }
+
+    const segmental = {} as Record<SegmentalSite, ExtractedMeasurement>;
+    for (const site of SEGMENTAL_SITES) {
+      segmental[site] = readMeasurement(raw.segmental?.[site]);
     }
 
     return {
       inbodyModel: typeof raw.inbody_model === "string" ? raw.inbody_model : null,
       testDate: typeof raw.test_date === "string" ? raw.test_date : null,
       fields,
+      segmental,
       imageQualityNotes: typeof raw.image_quality_notes === "string" ? raw.image_quality_notes : "",
     };
   }

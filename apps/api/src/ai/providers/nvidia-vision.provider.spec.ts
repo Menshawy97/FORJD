@@ -52,6 +52,13 @@ describe("NvidiaVisionProvider", () => {
             basal_metabolic_rate_kcal: { value: null, confidence: 0, reading_note: "Blurry" },
             inbody_score: { value: null, confidence: 0, reading_note: "Blurry" },
           },
+          segmental: {
+            right_arm: { value: 3.62, confidence: 0.86, reading_note: "" },
+            left_arm: { value: 3.55, confidence: 0.85, reading_note: "" },
+            trunk: { value: 31.4, confidence: 0.92, reading_note: "" },
+            right_leg: { value: 10.28, confidence: 0.86, reading_note: "" },
+            left_leg: { value: 10.11, confidence: 0.84, reading_note: "" },
+          },
           image_quality_notes: "Blurry",
         }),
       ),
@@ -62,6 +69,8 @@ describe("NvidiaVisionProvider", () => {
     expect(result.inbodyModel).toBe("570");
     expect(result.fields.weight_kg).toEqual({ value: 66.8, confidence: 0.99, readingNote: "" });
     expect(result.fields.visceral_fat_level).toEqual({ value: null, confidence: 0, readingNote: "Blurry" });
+    expect(result.segmental.right_arm).toEqual({ value: 3.62, confidence: 0.86, readingNote: "" });
+    expect(result.segmental.trunk.value).toBe(31.4);
     expect(create).toHaveBeenCalledTimes(1);
   });
 
