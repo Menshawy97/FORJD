@@ -95,7 +95,9 @@ export default function InBodyConfirmScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 26 }}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled">
         <View
           style={{
             backgroundColor: '#17181A',
