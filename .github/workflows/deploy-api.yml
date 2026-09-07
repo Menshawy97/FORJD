@@ -162,10 +162,19 @@ jobs:
           # separate secret -- it names no credential, and deriving it here means there is
           # nothing to keep in sync if the project's URL ever changes.
           SUPABASE_URL_VALUE="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-supabase-url")"
+          # NVIDIA_API_KEY (Phase 5 / ADR-032) is required at NestJS bootstrap, not lazily --
+          # AiModule's client provider calls ConfigService.getOrThrow("NVIDIA_API_KEY") in a
+          # useFactory, which runs during module init. Without this secret the whole API
+          # process throws on boot and Cloud Run reports "container failed to start and
+          # listen on the port" -- a healthcheck-shaped symptom for what is actually a missing
+          # env var. ADR-032 restricts NVIDIA to development use; the key set here is
+          # deliberately staging-only infrastructure for the team's own testing, not the path
+          # any real (non-developer) user's photo travels -- see ADR-032 decision 1 before
+          # ever wiring this secret into the production target.
           gcloud run deploy "forjd-api-${TARGET}" \
             --image "$IMAGE" \
             --region "${{ vars.GCP_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest" \
+            --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest,NVIDIA_API_KEY=forjd-${TARGET}-nvidia-api-key:latest" \
             --set-env-vars "EXERCISE_MEDIA_BASE_URL=${SUPABASE_URL_VALUE}/storage/v1/object/public/exercise-media"
