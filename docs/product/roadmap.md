@@ -343,10 +343,9 @@ was the one option multiple independent sources actually agreed was real, curren
 vision-capable, so it was chosen over an unverifiable "maybe cheaper" alternative. See ADR-033
 for the full account, including the two follow-ups only the user can complete:
 
-1. **The OpenAI account has no billing credits.** A real live smoke-test call (one request,
-   confirmed the integration itself is correct) failed on `insufficient_quota` /
-   `credit_balance_exhausted`. Add credits at
-   `platform.openai.com/settings/organization/billing` before this can do real work.
+1. ~~The OpenAI account has no billing credits~~ **Done, same session.** The user added
+   credits; a second live smoke-test call (same one request, `gpt-4o-mini`) succeeded --
+   correctly identified the InBody sheet content, ~25.5K input tokens, well under a cent.
 2. **`forjd-staging-openai-api-key` does not exist in GCP Secret Manager yet.** Same two-command
    pattern as the NVIDIA secret earlier this session, substituting the secret name. Until it
    exists, the next deploy fails cleanly on "secret not found" (not a container-startup
