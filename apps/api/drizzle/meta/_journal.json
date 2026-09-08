@@ -113,6 +113,13 @@
       "when": 1788792863518,
       "tag": "0015_furry_barracuda",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788901002289,
+      "tag": "0016_clear_serpent_society",
+      "breakpoints": true
     }
   ]
 }

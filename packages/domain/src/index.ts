@@ -178,3 +178,4 @@ export * from "./progress-calculations";
 export * from "./progress-insight";
 export * from "./readiness";
 export * from "./health-insight";
+export * from "./external-connection-vocabulary";
