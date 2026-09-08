@@ -113,14 +113,17 @@ per PR, merged and confirmed green on `main` before the next slice starts.
   `__tests__` exemption (the `expo-secure-store`/`expo-sqlite` rules do; the `openai` rules
   don't). Blocked on the library-choice ADR from decision 3 above.
 
-- **6F — Health Connect adapter. Device-gated; does not merge until a physical device
-  confirms it (rule 16).** Written and exercised against the `forjd_pixel7_api34` emulator,
-  which cannot substitute for the device — it produces no real health data, no hardware-backed
-  keystore, no real sensor behaviour. Ends any session that reaches it as an open branch with
-  exactly what was and wasn't verified recorded in the roadmap, so the eventual device day is
-  short rather than a rediscovery. If emulator verification is ever judged sufficient on its
-  own, that is a deliberate amendment to rule 16 requiring its own ADR first, not a default to
-  slide into.
+- **6F — Health Connect adapter. `HealthConnectProvider` is merged to `main`, but
+  device-unverified** — per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md), the
+  user explicitly asked to merge ahead of rule 16's physical-device gate to unblock downstream
+  work, with the device test tracked as still owed rather than closed. Written and exercised
+  against the `forjd_pixel7_api34` emulator and a real EAS cloud dev-client build (installed,
+  launched, Health Connect's permission-rationale activity confirmed registered via
+  `adb dumpsys`) — neither substitutes for the device: no real health data, no hardware-backed
+  keystore, no real sensor behaviour. **The physical-device test must happen before any UI
+  screen wires real users to this provider.** ADR-035 is a one-time exception, not a default —
+  every future Health Connect/HealthKit PR still needs its own physical-device run before
+  merge, per rule 16 unchanged.
 
 - **Post-6F — light up the UI.** Not device-gated in principle, but has nothing real to render
   before a provider exists, so it waits. The seams are already cut:

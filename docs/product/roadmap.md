@@ -248,15 +248,24 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
-### Session close, 2026-09-08 (Phase 6 slice 6F: Health Connect adapter, open PR #130, NOT merged)
+### Session close, 2026-09-08 (Phase 6 slice 6F: Health Connect adapter — merged pre-device, ADR-035)
 
-**Draft PR #130, branch `feat/6f-health-connect-adapter` — deliberately not merged.** Continues
-directly from 6E in the same session. `HealthConnectProvider` (the first concrete
-`HealthProvider`) plus `health-connect-record-mapping.ts` (pure Health Connect record →
-`HealthObservation` mapping) are written and verified as far as this slice's own plan expects
-without a physical device — see below. Per CLAUDE.md rule 16, this stays open until a physical
-Android phone confirms it; the emulator/cloud-build verification below cannot substitute for
-that, only reduce what the eventual device day still has to discover.
+**PR #130 merged and confirmed green on `main` — ahead of a physical-device run, by explicit
+user decision recorded in [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md).**
+CLAUDE.md rule 16 normally blocks this merge until a physical Android phone confirms the code;
+the user asked directly to merge now to unblock downstream work, with the device test tracked
+as still owed rather than considered closed. This is a one-time exception (ADR-035's own scope
+line), not a change to rule 16's default for any future Health Connect/HealthKit PR.
+
+`HealthConnectProvider` (the first concrete `HealthProvider`) plus
+`health-connect-record-mapping.ts` (pure Health Connect record → `HealthObservation` mapping)
+are written and verified as far as possible without a physical device — see below.
+
+**⚠️ `HealthConnectProvider` is on `main` but device-unverified.** The live JS→native call path
+(`connect()`/`requestPermissions()`/`sync()`) has never run against a real Health Connect
+installation. Before any UI screen wires real users to it (the "light up the UI" work below),
+that physical-device test must happen — this is not a formality, it's the actual gate ADR-035
+deferred, not waived.
 
 **What was verified:**
 - `tsc --noEmit` / lint / `pnpm conformance` clean.
@@ -2216,7 +2225,7 @@ failure).
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
-| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6E merged, 6F (Health Connect adapter) written and emulator/cloud-build verified but held on draft [PR #130](https://github.com/Menshawy97/FORJD/pull/130) pending a physical Android device (rule 16) |
+| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6F merged, but 6F (`HealthConnectProvider`) is **device-unverified** — merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md); a physical Android phone test is still owed before any UI wires real users to it |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | Not started |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
 | Limited Android beta | 35 | 12+ testers | Not started |
