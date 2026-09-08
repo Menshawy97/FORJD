@@ -248,6 +248,40 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-08 (Phase 6 slice 6E: HealthProvider interface + ADR-034)
+
+**PR #129 merged and confirmed green on `main`.** Continues directly from 6D below in the
+same session. Adds `apps/mobile/src/integrations/health/` — the `HealthProvider` interface
+verbatim from `integrations.md`/ADR-003, plus a shared contract-test suite
+(`health-provider.contract.ts`) exercised by an in-memory `FakeHealthProvider`
+(`fake-health-provider.ts`), per CLAUDE.md rule 8's "contract tests for adapters, written
+before the adapter." `HealthConnectProvider` (6F) will call the same suite.
+
+**The library choice (Phase 6 plan decision 3) was brought to the user rather than
+assumed**, since CLAUDE.md rule 17 and `integrations.md` still named a Flutter-only pub.dev
+package left over from before the Expo/RN move. Researched the real options, presented a
+plain-language pros/cons (one real candidate plus a not-recommended build-it-yourself
+fallback), and the user asked a clarifying question about iOS Health before choosing —
+answered: Health Connect (Android) and HealthKit (iOS) are separate systems needing separate
+libraries and separate ADRs, and this decision is Android-only. User chose the ready-made
+library. **ADR-034** records `react-native-health-connect` (matinzd) — actively maintained,
+New Architecture support, covers every metric in `HEALTH_METRIC_TYPES` including sleep
+*stages* (not just duration), which ADR-031's readiness methodology needs. CLAUDE.md rule 17
+and `integrations.md` corrected to match; a new conformance rule restricts the package's
+import to `apps/mobile/src/integrations/health/`, added ahead of the adapter that could
+violate it — no package installed yet, 6E adds no native dependency.
+
+**Verification note:** the full `apps/mobile` suite had one pre-existing, unrelated flaky
+failure locally (`swipe-back-login.test.tsx`, an `act()`-overlap 30s timeout — a React
+Navigation animation-timing flake, not touched by this change) that did not reproduce in CI;
+CI's mobile job passed clean.
+
+Next: **6F (the Health Connect adapter itself) is next but stays device-gated per CLAUDE.md
+rule 16** — there is still no physical Android phone. It can be written and exercised against
+the `forjd_pixel7_api34` emulator (Play Store image, set up in an earlier session specifically
+for this), but does not merge until run on a physical device. Needs a custom dev-client
+rebuild once `react-native-health-connect` is actually installed (native dependency).
+
 ### Session close, 2026-09-08 (Phase 6 slice 6D: health-data API module)
 
 **PR #128 merged and confirmed green on `main`.** Adds `apps/api/src/health-data/`
@@ -2128,7 +2162,7 @@ failure).
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
-| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6D (vocabulary, schema, contracts, API) done, 6E blocked on the RN health-library ADR, 6F device-gated |
+| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6E (vocabulary, schema, contracts, API, HealthProvider interface) done, 6F (Health Connect adapter) next but device-gated |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | Not started |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
 | Limited Android beta | 35 | 12+ testers | Not started |
