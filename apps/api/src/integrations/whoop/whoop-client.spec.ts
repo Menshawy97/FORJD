@@ -94,6 +94,56 @@ describe("whoop-client", () => {
     });
   });
 
+  describe("listRecovery / listSleep / listWorkout", () => {
+    it("GETs the recovery collection with a since filter and returns its records", async () => {
+      const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ records: [{ cycle_id: 1 }], next_token: null }));
+      const client = createWhoopClient({ clientId, clientSecret, fetchImpl });
+
+      const records = await client.listRecovery(new Date("2026-09-01T00:00:00.000Z"), "access-token");
+
+      expect(records).toEqual([{ cycle_id: 1 }]);
+      const [url] = fetchImpl.mock.calls[0];
+      expect(url).toBe(
+        "https://api.prod.whoop.com/developer/v2/recovery?start=2026-09-01T00%3A00%3A00.000Z&limit=25",
+      );
+    });
+
+    it("omits the start filter for a full sync (since: null)", async () => {
+      const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ records: [], next_token: null }));
+      const client = createWhoopClient({ clientId, clientSecret, fetchImpl });
+
+      await client.listSleep(null, "access-token");
+
+      const [url] = fetchImpl.mock.calls[0];
+      expect(url).toBe("https://api.prod.whoop.com/developer/v2/activity/sleep?limit=25");
+    });
+
+    it("follows next_token across pages until it is null, accumulating every record", async () => {
+      const fetchImpl = jest
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ records: [{ id: "w1" }], next_token: "page-2" }))
+        .mockResolvedValueOnce(jsonResponse({ records: [{ id: "w2" }], next_token: null }));
+      const client = createWhoopClient({ clientId, clientSecret, fetchImpl });
+
+      const records = await client.listWorkout(null, "access-token");
+
+      expect(records).toEqual([{ id: "w1" }, { id: "w2" }]);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+      const [secondUrl] = fetchImpl.mock.calls[1];
+      expect(secondUrl).toContain("nextToken=page-2");
+    });
+
+    it("stops after a bounded number of pages rather than looping forever on a misbehaving API", async () => {
+      const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ records: [{ id: "x" }], next_token: "same-token" }));
+      const client = createWhoopClient({ clientId, clientSecret, fetchImpl });
+
+      const records = await client.listRecovery(null, "access-token");
+
+      expect(fetchImpl.mock.calls.length).toBeLessThanOrEqual(100);
+      expect(records.length).toBe(fetchImpl.mock.calls.length);
+    });
+  });
+
   describe("retry behaviour", () => {
     it("retries a network error up to 3 attempts, then succeeds", async () => {
       const fetchImpl = jest

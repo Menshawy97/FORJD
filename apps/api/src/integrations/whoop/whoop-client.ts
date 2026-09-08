@@ -18,6 +18,18 @@ const OAUTH_TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token";
 const API_BASE_URL = "https://api.prod.whoop.com/developer";
 const MAX_ATTEMPTS = 3;
 const REQUEST_TIMEOUT_MS = 10_000;
+/** WHOOP's own collection endpoints cap `limit` at 25 per page. */
+const LIST_PAGE_LIMIT = 25;
+/** A hard ceiling on pages followed per `list*` call -- protects against an API that (by bug
+ *  or malicious response) never returns a null `next_token`, turning a sync into an infinite
+ *  loop. 100 pages * 25 records is 2,500 records per call, far beyond one incremental sync's
+ *  real volume. */
+const MAX_LIST_PAGES = 100;
+
+interface WhoopListResponse {
+  records: unknown[];
+  next_token: string | null;
+}
 
 export interface WhoopTokenResponse {
   access_token: string;
@@ -32,6 +44,10 @@ export interface WhoopClient {
   getRecovery(cycleId: string, accessToken: string): Promise<unknown>;
   getSleep(sleepId: string, accessToken: string): Promise<unknown>;
   getWorkout(workoutId: string, accessToken: string): Promise<unknown>;
+  /** `since: null` requests a full sync, mirroring `HealthProvider.sync()`'s own convention. */
+  listRecovery(since: Date | null, accessToken: string): Promise<unknown[]>;
+  listSleep(since: Date | null, accessToken: string): Promise<unknown[]>;
+  listWorkout(since: Date | null, accessToken: string): Promise<unknown[]>;
 }
 
 export interface CreateWhoopClientOptions {
@@ -115,6 +131,37 @@ export function createWhoopClient(options: CreateWhoopClientOptions): WhoopClien
       `GET ${path}`,
     );
 
+  /**
+   * Follows `next_token` until WHOOP returns `null`, or `MAX_LIST_PAGES` is reached --
+   * accumulating every record across every page into one flat array, since a checkpointed
+   * incremental sync (per-metric `sync()` in `WhoopProvider`, Phase 7E) wants "everything
+   * since the checkpoint," not one page at a time.
+   */
+  const listResource = async (path: string, since: Date | null, accessToken: string): Promise<unknown[]> => {
+    const records: unknown[] = [];
+    let nextToken: string | null = null;
+
+    for (let page = 0; page < MAX_LIST_PAGES; page++) {
+      const params = new URLSearchParams();
+      if (since) params.set("start", since.toISOString());
+      params.set("limit", String(LIST_PAGE_LIMIT));
+      if (nextToken) params.set("nextToken", nextToken);
+
+      const response = (await requestWithRetry(
+        fetchImpl,
+        `${API_BASE_URL}${path}?${params.toString()}`,
+        { method: "GET", headers: { Authorization: `Bearer ${accessToken}` } },
+        `GET ${path}`,
+      )) as WhoopListResponse;
+
+      records.push(...response.records);
+      nextToken = response.next_token;
+      if (!nextToken) break;
+    }
+
+    return records;
+  };
+
   return {
     exchangeAuthorizationCode: (code, redirectUri) =>
       requestToken({ grant_type: "authorization_code", code, redirect_uri: redirectUri }),
@@ -123,6 +170,9 @@ export function createWhoopClient(options: CreateWhoopClientOptions): WhoopClien
     getRecovery: (cycleId, accessToken) => getResource(`/v2/cycle/${cycleId}/recovery`, accessToken),
     getSleep: (sleepId, accessToken) => getResource(`/v2/activity/sleep/${sleepId}`, accessToken),
     getWorkout: (workoutId, accessToken) => getResource(`/v2/activity/workout/${workoutId}`, accessToken),
+    listRecovery: (since, accessToken) => listResource("/v2/recovery", since, accessToken),
+    listSleep: (since, accessToken) => listResource("/v2/activity/sleep", since, accessToken),
+    listWorkout: (since, accessToken) => listResource("/v2/activity/workout", since, accessToken),
   };
 }
 

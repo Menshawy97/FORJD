@@ -205,6 +205,12 @@
         "branches": 100,
         "functions": 100,
         "lines": 100
+      },
+      "./src/integrations/whoop/whoop.provider.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
       }
     }
   }
