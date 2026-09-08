@@ -248,6 +248,50 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-08 (Phase 6 slice 6D: health-data API module)
+
+**PR #128 merged and confirmed green on `main`.** Adds `apps/api/src/health-data/`
+(module/controller/service/repository) on top of 6A (domain vocabulary), 6B (schema),
+6C (contracts) — the fourth of six Phase 6 slices, per `phase-6-plan.md`. Three
+authenticated routes:
+
+- `POST /health-data/observations` — idempotent batch ingest, upserting on the
+  `(user, source, providerRecordId)` partial unique index `health-data.schema.spec.ts`
+  already proved usable for this exact query shape in 6B.
+- `GET /health-data/observations/series` — applies `health-data.md`'s read-time
+  source-priority reconciliation (`@forjd/domain`'s `resolveByPriority`, from 6A) per
+  metric type and per exact `(startTime, endTime)` window; two different windows for the
+  same metric are two distinct series points, never candidates for each other.
+- `GET /health-data/connections` — per-user connection state including the sync
+  checkpoint. Read-only this slice: nothing yet writes a `health_connections` row — that
+  arrives with the provider adapter in 6E/6F.
+
+Named `health-data/`, not `health/` — `apps/api/src/common/health/` already owns that
+name as the liveness probe (Phase 6 plan decision 2). `health-data.service.ts` added to
+`package.json`'s 100%-coverage list, matching every other vertical's service; two
+branches (a defensive null-filter and an empty-array fallback) were unreachable given the
+grouping logic actually used, so they were replaced with explained non-null assertions
+rather than padded out with unrealistic tests.
+
+**Verification note for next session:** the local dev machine's Postgres instance
+throttles hard under concurrent Jest workers. Running the full `test:cov` suite
+concurrently with the new e2e spec produced ~80 spurious 5000ms-hook timeouts across
+unrelated suites (exercises, workouts, users) — a connection-pool contention artifact of
+this machine, not a real regression. Confirmed by re-running `jest --coverage
+--runInBand` (single worker): 769/770 pass, with the one remaining failure
+(`workouts.repository.spec.ts`'s keyset-pagination test) pre-existing and unrelated to
+this slice — worth a look in a future session, but out of scope for a health-data PR.
+
+**Also noted, no action taken this slice:** `forjd-prod` (the Supabase production
+project ADR-015 called for) now exists and is live, confirmed by the user mid-session.
+This unblocks slice 12 (build flavors / EAS Build profiles) whenever that's picked up —
+not touched here.
+
+Next: 6E (`HealthProvider` interface + contract tests, `apps/mobile/src/integrations/health/`)
+is blocked on the RN health-library ADR (Phase 6 plan decision 3) — bring that choice to
+the user before starting. 6F (the Health Connect adapter itself) stays device-gated per
+CLAUDE.md rule 16.
+
 ### Session close, 2026-09-07 (post-Phase-5: golden fixtures + deploy pipeline fixed)
 
 **Three PRs merged, then a live GCP infrastructure gap found and fixed with the user.**
@@ -2084,7 +2128,7 @@ failure).
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
-| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6C (vocabulary, schema, contracts) done, 6D (API) not started, 6E-6F device-gated |
+| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6D (vocabulary, schema, contracts, API) done, 6E blocked on the RN health-library ADR, 6F device-gated |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | Not started |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
 | Limited Android beta | 35 | 12+ testers | Not started |
