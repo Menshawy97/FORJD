@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { BodyModule } from './body/body.module';
 import { AthletesModule } from './athletes/athletes.module';
 import { ExercisesModule } from './exercises/exercises.module';
+import { HealthDataModule } from './health-data/health-data.module';
 import { ProgramsModule } from './programs/programs.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { UsersModule } from './users/users.module';
@@ -44,6 +45,7 @@ import { WorkoutsModule } from './workouts/workouts.module';
     UsersModule,
     AthletesModule,
     ExercisesModule,
+    HealthDataModule,
     ProgramsModule,
     NutritionModule,
     StorageModule,
