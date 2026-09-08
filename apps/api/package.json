@@ -181,6 +181,12 @@
         "branches": 100,
         "functions": 100,
         "lines": 100
+      },
+      "./src/health-data/health-data.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
       }
     }
   }
