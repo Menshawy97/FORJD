@@ -248,6 +248,60 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-08 (Phase 6 slice 6F: Health Connect adapter, open PR #130, NOT merged)
+
+**Draft PR #130, branch `feat/6f-health-connect-adapter` — deliberately not merged.** Continues
+directly from 6E in the same session. `HealthConnectProvider` (the first concrete
+`HealthProvider`) plus `health-connect-record-mapping.ts` (pure Health Connect record →
+`HealthObservation` mapping) are written and verified as far as this slice's own plan expects
+without a physical device — see below. Per CLAUDE.md rule 16, this stays open until a physical
+Android phone confirms it; the emulator/cloud-build verification below cannot substitute for
+that, only reduce what the eventual device day still has to discover.
+
+**What was verified:**
+- `tsc --noEmit` / lint / `pnpm conformance` clean.
+- 47 unit tests: 15 pure mapping tests against real Health Connect record shapes (no mock, no
+  device — `health-connect-record-mapping.spec.ts`), plus the provider's own wiring tests and
+  6E's shared `HealthProvider` contract suite run against this real implementation with the
+  native module mocked (`health-connect.provider.spec.ts`).
+- `expo prebuild` succeeded; the generated `AndroidManifest.xml` correctly carries Health
+  Connect's permission-rationale intent filter and `ViewPermissionUsageActivity` alias — proof
+  the config plugin (registered in `app.config.ts` this slice, alongside `expo-build-properties`
+  for compileSdk/targetSdk 36) wires the native project correctly.
+- **A local Windows Gradle build failed** on `ninja: error: manifest 'build.ninja' still dirty
+  after 100 tries`, root-caused to a pre-existing environment limit
+  (`CMAKE_OBJECT_PATH_MAX`, a hard ~250-character CMake object-path check) triggered by pnpm's
+  long `.pnpm/<pkg>@<version>_<hash>/node_modules/<pkg>` nesting under `react-native-worklets`
+  and `react-native-screens` — unrelated to this session's code, and not fixed by Windows' own
+  long-path registry setting (already enabled on this machine) since CMake enforces its own
+  check independent of that. **Not something to "fix" as part of 6F** — it would hit any local
+  native Android build on this machine, and the project's own EAS cloud-build pipeline
+  (already configured, `eas.json`'s `development` profile) sidesteps it entirely by building on
+  Linux, which is also the intended production build path (ADR-027/ADR-028), not a workaround
+  invented for this problem.
+- Switched to `eas build --profile development --platform android`, run by the user
+  interactively (a one-time Android keystore had to be generated, which needs an interactive
+  Y/n EAS refuses to answer non-interactively). Build succeeded on EAS's servers, downloaded,
+  and **installed and launched cleanly on the `forjd_pixel7_api34` emulator** (the Play Store
+  image set up in an earlier session specifically for Health Connect) — no crash, confirmed via
+  `adb logcat`.
+- `adb shell dumpsys package com.forjd.app` confirms Health Connect's permission-rationale
+  activity and `HealthDataSdkService` bind action are both registered for the app, and that the
+  app correctly declares a `<queries>` entry for Health Connect's own package
+  (`com.google.android.apps.healthdata`).
+
+**What was NOT verified — the actual gap the device day still has to close:**
+- The live JS→native call path (`connect()`/`requestPermissions()`/`sync()`) was never
+  exercised on a running app — nothing in the UI calls `HealthConnectProvider` yet, since
+  wiring a screen to it is deliberately post-6F work per the Phase 6 plan. The app only ever
+  reached its dev-client launcher screen this session, not a real permission-request dialog or
+  a real Health Connect read.
+- No physical device run at all, which is rule 16's actual merge gate — this emulator/cloud-build
+  path only reduces what remains to check on that day, it doesn't substitute for it.
+
+**Uses of this session's EAS free-tier build quota:** 1 of 15 Android builds/month (account had
+0 used before this session).
+
 ### Session close, 2026-09-08 (Phase 6 slice 6E: HealthProvider interface + ADR-034)
 
 **PR #129 merged and confirmed green on `main`.** Continues directly from 6D below in the
@@ -2162,7 +2216,7 @@ failure).
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
-| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6E (vocabulary, schema, contracts, API, HealthProvider interface) done, 6F (Health Connect adapter) next but device-gated |
+| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6E merged, 6F (Health Connect adapter) written and emulator/cloud-build verified but held on draft [PR #130](https://github.com/Menshawy97/FORJD/pull/130) pending a physical Android device (rule 16) |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | Not started |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
 | Limited Android beta | 35 | 12+ testers | Not started |
