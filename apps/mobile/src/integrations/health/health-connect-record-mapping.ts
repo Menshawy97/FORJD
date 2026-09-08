@@ -1,8 +1,11 @@
-import { HEALTH_METRIC_TYPES, HEALTH_METRIC_UNITS, type HealthMetricType } from "@forjd/domain";
+import {
+  HEALTH_METRIC_TYPES,
+  HEALTH_METRIC_UNITS,
+  type HealthMetricType,
+  type SyncedObservation,
+} from "@forjd/domain";
 import { SleepStageType } from "react-native-health-connect";
 import type { Metadata, RecordResult, RecordType } from "react-native-health-connect";
-
-import type { SyncedObservation } from "./health-provider.interface";
 
 /**
  * `readRecords`'s own result rows -- `RecordResult<'HeartRate'>` etc -- are the only shapes

@@ -1,13 +1,14 @@
-import { HEALTH_METRIC_TYPES, type HealthMetricType, type HealthSource } from "@forjd/domain";
-
-import type {
-  HealthProvider,
-  PermissionResult,
-  ProviderCapabilities,
-  SyncedObservation,
-  SyncRequest,
-  SyncResult,
-} from "./health-provider.interface";
+import {
+  HEALTH_METRIC_TYPES,
+  type HealthMetricType,
+  type HealthSource,
+  type HealthProvider,
+  type PermissionResult,
+  type ProviderCapabilities,
+  type SyncedObservation,
+  type SyncRequest,
+  type SyncResult,
+} from "@forjd/domain";
 
 export interface FakeHealthProviderOptions {
   source?: HealthSource;
@@ -17,7 +18,8 @@ export interface FakeHealthProviderOptions {
 
 /**
  * In-memory `HealthProvider`, with no native dependency -- (a) proves
- * `health-provider.contract.ts` actually catches a real violation of its own rules, and (b)
+ * `@forjd/domain`'s `health-provider-contract.ts` actually catches a real violation of its
+ * own rules, and (b)
  * is what any screen/hook that consumes a `HealthProvider` can be tested against before
  * `HealthConnectProvider` (Phase 6F, device-gated) exists.
  *

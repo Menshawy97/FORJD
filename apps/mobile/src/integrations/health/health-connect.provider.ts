@@ -1,4 +1,14 @@
-import type { HealthMetricType, HealthSource } from "@forjd/domain";
+import type {
+  HealthMetricType,
+  HealthSource,
+  HealthPermission,
+  HealthProvider,
+  PermissionResult,
+  ProviderCapabilities,
+  SyncedObservation,
+  SyncRequest,
+  SyncResult,
+} from "@forjd/domain";
 import {
   SdkAvailabilityStatus,
   getSdkStatus,
@@ -26,15 +36,6 @@ import {
   mapWeightRecord,
   recordTypesFor,
 } from "./health-connect-record-mapping";
-import type {
-  HealthPermission,
-  HealthProvider,
-  PermissionResult,
-  ProviderCapabilities,
-  SyncedObservation,
-  SyncRequest,
-  SyncResult,
-} from "./health-provider.interface";
 
 /** `since: null` (a full sync) reads everything Health Connect will return up to `now` --
  *  the `before` filter variant takes no lower bound, matching "no checkpoint yet" honestly

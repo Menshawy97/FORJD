@@ -1,6 +1,6 @@
+import { runHealthProviderContractTests } from "@forjd/domain";
 import { SdkAvailabilityStatus } from "react-native-health-connect";
 
-import { runHealthProviderContractTests } from "./health-provider.contract";
 import { buildTimeRangeFilter, HealthConnectProvider } from "./health-connect.provider";
 
 /**

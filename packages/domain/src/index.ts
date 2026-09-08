@@ -179,3 +179,5 @@ export * from "./progress-insight";
 export * from "./readiness";
 export * from "./health-insight";
 export * from "./external-connection-vocabulary";
+export * from "./health-provider";
+export * from "./health-provider-contract";
