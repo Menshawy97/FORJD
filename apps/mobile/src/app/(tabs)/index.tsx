@@ -1,6 +1,8 @@
 import type {
+  HealthObservationSeriesResponse,
   MacroGoalsResponse,
   NutritionLogEntryResponse,
+  ReadinessResponse,
   WorkoutStatsResponse,
 } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
@@ -8,14 +10,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
 import {
+  getHealthObservationSeries,
   getMacroGoals,
   getMe,
   getProgramEnrollment,
+  getReadiness,
   getWorkoutStats,
   listNutritionLog,
 } from '@/auth/apiClient';
 import { ScreenBackground } from '@/components/screen-background';
 import { formatHomeDate } from '@/features/home/date';
+import { latestReading, sumForLocalDate } from '@/features/health/health-metrics';
 import { HomeHeader } from '@/features/home/home-header';
 import { InsightCard } from '@/features/home/insight-card';
 import { NutritionTodayCard } from '@/features/home/nutrition-today-card';
@@ -57,6 +62,8 @@ export default function HomeScreen() {
   const [log, setLog] = useState<NutritionLogEntryResponse[]>([]);
   const [goals, setGoals] = useState<MacroGoalsResponse | null>(null);
   const [stats, setStats] = useState<WorkoutStatsResponse | null>(null);
+  const [healthSeries, setHealthSeries] = useState<HealthObservationSeriesResponse | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
 
   // Bumped by every load and by every blur, so only the newest in-flight load may commit.
   // Without it, flicking between tabs can land an older response after a newer one and show
@@ -71,12 +78,15 @@ export default function HomeScreen() {
     // on the one screen whose whole subject is today.
     const today = todayLocalDate();
 
-    const [meResult, logResult, goalsResult, statsResult] = await Promise.allSettled([
-      getMe(),
-      listNutritionLog(today),
-      getMacroGoals(),
-      getWorkoutStats(),
-    ]);
+    const [meResult, logResult, goalsResult, statsResult, healthSeriesResult, readinessResult] =
+      await Promise.allSettled([
+        getMe(),
+        listNutritionLog(today),
+        getMacroGoals(),
+        getWorkoutStats(),
+        getHealthObservationSeries(),
+        getReadiness(),
+      ]);
 
     if (generation !== loadGeneration.current) return;
 
@@ -93,6 +103,8 @@ export default function HomeScreen() {
     // account sees. Home is the launch screen: a stats request that fails must leave it
     // looking untrained, not broken.
     setStats(statsResult.status === 'fulfilled' ? statsResult.value : null);
+    setHealthSeries(healthSeriesResult.status === 'fulfilled' ? healthSeriesResult.value : null);
+    setReadiness(readinessResult.status === 'fulfilled' ? readinessResult.value : null);
   }, []);
 
   useFocusEffect(
@@ -126,6 +138,11 @@ export default function HomeScreen() {
 
   const totals = useMemo(() => (log.length === 0 ? EMPTY_TOTALS : sumTotals(log)), [log]);
 
+  const sleepMinutes = healthSeries ? latestReading(healthSeries, 'sleep_duration')?.value ?? null : null;
+  const hrvMs = healthSeries ? latestReading(healthSeries, 'hrv')?.value ?? null : null;
+  const restingHeartRateBpm = healthSeries ? latestReading(healthSeries, 'resting_heart_rate')?.value ?? null : null;
+  const stepsToday = healthSeries ? sumForLocalDate(healthSeries, 'steps', todayLocalDate()) : null;
+
   return (
     <ScreenBackground>
       <HomeHeader firstName={firstName} />
@@ -135,7 +152,7 @@ export default function HomeScreen() {
           {formatHomeDate(new Date())}
         </Text>
 
-        <ReadinessCard />
+        <ReadinessCard readiness={readiness} />
         <NutritionTodayCard
           totals={totals}
           goals={goals}
@@ -145,6 +162,10 @@ export default function HomeScreen() {
           totalSessions={stats?.totalSessions ?? null}
           sessionsThisMonth={stats?.sessionsThisMonth ?? null}
           weekStreak={stats?.weekStreak ?? null}
+          sleepMinutes={sleepMinutes}
+          hrvMs={hrvMs}
+          restingHeartRateBpm={restingHeartRateBpm}
+          stepsToday={stepsToday}
         />
         <InsightCard />
         <StartWorkoutCta

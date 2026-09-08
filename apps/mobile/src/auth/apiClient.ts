@@ -66,6 +66,9 @@ import type {
   BodyScanSeriesResponse,
   ConfirmBodyScanRequest,
   ExtractBodyScanResponse,
+  HealthConnectionListResponse,
+  HealthObservationSeriesResponse,
+  ReadinessResponse,
 } from '@forjd/contracts';
 
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
@@ -558,5 +561,35 @@ export async function getBodyScan(id: string): Promise<BodyScanResponse> {
 
 export async function getBodyScanSeries(): Promise<BodyScanSeriesResponse> {
   const response = await apiClient.get<BodyScanSeriesResponse>('/body-scans/series');
+  return response.data;
+}
+
+/**
+ * `GET /health-data/observations/series` -- Phase 6D's source-priority-resolved read. Empty
+ * (`series: []`) until a provider adapter (Phase 6F's `HealthConnectProvider`, still
+ * device-unverified per ADR-035) actually syncs a real reading in, which is expected and not
+ * an error -- every consumer of this response renders the same honest-empty state a brand new
+ * account sees.
+ */
+export async function getHealthObservationSeries(): Promise<HealthObservationSeriesResponse> {
+  const response = await apiClient.get<HealthObservationSeriesResponse>('/health-data/observations/series');
+  return response.data;
+}
+
+/** `GET /health-data/connections` -- per-provider connection state. Empty (`connections: []`)
+ *  until a connect flow exists (not built yet) writes a `health_connections` row. */
+export async function getHealthConnections(): Promise<HealthConnectionListResponse> {
+  const response = await apiClient.get<HealthConnectionListResponse>('/health-data/connections');
+  return response.data;
+}
+
+/** `GET /health-data/readiness` -- ADR-031's readiness score. `score`/`zone` are `null` until
+ *  ~30 days of history exist per component (`withheldReason` explains which); a component can
+ *  still report its own raw `recentValue` while the composite stays withheld. The zone is sent
+ *  for the same reason `getWorkoutStats` sends it -- readiness buckets by local calendar day. */
+export async function getReadiness(): Promise<ReadinessResponse> {
+  const response = await apiClient.get<ReadinessResponse>('/health-data/readiness', {
+    params: { timeZone: deviceTimeZone() },
+  });
   return response.data;
 }

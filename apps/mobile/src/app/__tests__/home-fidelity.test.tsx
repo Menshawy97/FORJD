@@ -39,6 +39,10 @@ jest.mock('@/auth/apiClient', () => ({
   // the honest empty states, and a failed stats read is precisely the path that must still
   // produce them.
   getWorkoutStats: jest.fn().mockRejectedValue(new Error('no stats in this suite')),
+  // Phase 6: Home also reads health-observation series and readiness. Rejected here for the
+  // same reason as getWorkoutStats -- these suites pin honest-empty states.
+  getHealthObservationSeries: jest.fn().mockRejectedValue(new Error('no health data in this suite')),
+  getReadiness: jest.fn().mockRejectedValue(new Error('no readiness in this suite')),
 }));
 
 import { getMacroGoals, getMe, listNutritionLog, getProgramEnrollment } from '@/auth/apiClient';

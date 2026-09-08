@@ -1,13 +1,20 @@
-import type { BodyScanSeriesResponse, ProgressStrengthResponse } from '@forjd/contracts';
+import type {
+  BodyScanSeriesResponse,
+  HealthObservationSeriesResponse,
+  ProgressStrengthResponse,
+  ReadinessResponse,
+} from '@forjd/contracts';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { getBodyScanSeries, getProgressStrength } from '@/auth/apiClient';
+import { getBodyScanSeries, getHealthObservationSeries, getProgressStrength, getReadiness } from '@/auth/apiClient';
 import { ScreenBackground } from '@/components/screen-background';
 import { SegmentedControl } from '@/components/segmented-control';
 import { Sparkline } from '@/components/sparkline';
 import { BodyView } from '@/features/body/body-view';
+import { HealthView } from '@/features/health/health-view';
+import { sumForLocalDate } from '@/features/health/health-metrics';
 import { Card } from '@/features/progress/card';
 import { InsightCard } from '@/features/progress/insight-card';
 import { MuscleSplit } from '@/features/progress/muscle-split';
@@ -44,6 +51,8 @@ export default function ProgressScreen() {
   const [tab, setTab] = useState<ProgressTab>('strength');
   const [strength, setStrength] = useState<ProgressStrengthResponse | null>(null);
   const [bodySeries, setBodySeries] = useState<BodyScanSeriesResponse | null>(null);
+  const [healthSeries, setHealthSeries] = useState<HealthObservationSeriesResponse | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
   const loadGeneration = useRef(0);
 
   const load = useCallback(async () => {
@@ -61,6 +70,18 @@ export default function ProgressScreen() {
       if (generation === loadGeneration.current) setBodySeries(response);
     } catch {
       if (generation === loadGeneration.current) setBodySeries(null);
+    }
+    try {
+      const response = await getHealthObservationSeries();
+      if (generation === loadGeneration.current) setHealthSeries(response);
+    } catch {
+      if (generation === loadGeneration.current) setHealthSeries(null);
+    }
+    try {
+      const response = await getReadiness();
+      if (generation === loadGeneration.current) setReadiness(response);
+    } catch {
+      if (generation === loadGeneration.current) setReadiness(null);
     }
   }, []);
 
@@ -104,23 +125,25 @@ export default function ProgressScreen() {
         contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 26 }}
         showsVerticalScrollIndicator={false}>
         {tab === 'strength' ? (
-          <StrengthView data={strength} />
+          <StrengthView data={strength} healthSeries={healthSeries} />
         ) : tab === 'body' ? (
           <BodyView series={bodySeries} hasAnyScan={(bodySeries?.series.length ?? 0) > 0} />
         ) : (
-          <Card>
-            <Text style={{ fontFamily: 'Archivo', fontSize: 13, color: '#9A9A92' }}>
-              Health metrics need a connected wearable. Connect Health Connect or Apple Health
-              to see them here.
-            </Text>
-          </Card>
+          <HealthView series={healthSeries} readiness={readiness} />
         )}
       </ScrollView>
     </ScreenBackground>
   );
 }
 
-function StrengthView({ data }: { data: ProgressStrengthResponse | null }) {
+function StrengthView({
+  data,
+  healthSeries,
+}: {
+  data: ProgressStrengthResponse | null;
+  healthSeries: HealthObservationSeriesResponse | null;
+}) {
+  const stepsToday = healthSeries ? sumForLocalDate(healthSeries, 'steps', todayLocalDate()) : null;
   const personalRecords = data?.personalRecords ?? [];
   const oneRepMaxTrend = data?.oneRepMaxTrend.map((point) => point.estimatedOneRepMaxKg) ?? [];
   const weeklyVolumeKg =
@@ -168,7 +191,7 @@ function StrengthView({ data }: { data: ProgressStrengthResponse | null }) {
       </Card>
 
       <Card title="Avg step count">
-        <StepCountCard />
+        <StepCountCard stepsToday={stepsToday} />
       </Card>
 
       <InsightCard insight={data?.insight ?? null} />
