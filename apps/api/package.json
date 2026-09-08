@@ -193,6 +193,18 @@
         "branches": 100,
         "functions": 100,
         "lines": 100
+      },
+      "./src/integrations/whoop/whoop-record-mapping.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/integrations/whoop/whoop-oauth.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
       }
     }
   }
