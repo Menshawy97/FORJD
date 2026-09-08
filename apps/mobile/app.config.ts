@@ -71,6 +71,19 @@ const config: ExpoConfig = {
       },
     ],
     'expo-sharing',
+    // Phase 6F / ADR-034: the Android Health Connect adapter. `expo-build-properties`'
+    // Android SDK levels are the versions the library's own install instructions call for.
+    'react-native-health-connect',
+    [
+      'expo-build-properties',
+      {
+        android: {
+          compileSdkVersion: 36,
+          targetSdkVersion: 36,
+          minSdkVersion: 26,
+        },
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
