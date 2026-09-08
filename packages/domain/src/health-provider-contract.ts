@@ -1,14 +1,17 @@
-import { HEALTH_METRIC_TYPES } from "@forjd/domain";
-
-import type { HealthProvider } from "./health-provider.interface";
+import { HEALTH_METRIC_TYPES } from "./health-vocabulary";
+import type { HealthProvider } from "./health-provider";
 
 /**
  * CLAUDE.md rule 8's "contract tests for adapters," written before the adapter
- * (`HealthConnectProvider`, Phase 6F) exists -- so the device slice arrives with its
+ * (`HealthConnectProvider`, Phase 6F) existed -- so the device slice arrived with its
  * acceptance criteria already fixed, per the Phase 6 plan. Any `HealthProvider`
  * implementation, real or fake, calls this from its own spec file with a factory, so every
  * implementation is checked against the same rules rather than each writing its own ad hoc
  * version.
+ *
+ * Moved here from `apps/mobile/src/integrations/health/health-provider.contract.ts` in
+ * Phase 7C, alongside `health-provider.ts` -- see that file's docblock for why. `WhoopProvider`
+ * (Phase 7E, server-side) runs this same suite the way `HealthConnectProvider` already does.
  *
  * These are the interface's own invariants -- what must hold regardless of which provider is
  * behind it -- not a specific provider's behaviour. ADR-004's warning that per-adapter

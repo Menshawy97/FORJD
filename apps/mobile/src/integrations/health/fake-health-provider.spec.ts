@@ -1,5 +1,6 @@
+import { runHealthProviderContractTests } from "@forjd/domain";
+
 import { FakeHealthProvider } from "./fake-health-provider";
-import { runHealthProviderContractTests } from "./health-provider.contract";
 
 runHealthProviderContractTests("FakeHealthProvider", () => new FakeHealthProvider());
 

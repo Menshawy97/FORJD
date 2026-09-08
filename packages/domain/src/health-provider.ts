@@ -1,13 +1,23 @@
-import type { HealthMetricType, HealthSource } from "@forjd/domain";
+import type { HealthMetricType, HealthSource } from "./health-vocabulary";
 
 /**
  * `HealthProvider` -- verbatim from `docs/architecture/integrations.md` / ADR-003, the
  * interface every external health/fitness source is reached through. The workout engine and
- * analytics never call a provider SDK directly (CLAUDE.md rule 3); `HealthConnectProvider`
- * (Phase 6F, not this file) will be the first concrete implementation, followed by
- * `WhoopProvider` (Phase 7) and `AppleHealthProvider` (Phase 11).
+ * analytics never call a provider SDK directly (CLAUDE.md rule 3). `HealthConnectProvider`
+ * (`apps/mobile/src/integrations/health/`, Phase 6F) is the first concrete implementation;
+ * `WhoopProvider` (`apps/api/src/integrations/whoop/`, Phase 7) is the second.
  *
- * Permissions and sync results are typed against `@forjd/domain`'s `HealthMetricType` /
+ * Moved here from `apps/mobile/src/integrations/health/health-provider.interface.ts` in
+ * Phase 7C -- a mechanical relocation with no behaviour change. WHOOP's concrete
+ * implementation is server-side (`docs/product/phase-7-plan.md`, decision 2: WHOOP's client
+ * secret never reaches the mobile bundle), so the interface itself has to live somewhere
+ * both `apps/api` and `apps/mobile` can implement it from -- the shared domain package, not
+ * either app. This is also correct on principle independent of Phase 7: the provider
+ * abstraction is one of `CLAUDE.md`'s four architecturally-critical pillars, so its
+ * definition belongs in `@forjd/domain` alongside the canonical health model it serves, not
+ * inside one particular app.
+ *
+ * Permissions and sync results are typed against this same package's `HealthMetricType` /
  * `HealthSource` tuples -- the same closed vocabulary the API's `health-data` module already
  * validates against (6C's contracts), so a provider adapter cannot invent a metric type the
  * backend would reject.
@@ -30,9 +40,9 @@ export interface ProviderCapabilities {
 
 /**
  * Every requested permission ends up in exactly one of these two lists -- never both, never
- * neither. The contract-test suite (`health-provider.contract.ts`) enforces this on any
+ * neither. The contract-test suite (`health-provider-contract.ts`) enforces this on any
  * implementation, since a permission a caller can't classify either way is one the sync
- * orchestrator (not yet built) cannot safely act on.
+ * orchestrator cannot safely act on.
  */
 export interface PermissionResult {
   granted: readonly HealthPermission[];
@@ -40,15 +50,16 @@ export interface PermissionResult {
 }
 
 /** `since: null` requests a full sync (no checkpoint yet); a `Date` requests only readings at
- *  or after it, mirroring the `last_successful_sync_at` checkpoint `health-data.md`'s
- *  ingestion pipeline and 6B's `health_connections` schema already commit to. */
+ *  or after it, mirroring the `last_successful_sync_at` / `last_sync_at` checkpoint
+ *  `health-data.md`'s ingestion pipeline and the `health_connections` / `external_connections`
+ *  schemas already commit to. */
 export interface SyncRequest {
   metricTypes: readonly HealthMetricType[];
   since: Date | null;
 }
 
 /**
- * One reading a provider's `sync()` returned, in `@forjd/domain`'s canonical units already
+ * One reading a provider's `sync()` returned, in this package's canonical units already
  * (ADR-003/ADR-004: normalization is the adapter's job, not the caller's). Deliberately has
  * no `source` field -- the provider that produced this `SyncResult` has exactly one source
  * (its own `HealthProvider.source`), so the sync orchestrator that eventually calls
