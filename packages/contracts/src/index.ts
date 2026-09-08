@@ -1802,3 +1802,54 @@ export const healthConnectionListResponseSchema = z.object({
   connections: z.array(healthConnectionResponseSchema),
 });
 export type HealthConnectionListResponse = z.infer<typeof healthConnectionListResponseSchema>;
+
+/**
+ * `GET /health-data/readiness` -- ADR-031's accepted methodology
+ * (`@forjd/domain`'s `computeReadiness`), computed server-side since it needs up to ~67 days
+ * of history per component, far more than a single series fetch is meant to carry. Mirrors
+ * `computeReadiness`'s own `ReadinessResult`/`ReadinessComponentResult` shapes field-for-field
+ * -- this is a read model, not a second definition of the algorithm's output.
+ */
+export const readinessComponentKeySchema = z.enum(["hrv", "resting_heart_rate", "sleep_duration", "respiratory_rate"]);
+export const readinessComponentLabelSchema = z.enum(["low", "normal", "elevated"]);
+export const readinessZoneSchema = z.enum(["red", "yellow", "green"]);
+
+export const readinessComponentResponseSchema = z.object({
+  key: readinessComponentKeySchema,
+  score: z.number().min(0).max(100).nullable(),
+  label: readinessComponentLabelSchema.nullable(),
+  recentValue: z.number().nullable(),
+  baselineDayCount: z.number().int().min(0),
+});
+
+export const readinessResponseSchema = z.object({
+  score: z.number().int().min(0).max(100).nullable(),
+  zone: readinessZoneSchema.nullable(),
+  components: z.array(readinessComponentResponseSchema),
+  withheldReason: z.string().nullable(),
+});
+export type ReadinessResponse = z.infer<typeof readinessResponseSchema>;
+
+/** `timeZone` is required for the same reason `workoutStatsQuerySchema`/
+ *  `progressStrengthQuerySchema` require it -- readiness buckets observations by *local*
+ *  calendar day (ADR-031's daily readings), and the server has no other way to know which
+ *  day a late-evening reading belongs to. */
+export const readinessQuerySchema = z.object({
+  timeZone: z
+    .string()
+    .min(1)
+    .max(64)
+    .refine(
+      (zone) => {
+        try {
+          new Intl.DateTimeFormat('en-US', { timeZone: zone });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: 'Unknown IANA time zone' },
+    )
+    .default('UTC'),
+});
+export type ReadinessQuery = z.infer<typeof readinessQuerySchema>;

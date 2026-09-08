@@ -27,6 +27,7 @@ import {
   progressStrengthResponseSchema,
   healthObservationSeriesResponseSchema,
   healthConnectionListResponseSchema,
+  readinessResponseSchema,
 } from './index';
 
 /**
@@ -807,6 +808,24 @@ export const responseFixtures = {
         { source: 'health_connect', lastSuccessfulSyncAt: '2026-09-07T06:15:00.000Z' },
         { source: 'whoop', lastSuccessfulSyncAt: null },
       ],
+    },
+  },
+
+  /** Three components with enough baseline history to score, one (respiratory_rate) still
+   *  short of it -- pins that the composite is withheld while individual ready components
+   *  keep reporting their own score, per ADR-031's "components stay separately visible" rule. */
+  'readiness-response': {
+    schema: readinessResponseSchema,
+    sample: {
+      score: null,
+      zone: null,
+      components: [
+        { key: 'hrv', score: 62, label: 'elevated', recentValue: 58.2, baselineDayCount: 60 },
+        { key: 'resting_heart_rate', score: 55, label: 'normal', recentValue: 52, baselineDayCount: 60 },
+        { key: 'sleep_duration', score: 48, label: 'normal', recentValue: 410, baselineDayCount: 45 },
+        { key: 'respiratory_rate', score: null, label: null, recentValue: 14.5, baselineDayCount: 12 },
+      ],
+      withheldReason: 'Still building your baseline for: respiratory_rate. Needs 30 days of history.',
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;

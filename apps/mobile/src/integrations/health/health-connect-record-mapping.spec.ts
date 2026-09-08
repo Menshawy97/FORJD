@@ -24,14 +24,20 @@ import {
  * right canonical observation."
  */
 describe("METRIC_TO_RECORD_TYPE / HEALTH_CONNECT_SUPPORTED_METRICS", () => {
-  it("maps every domain metric type to a Health Connect record type", () => {
+  it("maps every domain metric type to a Health Connect record type, except walking_heart_rate", () => {
     for (const metricType of HEALTH_METRIC_TYPES) {
+      if (metricType === "walking_heart_rate") {
+        expect(METRIC_TO_RECORD_TYPE[metricType]).toBeUndefined();
+        continue;
+      }
       expect(METRIC_TO_RECORD_TYPE[metricType]).toBeTruthy();
     }
   });
 
-  it("declares support for the entire domain vocabulary, since every metric has a mapping", () => {
-    expect(new Set(HEALTH_CONNECT_SUPPORTED_METRICS)).toEqual(new Set(HEALTH_METRIC_TYPES));
+  it("declares support for the domain vocabulary minus walking_heart_rate, which Health Connect cannot supply", () => {
+    const expected = new Set(HEALTH_METRIC_TYPES.filter((m) => m !== "walking_heart_rate"));
+    expect(new Set(HEALTH_CONNECT_SUPPORTED_METRICS)).toEqual(expected);
+    expect(HEALTH_CONNECT_SUPPORTED_METRICS).not.toContain("walking_heart_rate");
   });
 });
 

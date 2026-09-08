@@ -33,6 +33,7 @@
  */
 export const HEALTH_METRIC_TYPES = [
   "heart_rate",
+  "walking_heart_rate",
   "hrv",
   "resting_heart_rate",
   "sleep_duration",
@@ -50,6 +51,15 @@ export type HealthMetricType = (typeof HEALTH_METRIC_TYPES)[number];
 
 export const HEALTH_METRIC_TYPE_DISPLAY_NAMES: Record<HealthMetricType, string> = {
   heart_rate: "Heart rate",
+  /** Apple HealthKit's own `walkingHeartRateAverage` type -- the average heart rate during
+   *  periods HealthKit itself detects as walking. Android's Health Connect has no equivalent
+   *  record type (its `HeartRateRecord` carries no activity-context flag), so
+   *  `HealthConnectProvider` (Phase 6F) cannot supply it -- see
+   *  `health-connect-record-mapping.ts`'s own docblock. Included here anyway because the
+   *  canonical vocabulary is deliberately shaped by the *union* of providers (ADR-003), not
+   *  by whichever one shipped first; it becomes real once an Apple Health adapter exists
+   *  (Phase 11). */
+  walking_heart_rate: "Walking heart rate",
   hrv: "Heart rate variability",
   resting_heart_rate: "Resting heart rate",
   sleep_duration: "Sleep duration",
@@ -73,6 +83,7 @@ export const HEALTH_METRIC_TYPE_DISPLAY_NAMES: Record<HealthMetricType, string> 
  */
 export const HEALTH_METRIC_UNITS: Record<HealthMetricType, string> = {
   heart_rate: "bpm",
+  walking_heart_rate: "bpm",
   hrv: "ms",
   resting_heart_rate: "bpm",
   sleep_duration: "min",

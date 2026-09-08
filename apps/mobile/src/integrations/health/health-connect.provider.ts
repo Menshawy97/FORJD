@@ -102,7 +102,10 @@ export class HealthConnectProvider implements HealthProvider {
     const granted: HealthPermission[] = [];
     const denied: HealthPermission[] = [];
     for (const permission of permissions) {
-      const target = grantedRecordTypes.has(METRIC_TO_RECORD_TYPE[permission]) ? granted : denied;
+      // `?? ""`: a permission with no Health Connect mapping at all (walking_heart_rate) is
+      // never granted -- no real RecordType value can equal the empty-string sentinel, so
+      // this always denies it rather than needing a separate undefined-check branch.
+      const target = grantedRecordTypes.has(METRIC_TO_RECORD_TYPE[permission] ?? "") ? granted : denied;
       target.push(permission);
     }
 

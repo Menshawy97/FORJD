@@ -1,0 +1,35 @@
+{
+  "score": null,
+  "zone": null,
+  "components": [
+    {
+      "key": "hrv",
+      "score": 62,
+      "label": "elevated",
+      "recentValue": 58.2,
+      "baselineDayCount": 60
+    },
+    {
+      "key": "resting_heart_rate",
+      "score": 55,
+      "label": "normal",
+      "recentValue": 52,
+      "baselineDayCount": 60
+    },
+    {
+      "key": "sleep_duration",
+      "score": 48,
+      "label": "normal",
+      "recentValue": 410,
+      "baselineDayCount": 45
+    },
+    {
+      "key": "respiratory_rate",
+      "score": null,
+      "label": null,
+      "recentValue": 14.5,
+      "baselineDayCount": 12
+    }
+  ],
+  "withheldReason": "Still building your baseline for: respiratory_rate. Needs 30 days of history."
+}

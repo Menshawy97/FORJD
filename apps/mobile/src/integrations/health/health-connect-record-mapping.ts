@@ -29,13 +29,22 @@ type WeightRecordResult = RecordResult<"Weight">;
  * no native module, no mock, no device -- `health-connect.provider.ts` only wires this to the
  * library's `readRecords`/`requestPermission` calls.
  *
- * Every metric type in `HEALTH_METRIC_TYPES` maps to exactly one Health Connect `RecordType`,
- * except the five sleep-related types, which all read from the single `SleepSession` record --
- * Health Connect represents sleep stages as segments within one session, not as separate
- * per-stage records, matching `health-vocabulary.ts`'s own docblock on why sleep stages are
- * modelled as separate metric types in the first place.
+ * Almost every metric type in `HEALTH_METRIC_TYPES` maps to exactly one Health Connect
+ * `RecordType`, except the five sleep-related types, which all read from the single
+ * `SleepSession` record -- Health Connect represents sleep stages as segments within one
+ * session, not as separate per-stage records, matching `health-vocabulary.ts`'s own docblock
+ * on why sleep stages are modelled as separate metric types in the first place.
+ *
+ * **`walking_heart_rate` is the one deliberate exception**, absent from this map entirely.
+ * Android's Health Connect has no equivalent record type -- its `HeartRateRecord` samples
+ * carry no activity-context flag distinguishing a walking period from any other -- while
+ * Apple HealthKit does have this as a native type. `Partial<Record<...>>`, not the full
+ * `Record<...>`, is what lets this entry stay genuinely absent rather than forcing a made-up
+ * mapping; `HEALTH_CONNECT_SUPPORTED_METRICS` and `recordTypesFor` both derive from this map's
+ * actual keys, so the gap propagates correctly to `getCapabilities()` (ADR-003's "a provider
+ * missing a metric degrades gracefully") instead of needing a second place to declare it.
  */
-export const METRIC_TO_RECORD_TYPE: Record<HealthMetricType, RecordType> = {
+export const METRIC_TO_RECORD_TYPE: Partial<Record<HealthMetricType, RecordType>> = {
   heart_rate: "HeartRate",
   hrv: "HeartRateVariabilityRmssd",
   resting_heart_rate: "RestingHeartRate",
@@ -51,15 +60,24 @@ export const METRIC_TO_RECORD_TYPE: Record<HealthMetricType, RecordType> = {
   respiratory_rate: "RespiratoryRate",
 };
 
-/** Every metric type this provider can supply -- the full domain vocabulary, since every
- *  entry in `METRIC_TO_RECORD_TYPE` above has a real Health Connect record behind it. */
-export const HEALTH_CONNECT_SUPPORTED_METRICS: readonly HealthMetricType[] = HEALTH_METRIC_TYPES;
+/** Every metric type this provider can actually supply -- derived from `METRIC_TO_RECORD_TYPE`'s
+ *  own keys rather than restated, so a metric this provider cannot map (`walking_heart_rate`)
+ *  cannot silently drift into looking supported here while staying absent from the map above. */
+export const HEALTH_CONNECT_SUPPORTED_METRICS: readonly HealthMetricType[] = HEALTH_METRIC_TYPES.filter(
+  (metricType) => METRIC_TO_RECORD_TYPE[metricType] !== undefined,
+);
 
 /** The distinct set of Health Connect record types to actually fetch for a set of requested
  *  metric types -- multiple sleep metric types collapse to one `SleepSession` read, so a sync
- *  requesting all five never issues the same read five times. */
+ *  requesting all five never issues the same read five times. A metric type with no mapping
+ *  (`walking_heart_rate`) contributes nothing, rather than throwing -- the caller is expected
+ *  to have already filtered requested permissions down to `HEALTH_CONNECT_SUPPORTED_METRICS`,
+ *  but this stays defensive rather than assuming that happened. */
 export function recordTypesFor(metricTypes: readonly HealthMetricType[]): RecordType[] {
-  return Array.from(new Set(metricTypes.map((m) => METRIC_TO_RECORD_TYPE[m])));
+  const recordTypes = metricTypes
+    .map((m) => METRIC_TO_RECORD_TYPE[m])
+    .filter((recordType): recordType is RecordType => recordType !== undefined);
+  return Array.from(new Set(recordTypes));
 }
 
 function providerRecordId(metadata: Metadata | undefined): string | null {
