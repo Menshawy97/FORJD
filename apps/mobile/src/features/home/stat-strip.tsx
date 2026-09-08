@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
+import { formatSleepMinutes } from '@/features/health/health-metrics';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -13,16 +14,23 @@ import { colors } from '@/theme/tokens';
  * exception and still reads an em dash: it needs the leaderboard behind the Rank tab, itself
  * still a placeholder, and "#0" would be a rank rather than an absence.
  *
- * The four health metrics still read em dashes. They need Health Connect / HealthKit
- * (Phase 6), and no `HealthProvider` feeds this app yet.
+ * **The four health metrics are real as of Phase 6 (light-up-the-UI slice)**, from
+ * `GET /health-data/observations/series` -- each is the latest reading (or, for steps, the
+ * day's running total) at the time Home loaded, and reads an em dash exactly as before until
+ * `HealthConnectProvider` (6F, device-unverified per ADR-035) or a manual entry has actually
+ * synced a value in. Nothing here computes anything -- that is what `health-metrics.ts`'s pure
+ * `latestReading`/`sumForLocalDate` helpers already do, one layer up, before this component
+ * ever sees a number.
  *
  * The tooltips are the exception: their copy explains what the metric *is*, so it is correct
- * with or without a reading behind it, and it ships now rather than waiting for Phase 6. The
- * prototype opens them on hover and toggles them on click; a phone has no hover, so tap is
- * the only interaction here.
+ * with or without a reading behind it, and it shipped ahead of Phase 6. The prototype opens
+ * them on hover and toggles them on click; a phone has no hover, so tap is the only
+ * interaction here.
  */
+type MetricKey = 'sleep' | 'hrv' | 'rhr' | 'steps';
+
 interface Metric {
-  key: string;
+  key: MetricKey;
   label: string;
   icon: IconName;
   /** Green in the design for the two recovery metrics, plain text for the other two. */
@@ -74,6 +82,27 @@ export interface StatStripProps {
   totalSessions: number | null;
   sessionsThisMonth: number | null;
   weekStreak: number | null;
+  /** Minutes -- `health-metrics.ts`'s `latestReading('sleep_duration', ...)`. */
+  sleepMinutes: number | null;
+  hrvMs: number | null;
+  restingHeartRateBpm: number | null;
+  /** `health-metrics.ts`'s `sumForLocalDate('steps', ...)` -- a running total for today, not
+   *  a single latest-point read, since Health Connect reports steps in many small windows
+   *  across a day rather than one daily total. */
+  stepsToday: number | null;
+}
+
+function metricValueText(key: MetricKey, props: StatStripProps): string {
+  switch (key) {
+    case "sleep":
+      return props.sleepMinutes === null ? EMPTY : formatSleepMinutes(props.sleepMinutes);
+    case "hrv":
+      return props.hrvMs === null ? EMPTY : `${Math.round(props.hrvMs)}ms`;
+    case "rhr":
+      return props.restingHeartRateBpm === null ? EMPTY : `${Math.round(props.restingHeartRateBpm)}bpm`;
+    case "steps":
+      return props.stepsToday === null ? EMPTY : Math.round(props.stepsToday).toLocaleString("en-US");
+  }
 }
 
 function counters({
@@ -152,7 +181,7 @@ export function StatStrip(props: StatStripProps) {
               }`}
               numberOfLines={1}
               style={{ fontVariant: ['tabular-nums'] }}>
-              {EMPTY}
+              {metricValueText(metric.key, props)}
             </Text>
           </Pressable>
         ))}

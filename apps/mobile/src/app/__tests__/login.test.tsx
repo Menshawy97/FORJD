@@ -39,6 +39,10 @@ jest.mock('@/auth/apiClient', () => ({
     thisWeek: { sessionCount: 0, trainedWeekdays: [] },
     recentPersonalRecord: null,
   }),
+  // Phase 6: Home also reads health-observation series and readiness once it lands there
+  // after login. Resolved empty for the same reason getWorkoutStats is above.
+  getHealthObservationSeries: jest.fn().mockResolvedValue({ series: [] }),
+  getReadiness: jest.fn().mockResolvedValue({ score: null, zone: null, components: [], withheldReason: 'Still building your baseline.' }),
 }));
 
 import * as SecureStore from 'expo-secure-store';

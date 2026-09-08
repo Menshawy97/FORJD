@@ -17,6 +17,9 @@ jest.mock('expo-router', () => ({
 jest.mock('@/auth/apiClient', () => ({
   getProgressStrength: jest.fn(),
   getBodyScanSeries: jest.fn(),
+  // Phase 6: Progress also reads health-observation series and readiness for the Health tab.
+  getHealthObservationSeries: jest.fn().mockRejectedValue(new Error('no health data in this suite')),
+  getReadiness: jest.fn().mockRejectedValue(new Error('no readiness in this suite')),
 }));
 
 import { getBodyScanSeries, getProgressStrength } from '@/auth/apiClient';

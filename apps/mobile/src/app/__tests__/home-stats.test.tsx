@@ -29,6 +29,10 @@ jest.mock('@/auth/apiClient', () => ({
   listNutritionLog: jest.fn(),
   getMacroGoals: jest.fn(),
   getWorkoutStats: jest.fn(),
+  // Phase 6: Home also reads health-observation series and readiness -- not under test here,
+  // rejected so the loaded stats remain the only signal these assertions depend on.
+  getHealthObservationSeries: jest.fn().mockRejectedValue(new Error('no health data in this suite')),
+  getReadiness: jest.fn().mockRejectedValue(new Error('no readiness in this suite')),
 }));
 
 import { getMacroGoals, getMe, getWorkoutStats, listNutritionLog } from '@/auth/apiClient';

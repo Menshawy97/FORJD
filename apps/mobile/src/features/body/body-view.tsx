@@ -92,7 +92,7 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
 
   return (
     <>
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
         {bodyWidgets.map((metric, slot) => {
           const s = seriesFor(series, metric);
           const latest = s && s.points.length > 0 ? s.points[s.points.length - 1].value : null;

@@ -1,12 +1,31 @@
 import { Injectable } from "@nestjs/common";
-import { resolveByPriority, type HealthMetricType, type HealthObservation, type User } from "@forjd/domain";
+import {
+  computeReadiness,
+  resolveByPriority,
+  type HealthMetricType,
+  type HealthObservation,
+  type ReadinessComponentKey,
+  type ReadinessDailyReading,
+  type User,
+} from "@forjd/domain";
 import type {
   BatchIngestHealthObservationsRequest,
   HealthConnectionListResponse,
   HealthObservationSeriesResponse,
+  ReadinessResponse,
 } from "@forjd/contracts";
 
+import { localCalendarDate } from "../workouts/workouts.repository";
 import { HealthDataRepository, ObservationRow } from "./health-data.repository";
+
+/** The four metric types ADR-031's readiness score reads -- a subset of
+ *  `HEALTH_METRIC_TYPES`, in the fixed order `computeReadiness` itself iterates. */
+const READINESS_COMPONENT_KEYS: readonly ReadinessComponentKey[] = [
+  "hrv",
+  "resting_heart_rate",
+  "sleep_duration",
+  "respiratory_rate",
+];
 
 @Injectable()
 export class HealthDataService {
@@ -41,37 +60,45 @@ export class HealthDataService {
    * candidates for each other.
    */
   async getSeries(user: User): Promise<HealthObservationSeriesResponse> {
-    const rows = await this.healthDataRepository.getObservationsForUser(user.id);
-    const observations: HealthObservation[] = rows.map(toHealthObservation);
+    const observations = await this.getResolvedObservations(user.id);
 
-    const byMetricAndWindow = new Map<HealthMetricType, Map<string, HealthObservation[]>>();
+    const byMetric = new Map<HealthMetricType, HealthObservation[]>();
     for (const obs of observations) {
-      const byWindow = byMetricAndWindow.get(obs.metricType) ?? new Map<string, HealthObservation[]>();
-      const windowKey = `${obs.startTime.toISOString()}|${obs.endTime.toISOString()}`;
-      const candidates = byWindow.get(windowKey) ?? [];
-      candidates.push(obs);
-      byWindow.set(windowKey, candidates);
-      byMetricAndWindow.set(obs.metricType, byWindow);
+      const list = byMetric.get(obs.metricType) ?? [];
+      list.push(obs);
+      byMetric.set(obs.metricType, list);
     }
 
-    const series = Array.from(byMetricAndWindow.entries()).map(([metricType, byWindow]) => {
-      // Non-null assertion, not a filter: every `byWindow` entry was populated by pushing at
-      // least one observation onto it above, so `resolveByPriority` (which only returns null
-      // for an empty candidate list) can never actually return null here -- and `winners` is
-      // therefore never empty either, so `winners[0]` is always defined despite
-      // `noUncheckedIndexedAccess`.
-      const winners = Array.from(byWindow.values())
-        .map((candidates) => resolveByPriority(metricType, candidates)!)
-        .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-
+    const series = Array.from(byMetric.entries()).map(([metricType, winners]) => {
+      const sorted = [...winners].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
       return {
         metricType,
-        unit: winners[0]!.unit,
-        points: winners.map((w) => ({ startTime: w.startTime.toISOString(), value: w.value })),
+        // Every metricType key in byMetric was populated by at least one push above, so
+        // sorted[0] is always defined despite noUncheckedIndexedAccess.
+        unit: sorted[0]!.unit,
+        points: sorted.map((w) => ({ startTime: w.startTime.toISOString(), value: w.value })),
       };
     });
 
     return { series };
+  }
+
+  /**
+   * ADR-031's readiness score, computed for "today" in the caller's own time zone -- `now` is
+   * read here rather than inside `computeReadiness` itself, mirroring `ProgressService`'s own
+   * split (its docblock explains why: keeps the pure domain function testable as a function of
+   * its arguments, not of the wall clock).
+   */
+  async getReadiness(user: User, timeZone: string, now: Date = new Date()): Promise<ReadinessResponse> {
+    const observations = await this.getResolvedObservations(user.id);
+    const asOf = localCalendarDate(now, timeZone);
+
+    const readings = Object.fromEntries(
+      READINESS_COMPONENT_KEYS.map((key) => [key, dailyReadingsFor(observations, key, timeZone)]),
+    ) as Record<ReadinessComponentKey, ReadinessDailyReading[]>;
+
+    const result = computeReadiness(readings, asOf);
+    return { ...result, components: [...result.components] };
   }
 
   async listConnections(user: User): Promise<HealthConnectionListResponse> {
@@ -84,6 +111,66 @@ export class HealthDataService {
       })),
     };
   }
+
+  /**
+   * `health-data.md`'s read-time source-priority reconciliation (`resolveByPriority`), per
+   * metric type and per exact `(startTime, endTime)` window -- shared by `getSeries` and
+   * `getReadiness`, both of which need the same "one winning observation per window" read,
+   * just bucketed differently afterward (by individual point vs. by local calendar day).
+   */
+  private async getResolvedObservations(userId: string): Promise<HealthObservation[]> {
+    const rows = await this.healthDataRepository.getObservationsForUser(userId);
+    const observations: HealthObservation[] = rows.map(toHealthObservation);
+
+    const byMetricAndWindow = new Map<HealthMetricType, Map<string, HealthObservation[]>>();
+    for (const obs of observations) {
+      const byWindow = byMetricAndWindow.get(obs.metricType) ?? new Map<string, HealthObservation[]>();
+      const windowKey = `${obs.startTime.toISOString()}|${obs.endTime.toISOString()}`;
+      const candidates = byWindow.get(windowKey) ?? [];
+      candidates.push(obs);
+      byWindow.set(windowKey, candidates);
+      byMetricAndWindow.set(obs.metricType, byWindow);
+    }
+
+    const winners: HealthObservation[] = [];
+    for (const [metricType, byWindow] of byMetricAndWindow) {
+      for (const candidates of byWindow.values()) {
+        // Non-null assertion: every `candidates` array was populated by pushing at least one
+        // observation onto it above, so `resolveByPriority` (which only returns null for an
+        // empty list) can never actually return null here.
+        winners.push(resolveByPriority(metricType, candidates)!);
+      }
+    }
+    return winners;
+  }
+}
+
+/**
+ * Reduces a metric's already-resolved observations to one reading per *local calendar day*
+ * (`computeReadiness`'s own required input shape) -- distinct from `getSeries`, which reports
+ * one point per raw `(startTime, endTime)` window. Multiple resolved observations landing on
+ * the same local day (Health Connect can report several short windows within one day) are
+ * averaged, the same "one reading per day" reduction `readiness.ts`'s own docblock says the
+ * caller (this file) is responsible for.
+ */
+function dailyReadingsFor(
+  observations: readonly HealthObservation[],
+  metricType: ReadinessComponentKey,
+  timeZone: string,
+): ReadinessDailyReading[] {
+  const byDate = new Map<string, number[]>();
+  for (const obs of observations) {
+    if (obs.metricType !== metricType) continue;
+    const date = localCalendarDate(obs.startTime, timeZone);
+    const values = byDate.get(date) ?? [];
+    values.push(obs.value);
+    byDate.set(date, values);
+  }
+
+  return Array.from(byDate.entries()).map(([date, values]) => ({
+    date,
+    value: values.reduce((sum, v) => sum + v, 0) / values.length,
+  }));
 }
 
 function toHealthObservation(row: ObservationRow): HealthObservation {

@@ -1,9 +1,11 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from "@nestjs/common";
-import { batchIngestHealthObservationsRequestSchema } from "@forjd/contracts";
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { batchIngestHealthObservationsRequestSchema, readinessQuerySchema } from "@forjd/contracts";
 import type {
   BatchIngestHealthObservationsRequest,
   HealthConnectionListResponse,
   HealthObservationSeriesResponse,
+  ReadinessQuery,
+  ReadinessResponse,
 } from "@forjd/contracts";
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -43,5 +45,15 @@ export class HealthDataController {
   @Get("connections")
   connections(@Req() request: AuthenticatedRequest): Promise<HealthConnectionListResponse> {
     return this.healthDataService.listConnections(request.user);
+  }
+
+  /** ADR-031's readiness score. `timeZone` is required for the same reason
+   *  `workouts/sessions/stats` requires it -- readiness buckets by local calendar day. */
+  @Get("readiness")
+  readiness(
+    @Req() request: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(readinessQuerySchema)) query: ReadinessQuery,
+  ): Promise<ReadinessResponse> {
+    return this.healthDataService.getReadiness(request.user, query.timeZone);
   }
 }
