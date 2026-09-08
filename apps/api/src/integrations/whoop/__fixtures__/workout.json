@@ -1,0 +1,31 @@
+{
+  "id": "8f4e2d1c-6b5a-4d3e-8c1b-2a3d4e5f6a7b",
+  "v1_id": 998877,
+  "user_id": 10129,
+  "created_at": "2026-09-08T09:05:00.000Z",
+  "updated_at": "2026-09-08T09:05:00.000Z",
+  "start": "2026-09-08T08:00:00.000Z",
+  "end": "2026-09-08T09:00:00.000Z",
+  "timezone_offset": "+02:00",
+  "sport_name": "running",
+  "sport_id": 1,
+  "score_state": "SCORED",
+  "score": {
+    "strain": 12.4,
+    "average_heart_rate": 142,
+    "max_heart_rate": 168,
+    "kilojoule": 2100.5,
+    "percent_recorded": 100,
+    "distance_meter": 8200.0,
+    "altitude_gain_meter": 45.0,
+    "altitude_change_meter": 2.0,
+    "zone_durations": {
+      "zone_zero_milli": 0,
+      "zone_one_milli": 300000,
+      "zone_two_milli": 1200000,
+      "zone_three_milli": 1500000,
+      "zone_four_milli": 600000,
+      "zone_five_milli": 0
+    }
+  }
+}
