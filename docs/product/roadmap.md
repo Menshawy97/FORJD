@@ -248,7 +248,21 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
-### Session close, 2026-09-08/09 (Phase 7 slices 7A-7C: token encryption, external_connections schema, HealthProvider relocated to @forjd/domain)
+### Session close, 2026-09-08/09 (Phase 7 slices 7D-7E: WHOOP client, OAuth service, record mapping, WhoopProvider)
+
+**Two PRs merged and confirmed green on `main`: [#138](https://github.com/Menshawy97/FORJD/pull/138) (7D) and [#139](https://github.com/Menshawy97/FORJD/pull/139) (7E).** Continues directly from the 7A-7C session-close entry below in the same overall session.
+
+**What shipped:**
+- **7D** — `apps/api/src/integrations/whoop/` (first occupant of that directory): `whoop-client.ts` (typed `fetch` wrapper, 3-attempt retry on network/5xx but never on 4xx, 10s `AbortSignal` timeout), `whoop-oauth.service.ts` (authorize-URL builder with WHOOP's documented 7 scopes and 8-char state minimum, plus code exchange/refresh delegation), `whoop-record-mapping.ts` (pure recovery/sleep/workout → `SyncedObservation[]`, ms→min and kJ→kcal conversions). All endpoint paths and payload shapes confirmed against WHOOP's own developer docs during planning, tested against synthetic fixtures shaped like real v2 responses. 28 tests.
+- **7E** — `whoop-client.ts` extended with `listRecovery`/`listSleep`/`listWorkout` (WHOOP's `records`/`next_token` pagination, bounded at 100 pages). `whoop-connection.repository.ts` — CRUD against the `external_connections` table (7B), scoped to `provider='whoop'`. `whoop.provider.ts` — `WhoopProvider`, the second concrete `HealthProvider` implementation. Runs `@forjd/domain`'s shared contract suite (from 7C) — all 7 contract tests pass. 56 tests across the whoop directory total.
+
+**Still not wired into any NestJS module — no routes, no DI registration.** That is Phase 7F, next.
+
+**One environment note carried forward from the 7B entry below applies again here:** this machine's `localhost`→IPv6 resolution quirk affects every Postgres-backed spec added this session too (`whoop-connection.repository.spec.ts`); verified locally against `127.0.0.1` as before, no repo file changed.
+
+**Next: slice 7F** — routes, webhook (HMAC verification, raw-body capture), and the `WhoopController`. See `phase-7-plan.md`'s 7F entry for the exact route list and header names.
+
+
 
 **Three PRs merged and confirmed green on `main`: [#134](https://github.com/Menshawy97/FORJD/pull/134) (7A, token encryption), [#135](https://github.com/Menshawy97/FORJD/pull/135) (7B, `external_connections` schema, migration 0016), [#136](https://github.com/Menshawy97/FORJD/pull/136) (7C, `HealthProvider` moved into `packages/domain`).** [`phase-7-plan.md`](phase-7-plan.md) (added this session, [#133](https://github.com/Menshawy97/FORJD/pull/133)) is the full plan; per its own realistic-scope note ("7A–7C is a full session's own work... do not attempt to reach 7H in the same session that starts 7A"), the session stopped here.
 
@@ -2283,7 +2297,7 @@ failure).
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
 | 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6F merged, readiness scoring (ADR-031, Accepted) and light-up-the-UI merged (#131, #132); 6F (`HealthConnectProvider`) is still **device-unverified** — merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md); a physical Android phone test is still owed before any UI screen calls `connect()`/`.sync()` on it (nothing does yet) |
-| 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **In progress** — [planned](phase-7-plan.md); 7A-7C merged (token encryption, `external_connections` schema, `HealthProvider` moved to `@forjd/domain`) |
+| 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **In progress** — [planned](phase-7-plan.md); 7A-7E merged (token encryption, `external_connections` schema, `HealthProvider` moved to `@forjd/domain`, WHOOP client/OAuth service/record mapping, `WhoopProvider`) |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
 | Limited Android beta | 35 | 12+ testers | Not started |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
