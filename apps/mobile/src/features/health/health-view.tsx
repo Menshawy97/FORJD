@@ -11,8 +11,16 @@ import { colors } from '@/theme/tokens';
 /**
  * Progress -> Health tab, built against `progress health 1.png`, `progress health 2.png` and
  * `progress health change widget.png` -- three configurable headline tiles (tap one to open
- * "Choose widget", exactly `body-view.tsx`'s own per-slot picker pattern), one trend chart for
- * whichever tile was tapped last, then a scrollable metrics list.
+ * "Choose widget", exactly `body-view.tsx`'s own per-slot picker pattern) with no title above
+ * them, then a "Health metrics" title with everything else below it: the trend chart for
+ * whichever tile was tapped last, followed by the scrollable metrics list.
+ *
+ * **Deliberate deviations from the screenshots**, by explicit user direction: the design puts
+ * an accent-colored border and a highlighted background around the selected headline tile (this
+ * file omits both); the design's own untitled section groups only the trend chart with the
+ * headline tiles, with "Health metrics" heading just the list below it (here "Health metrics"
+ * heads the trend chart too); and `hrv`/`resting_heart_rate` always appear in the metrics list
+ * even though both remain selectable as headline tiles via "Choose widget".
  *
  * **`walking_heart_rate` is hidden from every list here whenever it is unsupported, driven by
  * `HEALTH_CONNECT_SUPPORTED_METRICS` (a capability flag), never by a `Platform.OS` check.**
@@ -52,10 +60,19 @@ const FULL_WIDGET_CATALOG: ReadonlyArray<{ metric: HealthMetricType; label: stri
 const WIDGET_CATALOG = FULL_WIDGET_CATALOG.filter((w) => HEALTH_CONNECT_SUPPORTED_METRICS.includes(w.metric));
 
 /** Metrics shown in the scrollable list below the headline tiles -- everything Health Connect
- *  can report that isn't already a default headline tile. `walking_heart_rate` is included in
- *  the candidate list but filtered out below by capability, not omitted outright -- once an
- *  Apple Health provider supplies it (Phase 11), it reappears here with no code change. */
-const METRICS_LIST_CANDIDATES: readonly HealthMetricType[] = ['heart_rate', 'walking_heart_rate', 'vo2_max', 'respiratory_rate'];
+ *  can report that isn't already a default headline tile, plus `hrv` and `resting_heart_rate`
+ *  (by explicit user direction -- both stay choosable as headline tiles too via "Choose widget",
+ *  but also always appear in this list). `walking_heart_rate` is included in the candidate list
+ *  but filtered out below by capability, not omitted outright -- once an Apple Health provider
+ *  supplies it (Phase 11), it reappears here with no code change. */
+const METRICS_LIST_CANDIDATES: readonly HealthMetricType[] = [
+  'hrv',
+  'heart_rate',
+  'resting_heart_rate',
+  'walking_heart_rate',
+  'vo2_max',
+  'respiratory_rate',
+];
 const METRICS_LIST = METRICS_LIST_CANDIDATES.filter((m) => HEALTH_CONNECT_SUPPORTED_METRICS.includes(m));
 
 interface HealthViewProps {
@@ -91,13 +108,11 @@ function MetricTile({
   label,
   series,
   onPress,
-  selected,
 }: {
   metric: HealthMetricType;
   label: string;
   series: HealthObservationSeriesResponse | null;
   onPress: () => void;
-  selected: boolean;
 }) {
   const s = seriesFor(series, metric);
   const latest = s && s.points.length > 0 ? s.points[s.points.length - 1]!.value : null;
@@ -109,9 +124,9 @@ function MetricTile({
       onPress={onPress}
       style={{
         flex: 1,
-        backgroundColor: selected ? '#1c1d20' : '#17181A',
+        backgroundColor: '#17181A',
         borderWidth: 1,
-        borderColor: selected ? colors.accent : colors.border,
+        borderColor: colors.border,
         borderRadius: 14,
         padding: 12,
       }}>
@@ -146,12 +161,12 @@ function MetricTile({
 export function HealthView({ series, readiness }: HealthViewProps) {
   const insight = readiness ? evaluateHealthInsight(readiness) : null;
   const [headlineWidgets, setHeadlineWidgets] = useState<[HealthMetricType, HealthMetricType, HealthMetricType]>([
-    'hrv',
     'sleep_duration',
     'resting_heart_rate',
+    'vo2_max',
   ]);
   const [pickerSlot, setPickerSlot] = useState<0 | 1 | 2 | null>(null);
-  const [chartMetric, setChartMetric] = useState<HealthMetricType>('hrv');
+  const [chartMetric, setChartMetric] = useState<HealthMetricType>('sleep_duration');
 
   const chartSeries = seriesFor(series, chartMetric);
   const chartPoints = chartSeries?.points.map((p) => p.value) ?? [];
@@ -159,14 +174,13 @@ export function HealthView({ series, readiness }: HealthViewProps) {
 
   return (
     <>
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
         {headlineWidgets.map((metric, slot) => (
           <MetricTile
             key={slot}
             metric={metric}
             label={WIDGET_CATALOG.find((w) => w.metric === metric)?.label ?? HEALTH_METRIC_TYPE_DISPLAY_NAMES[metric]}
             series={series}
-            selected={chartMetric === metric}
             onPress={() => {
               setChartMetric(metric);
               setPickerSlot(slot as 0 | 1 | 2);
@@ -225,28 +239,6 @@ export function HealthView({ series, readiness }: HealthViewProps) {
         </Pressable>
       </Modal>
 
-      <Card>
-        <Text
-          style={{
-            fontFamily: 'Archivo',
-            fontSize: 9.5,
-            fontWeight: '600',
-            letterSpacing: 0.14 * 9.5,
-            textTransform: 'uppercase',
-            color: '#77776F',
-            marginBottom: 12,
-          }}>
-          {`${chartLabel.toUpperCase()} — ${chartPoints.length} DAY${chartPoints.length === 1 ? '' : 'S'}`}
-        </Text>
-        {chartPoints.length >= 2 ? (
-          <Sparkline points={chartPoints} height={100} color={colors.green} />
-        ) : (
-          <Text style={{ fontFamily: 'Archivo', fontSize: 12.5, color: colors.dim }}>
-            Connect Health Connect or Apple Health to see this trend.
-          </Text>
-        )}
-      </Card>
-
       <Text
         style={{
           fontFamily: 'Archivo',
@@ -260,6 +252,19 @@ export function HealthView({ series, readiness }: HealthViewProps) {
         }}>
         Health metrics
       </Text>
+
+      <Card>
+        <Text style={{ fontFamily: 'Archivo', fontSize: 13.5, fontWeight: '700', color: colors.text, marginBottom: 12 }}>
+          {`${chartLabel} — ${chartPoints.length} day${chartPoints.length === 1 ? '' : 's'}`}
+        </Text>
+        {chartPoints.length >= 2 ? (
+          <Sparkline points={chartPoints} height={100} color={colors.green} />
+        ) : (
+          <Text style={{ fontFamily: 'Archivo', fontSize: 12.5, color: colors.dim }}>
+            Connect Health Connect or Apple Health to see this trend.
+          </Text>
+        )}
+      </Card>
 
       {METRICS_LIST.map((metricType) => {
         const s = seriesFor(series, metricType);
