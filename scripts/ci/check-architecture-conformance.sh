@@ -135,6 +135,22 @@ if [ -d apps/api/src ]; then
   fi
 fi
 
+# Phase 6E / ADR-034 / CLAUDE.md rule 17: react-native-health-connect is an implementation
+# detail behind HealthProvider, same reasoning as the expo-secure-store/expo-sqlite/openai
+# rules above -- one place owns the vendor SDK, so a future provider swap (or the eventual
+# WHOOP/AppleHealth adapters) never has to hunt for a second caller. No test exemption,
+# matching the openai rules rather than expo-secure-store/expo-sqlite's -- health data is
+# sensitive enough that even a test-only import should go through the same reviewed file.
+# Added ahead of HealthConnectProvider (Phase 6F) existing, per the Phase 6 plan's own
+# instruction to add this rule before the adapter that could violate it, not after.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' "['\"]react-native-health-connect['\"]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/integrations/health/' || true)
+  if [ -n "$hits" ]; then
+    report "react-native-health-connect imported outside apps/mobile/src/integrations/health/" "$hits"
+  fi
+fi
+
 if [ "$violations" -gt 0 ]; then
   echo ""
   echo "$violations conformance rule(s) violated. Fix the import, or change the rule in CLAUDE.md"

@@ -50,9 +50,11 @@ Everything else can evolve around these. See `docs/architecture/system.md`.
 16. HealthKit/Health Connect code does not merge until it has run on a physical
     device (Android phone for Health Connect, iPhone via TestFlight for HealthKit).
     A green CI build is not done. See `docs/decisions/ADR-007-no-mac-ios-toolchain.md`.
-17. The `health` package (pub.dev) is an implementation detail behind `HealthProvider`.
-    No feature code imports it directly, and every `HealthObservation` records its
-    originating provider explicitly — never inferred from which API returned it.
+17. `react-native-health-connect` (ADR-034) is an implementation detail behind
+    `HealthProvider` for Android Health Connect. No feature code imports it directly,
+    only `apps/mobile/src/integrations/health/`, and every `HealthObservation` records
+    its originating provider explicitly — never inferred from which API returned it.
+    iOS's equivalent library is a separate decision, for whichever ADR Phase 11 writes.
 
 ## Merging
 
@@ -80,7 +82,7 @@ above applies unchanged.
 
 From Phase 1, CI includes a grep-based conformance check that fails the build if:
 - the Supabase SDK is imported outside the provider adapter directories,
-- the `health` package is imported outside `integrations/`,
+- `react-native-health-connect` is imported outside `apps/mobile/src/integrations/health/`,
 - domain packages (`packages/domain/**`) import anything from UI or provider SDKs.
 
 If you're about to violate one of these rules "just this once," don't — fix the
@@ -98,11 +100,12 @@ a new provider or modality is an adapter, not a rewrite.
 ## Platform note
 
 Development happens on Windows. Android is the primary dev/test platform. iOS ships
-without owning or renting a Mac — see ADR-007 for the full strategy (the `health`
-package, Codemagic automatic signing, TestFlight validation on a physical iPhone).
-Do not write Xcode-project-level native Swift unless the `health` package genuinely
-cannot express what's needed; when that happens, keep the native code behind the
-unchanged `HealthProvider` interface (rule 3).
+without owning or renting a Mac — see ADR-007 for the full strategy (Codemagic automatic
+signing, TestFlight validation on a physical iPhone). Android's health library is
+`react-native-health-connect` (ADR-034); iOS's equivalent is a separate, not-yet-made
+decision for whichever ADR Phase 11 writes. Do not write Xcode-project-level native
+Swift unless that future library genuinely cannot express what's needed; when that
+happens, keep the native code behind the unchanged `HealthProvider` interface (rule 3).
 
 ## Docs are memory
 

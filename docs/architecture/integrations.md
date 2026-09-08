@@ -22,26 +22,29 @@ The workout engine and analytics never call a provider SDK directly
 needed — a capability-based model (`steps`, `heart_rate`, `sleep`, `weight`,
 `workouts`, `calories`, `respiratory_rate`, ...), not an all-or-nothing grant.
 
-## Native health platforms via the `health` package
+## Native health platforms
 
-Both HealthKit (iOS) and Health Connect (Android) are reached through the
-[`health`](https://pub.dev/packages/health) Flutter package (maintained by
-carp-dk), as the *implementation* behind `HealthProvider` — see ADR-007 and
-`CLAUDE.md` rule 17. Feature code never imports the package directly; only
-the adapter does.
+Android Health Connect is reached through
+[`react-native-health-connect`](https://github.com/matinzd/react-native-health-connect)
+(ADR-034), as the *implementation* behind `HealthProvider` — see `CLAUDE.md` rule 17.
+Feature code never imports the package directly; only
+`apps/mobile/src/integrations/health/health-connect.provider.ts` (Phase 6F) does.
 
 ```
-Flutter → HealthRepository → health package → HealthKit / Health Connect
+React Native screen → HealthProvider interface → HealthConnectProvider →
+react-native-health-connect → Android Health Connect
 ```
 
-Two guardrails, because the package unifies HealthKit and Health Connect
-behind one API:
-- Every `HealthObservation` records its originating provider explicitly —
-  never inferred from which platform API answered.
-- If the package can't express something needed (e.g. WorkoutKit zone
-  configuration), write a small targeted native bridge for just that gap,
-  behind the unchanged `HealthProvider` interface. Don't let a gap become an
-  excuse to bypass the interface elsewhere.
+Apple HealthKit (iOS) is a **separate system with a separate library**, decided in a
+separate ADR when Phase 11 (the iOS track, ADR-007) starts — ADR-034 is Android-only and
+does not presume that choice.
+
+One guardrail carries over regardless of which provider library is behind it: every
+`HealthObservation` records its originating provider explicitly — never inferred from
+which platform API answered. If a library can't express something a future provider
+needs, write a small targeted native bridge for just that gap, behind the unchanged
+`HealthProvider` interface. Don't let a gap become an excuse to bypass the interface
+elsewhere.
 
 ## WHOOP
 
