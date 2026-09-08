@@ -125,21 +125,15 @@ per PR, merged and confirmed green on `main` before the next slice starts.
   every future Health Connect/HealthKit PR still needs its own physical-device run before
   merge, per rule 16 unchanged.
 
-- **Post-6F — light up the UI.** Not device-gated in principle, but has nothing real to render
-  before a provider exists, so it waits. The seams are already cut:
-  - `features/home/readiness-card.tsx` takes no props today; its docblock states the contract:
-    "When Phase 6 lands, this file takes a `readiness` prop and the em dashes become values;
-    the layout does not move." Ring is drawn track-only, no progress arc yet. Per ADR-031 the
-    prop must carry decomposed components and the not-enough-history reason, not just a score.
-  - `features/home/stat-strip.tsx` exports `StatStripProps` for the three workout counters
-    today; the four health metrics (sleep, HRV, RHR, steps) are hardcoded em dashes and need to
-    become four nullable props.
-  - `app/(tabs)/progress.tsx` already has a `'health'` tab in its segmented control, rendering
-    an inline honest-empty `Card` (lines 111–116) — the insertion point for a `HealthView`,
-    which should be its own file under `features/health/` following `features/body/body-view.tsx`
-    rather than inlined like `StrengthView`.
-  - `features/progress/step-count-card.tsx` is a second em-dash consumer with an inert
-    Day/Week/Month control.
+- **Post-6F — light up the UI. Done** (PRs [#131](https://github.com/Menshawy97/FORJD/pull/131),
+  [#132](https://github.com/Menshawy97/FORJD/pull/132), 2026-09-08 — see `roadmap.md`'s
+  session-close entry for the full record). `readiness-card.tsx` now takes a real `readiness`
+  prop (score, zone, decomposed components, withheld reason per ADR-031) with a ring-fill
+  animation replaying on every focus. `stat-strip.tsx` takes four real nullable health props.
+  `progress.tsx`'s `'health'` tab renders a real `features/health/health-view.tsx`, its own file
+  as planned. `step-count-card.tsx` takes a real daily total. `GET /health-data/readiness` is
+  the new endpoint backing all of it. ADR-031 moved from Proposed to Accepted alongside this
+  work.
 
 ## Realistic scope
 
