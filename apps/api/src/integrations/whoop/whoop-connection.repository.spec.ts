@@ -40,6 +40,26 @@ describe("WhoopConnectionRepository", () => {
     await pool.end();
   });
 
+  it("findByExternalUserId finds a connection by WHOOP's own user id, for matching an incoming webhook to an internal user", async () => {
+    const userId = await makeUser("external-lookup");
+    await repository.upsertTokens(userId, {
+      status: "connected",
+      externalUserId: "whoop-external-999",
+      encryptedAccessToken: "enc-at",
+      encryptedRefreshToken: "enc-rt",
+      tokenKeyVersion: 1,
+      expiresAt: null,
+      scopes: null,
+    });
+
+    const row = await repository.findByExternalUserId("whoop-external-999");
+    expect(row?.userId).toBe(userId);
+  });
+
+  it("findByExternalUserId returns null for a WHOOP user id no connection has", async () => {
+    expect(await repository.findByExternalUserId("no-such-whoop-user")).toBeNull();
+  });
+
   it("returns null for a user with no WHOOP connection", async () => {
     const userId = await makeUser("no-connection");
     expect(await repository.findByUserId(userId)).toBeNull();
@@ -116,6 +136,48 @@ describe("WhoopConnectionRepository", () => {
     const row = await repository.findByUserId(userId);
     expect(row?.lastSyncAt).toEqual(at);
     expect(row?.status).toBe("connected");
+  });
+
+  it("setPendingState stores a state bound to the user with an expiry, readable back by that state", async () => {
+    const userId = await makeUser("pending");
+    const expiresAt = new Date(Date.now() + 600_000);
+
+    await repository.setPendingState(userId, "a1b2c3d4", expiresAt);
+
+    const byState = await repository.findByOAuthState("a1b2c3d4");
+    expect(byState?.userId).toBe(userId);
+    expect(byState?.status).toBe("pending");
+
+    const byUser = await repository.findByUserId(userId);
+    expect(byUser?.status).toBe("pending");
+  });
+
+  it("findByOAuthState returns null for an expired state", async () => {
+    const userId = await makeUser("expired-state");
+    await repository.setPendingState(userId, "e1e2e3e4", new Date(Date.now() - 1000));
+
+    expect(await repository.findByOAuthState("e1e2e3e4")).toBeNull();
+  });
+
+  it("findByOAuthState returns null for a state nobody set", async () => {
+    expect(await repository.findByOAuthState("never-issued")).toBeNull();
+  });
+
+  it("upsertTokens clears any pending oauth state -- a completed connection has none left pending", async () => {
+    const userId = await makeUser("clears-state");
+    await repository.setPendingState(userId, "f1f2f3f4", new Date(Date.now() + 600_000));
+
+    await repository.upsertTokens(userId, {
+      status: "connected",
+      externalUserId: "whoop-111",
+      encryptedAccessToken: "enc-at",
+      encryptedRefreshToken: "enc-rt",
+      tokenKeyVersion: 1,
+      expiresAt: new Date(Date.now() + 3_600_000),
+      scopes: "offline",
+    });
+
+    expect(await repository.findByOAuthState("f1f2f3f4")).toBeNull();
   });
 
   it("updateStatus changes only the status", async () => {

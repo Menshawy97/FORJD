@@ -92,6 +92,17 @@ describe("whoop-client", () => {
 
       expect(fetchImpl.mock.calls[0][0]).toBe("https://api.prod.whoop.com/developer/v2/activity/workout/w1");
     });
+
+    it("GETs the basic profile endpoint", async () => {
+      const profile = { user_id: 42, email: "a@b.com", first_name: "A", last_name: "B" };
+      const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(profile));
+      const client = createWhoopClient({ clientId, clientSecret, fetchImpl });
+
+      const result = await client.getProfile("access-token");
+
+      expect(result).toEqual(profile);
+      expect(fetchImpl.mock.calls[0][0]).toBe("https://api.prod.whoop.com/developer/v2/user/profile/basic");
+    });
   });
 
   describe("listRecovery / listSleep / listWorkout", () => {

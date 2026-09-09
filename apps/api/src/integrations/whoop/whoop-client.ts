@@ -44,6 +44,10 @@ export interface WhoopClient {
   getRecovery(cycleId: string, accessToken: string): Promise<unknown>;
   getSleep(sleepId: string, accessToken: string): Promise<unknown>;
   getWorkout(workoutId: string, accessToken: string): Promise<unknown>;
+  /** WHOOP's own numeric user id -- the value the callback (Phase 7F) stores as
+   *  `external_connections.external_user_id`, and the field incoming webhook payloads carry
+   *  in `user_id` so an event can be matched back to the right internal user. */
+  getProfile(accessToken: string): Promise<{ user_id: number; email: string; first_name: string; last_name: string }>;
   /** `since: null` requests a full sync, mirroring `HealthProvider.sync()`'s own convention. */
   listRecovery(since: Date | null, accessToken: string): Promise<unknown[]>;
   listSleep(since: Date | null, accessToken: string): Promise<unknown[]>;
@@ -170,6 +174,13 @@ export function createWhoopClient(options: CreateWhoopClientOptions): WhoopClien
     getRecovery: (cycleId, accessToken) => getResource(`/v2/cycle/${cycleId}/recovery`, accessToken),
     getSleep: (sleepId, accessToken) => getResource(`/v2/activity/sleep/${sleepId}`, accessToken),
     getWorkout: (workoutId, accessToken) => getResource(`/v2/activity/workout/${workoutId}`, accessToken),
+    getProfile: (accessToken) =>
+      getResource("/v2/user/profile/basic", accessToken) as Promise<{
+        user_id: number;
+        email: string;
+        first_name: string;
+        last_name: string;
+      }>,
     listRecovery: (since, accessToken) => listResource("/v2/recovery", since, accessToken),
     listSleep: (since, accessToken) => listResource("/v2/activity/sleep", since, accessToken),
     listWorkout: (since, accessToken) => listResource("/v2/activity/workout", since, accessToken),

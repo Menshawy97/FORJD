@@ -211,6 +211,36 @@
         "branches": 100,
         "functions": 100,
         "lines": 100
+      },
+      "./src/integrations/whoop/whoop-token-access.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/integrations/whoop/whoop-webhook-signature.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/integrations/whoop/whoop-webhook.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/integrations/whoop/whoop-callback.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/integrations/whoop/whoop-sync.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
       }
     }
   }

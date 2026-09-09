@@ -88,6 +88,20 @@ jobs:
       # development-only option even though it is no longer the default binding.
       OPENAI_API_KEY: ci-placeholder-openai-key
       NVIDIA_API_KEY: ci-placeholder-nvidia-key
+      # Same reasoning again, for Phase 7 (WHOOP): token-cipher.provider.ts,
+      # whoop-client.ts, and whoop-oauth.service.ts's Provider factories all call
+      # config.getOrThrow at module construction, and WhoopModule is now registered in
+      # AppModule, so every e2e run boots the whole DI graph whether or not a given suite
+      # touches WHOOP. TOKEN_ENCRYPTION_KEY here is a fixed, well-formed (32 raw bytes,
+      # base64) but non-secret placeholder -- no test encrypts a real token in CI.
+      TOKEN_ENCRYPTION_KEY: paiJIvNIQJEGHV0tsjDp9IQBc1GOTSPpxgjgIYK6Hf0=
+      WHOOP_CLIENT_ID: ci-placeholder-whoop-client-id
+      WHOOP_CLIENT_SECRET: ci-placeholder-whoop-client-secret
+      WHOOP_REDIRECT_URI: forjd://whoop-callback
+      # Read lazily per-request by WhoopController's webhook route, not at module
+      # construction -- included anyway so whoop.e2e-spec.ts's real-signature tests have a
+      # known, fixed secret to sign against.
+      WHOOP_WEBHOOK_SECRET: ci-placeholder-whoop-webhook-secret
 
     steps:
       - uses: actions/checkout@v4

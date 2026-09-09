@@ -14,11 +14,26 @@ import type { SyncedObservation } from "@forjd/domain";
  *
  * `deviceId` and `quality` are always `null` -- WHOOP's v2 API exposes neither a per-record
  * device identifier nor a 0-1 confidence value anywhere in these three object shapes.
+ *
+ * **`providerRecordId` is composed with the metric type, e.g. `"93845:hrv"`.**
+ * `health_observations`' idempotent-reingest index is `(user_id, source, provider_record_id)`
+ * -- it says nothing about `metric_type`, because every source before WHOOP has one metric
+ * per provider record (Health Connect's `HrvRecord`/`HeartRateRecord`/etc. are already
+ * split one-per-metric). A WHOOP recovery yields two metrics from one `cycle_id`, and a
+ * WHOOP sleep yields six from one `id` -- upserting them in the same batch with an
+ * unqualified shared id makes Postgres reject the whole statement ("ON CONFLICT DO UPDATE
+ * command cannot affect row a second time"), caught by `whoop.e2e-spec.ts` hitting a real
+ * database, not by any mocked-repository unit test. Suffixing the id per metric is the fix
+ * that fits inside the existing schema/index without a migration.
  */
 
 const MILLISECONDS_PER_MINUTE = 60_000;
 /** 1 kcal = 4.184 kJ, the standard thermochemical conversion factor. */
 const KILOJOULES_PER_KILOCALORIE = 4.184;
+
+function providerRecordIdFor(recordId: string | number, metricType: string): string {
+  return `${recordId}:${metricType}`;
+}
 
 interface WhoopRecoveryScore {
   resting_heart_rate: number;
@@ -46,7 +61,6 @@ export function mapRecoveryToObservations(recovery: WhoopRecovery): SyncedObserv
   }
 
   const at = new Date(recovery.created_at);
-  const providerRecordId = String(recovery.cycle_id);
 
   return [
     {
@@ -55,7 +69,7 @@ export function mapRecoveryToObservations(recovery: WhoopRecovery): SyncedObserv
       unit: "ms",
       startTime: at,
       endTime: at,
-      providerRecordId,
+      providerRecordId: providerRecordIdFor(recovery.cycle_id, "hrv"),
       deviceId: null,
       quality: null,
     },
@@ -65,7 +79,7 @@ export function mapRecoveryToObservations(recovery: WhoopRecovery): SyncedObserv
       unit: "bpm",
       startTime: at,
       endTime: at,
-      providerRecordId,
+      providerRecordId: providerRecordIdFor(recovery.cycle_id, "resting_heart_rate"),
       deviceId: null,
       quality: null,
     },
@@ -106,21 +120,57 @@ export function mapSleepToObservations(sleep: WhoopSleep): SyncedObservation[] {
   const stages = sleep.score.stage_summary;
   const startTime = new Date(sleep.start);
   const endTime = new Date(sleep.end);
-  const providerRecordId = sleep.id;
 
   const asMinutes = (milliseconds: number) => milliseconds / MILLISECONDS_PER_MINUTE;
   const totalAsleepMilli =
     stages.total_light_sleep_time_milli + stages.total_slow_wave_sleep_time_milli + stages.total_rem_sleep_time_milli;
 
-  const base = { startTime, endTime, providerRecordId, deviceId: null, quality: null } as const;
+  const base = { startTime, endTime, deviceId: null, quality: null } as const;
+  const withId = (metricType: string) => providerRecordIdFor(sleep.id, metricType);
 
   return [
-    { ...base, metricType: "sleep_light_duration", value: asMinutes(stages.total_light_sleep_time_milli), unit: "min" },
-    { ...base, metricType: "sleep_deep_duration", value: asMinutes(stages.total_slow_wave_sleep_time_milli), unit: "min" },
-    { ...base, metricType: "sleep_rem_duration", value: asMinutes(stages.total_rem_sleep_time_milli), unit: "min" },
-    { ...base, metricType: "sleep_awake_duration", value: asMinutes(stages.total_awake_time_milli), unit: "min" },
-    { ...base, metricType: "sleep_duration", value: asMinutes(totalAsleepMilli), unit: "min" },
-    { ...base, metricType: "respiratory_rate", value: sleep.score.respiratory_rate, unit: "breaths/min" },
+    {
+      ...base,
+      metricType: "sleep_light_duration",
+      value: asMinutes(stages.total_light_sleep_time_milli),
+      unit: "min",
+      providerRecordId: withId("sleep_light_duration"),
+    },
+    {
+      ...base,
+      metricType: "sleep_deep_duration",
+      value: asMinutes(stages.total_slow_wave_sleep_time_milli),
+      unit: "min",
+      providerRecordId: withId("sleep_deep_duration"),
+    },
+    {
+      ...base,
+      metricType: "sleep_rem_duration",
+      value: asMinutes(stages.total_rem_sleep_time_milli),
+      unit: "min",
+      providerRecordId: withId("sleep_rem_duration"),
+    },
+    {
+      ...base,
+      metricType: "sleep_awake_duration",
+      value: asMinutes(stages.total_awake_time_milli),
+      unit: "min",
+      providerRecordId: withId("sleep_awake_duration"),
+    },
+    {
+      ...base,
+      metricType: "sleep_duration",
+      value: asMinutes(totalAsleepMilli),
+      unit: "min",
+      providerRecordId: withId("sleep_duration"),
+    },
+    {
+      ...base,
+      metricType: "respiratory_rate",
+      value: sleep.score.respiratory_rate,
+      unit: "breaths/min",
+      providerRecordId: withId("respiratory_rate"),
+    },
   ];
 }
 
@@ -153,7 +203,7 @@ export function mapWorkoutToObservations(workout: WhoopWorkout): SyncedObservati
       unit: "kcal",
       startTime: new Date(workout.start),
       endTime: new Date(workout.end),
-      providerRecordId: workout.id,
+      providerRecordId: providerRecordIdFor(workout.id, "active_energy"),
       deviceId: null,
       quality: null,
     },
