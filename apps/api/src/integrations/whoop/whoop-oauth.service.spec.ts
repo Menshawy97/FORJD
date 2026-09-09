@@ -75,12 +75,19 @@ describe("WhoopOAuthService", () => {
         WHOOP_CLIENT_ID: "test-client-id",
         WHOOP_REDIRECT_URI: "forjd://whoop-callback",
       };
-      const config = { getOrThrow: jest.fn((key: string) => values[key]) } as unknown as ConfigService;
+      const config = { get: jest.fn((key: string) => values[key]) } as unknown as ConfigService;
       const client = {} as WhoopClient;
 
       const service = whoopOAuthServiceProvider.useFactory(client, config);
 
       expect(service.buildAuthorizeUrl("a1b2c3d4")).toContain("client_id=test-client-id");
+    });
+
+    it("boots even with no WHOOP credentials configured, rather than crashing the whole API", () => {
+      const config = { get: jest.fn((_key: string, fallback: string) => fallback) } as unknown as ConfigService;
+      const client = {} as WhoopClient;
+
+      expect(() => whoopOAuthServiceProvider.useFactory(client, config)).not.toThrow();
     });
   });
 });
