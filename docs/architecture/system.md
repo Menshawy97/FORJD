@@ -65,7 +65,7 @@ forjd/
 ├── apps/
 │   ├── api/          NestJS — common, auth, users, exercises, workouts,
 │   │                  health, body-composition, integrations/, analytics
-│   └── mobile/        Flutter — app/, core/, domain/, data/, integrations/, features/
+│   └── mobile/        Expo (React Native) — app/, auth/, components/, integrations/, theme/
 ├── packages/
 │   ├── domain/         Canonical models, shared TS types (exercise overrides live here too)
 │   └── contracts/       API DTOs shared between api and mobile

@@ -151,6 +151,36 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# Phase 7D-7F / CLAUDE.md rule 4: WHOOP's own hostname is the tell for code that actually
+# talks to WHOOP (as opposed to code that merely knows the provider name "whoop" as a
+# HealthSource string, which is legitimate everywhere -- e.g. HEALTH_SOURCE_PRIORITY in
+# packages/domain). Mirrors the react-native-health-connect directory-prefix rule above:
+# one directory owns the vendor integration, so a future WHOOP API change or the eventual
+# GarminProvider/OuraProvider adapters never have to hunt for a second caller.
+if [ -d apps/api/src ]; then
+  hits=$(grep -rln --include='*.ts' 'api\.prod\.whoop\.com' apps/api/src \
+    | grep -v '^apps/api/src/integrations/whoop/' || true)
+  if [ -n "$hits" ]; then
+    report "WHOOP API hostname referenced outside apps/api/src/integrations/whoop/" "$hits"
+  fi
+fi
+
+# Phase 7 decision 2 / CLAUDE.md rule 5: WHOOP's OAuth secret must never reach the mobile
+# bundle -- the integration runs entirely server-side (docs/product/phase-7-plan.md,
+# docs/architecture/integrations.md's WHOOP section). This is the mechanically enforceable
+# version of that rule: no WHOOP hostname and no WHOOP client-secret-shaped identifier may
+# appear in mobile production code. Test files are exempt (matching the
+# expo-secure-store/expo-sqlite precedent above) because whoop-status/authorize response
+# fixtures in tests legitimately embed a WHOOP URL as mocked *server* output, not a secret
+# the mobile app itself holds.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' -iE 'whoop\.com|WHOOP_CLIENT_SECRET|WHOOP_WEBHOOK_SECRET' apps/mobile/src \
+    | grep -v '/__tests__/' || true)
+  if [ -n "$hits" ]; then
+    report "WHOOP hostname or secret-shaped identifier found in mobile production code" "$hits"
+  fi
+fi
+
 if [ "$violations" -gt 0 ]; then
   echo ""
   echo "$violations conformance rule(s) violated. Fix the import, or change the rule in CLAUDE.md"

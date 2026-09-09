@@ -50,9 +50,20 @@ trip to a separate Google service.
 - The API now has exactly one place tokens are encrypted or decrypted; any future integration
   that needs to store a secret at rest (a second OAuth provider, an API key a user supplies)
   reuses this module rather than inventing its own scheme.
-- `TOKEN_ENCRYPTION_KEY` becomes a required boot-time secret the moment any module actually
-  injects `TOKEN_CIPHER` (Phase 7D onward) — like `OPENAI_API_KEY`, the API will fail to start
-  without it once that wiring lands, not before.
+- **Amended 2026-09-09 (PR #144):** the original text here said `TOKEN_ENCRYPTION_KEY` would
+  become a required boot-time secret the moment any module injects `TOKEN_CIPHER`, "like
+  `OPENAI_API_KEY`." That parallel turned out to be wrong in a way that broke the real staging
+  deployment: `token-cipher.provider.ts`'s factory called `ConfigService.getOrThrow` eagerly at
+  module construction, which runs during `NestFactory.create()` for every environment,
+  including one that never calls `encrypt`/`decrypt` at all. No real environment has
+  `TOKEN_ENCRYPTION_KEY` configured yet (this key does not exist in
+  `.github/workflows/deploy-api.yml`'s secrets, and won't until Phase 7's live WHOOP round
+  trip actually needs it), so the eager throw crashed the whole API's boot, not just the
+  WHOOP routes. The factory now reads the key lazily with `ConfigService.get(key, "")`,
+  resolved only inside `encrypt`/`decrypt` at first actual use — the API boots fine with no
+  key configured, and only a real attempt to encrypt or decrypt a token would fail. See
+  ADR-037 for the full incident and the general lesson about eager vs. lazy config validation
+  in Nest provider factories.
 - If Google Cloud KMS is ever revisited (e.g. a compliance requirement this project does not
   have today), only `token-cipher.provider.ts`'s factory needs to change — `token-cipher.ts`'s
   pure functions and every caller of `TOKEN_CIPHER` stay untouched, because the interface is
