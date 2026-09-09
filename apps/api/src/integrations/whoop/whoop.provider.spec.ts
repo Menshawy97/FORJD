@@ -70,6 +70,7 @@ function makeFakeClient(overrides: Partial<WhoopClient> = {}): WhoopClient {
     getRecovery: jest.fn(),
     getSleep: jest.fn(),
     getWorkout: jest.fn(),
+    getProfile: jest.fn(),
     listRecovery: jest.fn().mockResolvedValue([recoveryFixture]),
     listSleep: jest.fn().mockResolvedValue([sleepFixture]),
     listWorkout: jest.fn().mockResolvedValue([workoutFixture]),

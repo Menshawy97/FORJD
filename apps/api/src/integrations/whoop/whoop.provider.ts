@@ -1,9 +1,10 @@
 import type { HealthMetricType, HealthPermission, HealthProvider, PermissionResult, ProviderCapabilities, SyncedObservation, SyncRequest, SyncResult } from "@forjd/domain";
 
-import { WhoopConnectionRepository, WhoopConnectionRow } from "./whoop-connection.repository";
+import { WhoopConnectionRepository } from "./whoop-connection.repository";
 import type { WhoopClient } from "./whoop-client";
 import type { WhoopOAuthService } from "./whoop-oauth.service";
 import { mapRecoveryToObservations, mapSleepToObservations, mapWorkoutToObservations } from "./whoop-record-mapping";
+import { ensureUsableWhoopAccessToken } from "./whoop-token-access";
 import type { TokenCipher } from "../../common/crypto/token-cipher.provider";
 
 const RECOVERY_METRICS: readonly HealthMetricType[] = ["hrv", "resting_heart_rate"];
@@ -32,10 +33,6 @@ const SCOPE_FOR_METRIC: Partial<Record<HealthMetricType, string>> = Object.fromE
   ...WORKOUT_METRICS.map((m) => [m, "read:workout"]),
 ]);
 
-/** Refresh this early relative to actual expiry -- a request already in flight when the
- *  token expires mid-call is worse than refreshing a minute before it strictly needs to. */
-const REFRESH_SKEW_MS = 60_000;
-
 /**
  * The second concrete `HealthProvider` implementation (`HealthConnectProvider`, Phase 6F,
  * was the first) -- constructed per-user, per `docs/product/phase-7-plan.md` slice 7E.
@@ -57,6 +54,10 @@ export class WhoopProvider implements HealthProvider {
 
   async connect(): Promise<void> {
     await this.ensureUsableAccessToken();
+  }
+
+  private ensureUsableAccessToken(): Promise<string> {
+    return ensureUsableWhoopAccessToken(this.userId, this.connections, this.oauth, this.cipher);
   }
 
   async disconnect(): Promise<void> {
@@ -107,58 +108,4 @@ export class WhoopProvider implements HealthProvider {
     };
   }
 
-  /**
-   * Returns a usable, decrypted access token -- refreshing and persisting a new one first if
-   * the stored token is at or near expiry. Throws if there is no connection at all (nothing
-   * for `connect()`/`sync()` to work with -- the authorize/callback round trip, Phase 7F, is
-   * what creates one) or if a refresh attempt itself fails, marking the connection `expired`
-   * in the latter case so `requestPermissions()`/a future "reconnect" UI can see it.
-   */
-  private async ensureUsableAccessToken(): Promise<string> {
-    const row = await this.connections.findByUserId(this.userId);
-    if (!row) {
-      throw new Error(`WHOOP is not connected for user ${this.userId}.`);
-    }
-
-    const isFresh = row.expiresAt !== null && row.expiresAt.getTime() - REFRESH_SKEW_MS > Date.now();
-    if (isFresh) {
-      return this.cipher.decrypt({ ciphertext: row.encryptedAccessToken, keyVersion: row.tokenKeyVersion });
-    }
-
-    return this.refreshAndPersist(row);
-  }
-
-  private async refreshAndPersist(row: WhoopConnectionRow): Promise<string> {
-    if (!row.encryptedRefreshToken) {
-      // No refresh token was ever stored (the `offline` scope was never granted, or it
-      // predates this integration existing) -- there is nothing to refresh with, and
-      // decrypting an empty string would only produce a confusing failure further down.
-      await this.connections.updateStatus(this.userId, "expired");
-      throw new Error(`WHOOP connection for user ${this.userId} has no refresh token to renew its access token with.`);
-    }
-    const refreshToken = this.cipher.decrypt({ ciphertext: row.encryptedRefreshToken, keyVersion: row.tokenKeyVersion });
-
-    let tokens;
-    try {
-      tokens = await this.oauth.refresh(refreshToken);
-    } catch (err) {
-      await this.connections.updateStatus(this.userId, "expired");
-      throw err;
-    }
-
-    const encryptedAccess = this.cipher.encrypt(tokens.access_token);
-    const encryptedRefresh = this.cipher.encrypt(tokens.refresh_token);
-
-    await this.connections.upsertTokens(this.userId, {
-      status: "connected",
-      externalUserId: row.externalUserId,
-      encryptedAccessToken: encryptedAccess.ciphertext,
-      encryptedRefreshToken: encryptedRefresh.ciphertext,
-      tokenKeyVersion: encryptedAccess.keyVersion,
-      expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-      scopes: tokens.scope,
-    });
-
-    return tokens.access_token;
-  }
 }

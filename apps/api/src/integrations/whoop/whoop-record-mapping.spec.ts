@@ -22,23 +22,25 @@ describe("whoop-record-mapping", () => {
         unit: "ms",
         startTime: new Date("2026-09-08T07:15:22.123Z"),
         endTime: new Date("2026-09-08T07:15:22.123Z"),
-        providerRecordId: "93845",
+        providerRecordId: "93845:hrv",
         deviceId: null,
         quality: null,
       });
 
       const rhr = observations.find((o) => o.metricType === "resting_heart_rate");
-      expect(rhr).toMatchObject({ metricType: "resting_heart_rate", value: 48, unit: "bpm" });
+      expect(rhr).toMatchObject({ metricType: "resting_heart_rate", value: 48, unit: "bpm", providerRecordId: "93845:resting_heart_rate" });
     });
 
     it("returns exactly two observations for a fully-scored recovery", () => {
       expect(mapRecoveryToObservations(recoveryFixture)).toHaveLength(2);
     });
 
-    it("uses cycle_id as the provider record id, stable across re-delivery for dedup", () => {
+    it("composes the provider record id from cycle_id and the metric type -- two metrics share one cycle_id, and health_observations' idempotent-reingest index has no metric_type column, so an unqualified shared id would collide across metrics in the same upsert batch", () => {
       const observations = mapRecoveryToObservations(recoveryFixture);
-      for (const observation of observations) {
-        expect(observation.providerRecordId).toBe("93845");
+      const ids = observations.map((o) => o.providerRecordId);
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const id of ids) {
+        expect(id).toMatch(/^93845:/);
       }
     });
 
@@ -89,12 +91,14 @@ describe("whoop-record-mapping", () => {
       });
     });
 
-    it("uses the sleep's own start/end as every observation's window and its id as the provider record id", () => {
+    it("uses the sleep's own start/end as every observation's window, and a provider record id unique per metric", () => {
       const observations = mapSleepToObservations(sleepFixture);
+      const ids = observations.map((o) => o.providerRecordId);
+      expect(new Set(ids).size).toBe(ids.length);
       for (const observation of observations) {
         expect(observation.startTime).toEqual(new Date("2026-09-07T22:30:00.000Z"));
         expect(observation.endTime).toEqual(new Date("2026-09-08T06:45:00.000Z"));
-        expect(observation.providerRecordId).toBe("3e3f7c8a-1b2d-4e5f-9a0b-1c2d3e4f5a6b");
+        expect(observation.providerRecordId).toBe(`3e3f7c8a-1b2d-4e5f-9a0b-1c2d3e4f5a6b:${observation.metricType}`);
         expect(observation.deviceId).toBeNull();
         expect(observation.quality).toBeNull();
       }
@@ -121,7 +125,7 @@ describe("whoop-record-mapping", () => {
         unit: "kcal",
         startTime: new Date("2026-09-08T08:00:00.000Z"),
         endTime: new Date("2026-09-08T09:00:00.000Z"),
-        providerRecordId: "8f4e2d1c-6b5a-4d3e-8c1b-2a3d4e5f6a7b",
+        providerRecordId: "8f4e2d1c-6b5a-4d3e-8c1b-2a3d4e5f6a7b:active_energy",
         deviceId: null,
         quality: null,
       });
