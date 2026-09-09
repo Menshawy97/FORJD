@@ -69,6 +69,8 @@ import type {
   HealthConnectionListResponse,
   HealthObservationSeriesResponse,
   ReadinessResponse,
+  WhoopAuthorizeResponse,
+  WhoopStatusResponse,
 } from '@forjd/contracts';
 
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
@@ -592,4 +594,26 @@ export async function getReadiness(): Promise<ReadinessResponse> {
     params: { timeZone: deviceTimeZone() },
   });
   return response.data;
+}
+
+/** `GET /integrations/whoop/status` (Phase 7G) -- whether the signed-in user's WHOOP account
+ *  is currently connected. Separate from `getHealthConnections` above, which reports
+ *  `health_connections` (on-device providers), not WHOOP's `external_connections` row. */
+export async function getWhoopStatus(): Promise<WhoopStatusResponse> {
+  const response = await apiClient.get<WhoopStatusResponse>('/integrations/whoop/status');
+  return response.data;
+}
+
+/** `POST /integrations/whoop/authorize` -- returns the URL the caller opens in an in-app
+ *  browser (`expo-web-browser`'s `openAuthSessionAsync`) to start WHOOP's OAuth consent flow. */
+export async function connectWhoop(): Promise<WhoopAuthorizeResponse> {
+  const response = await apiClient.post<WhoopAuthorizeResponse>('/integrations/whoop/authorize');
+  return response.data;
+}
+
+/** `DELETE /integrations/whoop` -- disconnects WHOOP. No response body: nothing in the UI
+ *  needs anything echoed back, the same reasoning `ingestBatch`/`favourite` already apply
+ *  elsewhere in this codebase for a mutation with nothing useful to return. */
+export async function disconnectWhoop(): Promise<void> {
+  await apiClient.delete('/integrations/whoop');
 }

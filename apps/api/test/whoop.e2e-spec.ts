@@ -46,6 +46,9 @@ describe("WHOOP integration (e2e)", () => {
   const authorize = (token: string) =>
     request(app.getHttpServer()).post("/api/v1/integrations/whoop/authorize").set("Authorization", `Bearer ${token}`);
 
+  const status = (token: string) =>
+    request(app.getHttpServer()).get("/api/v1/integrations/whoop/status").set("Authorization", `Bearer ${token}`);
+
   const sync = (token: string) =>
     request(app.getHttpServer()).post("/api/v1/integrations/whoop/sync").set("Authorization", `Bearer ${token}`);
 
@@ -117,9 +120,15 @@ describe("WHOOP integration (e2e)", () => {
     await authorize("").expect(401);
     await sync("").expect(401);
     await disconnect("").expect(401);
+    await status("").expect(401);
   });
 
-  it("completes the full authorize -> callback round trip and connects the account", async () => {
+  it("reports not connected before any authorize/callback round trip has run", async () => {
+    const response = await status("owner-token").expect(200);
+    expect(response.body).toEqual({ connected: false, lastSyncAt: null });
+  });
+
+  it("completes the full authorize -> callback round trip, connects the account, and status reflects it", async () => {
     fakeClient.exchangeAuthorizationCode.mockResolvedValue({
       access_token: "owner-access-token",
       refresh_token: "owner-refresh-token",
@@ -139,6 +148,9 @@ describe("WHOOP integration (e2e)", () => {
 
     expect(callbackResponse.headers.location).toBe("forjd://whoop-callback?status=success");
     expect(fakeClient.exchangeAuthorizationCode).toHaveBeenCalledWith("fake-auth-code", "forjd://whoop-callback");
+
+    const statusResponse = await status("owner-token").expect(200);
+    expect(statusResponse.body.connected).toBe(true);
   });
 
   it("redirects to an error status for a callback with no matching pending state", async () => {
@@ -153,10 +165,12 @@ describe("WHOOP integration (e2e)", () => {
     // The other user has no WHOOP connection at all -- sync must fail for them, not
     // silently return the owner's data.
     await sync("other-token").expect(500);
+    expect((await status("other-token").expect(200)).body.connected).toBe(false);
     // Disconnecting with nothing to disconnect is a harmless no-op update, not an error.
     await disconnect("other-token").expect(204);
 
     // The owner's connection, established in the previous test, must still be usable.
+    expect((await status("owner-token").expect(200)).body.connected).toBe(true);
     fakeClient.listRecovery.mockResolvedValueOnce([recoveryFixture]);
     const ownerSync = await sync("owner-token").expect(200);
     expect(ownerSync.body.observationCount).toBeGreaterThan(0);
