@@ -63,6 +63,21 @@ export class WhoopController {
     private readonly config: ConfigService,
   ) {}
 
+  /**
+   * The mobile Connect screen's only way to know whether WHOOP is currently connected
+   * (Phase 7G) -- deliberately separate from `GET /health-data/connections`, which reports
+   * `health_connections` (on-device providers), not `external_connections`.
+   */
+  @Get("status")
+  @UseGuards(JwtAuthGuard)
+  async status(@Req() request: AuthenticatedRequest): Promise<{ connected: boolean; lastSyncAt: string | null }> {
+    const connection = await this.connections.findByUserId(request.user.id);
+    return {
+      connected: connection?.status === "connected",
+      lastSyncAt: connection?.lastSyncAt?.toISOString() ?? null,
+    };
+  }
+
   @Post("authorize")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)

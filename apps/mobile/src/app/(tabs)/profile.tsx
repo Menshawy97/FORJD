@@ -19,10 +19,10 @@ import { colors } from '@/theme/tokens';
 //
 // Phase J: the identity block and the Goals/Units subtitles below now read from real
 // `getMe()` data — roadmap.md flags these two subtitles as "backed by real saved values...
-// the natural first things Phase J wires". Every other row's destination (connected sources,
-// InBody history, workout history) is a later slice and does not exist, so those stay
-// rendered per the design but deliberately inert — a Pressable to nowhere is worse than no
-// Pressable.
+// the natural first things Phase J wires". Connected Sources went live in Phase 7G
+// (`/connect`). InBody History and Workout History are still later slices with no
+// destination yet, so those stay rendered per the design but deliberately inert — a
+// Pressable to nowhere is worse than no Pressable.
 //
 // `plan` stays the literal string "Free User": `PLANS` in @forjd/domain is a one-member
 // tuple (`['free']`, billing is Phase 10), so there is no second value to branch on yet —
@@ -134,6 +134,9 @@ function buildGroups(identity: Identity): Array<{ label: string; rows: SettingsR
         icon: 'link',
         title: 'Connected Sources',
         subtitle: 'Apple Health, WHOOP, Health Connect',
+        // Phase 7G. router.replace, matching every other settings destination off this
+        // screen (ADR-011) -- a settings destination, not a stack to accumulate entries on.
+        onPress: () => router.replace('/connect'),
       },
       { icon: 'scale', title: 'InBody History', subtitle: 'Last scan 8 days ago' },
       { icon: 'clock', title: 'Workout History', subtitle: '147 sessions logged' },

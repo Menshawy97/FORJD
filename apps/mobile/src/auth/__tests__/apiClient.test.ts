@@ -15,6 +15,7 @@ jest.mock('axios', () => {
     post: jest.Mock;
     get: jest.Mock;
     patch: jest.Mock;
+    delete: jest.Mock;
     request: jest.Mock;
     defaults: { baseURL: string };
   }> = [];
@@ -38,6 +39,7 @@ jest.mock('axios', () => {
       post: jest.fn(),
       get: jest.fn(),
       patch: jest.fn(),
+      delete: jest.fn(),
       request: jest.fn(),
       defaults: { baseURL: 'http://test.local/api/v1' },
     };
@@ -571,5 +573,51 @@ describe('apiClient - workout stats', () => {
     } finally {
       global.Intl = realIntl;
     }
+  });
+});
+
+// Phase 7G. connectWhoop/disconnectWhoop/getWhoopStatus back the mobile Connect screen.
+describe('apiClient - WHOOP', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (axios as unknown as { __instances: unknown[] }).__instances.length = 0;
+  });
+
+  function apiClientInstance() {
+    const instances = (axios as unknown as { __instances: Array<Record<string, unknown>> })
+      .__instances;
+    return instances[2] as unknown as { get: jest.Mock; post: jest.Mock; delete: jest.Mock };
+  }
+
+  it('getWhoopStatus reads GET /integrations/whoop/status through the authenticated client', async () => {
+    const { getWhoopStatus } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = { connected: true, lastSyncAt: '2026-09-08T06:00:00.000Z' };
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(getWhoopStatus()).resolves.toEqual(body);
+
+    expect(instance.get).toHaveBeenCalledWith('/integrations/whoop/status');
+  });
+
+  it('connectWhoop posts to /integrations/whoop/authorize and returns the authorize URL', async () => {
+    const { connectWhoop } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = { authorizeUrl: 'https://api.prod.whoop.com/oauth/oauth2/auth' };
+    instance.post.mockResolvedValue({ data: body });
+
+    await expect(connectWhoop()).resolves.toEqual(body);
+
+    expect(instance.post).toHaveBeenCalledWith('/integrations/whoop/authorize');
+  });
+
+  it('disconnectWhoop sends DELETE /integrations/whoop', async () => {
+    const { disconnectWhoop } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.delete.mockResolvedValue({ data: undefined });
+
+    await disconnectWhoop();
+
+    expect(instance.delete).toHaveBeenCalledWith('/integrations/whoop');
   });
 });

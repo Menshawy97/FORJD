@@ -27,6 +27,8 @@ import {
   progressStrengthResponseSchema,
   healthObservationSeriesResponseSchema,
   healthConnectionListResponseSchema,
+  whoopStatusResponseSchema,
+  whoopAuthorizeResponseSchema,
   readinessResponseSchema,
 } from './index';
 
@@ -809,6 +811,17 @@ export const responseFixtures = {
         { source: 'whoop', lastSuccessfulSyncAt: null },
       ],
     },
+  },
+
+  /** A currently-connected WHOOP account with at least one sync completed. */
+  'whoop-status-response': {
+    schema: whoopStatusResponseSchema,
+    sample: { connected: true, lastSyncAt: '2026-09-08T06:15:00.000Z' },
+  },
+
+  'whoop-authorize-response': {
+    schema: whoopAuthorizeResponseSchema,
+    sample: { authorizeUrl: 'https://api.prod.whoop.com/oauth/oauth2/auth?client_id=abc&state=xyz' },
   },
 
   /** Three components with enough baseline history to score, one (respiratory_rate) still

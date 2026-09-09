@@ -48,6 +48,14 @@ export const colors = {
   trainingTipBg: 'rgba(233,113,47,.08)',
   // The athlete screen's initials-avatar tile fill, from the prototype's `s_athlete()`.
   athleteAvatarBg: 'rgba(233,113,47,.14)',
+  // s_connect()'s per-source icon tile, unconnected state.
+  connectIconBg: '#1E1F22',
+  // s_connect()'s per-source icon tile, connected state.
+  connectIconBgOn: 'rgba(121,185,138,.12)',
+  // s_connect()'s per-source Connect pill fill.
+  connectButtonBg: 'rgba(233,113,47,.14)',
+  // s_connect()'s per-source Connect pill fill, pressed (the prototype's own hover).
+  connectButtonBgPressed: 'rgba(233,113,47,.22)',
 
   // Borders
   border: 'rgba(255,255,255,.07)',
@@ -68,6 +76,8 @@ export const colors = {
   // The athlete screen's initials-avatar tile outline, from the prototype's `s_athlete()`.
   // Not `borderPro` (.35) — a different, close-but-not-equal alpha.
   borderAthleteAvatar: 'rgba(233,113,47,.28)',
+  // s_connect()'s per-source card outline when that source is connected.
+  borderConnected: 'rgba(121,185,138,.28)',
   // The toast pill's outline, from the prototype's `flash()` render.
   borderToast: 'rgba(255,255,255,.1)',
   // A goals/activities pick-row checkbox's unselected ring (goals.tsx).
