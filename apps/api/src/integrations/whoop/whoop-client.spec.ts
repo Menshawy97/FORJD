@@ -198,15 +198,23 @@ describe("whoop-client", () => {
   describe("whoopClientProvider", () => {
     it("builds a client from WHOOP_CLIENT_ID/WHOOP_CLIENT_SECRET via ConfigService", async () => {
       const config = {
-        getOrThrow: jest.fn((key: string) => (key === "WHOOP_CLIENT_ID" ? clientId : clientSecret)),
+        get: jest.fn((key: string) => (key === "WHOOP_CLIENT_ID" ? clientId : clientSecret)),
       } as unknown as ConfigService;
 
       const factory = whoopClientProvider as { useFactory: (config: ConfigService) => ReturnType<typeof createWhoopClient> };
       const client = factory.useFactory(config);
 
       expect(client).toHaveProperty("exchangeAuthorizationCode");
-      expect(config.getOrThrow).toHaveBeenCalledWith("WHOOP_CLIENT_ID");
-      expect(config.getOrThrow).toHaveBeenCalledWith("WHOOP_CLIENT_SECRET");
+      expect(config.get).toHaveBeenCalledWith("WHOOP_CLIENT_ID", "");
+      expect(config.get).toHaveBeenCalledWith("WHOOP_CLIENT_SECRET", "");
+    });
+
+    it("boots even with no WHOOP credentials configured, rather than crashing the whole API -- the exact deploy failure this class of bug caused (see whoop-client.ts's own docblock)", () => {
+      const config = { get: jest.fn((_key: string, fallback: string) => fallback) } as unknown as ConfigService;
+
+      const factory = whoopClientProvider as { useFactory: (config: ConfigService) => ReturnType<typeof createWhoopClient> };
+
+      expect(() => factory.useFactory(config)).not.toThrow();
     });
   });
 });

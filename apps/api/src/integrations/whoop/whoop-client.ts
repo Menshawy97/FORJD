@@ -187,12 +187,21 @@ export function createWhoopClient(options: CreateWhoopClientOptions): WhoopClien
   };
 }
 
+/**
+ * `config.get(..., "")`, not `getOrThrow` -- this factory runs eagerly at module boot
+ * (`WhoopModule`, Phase 7F), and every real environment today has no WHOOP credentials
+ * configured yet (`docs/product/phase-7-plan.md` decision 1). `createWhoopClient` never
+ * validates its inputs at construction, so an empty id/secret builds a client that boots
+ * fine; only an actual WHOOP call then fails, the same way it would fail with a wrong (but
+ * present) credential -- WHOOP's own 401 is the error, not a crashed API process. See
+ * `token-cipher.provider.ts`'s docblock for the deploy failure this class of bug caused.
+ */
 export const whoopClientProvider: Provider = {
   provide: WHOOP_CLIENT,
   inject: [ConfigService],
   useFactory: (config: ConfigService): WhoopClient =>
     createWhoopClient({
-      clientId: config.getOrThrow<string>("WHOOP_CLIENT_ID"),
-      clientSecret: config.getOrThrow<string>("WHOOP_CLIENT_SECRET"),
+      clientId: config.get<string>("WHOOP_CLIENT_ID", ""),
+      clientSecret: config.get<string>("WHOOP_CLIENT_SECRET", ""),
     }),
 };

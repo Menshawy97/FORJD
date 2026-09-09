@@ -63,9 +63,14 @@ export class WhoopOAuthService {
   }
 }
 
+/** `config.get(..., "")`, not `getOrThrow` -- same reasoning as `whoop-client.ts`'s
+ *  `whoopClientProvider`: this factory runs eagerly at module boot, and no real environment
+ *  has WHOOP credentials configured yet. `buildAuthorizeUrl` builds a URL either way; an
+ *  empty `client_id`/`redirect_uri` only produces a URL WHOOP itself would reject if actually
+ *  opened, not a crashed API process. */
 export const whoopOAuthServiceProvider = {
   provide: WhoopOAuthService,
   inject: [WHOOP_CLIENT, ConfigService],
   useFactory: (client: WhoopClient, config: ConfigService): WhoopOAuthService =>
-    new WhoopOAuthService(client, config.getOrThrow<string>("WHOOP_CLIENT_ID"), config.getOrThrow<string>("WHOOP_REDIRECT_URI")),
+    new WhoopOAuthService(client, config.get<string>("WHOOP_CLIENT_ID", ""), config.get<string>("WHOOP_REDIRECT_URI", "")),
 };
