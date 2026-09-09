@@ -46,18 +46,34 @@ needs, write a small targeted native bridge for just that gap, behind the unchan
 `HealthProvider` interface. Don't let a gap become an excuse to bypass the interface
 elsewhere.
 
-## WHOOP
+## WHOOP (Phase 7)
 
-Secrets never reach the mobile client:
+The integration runs entirely server-side; WHOOP's client secret and access/refresh
+tokens never reach the mobile client (`CLAUDE.md` rule 5):
 
 ```
-Flutter → Your API → WHOOP OAuth
+React Native (Expo) → Your API → WHOOP OAuth
 ```
 
-`ExternalConnection` table: `user_id, provider, status, external_user_id,
-encrypted_access_token, encrypted_refresh_token, expires_at, scopes,
-last_sync_at`. WHOOP uses OAuth 2.0 with an `offline` scope for refresh
-tokens.
+`apps/api/src/integrations/whoop/` is the first occupant of the
+`apps/api/src/integrations/<provider>/` directory (`CLAUDE.md` rule 4). `WhoopProvider`
+implements `HealthProvider` exactly like `HealthConnectProvider` does — the phone only
+ever calls the app's own `/integrations/whoop/*` routes, never WHOOP's API.
+
+`external_connections` table (migration `0016`): `user_id, provider, status,
+external_user_id, encrypted_access_token, encrypted_refresh_token, expires_at, scopes,
+oauth_state, oauth_state_expires_at, token_key_version, last_sync_at`. This is separate
+from `health_connections` (Phase 6), which stays for on-device providers that never hold
+a server-side token. WHOOP uses OAuth 2.0 with an `offline` scope so it issues a refresh
+token; the access token is refreshed lazily, immediately before an outbound call, guarded
+by a row lock (`SELECT ... FOR UPDATE`) so two concurrent refreshes for the same user
+can't invalidate each other's token.
+
+Tokens are encrypted at rest with AES-256-GCM in application code (ADR-036), not Cloud
+KMS. Webhook delivery is synchronous: WHOOP's own five-retries-over-an-hour schedule is
+the retry mechanism, so there is no queue or worker for it (consistent with ADR-029 and
+ADR-032's Cloud-Run-can't-host-a-worker reasoning). See ADR-037 for the full integration
+shape and this phase's still-open items.
 
 ## Sync architecture
 

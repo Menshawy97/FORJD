@@ -248,6 +248,47 @@ with 0 blocking issues.
 Read this section first when resuming — it says exactly what's done and what to do next.
 Don't re-derive this from scratch; verify it's still accurate and continue.
 
+### Session close, 2026-09-09 (Phase 7 slice 7H — conformance, ADR-037, doc hygiene: Phase 7 is complete)
+
+**Two new rules added to `scripts/ci/check-architecture-conformance.sh`**: WHOOP's own API
+hostname (`api.prod.whoop.com`) confined to `apps/api/src/integrations/whoop/`, mirroring the
+existing `react-native-health-connect` directory-prefix rule; and a mobile-side grep proving no
+WHOOP hostname or client/webhook-secret-shaped identifier (`WHOOP_CLIENT_SECRET`,
+`WHOOP_WEBHOOK_SECRET`) appears anywhere in `apps/mobile/src` production code — the
+mechanically enforceable version of `CLAUDE.md` rule 5, test files exempt for the same reason
+the `expo-secure-store`/`expo-sqlite` rules exempt them (a mocked server response embedding a
+WHOOP URL in a test isn't a real leak). Both rules pass clean against everything 7A-7G shipped.
+`apps/api/package.json`'s per-file 100%-coverage list already carried every
+service/provider/mapping/cipher file added since 7A — that bookkeeping happened incrementally,
+not as a batch here, and was re-confirmed complete.
+
+**[ADR-037](../decisions/ADR-037-whoop-integration-shape.md) written** — the closing record for
+the whole Phase 7 integration shape (7A-7H, one paragraph each) plus a generalized write-up of
+last session's staging-deploy incident: the standing lesson is that a `useFactory` provider
+built with `getOrThrow` runs during `NestFactory.create()` for *every* environment, so it's only
+safe when the config it demands is guaranteed present everywhere the app boots — never true for
+a new integration's credentials in a phase that deliberately ships without live access yet.
+**[ADR-036](../decisions/ADR-036-token-encryption-at-rest.md) amended** to correct its
+now-false "fails to start without `TOKEN_ENCRYPTION_KEY`" claim, which PR #144's fix made
+inaccurate.
+
+**Doc hygiene**: `integrations.md`'s stale `Flutter → Your API → WHOOP OAuth` diagram rewritten
+as `React Native (Expo) → Your API → WHOOP OAuth` with the actual `external_connections`
+column list, token-refresh-locking, and encryption-at-rest details filled in (previously just a
+one-line stub); `system.md`'s stale `mobile/ Flutter` repo-layout line corrected to the actual
+Expo/React Native directory names. A full sweep during phase-7 planning had already confirmed
+these were the only two genuinely stale Flutter references left in `docs/`.
+
+**Phase 7 is complete: 7A through 7H, all merged and green on `main`.** What's still owed is
+recorded in ADR-037 rather than hidden: the live WHOOP OAuth round-trip has never run against a
+real account (decision 1 — everything was built and tested against recorded payload shapes),
+the Phase 6F Health Connect physical-device test (ADR-035) remains untouched and unrelated, and
+decision E's readiness-baseline-crossover surfacing (WHOOP outranks Health Connect for all four
+readiness inputs the moment it connects, mid-baseline or not) is flagged, not built.
+
+**Next**: Phase 8 — Privacy & beta prep (legal, consent, Play closed testing clock), the next
+unstarted row in the timeline.
+
 ### Session close, 2026-09-09 (Phase 7 slice 7G + a real staging-deploy hotfix)
 
 **PR [#143](https://github.com/Menshawy97/FORJD/pull/143) merged and confirmed green on `main`: the mobile Connect screen.** `s_connect()` built pixel-by-pixel — only the WHOOP card is real, per the plan's decision; Apple Health and Health Connect render inert ("Coming soon"). Required one API addition not itemized in 7F's original route list: `GET /integrations/whoop/status`, which a Connect screen cannot avoid needing to render correct initial state. `apiClient.ts` gains `getWhoopStatus`/`connectWhoop`/`disconnectWhoop`; `profile.tsx`'s "Connected Sources" row is live.
@@ -2325,7 +2366,7 @@ failure).
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
 | 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6F merged, readiness scoring (ADR-031, Accepted) and light-up-the-UI merged (#131, #132); 6F (`HealthConnectProvider`) is still **device-unverified** — merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md); a physical Android phone test is still owed before any UI screen calls `connect()`/`.sync()` on it (nothing does yet) |
-| 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **In progress** — [planned](phase-7-plan.md); 7A-7G merged, mobile Connect screen live, one real staging-deploy hotfix merged and verified against the live service. Remaining: 7H (conformance, ADR-037, doc hygiene) |
+| 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **Complete** — [planned](phase-7-plan.md); 7A-7H done, [ADR-037](../decisions/ADR-037-whoop-integration-shape.md) records the closing shape. Owed: the live WHOOP OAuth round-trip (decision 1), the Phase 6F Health Connect device test (ADR-035, unrelated), decision E's readiness-baseline-crossover surfacing |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
 | Limited Android beta | 35 | 12+ testers | Not started |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
