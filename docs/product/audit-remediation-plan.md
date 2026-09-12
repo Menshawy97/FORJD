@@ -680,38 +680,48 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-| # | Slice | Package | Notes |
-|---|---|---|---|
-| R1 | Sync failure classification, retry surface, finish handlers | mobile | — |
-| R1b | Per-record-type Health Connect sync | mobile | ships with R1 |
-| R2 | AI consent gate, vision timeouts, vision throttle | api | — |
-| R3 | Account deletion | api + mobile | shares the revoke helper with R5 |
-| R4 | Data export | api + mobile + contracts | after R3 |
-| R5 | WHOOP revoke and token wipe | api | reuses R3's helper |
-| R6 | WHOOP unique external user | api + migration | — |
-| R7 | Body-scan transaction | api | — |
-| R8 | Bounded observation reads | api | — |
-| R9 | helmet, env schema, ValidationPipe, compression | api | — |
-| R10 | Contract bounds and array caps | contracts + domain | — |
-| R11 | Low security and config batch | api + infra | asks about Supabase config |
-| R12 | Conformance script and its own tests | scripts + CI | — |
-| R13 | Coverage gates on all four packages | all | after R1–R12, R14–R16 |
-| R14 | `body/` unit tests | api | after R2 |
-| R15 | `toLiveExercise` tests | mobile | — |
-| R16 | Eleven controller specs | api | — |
-| R17 | De-flake the route-tree suites | mobile | — |
-| R18 | Timer and toast announcements | mobile | after R1 |
-| R19 | Contrast — **pauses for the user** | mobile | — |
-| R20 | Catalogue conditional fetch | mobile + api | after R9 |
-| R21 | 1 Hz timers, SectionList | mobile | after R18 |
-| R22 | Block-type union, cross-field targets | domain + contracts | — |
-| R23 | File splits | mobile + api + contracts | after R1 and R21 |
-| R24 | Validated raw SQL | api | — |
-| R25 | SQLite schema versioning | mobile | after R1 |
-| R26 | Error states | mobile | — |
-| R27 | Compiler and lint parity | mobile + api | asks about the Expo packages |
-| R28 | Indexes and the nutrition N+1 | api + migrations | — |
-| R29 | Documentation, the ADR, store metadata | docs | last |
+Status as of 2026-09-13. "Done" means merged to `main` with a green post-merge CI run
+confirmed, per this plan's own CHECKPOINT step.
+
+| # | Slice | Package | Status | Notes |
+|---|---|---|---|---|
+| R1 | Sync failure classification, retry surface, finish handlers | mobile | ✅ Done (#148) | — |
+| R1b | Per-record-type Health Connect sync | mobile | ✅ Done (#148) | shipped with R1 |
+| R2 | AI consent gate, vision timeouts, vision throttle | api | ✅ Done (#149) | — |
+| R3 | Account deletion | api + mobile | ✅ Done (#150) | built the revoke helper R5 reuses |
+| R4 | Data export | api + mobile + contracts | Not started | after R3 — now unblocked |
+| R5 | WHOOP revoke and token wipe | api | Not started | reuses R3's `whoop-revoke.ts` helper — now unblocked |
+| R6 | WHOOP unique external user | api + migration | ✅ Done (#152) | — |
+| R7 | Body-scan transaction | api | ✅ Done (#151) | — |
+| R8 | Bounded observation reads | api | ✅ Done (#155) | — |
+| R9 | helmet, env schema, ValidationPipe, compression | api | Not started | — |
+| R10 | Contract bounds and array caps | contracts + domain | ✅ Done (#154) | — |
+| R11 | Low security and config batch | api + infra | Not started | **stops for the user** — supabase/config.toml question |
+| R12 | Conformance script and its own tests | scripts + CI | ✅ Done (#157) | prettier-in-CI deliberately deferred — see PR body, 403 files of pre-existing drift |
+| R13 | Coverage gates on all four packages | all | Not started | after R1–R12, R14–R16 — R14 still open |
+| R14 | `body/` unit tests | api | Not started | after R2 — now unblocked |
+| R15 | `toLiveExercise` tests | mobile | ✅ Done (#156) | no bug found; closed the coverage gap |
+| R16 | Eleven controller specs | api | ✅ Done (#153) | discovery found 13 controllers, not 11 (two added since the audit); all 13 covered |
+| R17 | De-flake the route-tree suites | mobile | Not started | — |
+| R18 | Timer and toast announcements | mobile | Not started | after R1 — now unblocked |
+| R19 | Contrast — **pauses for the user** | mobile | Not started | — |
+| R20 | Catalogue conditional fetch | mobile + api | Not started | after R9 |
+| R21 | 1 Hz timers, SectionList | mobile | Not started | after R18 |
+| R22 | Block-type union, cross-field targets | domain + contracts | Not started | — |
+| R23 | File splits | mobile + api + contracts | Not started | after R1 and R21 — R1 done, R21 still open |
+| R24 | Validated raw SQL | api | Not started | — |
+| R25 | SQLite schema versioning | mobile | Not started | after R1 — now unblocked |
+| R26 | Error states | mobile | Not started | — |
+| R27 | Compiler and lint parity | mobile + api | Not started | **stops for the user** — the four Expo packages question |
+| R28 | Indexes and the nutrition N+1 | api + migrations | Not started | — |
+| R29 | Documentation, the ADR, store metadata | docs | Not started | last |
+
+**Deviation from the plan worth recording:** R6, R7, R8, R10, R15, R16 and R12 were done out of
+their listed order, in parallel (separate git worktrees, one PR per slice, merged sequentially
+with a confirmed green `main` between each) once each was confirmed to touch disjoint files with
+no declared dependency on the others. The plan's own per-slice TDD and CHECKPOINT discipline was
+still followed for every one of them individually; only the *ordering* across independent slices
+was relaxed, at the user's request.
 
 R1 through R4 are the ones that matter most. If the work has to stop early, stopping after R4
 leaves an app that no longer loses finished workouts, no longer sends health data to a third-party
