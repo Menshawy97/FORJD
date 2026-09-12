@@ -710,10 +710,12 @@ export type FoodListResponse = z.infer<typeof foodListResponseSchema>;
 export const createCustomFoodRequestSchema = z.object({
   name: z.string().trim().min(1).max(120),
   category: foodCategorySchema,
-  kcalPer100g: z.number().min(0),
-  proteinPer100g: z.number().min(0),
-  carbsPer100g: z.number().min(0),
-  fatPer100g: z.number().min(0),
+  // R10 -- the audit's own example was a 900,000 kcal entry. Pure fat is ~884 kcal/100g;
+  // 900 is a generous ceiling. A macro cannot exceed 100g per 100g of food.
+  kcalPer100g: z.number().min(0).max(900),
+  proteinPer100g: z.number().min(0).max(100),
+  carbsPer100g: z.number().min(0).max(100),
+  fatPer100g: z.number().min(0).max(100),
 });
 export type CreateCustomFoodRequest = z.infer<typeof createCustomFoodRequestSchema>;
 
@@ -777,8 +779,10 @@ export const logFoodRequestSchema = z.object({
   slot: mealSlotSchema,
   loggedDate: localDateSchema,
   servingLabel: z.string().min(1),
-  /** `0` is valid -- the design's "Custom amount" accepts 0 g and logs a 0-kcal entry (`nutrition-screen-specs.md` §4). */
-  grams: z.number().min(0),
+  /** `0` is valid -- the design's "Custom amount" accepts 0 g and logs a 0-kcal entry
+   *  (`nutrition-screen-specs.md` §4). `.max(10_000)` (R10): no single logged item is
+   *  plausibly a 10kg serving. */
+  grams: z.number().min(0).max(10_000),
 });
 export type LogFoodRequest = z.infer<typeof logFoodRequestSchema>;
 
@@ -793,13 +797,14 @@ export type LogSavedMealRequest = z.infer<typeof logSavedMealRequestSchema>;
 const savedMealItemSchema = z.object({
   foodId: z.string().uuid(),
   servingLabel: z.string().min(1),
-  grams: z.number().min(0),
+  grams: z.number().min(0).max(10_000),
 });
 
-/** Body for `POST /nutrition/meals`. Items are copied into a day's log when the meal is logged, never referenced live -- see `NutritionRepository.logSavedMeal`'s own docblock. */
+/** Body for `POST /nutrition/meals`. Items are copied into a day's log when the meal is logged, never referenced live -- see `NutritionRepository.logSavedMeal`'s own docblock.
+ *  `.max(50)` (R10): an explicit cap, not the framework's ~100kb body default. */
 export const createSavedMealRequestSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  items: z.array(savedMealItemSchema),
+  items: z.array(savedMealItemSchema).max(50),
 });
 export type CreateSavedMealRequest = z.infer<typeof createSavedMealRequestSchema>;
 
@@ -1004,14 +1009,21 @@ export type WorkoutTemplateListQuery = z.infer<typeof workoutTemplateListQuerySc
  * the service validates the pairing against the exercise it looked up (Phase E), the same
  * division of labour `createWorkoutExerciseInputSchema` draws.
  */
+/**
+ * R10 -- the audit's own example was 10,000 reps, accepted with no bound. Every cap below is
+ * generous relative to the most extreme genuinely-recorded human performance (verified
+ * powerlifting records top out under 500kg; ultramarathons run well under 200km; a single
+ * uninterrupted set or rest period beyond 24 hours is not a real set) rather than a "typical"
+ * workout, so no legitimate log entry is ever rejected.
+ */
 const workoutSetInputSchema = z.object({
   type: workoutSetTypeSchema,
   isCompleted: z.boolean(),
-  weightKg: z.number().min(0).optional(),
-  reps: z.number().int().min(0).optional(),
-  durationSeconds: z.number().int().min(0).optional(),
-  distanceMeters: z.number().min(0).optional(),
-  restSeconds: z.number().int().min(0).optional(),
+  weightKg: z.number().min(0).max(500).optional(),
+  reps: z.number().int().min(0).max(500).optional(),
+  durationSeconds: z.number().int().min(0).max(86_400).optional(),
+  distanceMeters: z.number().min(0).max(200_000).optional(),
+  restSeconds: z.number().int().min(0).max(86_400).optional(),
   completedAt: z.string().datetime().optional(),
 });
 
@@ -1025,7 +1037,9 @@ const workoutSetInputSchema = z.object({
 const workoutSessionExerciseInputSchema = z.object({
   exerciseId: z.string().uuid(),
   notes: z.string().trim().max(2000).optional(),
-  sets: z.array(workoutSetInputSchema).min(1),
+  // .max(100): an explicit cap (R10), not the framework's ~100kb body default -- generous
+  // for even a very long drop-set/AMRAP-style exercise.
+  sets: z.array(workoutSetInputSchema).min(1).max(100),
 });
 
 /**
@@ -1053,7 +1067,9 @@ export const workoutSessionUploadRequestSchema = z.object({
   city: z.string().nullable().optional(),
   citySlug: z.string().nullable().optional(),
   isLiveTracked: z.boolean(),
-  exercises: z.array(workoutSessionExerciseInputSchema),
+  // .max(100): an explicit cap (R10) -- generous for even HYROX/circuit-style sessions with
+  // many distinct movements.
+  exercises: z.array(workoutSessionExerciseInputSchema).max(100),
 });
 export type WorkoutSessionUploadRequest = z.infer<typeof workoutSessionUploadRequestSchema>;
 
@@ -1645,12 +1661,50 @@ export type ExtractBodyScanResponse = z.infer<typeof extractBodyScanResponseSche
  *  from this array, never sent as a confirmed null. `metric` accepts either a BODY_METRICS
  *  entry or a segmental site -- both are stored the same way (`body_measurements.metric` is
  *  free text), so the wire shape does not need two parallel arrays. */
-export const confirmedMeasurementSchema = z.object({
-  metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
-  value: z.number(),
-  unit: z.string(),
-  confidence: z.number().min(0).max(1),
-});
+/**
+ * R10: the audit's own example was a 5000 kg body scan, accepted with no bound and corrupting
+ * every aggregate that read it back. `[min, max]` per metric/segmental site, generous enough
+ * for real extremes without accepting obvious corruption -- an InBody device's own published
+ * measurement ranges plus a wide margin.
+ */
+const BODY_MEASUREMENT_VALUE_BOUNDS: Partial<
+  Record<(typeof BODY_METRICS)[number] | (typeof SEGMENTAL_SITES)[number], [number, number]>
+> = {
+  weight_kg: [20, 400],
+  skeletal_muscle_mass_kg: [5, 100],
+  body_fat_mass_kg: [1, 200],
+  body_fat_percent: [2, 70],
+  visceral_fat_level: [1, 30],
+  total_body_water_l: [5, 100],
+  bmi: [10, 80],
+  basal_metabolic_rate_kcal: [500, 5000],
+  inbody_score: [0, 100],
+  right_arm: [0.5, 30],
+  left_arm: [0.5, 30],
+  trunk: [0.5, 30],
+  right_leg: [0.5, 30],
+  left_leg: [0.5, 30],
+};
+
+export const confirmedMeasurementSchema = z
+  .object({
+    metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
+    value: z.number(),
+    unit: z.string(),
+    confidence: z.number().min(0).max(1),
+  })
+  .superRefine((measurement, ctx) => {
+    const bounds = BODY_MEASUREMENT_VALUE_BOUNDS[measurement.metric];
+    if (!bounds) return;
+    const [min, max] = bounds;
+    if (measurement.value < min || measurement.value > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: `${measurement.metric} must be between ${min} and ${max}`,
+      });
+    }
+  });
 export type ConfirmedMeasurement = z.infer<typeof confirmedMeasurementSchema>;
 
 /**
@@ -1661,7 +1715,10 @@ export type ConfirmedMeasurement = z.infer<typeof confirmedMeasurementSchema>;
  */
 export const confirmBodyScanRequestSchema = z.object({
   measuredAt: z.string().datetime(),
-  measurements: z.array(confirmedMeasurementSchema).min(1),
+  // .max(): BODY_METRICS + SEGMENTAL_SITES together are 14 possible entries -- a real scan
+  // never needs more, so an explicit cap (R10) closes the framework-body-size-default as the
+  // only backstop.
+  measurements: z.array(confirmedMeasurementSchema).min(1).max(20),
 });
 export type ConfirmBodyScanRequest = z.infer<typeof confirmBodyScanRequestSchema>;
 
@@ -1727,6 +1784,35 @@ export const healthMetricTypeSchema = z.enum(HEALTH_METRIC_TYPES);
 export const healthSourceSchema = z.enum(HEALTH_SOURCES);
 
 /**
+ * R10 (medium finding): `value: z.number()` with no bounds fed `Math.log(0) = -Infinity`
+ * into `packages/domain/src/readiness.ts` and let a corrupt reading into every downstream
+ * aggregate unnoticed. `[min, max]` per metric, generous enough to cover real extremes
+ * (elite athletes, medical outliers) without accepting obvious corruption. Sourced from
+ * standard physiological reference ranges (AHA heart-rate guidance; rMSSD HRV ranges as
+ * used in Plews et al. 2013, already cited in readiness.ts; normal adult respiratory rate
+ * 12-20/min widened to 4-60 to cover measured extremes during/after exercise; sleep-stage
+ * minutes bounded by one calendar day; elite-endurance VO2max tops out around 90-95
+ * ml/kg/min). `hrv`'s lower bound is 1, not 0 -- see readiness.ts's own `Math.log` guard for
+ * why zero specifically must never reach that calculation.
+ */
+const HEALTH_METRIC_VALUE_BOUNDS: Partial<Record<(typeof HEALTH_METRIC_TYPES)[number], [number, number]>> = {
+  heart_rate: [20, 300],
+  walking_heart_rate: [20, 300],
+  resting_heart_rate: [20, 200],
+  hrv: [1, 300],
+  respiratory_rate: [4, 60],
+  sleep_duration: [0, 1440],
+  sleep_light_duration: [0, 1440],
+  sleep_deep_duration: [0, 1440],
+  sleep_rem_duration: [0, 1440],
+  sleep_awake_duration: [0, 1440],
+  steps: [0, 200_000],
+  active_energy: [0, 20_000],
+  weight: [20, 500],
+  vo2_max: [10, 95],
+};
+
+/**
  * One observation to ingest, sent to `POST /health-data/observations`. Deliberately does
  * NOT accept `id`, `userId`, or `createdAt` -- the server owns all three (the athlete
  * authenticated by JWT is always the owner, and a client-supplied id/createdAt would be a
@@ -1735,24 +1821,40 @@ export const healthSourceSchema = z.enum(HEALTH_SOURCES);
  * this file. `value`/`unit` arrive already normalized to @forjd/domain's canonical unit --
  * that conversion is the provider adapter's job (ADR-003/ADR-004), not this contract's.
  */
-export const ingestHealthObservationSchema = z.object({
-  metricType: healthMetricTypeSchema,
-  value: z.number(),
-  unit: z.string().min(1),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
-  source: healthSourceSchema,
-  providerRecordId: z.string().nullable().optional(),
-  deviceId: z.string().nullable().optional(),
-  quality: z.number().min(0).max(1).nullable().optional(),
-});
+export const ingestHealthObservationSchema = z
+  .object({
+    metricType: healthMetricTypeSchema,
+    value: z.number(),
+    unit: z.string().min(1),
+    startTime: z.string().datetime(),
+    endTime: z.string().datetime(),
+    source: healthSourceSchema,
+    providerRecordId: z.string().nullable().optional(),
+    deviceId: z.string().nullable().optional(),
+    quality: z.number().min(0).max(1).nullable().optional(),
+  })
+  .superRefine((observation, ctx) => {
+    const bounds = HEALTH_METRIC_VALUE_BOUNDS[observation.metricType];
+    if (!bounds) return;
+    const [min, max] = bounds;
+    if (observation.value < min || observation.value > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: `${observation.metricType} must be between ${min} and ${max}`,
+      });
+    }
+  });
 export type IngestHealthObservation = z.infer<typeof ingestHealthObservationSchema>;
 
 /** Request body for `POST /health-data/observations` -- one sync batch from a provider
  *  adapter. A batch, not one-observation-per-request, because a single Health Connect sync
- *  call routinely returns many readings and per-observation round trips would not scale. */
+ *  call routinely returns many readings and per-observation round trips would not scale.
+ *  `.max(1000)`: an explicit cap rather than relying solely on the framework's ~100kb body
+ *  default (R10) -- generous for a real incremental sync, far short of a request built to
+ *  exhaust memory or DB time on this endpoint. */
 export const batchIngestHealthObservationsRequestSchema = z.object({
-  observations: z.array(ingestHealthObservationSchema).min(1),
+  observations: z.array(ingestHealthObservationSchema).min(1).max(1000),
 });
 export type BatchIngestHealthObservationsRequest = z.infer<typeof batchIngestHealthObservationsRequestSchema>;
 

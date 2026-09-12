@@ -207,6 +207,20 @@ function scoreComponent(
   // Neutral (z=0) maps to 50; +/-2 baseline SDs saturates the 0-100 range. The SWC threshold
   // (0.5 SD) is used separately below for the qualitative label, not for this mapping.
   const score = clamp(50 + directedZ * 25, 0, 100);
+
+  // R10: a value of exactly zero reaching the log transform (`hrv`) produces `-Infinity`,
+  // which can propagate all the way to a `NaN` score through the baseline mean/variance/z
+  // chain above -- the contract boundary now rejects zero for this metric, but this is the
+  // last line of defence, and it matters beyond this one function: `computeReadiness`'s
+  // composite is `mean(components.map(c => c.score))`, which only excludes a component whose
+  // score is exactly `null` (`components.filter(c => c.score === null)`) -- a `NaN` score
+  // would silently pass that filter and poison every other component's otherwise-valid score
+  // into `NaN` too. Treating it as unscoreable, the same as too little baseline history,
+  // keeps that filter meaningful.
+  if (!Number.isFinite(score)) {
+    return { key, score: null, label: null, recentValue, baselineDayCount };
+  }
+
   const label: ReadinessComponentLabel =
     directedZ >= SWC_MULTIPLIER ? 'elevated' : directedZ <= -SWC_MULTIPLIER ? 'low' : 'normal';
 
