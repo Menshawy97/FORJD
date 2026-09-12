@@ -159,6 +159,20 @@ function buildGroups(identity: Identity): Array<{ label: string; rows: SettingsR
       },
     ],
   },
+  {
+    label: 'Account',
+    rows: [
+      {
+        icon: 'x',
+        title: 'Delete account',
+        subtitle: 'Permanently erase your data',
+        // C1 -- Apple Guideline 5.1.1(v): account deletion must be reachable in-app.
+        // router.push, not replace: this is a destination the user should be able to
+        // back out of, unlike the settings screens above.
+        onPress: () => router.push('/delete-account'),
+      },
+    ],
+  },
   ];
 }
 

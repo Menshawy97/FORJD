@@ -61,6 +61,24 @@ describe("whoop-client", () => {
     });
   });
 
+  describe("revokeToken", () => {
+    it("POSTs the OAuth2 revocation request with the access token", async () => {
+      const fetchImpl = jest.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({}) });
+      const client = createWhoopClient({ clientId, clientSecret, fetchImpl });
+
+      await client.revokeToken("access-token-to-revoke");
+
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchImpl.mock.calls[0];
+      expect(url).toBe("https://api.prod.whoop.com/oauth/oauth2/revoke");
+      expect(init.method).toBe("POST");
+      const body = new URLSearchParams(init.body as string);
+      expect(body.get("token")).toBe("access-token-to-revoke");
+      expect(body.get("client_id")).toBe(clientId);
+      expect(body.get("client_secret")).toBe(clientSecret);
+    });
+  });
+
   describe("getRecovery / getSleep / getWorkout", () => {
     it("GETs the recovery-by-cycle-id endpoint with a bearer token", async () => {
       const recovery = { cycle_id: 1, score_state: "SCORED" };

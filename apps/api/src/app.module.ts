@@ -15,6 +15,7 @@ import { WhoopModule } from './integrations/whoop/whoop.module';
 import { ProgramsModule } from './programs/programs.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { UsersModule } from './users/users.module';
+import { AccountModule } from './users/account.module';
 import { StorageModule } from './storage/storage.module';
 import { WorkoutsModule } from './workouts/workouts.module';
 
@@ -44,6 +45,7 @@ import { WorkoutsModule } from './workouts/workouts.module';
     AuthModule,
     BodyModule,
     UsersModule,
+    AccountModule,
     AthletesModule,
     ExercisesModule,
     HealthDataModule,

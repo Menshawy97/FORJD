@@ -617,3 +617,12 @@ export async function connectWhoop(): Promise<WhoopAuthorizeResponse> {
 export async function disconnectWhoop(): Promise<void> {
   await apiClient.delete('/integrations/whoop');
 }
+
+/**
+ * C1 -- erases the authenticated user's account: every storage object, the WHOOP grant and
+ * tokens, then the user row itself (whose cascades take every other table with it). No
+ * response body (204), matching `disconnectWhoop`'s own reasoning above.
+ */
+export async function deleteAccount(): Promise<void> {
+  await apiClient.delete('/users/me');
+}

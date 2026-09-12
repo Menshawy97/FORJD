@@ -18,6 +18,21 @@ import { UsersRepository } from './users.repository';
 export const AVATAR_BUCKET = 'avatars';
 
 /**
+ * `profiles.avatarUrl` stores the full public URL `getPublicUrl` returned, not the raw
+ * storage key -- there was never a reason to duplicate the key as its own column while only
+ * ever needing to render the URL. Account deletion (R3) is the first caller that needs the
+ * key back, to delete the object rather than merely stop referencing it, so this recovers it
+ * from the one place it survives: the URL's own path, after the bucket segment Supabase's
+ * `getPublicUrl` always includes.
+ */
+export function avatarKeyFromUrl(url: string): string | null {
+  const marker = `/${AVATAR_BUCKET}/`;
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+  return url.slice(index + marker.length);
+}
+
+/**
  * Deliberately not `Express.Multer.File` -- that type ships with `multer`'s own `.d.ts`, which
  * this project's pinned `multer` version does not publish, so importing it would need a new
  * `@types/multer` dependency for a shape this file only reads three fields from. `@UploadedFile`

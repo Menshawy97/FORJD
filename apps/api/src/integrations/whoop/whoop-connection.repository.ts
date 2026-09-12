@@ -138,4 +138,24 @@ export class WhoopConnectionRepository {
       .set({ status, updatedAt: new Date() })
       .where(and(eq(externalConnections.userId, userId), eq(externalConnections.provider, PROVIDER)));
   }
+
+  /**
+   * Nulls the stored tokens and marks the connection disconnected -- the counterpart to
+   * `revokeToken` on `WhoopClient`. Shared by `AccountDeletionService` (R3, C1) and
+   * `WhoopProvider.disconnect()` (R5, H1): both used to (or, for deletion, would have)
+   * left the encrypted tokens sitting in this row indefinitely.
+   */
+  async clearTokens(userId: string): Promise<void> {
+    await this.db
+      .update(externalConnections)
+      .set({
+        status: "disconnected",
+        encryptedAccessToken: "",
+        encryptedRefreshToken: null,
+        expiresAt: null,
+        scopes: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(externalConnections.userId, userId), eq(externalConnections.provider, PROVIDER)));
+  }
 }
