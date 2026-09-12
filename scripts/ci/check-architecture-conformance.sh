@@ -15,13 +15,44 @@ report() {
   violations=$((violations + 1))
 }
 
+# Guarded-directory existence assertions (H8 gap): every check below is wrapped in
+# `if [ -d <dir> ]`, which is correct for a directory that legitimately doesn't exist yet in
+# a young monorepo -- but silently no-ops, rather than failing, if one of these three roots is
+# ever renamed or deleted after the fact. That turns "the flagship enforced rule doesn't fire"
+# into "the flagship enforced rule doesn't even exist anymore, and CI stays green." Each of
+# these three directories is expected to exist for the lifetime of this repo, so their absence
+# is itself reported as a violation instead of being treated as configuration.
+api_src_present=1
+if [ ! -d apps/api/src ]; then
+  report "guarded directory apps/api/src not found" \
+    "This script scans apps/api/src for several architecture rules (Supabase/openai/WHOOP/USDA isolation). If it was intentionally renamed or removed, update this script and the CLAUDE.md rules/ADRs it enforces -- don't let the check silently stop running."
+  api_src_present=0
+fi
+
+mobile_src_present=1
+if [ ! -d apps/mobile/src ]; then
+  report "guarded directory apps/mobile/src not found" \
+    "This script scans apps/mobile/src for several architecture rules (openai/expo-secure-store/expo-sqlite/react-native-health-connect/WHOOP/rule-15 isolation). If it was intentionally renamed or removed, update this script and the CLAUDE.md rules/ADRs it enforces -- don't let the check silently stop running."
+  mobile_src_present=0
+fi
+
+domain_src_present=1
+if [ ! -d packages/domain/src ]; then
+  report "guarded directory packages/domain/src not found" \
+    "This script scans packages/domain/src for rules 1-2 (no UI or provider-SDK imports in domain code). If it was intentionally renamed or removed, update this script and the CLAUDE.md rules/ADRs it enforces -- don't let the check silently stop running."
+  domain_src_present=0
+fi
+
 # Rule 11 / ADR-008: the Supabase SDK is reachable only from the two provider adapter dirs.
-if [ -d apps/api/src ]; then
-  hits=$(grep -rn --include='*.ts' '@supabase/supabase-js' apps/api/src \
+# Matches any package under the @supabase/ scope (not just supabase-js) -- @supabase/postgrest-js,
+# @supabase/auth-js, @supabase/storage-js etc. are all still "the Supabase SDK" for rule 11's
+# purposes, and a literal-package-name match let a sibling package through uncaught.
+if [ "$api_src_present" = 1 ]; then
+  hits=$(grep -rn --include='*.ts' '@supabase/' apps/api/src \
     | grep -v '^apps/api/src/auth/providers/' \
     | grep -v '^apps/api/src/storage/providers/' || true)
   if [ -n "$hits" ]; then
-    report "@supabase/supabase-js imported outside apps/api/src/{auth,storage}/providers/" "$hits"
+    report "a @supabase/* package imported outside apps/api/src/{auth,storage}/providers/" "$hits"
   fi
 fi
 
@@ -31,8 +62,8 @@ fi
 # metro.config.js etc. at the app root are build/tooling config, not app code, and
 # app.config.ts legitimately references plugin names as strings for Expo's config-plugin
 # system (e.g. registering the expo-secure-store plugin below) — that isn't an import.
-if [ -d apps/mobile/src ]; then
-  hits=$(grep -rln --include='*.ts' --include='*.tsx' "['\"]openai['\"]" apps/mobile/src \
+if [ "$mobile_src_present" = 1 ]; then
+  hits=$(grep -rlnE --include='*.ts' --include='*.tsx' "['\"]openai(/[^'\"]*)?['\"]" apps/mobile/src \
     | grep -v '^apps/mobile/src/ai/providers/openai-provider.ts$' || true)
   if [ -n "$hits" ]; then
     report "openai imported outside apps/mobile/src/ai/providers/openai-provider.ts" "$hits"
@@ -44,8 +75,8 @@ fi
 # OpenAI vision extractor obviously does. Both are pinned to the files allowed to know which
 # vendor is behind VisionProvider, so a future vendor swap is a change to one pair of files,
 # not a caller-visible one.
-if [ -d apps/api/src ]; then
-  hits=$(grep -rln --include='*.ts' "['\"]openai['\"]" apps/api/src \
+if [ "$api_src_present" = 1 ]; then
+  hits=$(grep -rlnE --include='*.ts' "['\"]openai(/[^'\"]*)?['\"]" apps/api/src \
     | grep -v '^apps/api/src/ai/providers/nvidia-vision.provider.ts$' \
     | grep -v '^apps/api/src/ai/providers/nvidia-vision-client.ts$' \
     | grep -v '^apps/api/src/ai/providers/openai-vision.provider.ts$' \
@@ -112,10 +143,32 @@ if [ -d apps/api/src ] || [ -d apps/mobile/src ]; then
 fi
 
 # Rules 1-2: domain packages depend on neither UI nor provider SDKs.
+#
+# Quote-agnostic (['\"], not just ') -- packages/domain is mostly double-quoted, and the
+# original single-quote-only pattern let `import { createClient } from "@supabase/supabase-js"`
+# straight through (H8). Broadened past the original four modules to also catch openai,
+# drizzle-orm, pg, @sentry/*, and axios -- each of those is a provider-SDK or infra dependency
+# rule 1-2 already forbids in spirit, just not in this grep before now.
 if [ -d packages/domain/src ]; then
-  hits=$(grep -rn --include='*.ts' -E "from '(@supabase/|@nestjs/|react|flutter)" packages/domain/src || true)
+  hits=$(grep -rn --include='*.ts' -E "from ['\"](@supabase/|@nestjs/|react|flutter|openai|drizzle-orm|pg|@sentry/|axios)" packages/domain/src || true)
   if [ -n "$hits" ]; then
     report "packages/domain imports UI or provider SDK code" "$hits"
+  fi
+fi
+
+# Rule 15 / CLAUDE.md: health data must never reach an analytics or advertising SDK -- "not
+# once, not 'just for debugging'". Claimed in this script's own header comment and in
+# CLAUDE.md, but never actually enforced until now (H8's gap list). Scoped to
+# apps/mobile/src, where health data lives client-side; crash reporting (Sentry) is a
+# deliberately separate category rule 15 does not forbid and is not flagged here -- if a
+# mobile Sentry integration is ever added, exempt its one adapter file the same way every
+# other rule in this script exempts its allowed adapter, rather than loosening this pattern.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rlnE --include='*.ts' --include='*.tsx' \
+    "['\"](@react-native-firebase/(analytics|crashlytics|ads)|expo-analytics|@amplitude/|mixpanel|@segment/analytics|react-native-appsflyer|react-native-adjust|react-native-fbsdk|posthog-react-native|@fullstory/|@datadog/mobile-react-native|react-native-google-mobile-ads)" \
+    apps/mobile/src || true)
+  if [ -n "$hits" ]; then
+    report "an analytics, advertising, attribution, or session-replay SDK is imported in apps/mobile/src (rule 15)" "$hits"
   fi
 fi
 
