@@ -1,8 +1,13 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, UseGuards } from "@nestjs/common";
-import { batchIngestHealthObservationsRequestSchema, readinessQuerySchema } from "@forjd/contracts";
+import {
+  batchIngestHealthObservationsRequestSchema,
+  healthObservationSeriesQuerySchema,
+  readinessQuerySchema,
+} from "@forjd/contracts";
 import type {
   BatchIngestHealthObservationsRequest,
   HealthConnectionListResponse,
+  HealthObservationSeriesQuery,
   HealthObservationSeriesResponse,
   ReadinessQuery,
   ReadinessResponse,
@@ -37,9 +42,15 @@ export class HealthDataController {
     return this.healthDataService.ingestBatch(request.user, body);
   }
 
+  /** R8 (audit H4): `metricTypes`/`since`/`limit` bound the read instead of pulling the
+   *  caller's entire observation history -- see `healthObservationSeriesQuerySchema`'s
+   *  docblock and `HealthDataRepository.getObservationsForUser`. */
   @Get("observations/series")
-  series(@Req() request: AuthenticatedRequest): Promise<HealthObservationSeriesResponse> {
-    return this.healthDataService.getSeries(request.user);
+  series(
+    @Req() request: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(healthObservationSeriesQuerySchema)) query: HealthObservationSeriesQuery,
+  ): Promise<HealthObservationSeriesResponse> {
+    return this.healthDataService.getSeries(request.user, query);
   }
 
   @Get("connections")

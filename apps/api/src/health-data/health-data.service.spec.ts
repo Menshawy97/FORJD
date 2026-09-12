@@ -1,4 +1,4 @@
-import { User } from "@forjd/domain";
+import { HEALTH_METRIC_TYPES, User } from "@forjd/domain";
 
 import { HealthDataRepository, ObservationRow } from "./health-data.repository";
 import { HealthDataService } from "./health-data.service";
@@ -113,6 +113,8 @@ describe("HealthDataService", () => {
   });
 
   describe("getSeries", () => {
+    const defaultQuery = { limit: 2000 } as const;
+
     it("returns one series entry per metric type, with startTime turned into an ISO string", async () => {
       const { service } = makeService([
         makeRow({ metricType: "hrv", value: 60 }),
@@ -124,7 +126,7 @@ describe("HealthDataService", () => {
         }),
       ]);
 
-      const result = await service.getSeries(viewer);
+      const result = await service.getSeries(viewer, defaultQuery);
 
       expect(result.series).toHaveLength(2);
       const hrv = result.series.find((s) => s.metricType === "hrv");
@@ -137,7 +139,7 @@ describe("HealthDataService", () => {
         makeRow({ source: "whoop", value: 60, createdAt: new Date("2026-09-07T02:00:00.000Z") }),
       ]);
 
-      const result = await service.getSeries(viewer);
+      const result = await service.getSeries(viewer, defaultQuery);
 
       const hrv = result.series.find((s) => s.metricType === "hrv");
       // hrv's priority list puts whoop ahead of health_connect/apple_health.
@@ -150,7 +152,7 @@ describe("HealthDataService", () => {
         makeRow({ value: 60, startTime: new Date("2026-09-07T00:00:00.000Z"), endTime: new Date("2026-09-07T00:00:00.000Z") }),
       ]);
 
-      const result = await service.getSeries(viewer);
+      const result = await service.getSeries(viewer, defaultQuery);
 
       const hrv = result.series.find((s) => s.metricType === "hrv");
       expect(hrv?.points).toHaveLength(2);
@@ -160,9 +162,33 @@ describe("HealthDataService", () => {
     it("returns no series at all for a user with no observations", async () => {
       const { service } = makeService([]);
 
-      const result = await service.getSeries(viewer);
+      const result = await service.getSeries(viewer, defaultQuery);
 
       expect(result.series).toEqual([]);
+    });
+
+    it("pushes the query's own metricTypes, since and limit into the repository's bounded window", async () => {
+      const { service, repository } = makeService([]);
+
+      await service.getSeries(viewer, { metricTypes: ["hrv"], since: "2026-08-01T00:00:00.000Z", limit: 500 });
+
+      expect(repository.getObservationsForUser).toHaveBeenCalledWith(viewer.id, {
+        metricTypes: ["hrv"],
+        since: new Date("2026-08-01T00:00:00.000Z"),
+        limit: 500,
+      });
+    });
+
+    it("defaults to every known metric type and no lower time bound when the query supplies neither", async () => {
+      const { service, repository } = makeService([]);
+
+      await service.getSeries(viewer, defaultQuery);
+
+      expect(repository.getObservationsForUser).toHaveBeenCalledWith(viewer.id, {
+        metricTypes: HEALTH_METRIC_TYPES,
+        since: null,
+        limit: 2000,
+      });
     });
   });
 
@@ -293,6 +319,26 @@ describe("HealthDataService", () => {
       const { service } = makeService([]);
 
       await expect(service.getReadiness(viewer, "UTC")).resolves.toMatchObject({ score: null });
+    });
+
+    it("requests only its trailing baseline window from the repository, not the user's full history", async () => {
+      const { service, repository } = makeService([]);
+
+      await service.getReadiness(viewer, "UTC", ASOF);
+
+      expect(repository.getObservationsForUser).toHaveBeenCalledTimes(1);
+      const [calledUserId, window] = (repository.getObservationsForUser as jest.Mock).mock.calls[0];
+      expect(calledUserId).toBe(viewer.id);
+      expect(window.metricTypes).toEqual(["hrv", "resting_heart_rate", "sleep_duration", "respiratory_rate"]);
+      expect(typeof window.limit).toBe("number");
+      expect(window.limit).toBeGreaterThan(0);
+
+      // Bounded, not unbounded: `since` must be a real lower bound strictly after "the dawn of
+      // time" -- at least the baseline window back, but nowhere close to a full user history.
+      expect(window.since).toBeInstanceOf(Date);
+      const daysBack = (ASOF.getTime() - window.since.getTime()) / (1000 * 60 * 60 * 24);
+      expect(daysBack).toBeGreaterThanOrEqual(60);
+      expect(daysBack).toBeLessThan(120);
     });
   });
 });

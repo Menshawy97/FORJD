@@ -1,4 +1,8 @@
-import { batchIngestHealthObservationsRequestSchema, readinessQuerySchema } from "@forjd/contracts";
+import {
+  batchIngestHealthObservationsRequestSchema,
+  healthObservationSeriesQuerySchema,
+  readinessQuerySchema,
+} from "@forjd/contracts";
 
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { getBodySchema, getClassGuards, getQuerySchema } from "../test-support/controller-metadata";
@@ -41,10 +45,17 @@ describe("HealthDataController", () => {
     expect(service.ingestBatch).toHaveBeenCalledWith(request.user, body);
   });
 
-  it("series scopes by request.user only", async () => {
+  it("binds series's query to healthObservationSeriesQuerySchema", () => {
+    expect(getQuerySchema(HealthDataController, "series")).toBe(healthObservationSeriesQuerySchema);
+  });
+
+  it("series forwards request.user and the validated bounded-window query, never an unbounded call", async () => {
     const request = fakeAuthenticatedRequest();
-    await controller.series(request);
-    expect(service.getSeries).toHaveBeenCalledWith(request.user);
+    const query = { metricTypes: ["hrv"], since: "2026-09-01T00:00:00.000Z", limit: 500 } as never;
+
+    await controller.series(request, query);
+
+    expect(service.getSeries).toHaveBeenCalledWith(request.user, query);
   });
 
   it("connections scopes by request.user only", async () => {
