@@ -469,4 +469,43 @@ describe("computeReadiness", () => {
       expect(hrv?.score).toBeCloseTo(50, 5);
     });
   });
+
+  describe("a zero HRV value reaching the log transform (R10 guard)", () => {
+    // packages/contracts now rejects zero at the write boundary for any log-transformed
+    // metric, but this guard exists in case a bad value reaches the calculation anyway --
+    // a stale ingested row, a bypassed validation path, a future caller that skips the
+    // contract. `Math.log(0) === -Infinity`, and that propagates to `NaN` through the
+    // baseline mean/variance/z-score chain -- this must never surface as a component or
+    // composite score.
+    it("never returns NaN or -Infinity for a component score when a baseline reading is zero", () => {
+      const readings = flatReadings(60);
+      readings.hrv = [...baselineDaysEnding(ASOF, 60, () => 0), ...recentDaysEnding(ASOF, 7, () => 60)];
+
+      const result = computeReadiness(readings, ASOF);
+      const hrv = result.components.find((c) => c.key === "hrv");
+
+      expect(Number.isFinite(hrv?.score ?? NaN) || hrv?.score === null).toBe(true);
+      expect(Number.isNaN(hrv?.score)).toBe(false);
+    });
+
+    it("never returns NaN or -Infinity for a component score when the recent HRV reading is zero", () => {
+      const readings = flatReadings(60);
+      readings.hrv = [...baselineDaysEnding(ASOF, 60, () => 60), ...recentDaysEnding(ASOF, 7, () => 0)];
+
+      const result = computeReadiness(readings, ASOF);
+      const hrv = result.components.find((c) => c.key === "hrv");
+
+      expect(Number.isFinite(hrv?.score ?? NaN) || hrv?.score === null).toBe(true);
+      expect(Number.isNaN(hrv?.score)).toBe(false);
+    });
+
+    it("never lets a NaN component score poison the composite score", () => {
+      const readings = flatReadings(60);
+      readings.hrv = [...baselineDaysEnding(ASOF, 60, () => 0), ...recentDaysEnding(ASOF, 7, () => 0)];
+
+      const result = computeReadiness(readings, ASOF);
+
+      expect(result.score === null || Number.isFinite(result.score)).toBe(true);
+    });
+  });
 });

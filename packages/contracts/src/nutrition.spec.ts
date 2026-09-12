@@ -77,6 +77,45 @@ describe('nutrition contracts', () => {
         }).success,
       ).toBe(false);
     });
+
+    // R10 -- the audit's own example was a 900,000 kcal entry. Pure fat is ~884 kcal/100g,
+    // so 900 is a generous per-100g ceiling; a macro gram amount cannot exceed 100g per 100g
+    // of food.
+    it('rejects an implausible per-100g kcal value (the audit\'s 900,000 kcal example)', () => {
+      expect(
+        createCustomFoodRequestSchema.safeParse({
+          name: 'Corrupt food',
+          category: 'snacks',
+          kcalPer100g: 900_000,
+          proteinPer100g: 1,
+          carbsPer100g: 1,
+          fatPer100g: 1,
+        }).success,
+      ).toBe(false);
+    });
+
+    it('accepts kcalPer100g up to 900 (pure fat) and rejects above it', () => {
+      const base = { name: 'Fatty food', category: 'snacks' as const, proteinPer100g: 0, carbsPer100g: 0 };
+      expect(createCustomFoodRequestSchema.safeParse({ ...base, kcalPer100g: 900, fatPer100g: 100 }).success).toBe(
+        true,
+      );
+      expect(createCustomFoodRequestSchema.safeParse({ ...base, kcalPer100g: 901, fatPer100g: 100 }).success).toBe(
+        false,
+      );
+    });
+
+    it('rejects a macro gram amount above 100g per 100g of food', () => {
+      expect(
+        createCustomFoodRequestSchema.safeParse({
+          name: 'Impossible food',
+          category: 'snacks',
+          kcalPer100g: 100,
+          proteinPer100g: 101,
+          carbsPer100g: 0,
+          fatPer100g: 0,
+        }).success,
+      ).toBe(false);
+    });
   });
 
   describe('logFoodRequestSchema', () => {
@@ -132,6 +171,18 @@ describe('nutrition contracts', () => {
         }).success,
       ).toBe(false);
     });
+
+    // R10 -- a single log entry cannot plausibly be a 10-tonne serving.
+    it('accepts grams up to 10,000 (10 kg) and rejects above it', () => {
+      const base = {
+        foodId: '11111111-1111-4111-8111-111111111111',
+        slot: 'snack' as const,
+        loggedDate: '2026-08-31',
+        servingLabel: 'huge',
+      };
+      expect(logFoodRequestSchema.safeParse({ ...base, grams: 10_000 }).success).toBe(true);
+      expect(logFoodRequestSchema.safeParse({ ...base, grams: 10_001 }).success).toBe(false);
+    });
   });
 
   describe('logSavedMealRequestSchema', () => {
@@ -162,6 +213,15 @@ describe('nutrition contracts', () => {
   describe('createSavedMealRequestSchema', () => {
     it('accepts an empty items array -- a meal can be created and populated later', () => {
       expect(createSavedMealRequestSchema.safeParse({ name: 'Breakfast — usual', items: [] }).success).toBe(true);
+    });
+
+    // R10 -- an explicit array cap, not the framework's ~100kb body default.
+    it('caps items at 50', () => {
+      const item = { foodId: '11111111-1111-4111-8111-111111111111', servingLabel: '1 serving', grams: 100 };
+      const atCap = { name: 'Big meal', items: Array.from({ length: 50 }, () => ({ ...item })) };
+      const tooMany = { name: 'Bigger meal', items: Array.from({ length: 51 }, () => ({ ...item })) };
+      expect(createSavedMealRequestSchema.safeParse(atCap).success).toBe(true);
+      expect(createSavedMealRequestSchema.safeParse(tooMany).success).toBe(false);
     });
   });
 
