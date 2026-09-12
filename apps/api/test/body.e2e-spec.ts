@@ -17,6 +17,9 @@ import { FakeAuthProvider } from "./support/fake-auth-provider";
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ownerEmail = `e2e-body-owner-${suiteId}@example.com`;
 const ownerExternalId = randomUUID();
+// C2: a second account that never opts into AI features, for the consent-gate tests.
+const noConsentEmail = `e2e-body-no-consent-${suiteId}@example.com`;
+const noConsentExternalId = randomUUID();
 
 /** A real, tiny (1x1) PNG -- `sharp` genuinely decodes and re-encodes this (ADR-024's
  *  server-side re-encode step is not mocked here, only VISION_PROVIDER and STORAGE_PROVIDER
@@ -61,6 +64,7 @@ describe("Body scans (e2e)", () => {
   let app: INestApplication;
   let db: Database;
   const uploadedRefs: Array<{ bucket: string; key: string }> = [];
+  let visionCallCount = 0;
 
   const extract = (token = "owner-token") =>
     request(app.getHttpServer())
@@ -80,19 +84,25 @@ describe("Body scans (e2e)", () => {
       .overrideProvider(AUTH_PROVIDER)
       .useValue(
         new FakeAuthProvider({
-          accounts: [{ email: ownerEmail, externalId: ownerExternalId, tokens: ["owner-token"] }],
+          accounts: [
+            { email: ownerEmail, externalId: ownerExternalId, tokens: ["owner-token"] },
+            { email: noConsentEmail, externalId: noConsentExternalId, tokens: ["no-consent-token"] },
+          ],
           signIn: "disabled",
         }),
       )
       .overrideProvider(VISION_PROVIDER)
       .useValue({
-        extractBodyScan: async () => ({
-          inbodyModel: "570",
-          testDate: "2026-01-15",
-          fields: FIXTURE_FIELDS,
-          segmental: FIXTURE_SEGMENTAL,
-          imageQualityNotes: "Clear",
-        }),
+        extractBodyScan: async () => {
+          visionCallCount += 1;
+          return {
+            inbodyModel: "570",
+            testDate: "2026-01-15",
+            fields: FIXTURE_FIELDS,
+            segmental: FIXTURE_SEGMENTAL,
+            imageQualityNotes: "Clear",
+          };
+        },
       })
       .overrideProvider(STORAGE_PROVIDER)
       .useValue({
@@ -119,10 +129,23 @@ describe("Body scans (e2e)", () => {
       .post("/api/v1/auth/register")
       .send({ email: ownerEmail, password: "Str0ngPass!" })
       .expect(201);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: noConsentEmail, password: "Str0ngPass!" })
+      .expect(201);
+
+    // C2: extract/confirm are gated on aiFeaturesConsent, which defaults to false. The rest
+    // of this suite is about the scan pipeline, not consent, so the owner opts in once here;
+    // the dedicated consent-gate tests below use noConsentEmail, which never does.
+    await request(app.getHttpServer())
+      .patch("/api/v1/users/me/privacy")
+      .set("Authorization", "Bearer owner-token")
+      .send({ aiFeaturesConsent: true })
+      .expect(200);
   });
 
   afterAll(async () => {
-    await db.delete(users).where(inArray(users.email, [ownerEmail]));
+    await db.delete(users).where(inArray(users.email, [ownerEmail, noConsentEmail]));
     await app.close();
   });
 
@@ -187,5 +210,99 @@ describe("Body scans (e2e)", () => {
   it("uploads the confirmed photo to the private inbody bucket", () => {
     expect(uploadedRefs.length).toBeGreaterThan(0);
     expect(uploadedRefs.every((ref) => ref.bucket === INBODY_BUCKET)).toBe(true);
+  });
+
+  describe("the AI consent gate (C2)", () => {
+    it("returns 403 for extract, with no vision call, when the user's consent is off", async () => {
+      const callsBefore = visionCallCount;
+
+      await extract("no-consent-token").expect(403);
+
+      expect(visionCallCount).toBe(callsBefore);
+    });
+
+    it("returns 403 for confirm, with no upload or vision call, when the user's consent is off", async () => {
+      const callsBefore = visionCallCount;
+      const uploadsBefore = uploadedRefs.length;
+
+      await confirm(
+        [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 }],
+        "no-consent-token",
+      ).expect(403);
+
+      expect(visionCallCount).toBe(callsBefore);
+      expect(uploadedRefs.length).toBe(uploadsBefore);
+    });
+  });
+});
+
+/**
+ * A separate app instance that does NOT override `ThrottlerGuard` -- the main suite above
+ * disables it entirely so the scan-pipeline tests are not rate-limited, which is exactly why
+ * the throttle itself needs its own instance to prove anything.
+ */
+describe("Body scans -- vision route throttle (e2e)", () => {
+  let app: INestApplication;
+  let db: Database;
+  const throttleEmail = `e2e-body-throttle-${suiteId}@example.com`;
+  const throttleExternalId = randomUUID();
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AUTH_PROVIDER)
+      .useValue(
+        new FakeAuthProvider({
+          accounts: [{ email: throttleEmail, externalId: throttleExternalId, tokens: ["throttle-token"] }],
+          signIn: "disabled",
+        }),
+      )
+      .overrideProvider(VISION_PROVIDER)
+      .useValue({
+        extractBodyScan: async () => ({
+          inbodyModel: "570",
+          testDate: "2026-01-15",
+          fields: FIXTURE_FIELDS,
+          segmental: FIXTURE_SEGMENTAL,
+          imageQualityNotes: "Clear",
+        }),
+      })
+      .compile();
+
+    app = moduleRef.createNestApplication();
+    app.setGlobalPrefix("api/v1");
+    await app.init();
+    db = app.get<Database>(DRIZZLE);
+
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: throttleEmail, password: "Str0ngPass!" })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch("/api/v1/users/me/privacy")
+      .set("Authorization", "Bearer throttle-token")
+      .send({ aiFeaturesConsent: true })
+      .expect(200);
+  });
+
+  afterAll(async () => {
+    await db.delete(users).where(inArray(users.email, [throttleEmail]));
+    await app.close();
+  });
+
+  it("rate-limits extract well short of the global 60/min default", async () => {
+    const attempt = () =>
+      request(app.getHttpServer())
+        .post("/api/v1/body-scans/extract")
+        .set("Authorization", "Bearer throttle-token")
+        .attach("file", TINY_PNG, "scan.png");
+
+    const statuses: number[] = [];
+    // The global default is 60/min; a per-route limit tight enough to matter for cost must
+    // trip well before that on a burst of calls within the same window.
+    for (let i = 0; i < 15; i += 1) {
+      statuses.push((await attempt()).status);
+    }
+
+    expect(statuses).toContain(429);
   });
 });

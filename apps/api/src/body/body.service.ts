@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type { BodyMetric, SegmentalSite, User } from "@forjd/domain";
@@ -12,6 +12,7 @@ import type {
 
 import { STORAGE_PROVIDER, StorageProvider } from "../storage/providers/storage-provider.interface";
 import { VISION_PROVIDER, VisionProvider } from "../ai/providers/vision-provider.interface";
+import { PrivacyService } from "../privacy/privacy.service";
 import { BodyRepository } from "./body.repository";
 
 /** Mirrors `UploadedAvatarFile` in `avatar-upload.service.ts` -- the minimal shape
@@ -40,6 +41,7 @@ export class BodyService {
     @Inject(VISION_PROVIDER) private readonly visionProvider: VisionProvider,
     @Inject(STORAGE_PROVIDER) private readonly storageProvider: StorageProvider,
     private readonly bodyRepository: BodyRepository,
+    private readonly privacyService: PrivacyService,
   ) {}
 
   /**
@@ -47,8 +49,14 @@ export class BodyService {
    * The re-encoded bytes are discarded after the vision call, not held anywhere -- if the
    * user confirms, `confirm` re-does this same encode from a second upload of the same
    * photo, rather than this method reaching for a temp store to hand off to it.
+   *
+   * C2: an InBody photo is health data about an identifiable person, and this is the one
+   * place it leaves for a third-party vision model. `aiFeaturesConsent` is read and enforced
+   * here, before `reencode` even decodes the bytes -- a non-consenting user's image is never
+   * touched, not merely never uploaded.
    */
-  async extract(file: UploadedScanPhoto | undefined): Promise<ExtractBodyScanResponse> {
+  async extract(user: User, file: UploadedScanPhoto | undefined): Promise<ExtractBodyScanResponse> {
+    await this.requireAiConsent(user);
     const webp = await this.reencode(file);
     const extracted = await this.visionProvider.extractBodyScan(webp, "image/webp");
 
@@ -61,11 +69,19 @@ export class BodyService {
     };
   }
 
+  /**
+   * Gated the same as `extract` -- the client re-uploads and re-encodes the same photo here
+   * (this service never persists the unconfirmed bytes), so this is a second, independent
+   * opportunity for the image to reach the vision path if consent were checked only once.
+   * It is not re-sent to the vision model, but it is still the same identifiable health photo
+   * being decoded and written to storage, so the same fail-closed posture applies.
+   */
   async confirm(
     user: User,
     file: UploadedScanPhoto | undefined,
     request: ConfirmBodyScanRequest,
   ): Promise<BodyScanResponse> {
+    await this.requireAiConsent(user);
     const webp = await this.reencode(file);
     const ref = { bucket: INBODY_BUCKET, key: `${user.id}/${randomUUID()}.webp` };
     await this.storageProvider.upload({ ...ref, body: webp, contentType: "image/webp" });
@@ -132,6 +148,13 @@ export class BodyService {
         points: s.points.map((p) => ({ measuredAt: p.measuredAt.toISOString(), value: p.value })),
       })),
     };
+  }
+
+  private async requireAiConsent(user: User): Promise<void> {
+    const privacy = await this.privacyService.get(user.id);
+    if (!privacy.aiFeaturesConsent) {
+      throw new ForbiddenException("AI features consent is required to process a body scan photo");
+    }
   }
 
   /** ADR-024's two-stage pipeline applied to InBody photos: the server never trusts the

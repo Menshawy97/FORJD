@@ -11,6 +11,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import { confirmBodyScanRequestSchema } from "@forjd/contracts";
 import type {
   BodyScanListResponse,
@@ -27,11 +28,19 @@ import { BodyService, MAX_SCAN_PHOTO_BYTES, UploadedScanPhoto } from "./body.ser
 export class BodyController {
   constructor(private readonly bodyService: BodyService) {}
 
-  /** Saves nothing -- see BodyService.extract's own docblock. */
+  /**
+   * Saves nothing -- see BodyService.extract's own docblock. Throttled tighter than the
+   * global 60/min default: each call is a billable vision inference on a free-tier budget,
+   * and the global limit alone permits roughly 86,000 of them a day per account.
+   */
   @Post("extract")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: MAX_SCAN_PHOTO_BYTES } }))
-  extract(@UploadedFile() file: UploadedScanPhoto): Promise<ExtractBodyScanResponse> {
-    return this.bodyService.extract(file);
+  extract(
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile() file: UploadedScanPhoto,
+  ): Promise<ExtractBodyScanResponse> {
+    return this.bodyService.extract(request.user, file);
   }
 
   /**
@@ -41,6 +50,7 @@ export class BodyController {
    * object, and a multipart request's non-file fields arrive as strings.
    */
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: MAX_SCAN_PHOTO_BYTES } }))
   confirm(
     @Req() request: AuthenticatedRequest,
