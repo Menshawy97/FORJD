@@ -80,6 +80,13 @@ export interface SyncedObservation {
 export interface SyncResult {
   observations: readonly SyncedObservation[];
   syncedAt: Date;
+  /**
+   * Metric types this sync could not read -- a permission revoked for one record type, say --
+   * reported alongside whatever DID succeed rather than discarding the whole sync (H7). Omitted
+   * entirely when nothing failed, so a provider that never fails per-metric (the common case)
+   * need not thread an always-empty array through every caller.
+   */
+  failedMetricTypes?: readonly HealthMetricType[];
 }
 
 export interface HealthProvider {

@@ -229,9 +229,17 @@ export default function LiveScreen() {
       // already carries, so rewriting this per tick would reintroduce the mutable
       // "current session" row the append-only design exists to avoid.
       void (async () => {
-        const db = await dbRef.current;
-        if (!db) return;
-        await saveSessionSnapshot(db, started.id, started as unknown as Record<string, unknown>, started.startedAt.toISOString());
+        try {
+          const db = await dbRef.current;
+          if (!db) return;
+          await saveSessionSnapshot(db, started.id, started as unknown as Record<string, unknown>, started.startedAt.toISOString());
+        } catch {
+          // Crash recovery for this session is degraded, not lost: the workout itself keeps
+          // running from in-memory state either way (H6) -- there is nothing for the athlete to
+          // act on here, only a risk that a force-kill before the first snapshot lands would not
+          // be recoverable. Rethrowing would surface an unhandled rejection for a session the
+          // athlete is actively, successfully running.
+        }
       })();
       return;
     }
@@ -564,50 +572,70 @@ export default function LiveScreen() {
 
                 const finished = change.session;
                 const summary = sessionStats(finished);
-                void (async () => {
-                  const db = await dbRef.current;
-                  if (!db) return;
-                  // Hand the session to the sync queue. This is the one place it happens --
-                  // `appendSessionEvent` does NOT enqueue on `workout_finished`, despite what
-                  // the store's module docblock used to claim.
-                  await enqueueSessionUpload(db, toUploadRequest(finished, endedAt, elapsedSeconds));
-                  // The snapshot exists only to recover an *unfinished* session; leaving it
-                  // would offer this workout back on the next launch.
-                  await clearSessionSnapshot(db, finished.id);
-                })();
 
-                setCompletedSummary({
-                  name: finished.name,
-                  durationSeconds: elapsedSeconds,
-                  volumeKg: summary.volumeKg,
-                  completedSetCount: summary.completedSetCount,
-                  exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
-                  // Completed sets only, and in the unit the athlete was reading -- this is a
-                  // record of what they did, not of what was prescribed.
-                  exercises: finished.exercises
-                    .map((exercise) => {
-                      const done = exercise.sets.filter((set) => set.isCompleted);
-                      const first = done[0];
-                      const unit = weightUnitFor(exercise.exerciseId);
-                      const detail =
-                        first === undefined
-                          ? ''
-                          : exercise.measure === 'time'
-                            ? `${first.durationSeconds ?? 0} s`
-                            : exercise.measure === 'distance'
-                              ? `${distanceForDisplay(first.distanceMeters ?? 0, distanceUnitFor(exercise.exerciseId))} ${distanceUnitFor(exercise.exerciseId)}`
-                              : `${weightForDisplay(first.weightKg ?? 0, unit)} ${unit}`;
-                      return {
-                        exerciseId: exercise.exerciseId,
-                        name: exercise.name,
-                        setCount: done.length,
-                        detail,
-                      };
-                    })
-                    .filter((line) => line.setCount > 0),
-                  origin: 'live',
-                });
-                router.replace('/workout-done');
+                /**
+                 * Navigation used to fire unconditionally, with the enqueue running in an
+                 * uncaught, unawaited IIFE (H6): a rejection there was both an unhandled promise
+                 * rejection and a silently lost workout, because the screen had already moved on
+                 * to workout-done. `router.replace` now only happens once the session is
+                 * durably queued; any failure -- the enqueue rejecting, or `db` never having
+                 * opened at all -- keeps the athlete on this screen with a warning instead of
+                 * discarding the workout.
+                 */
+                void (async () => {
+                  try {
+                    const db = await dbRef.current;
+                    if (!db) {
+                      throw new Error('Local database unavailable');
+                    }
+                    // Hand the session to the sync queue. This is the one place it happens --
+                    // `appendSessionEvent` does NOT enqueue on `workout_finished`, despite what
+                    // the store's module docblock used to claim.
+                    await enqueueSessionUpload(db, toUploadRequest(finished, endedAt, elapsedSeconds));
+                    // The snapshot exists only to recover an *unfinished* session; leaving it
+                    // would offer this workout back on the next launch.
+                    await clearSessionSnapshot(db, finished.id);
+
+                    setCompletedSummary({
+                      name: finished.name,
+                      durationSeconds: elapsedSeconds,
+                      volumeKg: summary.volumeKg,
+                      completedSetCount: summary.completedSetCount,
+                      exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
+                      // Completed sets only, and in the unit the athlete was reading -- this is a
+                      // record of what they did, not of what was prescribed.
+                      exercises: finished.exercises
+                        .map((exercise) => {
+                          const done = exercise.sets.filter((set) => set.isCompleted);
+                          const first = done[0];
+                          const unit = weightUnitFor(exercise.exerciseId);
+                          const detail =
+                            first === undefined
+                              ? ''
+                              : exercise.measure === 'time'
+                                ? `${first.durationSeconds ?? 0} s`
+                                : exercise.measure === 'distance'
+                                  ? `${distanceForDisplay(first.distanceMeters ?? 0, distanceUnitFor(exercise.exerciseId))} ${distanceUnitFor(exercise.exerciseId)}`
+                                  : `${weightForDisplay(first.weightKg ?? 0, unit)} ${unit}`;
+                          return {
+                            exerciseId: exercise.exerciseId,
+                            name: exercise.name,
+                            setCount: done.length,
+                            detail,
+                          };
+                        })
+                        .filter((line) => line.setCount > 0),
+                      origin: 'live',
+                    });
+                    router.replace('/workout-done');
+                  } catch {
+                    // The most safety-critical message in the app: the session is finished in
+                    // memory but not yet durable anywhere else. Staying on this screen keeps the
+                    // in-memory state (and the athlete's option to retry Finish) alive rather
+                    // than navigating away from data that only exists here.
+                    toast.show('Workout not saved — check your connection and try Finish again.');
+                  }
+                })();
               }}
               className="h-[34px] items-center justify-center rounded-[10px] px-[14px]"
               style={{ backgroundColor: colors.accent }}>

@@ -20,6 +20,7 @@ import {
 } from '@/auth/apiClient';
 import { ScreenBackground } from '@/components/screen-background';
 import { formatHomeDate } from '@/features/home/date';
+import { FailedSyncBanner, FailedSyncBannerSession } from '@/features/home/failed-sync-banner';
 import { latestReading, sumForLocalDate } from '@/features/health/health-metrics';
 import { HomeHeader } from '@/features/home/home-header';
 import { InsightCard } from '@/features/home/insight-card';
@@ -31,6 +32,13 @@ import { StatStrip } from '@/features/home/stat-strip';
 import { ThisWeek } from '@/features/home/this-week';
 import { todayLocalDate } from '@/nutrition/date';
 import { EMPTY_TOTALS, sumTotals } from '@/nutrition/totals';
+import {
+  ensureWorkoutSessionSchema,
+  getFailedSessions,
+  openWorkoutSessionDb,
+  retryFailedSession,
+} from '@/store/workout-session';
+import { syncPendingSessions } from '@/workouts/sync-sessions';
 
 /**
  * The Home dashboard -- the prototype's `isHome` branch (FORJD Mobile.dc.html lines 130-283),
@@ -64,6 +72,7 @@ export default function HomeScreen() {
   const [stats, setStats] = useState<WorkoutStatsResponse | null>(null);
   const [healthSeries, setHealthSeries] = useState<HealthObservationSeriesResponse | null>(null);
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
+  const [failedSessions, setFailedSessions] = useState<FailedSyncBannerSession[]>([]);
 
   // Bumped by every load and by every blur, so only the newest in-flight load may commit.
   // Without it, flicking between tabs can land an older response after a newer one and show
@@ -117,6 +126,44 @@ export default function HomeScreen() {
   );
 
   /**
+   * The read path the audit found entirely missing (C3): a session stuck at `status='failed'`
+   * used to be invisible anywhere in the app. Loaded on every focus, same as the rest of Home,
+   * so returning here after a Finish that could not enqueue shows the warning immediately.
+   */
+  const loadFailedSessions = useCallback(async () => {
+    try {
+      const db = await openWorkoutSessionDb();
+      await ensureWorkoutSessionSchema(db);
+      const rows = await getFailedSessions(db);
+      setFailedSessions(rows.map((row) => ({ sessionId: row.sessionId, name: row.payload.name })));
+    } catch {
+      // No local database to read from is not new information Home needs to show -- the same
+      // honest-empty-state posture this screen already takes for every other failed request.
+      setFailedSessions([]);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadFailedSessions();
+    }, [loadFailedSessions]),
+  );
+
+  const handleRetryFailedSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        const db = await openWorkoutSessionDb();
+        await ensureWorkoutSessionSchema(db);
+        await retryFailedSession(db, sessionId);
+        await syncPendingSessions();
+      } finally {
+        await loadFailedSessions();
+      }
+    },
+    [loadFailedSessions],
+  );
+
+  /**
    * The prototype's `goSuggested`: Start Workout opens the program the athlete is following, and
    * falls back to Train when they are following nothing.
    *
@@ -151,6 +198,8 @@ export default function HomeScreen() {
         <Text className="mb-[14px] mt-[6px] font-archivo text-home-meta font-medium text-dimmer">
           {formatHomeDate(new Date())}
         </Text>
+
+        <FailedSyncBanner failedSessions={failedSessions} onRetry={handleRetryFailedSession} />
 
         <ReadinessCard readiness={readiness} />
         <NutritionTodayCard

@@ -26,14 +26,45 @@ beforeEach(() => {
   (drainSyncQueue as jest.Mock).mockResolvedValue({ uploaded: [], failed: [] });
 });
 
-it('drains the queue through the real upload call', async () => {
+it('drains the queue through an uploader that wraps the real upload call', async () => {
   (drainSyncQueue as jest.Mock).mockResolvedValue({ uploaded: ['session-1'], failed: [] });
 
   await expect(syncPendingSessions()).resolves.toEqual({ uploaded: ['session-1'], failed: [] });
 
   // The uploader is injected rather than reached for inside the store -- that seam is what
-  // keeps `workout-session.ts` free of any import from the API client.
-  expect(drainSyncQueue).toHaveBeenCalledWith({}, uploadWorkoutSession);
+  // keeps `workout-session.ts` free of any import from the API client. It is a wrapper, not
+  // `uploadWorkoutSession` itself, because it also translates an `AxiosError`'s response status
+  // into the typed `UploadRejection` the store classifies failures with (C3).
+  expect(drainSyncQueue).toHaveBeenCalledWith({}, expect.any(Function));
+  expect(drainSyncQueue).not.toHaveBeenCalledWith({}, uploadWorkoutSession);
+});
+
+it("gives the injected uploader's rejection a status copied from an AxiosError response, so the store can classify it", async () => {
+  const axiosError = Object.assign(new Error('Request failed with status code 422'), {
+    isAxiosError: true,
+    response: { status: 422, data: {} },
+  });
+  (uploadWorkoutSession as jest.Mock).mockRejectedValue(axiosError);
+
+  await syncPendingSessions();
+
+  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][1] as (body: unknown) => Promise<void>;
+  await expect(injectedUploader({ id: 'session-1' })).rejects.toMatchObject({ status: 422 });
+});
+
+it('leaves a plain network error (no response) without a status, so it stays retriable', async () => {
+  (uploadWorkoutSession as jest.Mock).mockRejectedValue(new Error('Network Error'));
+
+  await syncPendingSessions();
+
+  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][1] as (body: unknown) => Promise<void>;
+  let rejection: { status?: number } = {};
+  try {
+    await injectedUploader({ id: 'session-1' });
+  } catch (error) {
+    rejection = error as { status?: number };
+  }
+  expect(rejection.status).toBeUndefined();
 });
 
 it('creates the schema first, so a first-ever run has somewhere to read from', async () => {

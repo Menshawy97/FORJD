@@ -1,5 +1,30 @@
+import type { AxiosError } from 'axios';
+
 import { uploadWorkoutSession } from '@/auth/apiClient';
-import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb } from '@/store/workout-session';
+import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
+import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb, UploadRejection } from '@/store/workout-session';
+
+/**
+ * Translates an `AxiosError`'s response status onto the typed `UploadRejection` the store
+ * classifies failures with (C3) -- the one place this module knows about HTTP at all, so
+ * `workout-session.ts` never has to import axios or the API client to tell a deterministic
+ * 4xx apart from a transient network failure.
+ */
+async function uploadSession(body: WorkoutSessionUploadRequest): Promise<void> {
+  try {
+    await uploadWorkoutSession(body);
+  } catch (error) {
+    const status = (error as Partial<AxiosError>)?.isAxiosError
+      ? (error as AxiosError).response?.status
+      : undefined;
+    if (status === undefined) throw error;
+    const rejection: UploadRejection = Object.assign(
+      new Error(error instanceof Error ? error.message : String(error)),
+      { status },
+    );
+    throw rejection;
+  }
+}
 
 /**
  * Actually uploads the finished sessions sitting in the local queue (Phase 3I).
@@ -21,7 +46,7 @@ export async function syncPendingSessions(): Promise<{ uploaded: string[]; faile
   try {
     const db = await openWorkoutSessionDb();
     await ensureWorkoutSessionSchema(db);
-    return await drainSyncQueue(db, uploadWorkoutSession);
+    return await drainSyncQueue(db, uploadSession);
   } catch {
     // Nothing to surface: the queue is durable, and the next trigger tries again.
     return { uploaded: [], failed: [] };

@@ -761,7 +761,6 @@ describe('the offline path', () => {
       expect(types).toContain('workout_finished');
       expect(types).toContain('exercise_completed');
     });
-    expect(mockReplace).toHaveBeenCalledWith('/workout-done');
     // The whole point of the offline path: the finished session reaches the sync queue even
     // though every API call rejected.
     await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
@@ -770,6 +769,8 @@ describe('the offline path', () => {
     // Every set travels, ticked or not -- analytics filters on isCompleted rather than
     // assuming each row happened.
     expect(payload.exercises[0].sets).toHaveLength(2);
+    // Navigation is gated on the enqueue succeeding (H6) -- it must still happen once it does.
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/workout-done'));
   });
 
   it('still runs the session when the local database cannot even be opened', async () => {
@@ -781,5 +782,38 @@ describe('the offline path', () => {
 
     // Crash recovery is lost, but the workout itself must not be blocked on storage.
     expect(await findByText('1/4 sets')).toBeTruthy();
+  });
+});
+
+describe('finishing when the session cannot be handed to the sync queue (C3 / H6)', () => {
+  /**
+   * The bug the audit named `H6`: the Finish handler used to navigate to workout-done
+   * unconditionally, with `enqueueSessionUpload` fired in an uncaught, unawaited IIFE. A
+   * rejection there was an unhandled promise rejection AND a silently lost workout -- the
+   * screen had already moved on. The fix gates navigation on the enqueue actually succeeding.
+   */
+  it('does not navigate to workout-done and surfaces a not-saved warning when enqueueSessionUpload rejects', async () => {
+    (enqueueSessionUpload as jest.Mock).mockRejectedValue(new Error('disk full'));
+    stageSession();
+    const { findByLabelText, findByText } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Finish workout'));
+
+    await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
+    expect(mockReplace).not.toHaveBeenCalledWith('/workout-done');
+    expect(await findByText(/not saved/i)).toBeTruthy();
+  });
+
+  it('does not navigate to workout-done and surfaces the same warning when the local database is unavailable', async () => {
+    (openWorkoutSessionDb as jest.Mock).mockRejectedValue(new Error('no such file'));
+    stageSession();
+    const { findByLabelText, findByText } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Finish workout'));
+
+    expect(await findByText(/not saved/i)).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalledWith('/workout-done');
+    // `db` being null must never reach `enqueueSessionUpload` -- there is nothing to pass it.
+    expect(enqueueSessionUpload).not.toHaveBeenCalled();
   });
 });
