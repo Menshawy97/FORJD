@@ -2,12 +2,15 @@ import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { randomUUID } from "crypto";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import request from "supertest";
 
 import { AppModule } from "../src/app.module";
 import { AUTH_PROVIDER } from "../src/auth/providers/auth-provider.interface";
 import { Database, DRIZZLE } from "../src/database/database.module";
+import { bodyMeasurements, bodyScans } from "../src/database/schema/body.schema";
 import { users } from "../src/database/schema/users.schema";
 import { VISION_PROVIDER } from "../src/ai/providers/vision-provider.interface";
 import { STORAGE_PROVIDER } from "../src/storage/providers/storage-provider.interface";
@@ -304,5 +307,149 @@ describe("Body scans -- vision route throttle (e2e)", () => {
     }
 
     expect(statuses).toContain(429);
+  });
+});
+
+/**
+ * R7 (H3): a real HTTP-level regression test for the transaction fix. `confirm` used to run
+ * `insert(bodyScans)` and `insert(bodyMeasurements)` as two independent statements; a crash
+ * between them left an orphaned scan row with zero measurements, unrecoverable because
+ * vision extraction is never re-run.
+ *
+ * The confirm payload is validated by `confirmBodyScanRequestSchema` before it ever reaches
+ * the repository, so there is no way to make the *measurements* insert fail at the DB layer
+ * (a NOT NULL / FK / type violation) using only a request body that also satisfies Zod --
+ * every field Zod accepts is also a value Postgres accepts. So this suite overrides DRIZZLE
+ * with a database whose `transaction()` hands the caller a `tx` that behaves exactly like
+ * the real one, except that `insert(bodyMeasurements)` inside that transaction always
+ * rejects. That is the same failure shape as a mid-write crash: the scan insert has already
+ * gone through on `tx` when the measurements insert throws.
+ */
+describe("Body scans -- transaction integrity on a forced measurement-insert failure (e2e, H3)", () => {
+  let app: INestApplication;
+  let db: Database;
+  let pool: Pool;
+  const txEmail = `e2e-body-tx-${suiteId}@example.com`;
+  const txExternalId = randomUUID();
+
+  /** Wraps a real Drizzle database so any `tx.insert(bodyMeasurements)` issued inside a
+   *  `transaction()` callback rejects, while every other call (including `tx.insert(bodyScans)`
+   *  on the very same transaction, and every call outside a transaction) goes through to the
+   *  real client untouched. */
+  const withFailingMeasurementsInsert = (real: Database): Database =>
+    new Proxy(real, {
+      get(target, prop, receiver) {
+        if (prop === "transaction") {
+          return (callback: (tx: unknown) => unknown) =>
+            (
+              Reflect.get(target, prop, receiver) as unknown as (
+                cb: (tx: Record<string, unknown>) => unknown,
+              ) => unknown
+            ).call(
+              target,
+              (tx: Record<string, unknown>) =>
+                callback(
+                  new Proxy(tx, {
+                    get(txTarget, txProp, txReceiver) {
+                      if (txProp === "insert") {
+                        return (table: unknown) => {
+                          if (table === bodyMeasurements) {
+                            return {
+                              values: () => Promise.reject(new Error("forced measurement insert failure (test)")),
+                            };
+                          }
+                          return (Reflect.get(txTarget, txProp, txReceiver) as (t: unknown) => unknown).call(
+                            txTarget,
+                            table,
+                          );
+                        };
+                      }
+                      const value = Reflect.get(txTarget, txProp, txReceiver);
+                      return typeof value === "function" ? value.bind(txTarget) : value;
+                    },
+                  }),
+                ),
+            );
+        }
+        const value = Reflect.get(target, prop, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as Database;
+
+  const confirmTx = (measurements: unknown[]) =>
+    request(app.getHttpServer())
+      .post("/api/v1/body-scans")
+      .set("Authorization", "Bearer tx-token")
+      .field("data", JSON.stringify({ measuredAt: "2026-01-15T09:00:00.000Z", measurements }))
+      .attach("file", TINY_PNG, "scan.png");
+
+  beforeAll(async () => {
+    const connectionString = process.env.DATABASE_URL ?? "postgresql://forjd:forjd_local_dev@localhost:5432/forjd";
+    pool = new Pool({ connectionString });
+    const realDb = drizzle(pool) as unknown as Database;
+    db = withFailingMeasurementsInsert(realDb);
+
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(DRIZZLE)
+      .useValue(db)
+      .overrideProvider(AUTH_PROVIDER)
+      .useValue(
+        new FakeAuthProvider({
+          accounts: [{ email: txEmail, externalId: txExternalId, tokens: ["tx-token"] }],
+          signIn: "disabled",
+        }),
+      )
+      .overrideProvider(VISION_PROVIDER)
+      .useValue({
+        extractBodyScan: async () => ({
+          inbodyModel: "570",
+          testDate: "2026-01-15",
+          fields: FIXTURE_FIELDS,
+          segmental: FIXTURE_SEGMENTAL,
+          imageQualityNotes: "Clear",
+        }),
+      })
+      .overrideProvider(STORAGE_PROVIDER)
+      .useValue({
+        upload: async () => undefined,
+        exists: async () => true,
+        getSignedUrl: async (ref: { key: string }) => `https://example.invalid/signed/${ref.key}`,
+        getPublicUrl: (ref: { key: string }) => `https://example.invalid/public/${ref.key}`,
+        delete: async () => undefined,
+        ensureBucket: async () => undefined,
+      })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+
+    app = moduleRef.createNestApplication();
+    app.setGlobalPrefix("api/v1");
+    await app.init();
+
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({ email: txEmail, password: "Str0ngPass!" })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch("/api/v1/users/me/privacy")
+      .set("Authorization", "Bearer tx-token")
+      .send({ aiFeaturesConsent: true })
+      .expect(200);
+  });
+
+  afterAll(async () => {
+    await db.delete(users).where(inArray(users.email, [txEmail]));
+    await app.close();
+    await pool.end();
+  });
+
+  it("leaves no scan row with zero measurements after the measurements insert fails mid-transaction", async () => {
+    await confirmTx([{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 }]).expect(500);
+
+    const [userRow] = await db.select().from(users).where(eq(users.email, txEmail));
+    if (!userRow) throw new Error("test user not found");
+
+    const scanRows = await db.select().from(bodyScans).where(eq(bodyScans.userId, userRow.id));
+    expect(scanRows).toHaveLength(0);
   });
 });
