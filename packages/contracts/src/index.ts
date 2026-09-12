@@ -1791,6 +1791,30 @@ export const healthObservationSeriesResponseSchema = z.object({
 });
 export type HealthObservationSeriesResponse = z.infer<typeof healthObservationSeriesResponseSchema>;
 
+/**
+ * Query params for `GET /health-data/observations/series` -- R8 (audit finding H4): the old
+ * handler read a user's *entire* observation history into memory with no metric, time, or row
+ * bound. Every field here is optional (absence means "no filter" for `metricTypes`/`since`,
+ * matching `exerciseListQuerySchema`'s "no all sentinel" convention), except `limit`, which
+ * `.default(...)` always supplies -- so even a client that sends nothing still gets a bounded
+ * read, matching the repository's own `ObservationsWindow`, whose fields are all mandatory.
+ *
+ * `metricTypes` arrives as a single repeated query key (`?metricTypes=hrv&metricTypes=steps`),
+ * which Express/Nest already parses into an array; the `z.preprocess` below only normalizes
+ * the single-value case (`?metricTypes=hrv`), which arrives as a bare string instead.
+ */
+export const healthObservationSeriesQuerySchema = z.object({
+  metricTypes: z.preprocess(
+    (value) => (value === undefined ? undefined : Array.isArray(value) ? value : [value]),
+    z.array(healthMetricTypeSchema).min(1).optional(),
+  ),
+  since: z.string().datetime().optional(),
+  /** Bounded at 5000 and rejected rather than clamped, same reasoning as
+   *  `exerciseListQuerySchema.limit`. */
+  limit: z.coerce.number().int().min(1).max(5000).default(2000),
+});
+export type HealthObservationSeriesQuery = z.infer<typeof healthObservationSeriesQuerySchema>;
+
 /** One provider connection's state, as returned by `GET /health-data/connections`. */
 export const healthConnectionResponseSchema = z.object({
   source: healthSourceSchema,

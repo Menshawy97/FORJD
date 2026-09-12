@@ -38,6 +38,11 @@ describe("Health data (e2e)", () => {
   const series = (token = "owner-token") =>
     request(app.getHttpServer()).get("/api/v1/health-data/observations/series").set("Authorization", `Bearer ${token}`);
 
+  const seriesWithQuery = (query: string, token = "owner-token") =>
+    request(app.getHttpServer())
+      .get(`/api/v1/health-data/observations/series?${query}`)
+      .set("Authorization", `Bearer ${token}`);
+
   const connections = (token = "owner-token") =>
     request(app.getHttpServer()).get("/api/v1/health-data/connections").set("Authorization", `Bearer ${token}`);
 
@@ -169,5 +174,53 @@ describe("Health data (e2e)", () => {
 
     const ownerConnections = await connections().expect(200);
     expect(ownerConnections.body.connections).toEqual([]);
+  });
+
+  it("honours its range and metric-type query params instead of returning full history (R8 / H4)", async () => {
+    await ingest({
+      observations: [
+        {
+          metricType: "hrv",
+          value: 40,
+          unit: "ms",
+          startTime: "2020-01-01T00:00:00.000Z",
+          endTime: "2020-01-01T00:00:00.000Z",
+          source: "manual",
+        },
+        {
+          metricType: "hrv",
+          value: 71,
+          unit: "ms",
+          startTime: "2026-09-10T00:00:00.000Z",
+          endTime: "2026-09-10T00:00:00.000Z",
+          source: "manual",
+        },
+        {
+          metricType: "resting_heart_rate",
+          value: 55,
+          unit: "bpm",
+          startTime: "2026-09-10T00:00:00.000Z",
+          endTime: "2026-09-10T00:00:00.000Z",
+          source: "manual",
+        },
+      ],
+    }).expect(204);
+
+    const response = await seriesWithQuery(
+      `metricTypes=hrv&since=${encodeURIComponent("2026-09-09T00:00:00.000Z")}`,
+    ).expect(200);
+
+    // Only "hrv" appears -- "resting_heart_rate" is excluded by the metricTypes filter even
+    // though it shares the same startTime.
+    expect(response.body.series).toHaveLength(1);
+    const hrv = response.body.series[0];
+    expect(hrv.metricType).toBe("hrv");
+    // Only the 2026-09-10 point survives -- the 2020 point (and this suite's own earlier
+    // 2026-09-07 hrv point) are excluded by the `since` lower bound.
+    expect(hrv.points).toEqual([{ startTime: "2026-09-10T00:00:00.000Z", value: 71 }]);
+  });
+
+  it("rejects a limit above the bounded maximum instead of silently pulling more history", async () => {
+    await seriesWithQuery("limit=999999").expect(400);
   });
 });

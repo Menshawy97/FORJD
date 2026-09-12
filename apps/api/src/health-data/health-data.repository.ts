@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import type { HealthMetricType, HealthSource } from "@forjd/domain";
 
 import { Database, DRIZZLE } from "../database/database.module";
@@ -42,6 +42,22 @@ export interface ObservationRow {
 export interface ConnectionRow {
   source: string;
   lastSuccessfulSyncAt: Date | null;
+}
+
+/**
+ * A required, bounded read window for `getObservationsForUser` (R8 / audit finding H4).
+ * Naming mirrors `@forjd/domain`'s `SyncRequest.metricTypes: readonly HealthMetricType[]` so
+ * this stays consistent with the one other place the codebase already asks "which metrics do
+ * you want." Every field is mandatory -- there is deliberately no overload or default that
+ * lets a caller omit the window, because that is exactly how the unbounded
+ * `SELECT * WHERE user_id = ?` full-table scan this slice fixes came to exist in the first
+ * place. `since: null` is the explicit way to say "no lower time bound" (still bounded by
+ * `metricTypes` and `limit`); there is no equivalent escape hatch for `metricTypes` or `limit`.
+ */
+export interface ObservationsWindow {
+  metricTypes: readonly HealthMetricType[];
+  since: Date | null;
+  limit: number;
 }
 
 /**
@@ -91,8 +107,25 @@ export class HealthDataRepository {
       });
   }
 
-  async getObservationsForUser(userId: string): Promise<ObservationRow[]> {
-    const rows = await this.db.select().from(healthObservations).where(eq(healthObservations.userId, userId));
+  /**
+   * Bounded per R8 (audit H4): every read pushes `metricTypes` (an `IN` predicate), `since`
+   * (a `start_time >=` predicate, when given) and `limit` into the SQL itself, rather than
+   * pulling the user's entire observation history into Node and filtering there. This is the
+   * shape the `(user_id, metric_type, start_time)` index (`health-data.schema.ts`) is built
+   * for -- `userId` equality plus a `metricType` `IN` plus a `startTime` lower bound.
+   */
+  async getObservationsForUser(userId: string, window: ObservationsWindow): Promise<ObservationRow[]> {
+    const conditions = [eq(healthObservations.userId, userId), inArray(healthObservations.metricType, window.metricTypes)];
+    if (window.since !== null) {
+      conditions.push(gte(healthObservations.startTime, window.since));
+    }
+
+    const rows = await this.db
+      .select()
+      .from(healthObservations)
+      .where(and(...conditions))
+      .orderBy(healthObservations.startTime)
+      .limit(window.limit);
 
     return rows.map((r) => ({
       id: r.id,

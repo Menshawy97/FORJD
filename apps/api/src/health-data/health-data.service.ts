@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import {
   computeReadiness,
   resolveByPriority,
+  HEALTH_METRIC_TYPES,
   type HealthMetricType,
   type HealthObservation,
   type ReadinessComponentKey,
@@ -11,12 +12,13 @@ import {
 import type {
   BatchIngestHealthObservationsRequest,
   HealthConnectionListResponse,
+  HealthObservationSeriesQuery,
   HealthObservationSeriesResponse,
   ReadinessResponse,
 } from "@forjd/contracts";
 
 import { localCalendarDate } from "../workouts/workouts.repository";
-import { HealthDataRepository, ObservationRow } from "./health-data.repository";
+import { HealthDataRepository, ObservationRow, ObservationsWindow } from "./health-data.repository";
 
 /** The four metric types ADR-031's readiness score reads -- a subset of
  *  `HEALTH_METRIC_TYPES`, in the fixed order `computeReadiness` itself iterates. */
@@ -26,6 +28,20 @@ const READINESS_COMPONENT_KEYS: readonly ReadinessComponentKey[] = [
   "sleep_duration",
   "respiratory_rate",
 ];
+
+/**
+ * R8 (audit H4): readiness only ever needs its own trailing baseline window, never the
+ * user's full history. `readiness.ts` keeps its `BASELINE_WINDOW_DAYS` (60) and
+ * `RECENT_WINDOW_DAYS` (7) constants private -- this does not import them, it just budgets
+ * generously above their sum (67) so a change to either constant can't silently starve this
+ * read. The extra day is slack for `getResolvedObservations`'s per-window grouping crossing a
+ * UTC day boundary relative to the caller's own time zone.
+ */
+const READINESS_LOOKBACK_DAYS = 68;
+/** Four components x 68 days, with slack for multiple same-day readings per component
+ *  (e.g. several short Health Connect sync windows in one day) -- generous, but still a real
+ *  bound instead of "however much history exists." */
+const READINESS_OBSERVATION_LIMIT = 5000;
 
 @Injectable()
 export class HealthDataService {
@@ -59,8 +75,13 @@ export class HealthDataService {
    * Two different windows for the same metric are two distinct points in the series, not
    * candidates for each other.
    */
-  async getSeries(user: User): Promise<HealthObservationSeriesResponse> {
-    const observations = await this.getResolvedObservations(user.id);
+  async getSeries(user: User, query: HealthObservationSeriesQuery): Promise<HealthObservationSeriesResponse> {
+    const window: ObservationsWindow = {
+      metricTypes: query.metricTypes ?? HEALTH_METRIC_TYPES,
+      since: query.since ? new Date(query.since) : null,
+      limit: query.limit,
+    };
+    const observations = await this.getResolvedObservations(user.id, window);
 
     const byMetric = new Map<HealthMetricType, HealthObservation[]>();
     for (const obs of observations) {
@@ -90,7 +111,13 @@ export class HealthDataService {
    * its arguments, not of the wall clock).
    */
   async getReadiness(user: User, timeZone: string, now: Date = new Date()): Promise<ReadinessResponse> {
-    const observations = await this.getResolvedObservations(user.id);
+    const since = new Date(now);
+    since.setUTCDate(since.getUTCDate() - READINESS_LOOKBACK_DAYS);
+    const observations = await this.getResolvedObservations(user.id, {
+      metricTypes: READINESS_COMPONENT_KEYS,
+      since,
+      limit: READINESS_OBSERVATION_LIMIT,
+    });
     const asOf = localCalendarDate(now, timeZone);
 
     const readings = Object.fromEntries(
@@ -118,8 +145,8 @@ export class HealthDataService {
    * `getReadiness`, both of which need the same "one winning observation per window" read,
    * just bucketed differently afterward (by individual point vs. by local calendar day).
    */
-  private async getResolvedObservations(userId: string): Promise<HealthObservation[]> {
-    const rows = await this.healthDataRepository.getObservationsForUser(userId);
+  private async getResolvedObservations(userId: string, window: ObservationsWindow): Promise<HealthObservation[]> {
+    const rows = await this.healthDataRepository.getObservationsForUser(userId, window);
     const observations: HealthObservation[] = rows.map(toHealthObservation);
 
     const byMetricAndWindow = new Map<HealthMetricType, Map<string, HealthObservation[]>>();
