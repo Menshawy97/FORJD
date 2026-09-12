@@ -119,13 +119,28 @@ export class HealthConnectProvider implements HealthProvider {
     const timeRangeFilter = buildTimeRangeFilter(request.since, new Date());
 
     const observations: SyncedObservation[] = [];
+    const failedMetricTypes: HealthMetricType[] = [];
     for (const recordType of recordTypesToFetch) {
-      observations.push(...(await this.readAndMap(recordType, timeRangeFilter)));
+      try {
+        observations.push(...(await this.readAndMap(recordType, timeRangeFilter)));
+      } catch {
+        // One revoked/denied record type (H7) must not discard observations this sync already
+        // collected from every other one -- a user who granted heart rate but not sleep should
+        // still get heart rate. Per-type rather than per-metric because the read itself happens
+        // once per record type; every requested metric that maps onto this record type shares
+        // its outcome.
+        for (const metricType of request.metricTypes) {
+          if (METRIC_TO_RECORD_TYPE[metricType] === recordType) {
+            failedMetricTypes.push(metricType);
+          }
+        }
+      }
     }
 
     return {
       observations: observations.filter((o) => requested.has(o.metricType)),
       syncedAt: new Date(),
+      ...(failedMetricTypes.length > 0 ? { failedMetricTypes } : {}),
     };
   }
 

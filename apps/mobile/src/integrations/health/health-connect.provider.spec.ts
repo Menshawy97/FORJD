@@ -149,6 +149,51 @@ describe("HealthConnectProvider", () => {
       expect(mockReadRecords).not.toHaveBeenCalled();
       expect(result.observations).toEqual([]);
     });
+
+    it("collects observations from every other record type when one record type's read rejects (H7)", async () => {
+      // One denied/revoked permission (SleepSession) must not discard the hrv reading that
+      // came from an entirely separate record type.
+      mockReadRecords.mockImplementation((recordType: string) => {
+        if (recordType === "SleepSession") {
+          return Promise.reject(new Error("permission revoked"));
+        }
+        return Promise.resolve({
+          records: [{ time: "2026-09-07T00:00:00.000Z", heartRateVariabilityMillis: 60, metadata: { id: "rec-1" } }],
+        });
+      });
+
+      const result = await new HealthConnectProvider().sync({
+        metricTypes: ["hrv", "sleep_light_duration"],
+        since: null,
+      });
+
+      expect(result.observations).toEqual([
+        expect.objectContaining({ metricType: "hrv", value: 60 }),
+      ]);
+      expect(result.failedMetricTypes).toEqual(["sleep_light_duration"]);
+    });
+
+    it("reports every requested metric type mapped to the same failed record type, not just one", async () => {
+      mockReadRecords.mockRejectedValue(new Error("permission revoked"));
+
+      const result = await new HealthConnectProvider().sync({
+        metricTypes: ["sleep_light_duration", "sleep_deep_duration"],
+        since: null,
+      });
+
+      expect(result.observations).toEqual([]);
+      expect(result.failedMetricTypes).toEqual(
+        expect.arrayContaining(["sleep_light_duration", "sleep_deep_duration"]),
+      );
+    });
+
+    it("omits failedMetricTypes entirely when nothing failed", async () => {
+      mockReadRecords.mockResolvedValue({ records: [] });
+
+      const result = await new HealthConnectProvider().sync({ metricTypes: ["hrv"], since: null });
+
+      expect(result.failedMetricTypes).toBeUndefined();
+    });
   });
 
   describe("disconnect", () => {

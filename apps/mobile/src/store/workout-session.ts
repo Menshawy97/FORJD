@@ -283,6 +283,31 @@ function backoffMs(attemptCount: number): number {
 /** After this many failed attempts, a row stops being retried automatically -- see ADR-025. */
 const MAX_ATTEMPTS = 5;
 
+/**
+ * A typed upload rejection carrying the HTTP status, when the caller's injected
+ * `uploadSession` has one to give. This is the seam that lets `drainSyncQueue` classify a
+ * failure without importing the API client -- the caller (`sync-sessions.ts`) constructs one
+ * of these from an `AxiosError`'s response, and a plain `Error` with no `status` (a network
+ * failure, a timeout) is simply always retriable.
+ */
+export interface UploadRejection extends Error {
+  status?: number;
+}
+
+/**
+ * A deterministic 4xx (contract drift, a bad payload) means every retry fails exactly the same
+ * way -- burning all `MAX_ATTEMPTS` attempts in seconds gains nothing and only delays the
+ * user-visible failure (C3). 408 (timeout) and 429 (rate limited) are the two 4xx codes that
+ * are still transient, so they retry like a 5xx or network error. Anything without a numeric
+ * `status` is retriable by default.
+ */
+function isRetriable(error: unknown): boolean {
+  const status = error instanceof Error ? (error as UploadRejection).status : undefined;
+  if (typeof status !== 'number') return true;
+  if (status === 408 || status === 429) return true;
+  return !(status >= 400 && status < 500);
+}
+
 export type SessionQueueStatus = 'pending' | 'failed';
 
 export interface QueuedSessionRow {
@@ -382,18 +407,58 @@ export async function drainSyncQueue(
       await clearSessionEvents(db, row.sessionId);
       uploaded.push(row.sessionId);
     } catch (error) {
-      const attemptCount = row.attemptCount + 1;
-      const status: SessionQueueStatus = attemptCount >= MAX_ATTEMPTS ? 'failed' : 'pending';
-      const nextRetryAt = new Date(now.getTime() + backoffMs(attemptCount)).toISOString();
       const message = error instanceof Error ? error.message : String(error);
 
-      await db.runAsync(
-        'UPDATE session_queue SET attempt_count = ?, status = ?, next_retry_at = ?, last_error = ? WHERE session_id = ?',
-        [attemptCount, status, nextRetryAt, message, row.sessionId],
+      /**
+       * Incremented atomically in SQL, not by writing back a JS-computed `row.attemptCount +
+       * 1` -- two overlapping `drainSyncQueue` calls landing on the same failing row (a
+       * reconnect firing while an app-foreground drain is already in flight) would otherwise
+       * both read `attempt_count = 0`, both compute `1` in JS, and both write `1` back: a lost
+       * update that undercounts how many attempts actually happened. `attempt_count =
+       * attempt_count + 1` is a single atomic statement at the SQLite layer regardless of how
+       * the two calls interleave, so the second write always builds on the first's, landing on
+       * `2`. The `RETURNING` clause hands back the post-increment value so the rest of this
+       * branch (backoff, the failed/pending threshold) uses the true count, not a stale local one.
+       */
+      const incremented = await db.getAllAsync<{ attempt_count: number }>(
+        'UPDATE session_queue SET attempt_count = attempt_count + 1, last_error = ? WHERE session_id = ? RETURNING attempt_count',
+        [message, row.sessionId],
       );
+      const attemptCount = incremented[0]?.attempt_count ?? row.attemptCount + 1;
+      const status: SessionQueueStatus =
+        !isRetriable(error) || attemptCount >= MAX_ATTEMPTS ? 'failed' : 'pending';
+      const nextRetryAt = new Date(now.getTime() + backoffMs(attemptCount)).toISOString();
+
+      await db.runAsync('UPDATE session_queue SET status = ?, next_retry_at = ? WHERE session_id = ?', [
+        status,
+        nextRetryAt,
+        row.sessionId,
+      ]);
       failed.push(row.sessionId);
     }
   }
 
   return { uploaded, failed };
+}
+
+/** Failed rows, for a user-visible retry surface (C3) -- see `retryFailedSession`. */
+export async function getFailedSessions(db: SqliteConnection): Promise<QueuedSessionRow[]> {
+  const rows = await getQueuedSessions(db);
+  return rows.filter((row) => row.status === 'failed');
+}
+
+/**
+ * Resets a `failed` row back to `pending` with a fresh attempt count, so the next
+ * `drainSyncQueue` call picks it up again. The counterpart to `getFailedSessions`: together
+ * they are the read path and the retry action the audit found missing entirely (C3).
+ */
+export async function retryFailedSession(
+  db: SqliteConnection,
+  sessionId: string,
+  now: Date = new Date(),
+): Promise<void> {
+  await db.runAsync(
+    "UPDATE session_queue SET status = 'pending', attempt_count = 0, next_retry_at = ?, last_error = NULL WHERE session_id = ?",
+    [now.toISOString(), sessionId],
+  );
 }
