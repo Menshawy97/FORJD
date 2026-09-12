@@ -400,6 +400,26 @@ export class WorkoutsRepository {
   }
 
   /**
+   * R4 -- every template id the caller owns, unbounded, for account export. Deliberately
+   * `ownerUserId` equality rather than `visibleTo` (which also matches curated presets with a
+   * null owner): an export is a copy of what the user *authored*, not of the catalogue they
+   * can merely see.
+   */
+  async listOwnTemplateIdsForUser(userId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: workoutTemplates.id })
+      .from(workoutTemplates)
+      .where(and(eq(workoutTemplates.ownerUserId, userId), isNull(workoutTemplates.deletedAt)));
+    return rows.map((row) => row.id);
+  }
+
+  /** R4 -- every session id the caller owns, unbounded, for account export. */
+  async listSessionIdsForUser(userId: string): Promise<string[]> {
+    const rows = await this.db.select({ id: workoutSessions.id }).from(workoutSessions).where(eq(workoutSessions.userId, userId));
+    return rows.map((row) => row.id);
+  }
+
+  /**
    * The read behind `GET /workouts/templates`. Keyset pagination on `(name, id)`, same
    * reasoning as `ExercisesRepository.listExercises` -- a stable, total sort key a cursor can
    * resume from exactly, and no `q`/filter columns yet because nothing in Phase 3's plan asks

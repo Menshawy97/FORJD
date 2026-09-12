@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  accountExportSchema,
   exerciseListResponseSchema,
   exerciseResponseSchema,
   foodListResponseSchema,
@@ -839,6 +840,172 @@ export const responseFixtures = {
         { key: 'respiratory_rate', score: null, label: null, recentValue: 14.5, baselineDayCount: 12 },
       ],
       withheldReason: 'Still building your baseline for: respiratory_rate. Needs 30 days of history.',
+    },
+  },
+
+  /**
+   * `GET /users/me/export` (R4 / GDPR Art. 15 & 20) -- one row in every section the account
+   * deletion e2e test also seeds, so this fixture and that test describe the same account
+   * shape from two different angles. `externalConnections` carries no token material at all,
+   * which is the one field this export is most likely to regress on if a future change to
+   * `WhoopConnectionRepository`'s row shape gets mapped in without re-reading this schema's
+   * own docblock.
+   */
+  'account-export-response': {
+    schema: accountExportSchema,
+    sample: {
+      version: 1,
+      exportedAt: '2026-09-13T12:00:00.000Z',
+      account: {
+        id: '11111111-1111-4111-8111-111111111111',
+        email: 'ada@example.com',
+      },
+      profile,
+      privacy,
+      healthObservations: [
+        {
+          metricType: 'hrv',
+          value: 58,
+          unit: 'ms',
+          startTime: '2026-09-06T04:00:00.000Z',
+          endTime: '2026-09-06T04:05:00.000Z',
+          source: 'whoop' as const,
+        },
+      ],
+      bodyScans: [
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          measuredAt: '2026-08-20T08:00:00.000Z',
+          source: 'inbody' as const,
+          measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97 }],
+        },
+      ],
+      nutritionLogEntries: [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          foodId: '44444444-4444-4444-8444-444444444444',
+          loggedDate: '2026-08-31',
+          slot: 'breakfast' as const,
+          servingLabel: '1 Banana, Peeled',
+          grams: 115,
+          kcal: 112.7,
+          protein: 0.85,
+          carbs: 26.45,
+          fat: 0.33,
+          groupId: null,
+          groupName: null,
+        },
+      ],
+      workoutTemplates: [
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          name: 'Upper Push',
+          activity: 'strength' as const,
+          basedOnTemplateId: null,
+          notes: null,
+          estimatedDurationMinutes: 52,
+          isCustom: true,
+          blocks: [
+            {
+              id: '66666666-6666-4666-8666-666666666666',
+              type: 'straight_sets' as const,
+              orderIndex: 0,
+              name: null,
+              rounds: null,
+              workSeconds: null,
+              restSeconds: null,
+              capSeconds: null,
+              exercises: [
+                {
+                  id: '77777777-7777-4777-8777-777777777777',
+                  exerciseId: '88888888-8888-4888-8888-888888888888',
+                  orderIndex: 0,
+                  setCount: 4,
+                  targetReps: 8,
+                  targetRepsMax: null,
+                  targetWeightKg: 80,
+                  targetSeconds: null,
+                  targetDistanceMeters: null,
+                  restSeconds: 90,
+                  notes: null,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      workoutSessions: [
+        {
+          id: '99999999-9999-4999-8999-999999999999',
+          templateId: '55555555-5555-4555-8555-555555555555',
+          name: 'Upper Push',
+          activity: 'strength' as const,
+          status: 'completed' as const,
+          startedAt: '2026-09-02T09:00:00.000Z',
+          endedAt: '2026-09-02T09:52:00.000Z',
+          durationSeconds: 3120,
+          perceivedEffort: 'solid' as const,
+          notes: null,
+          city: 'Alexandria',
+          citySlug: 'alexandria',
+          isLiveTracked: true,
+          exercises: [
+            {
+              id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              exerciseId: '88888888-8888-4888-8888-888888888888',
+              orderIndex: 0,
+              measure: 'weight' as const,
+              notes: null,
+              sets: [
+                {
+                  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                  setIndex: 0,
+                  type: 'working' as const,
+                  isCompleted: true,
+                  weightKg: 82.5,
+                  reps: 6,
+                  durationSeconds: null,
+                  distanceMeters: null,
+                  restSeconds: 90,
+                  completedAt: '2026-09-02T09:05:00.000Z',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      programs: {
+        owned: [
+          {
+            id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            slug: 'ada-custom-8-week',
+            name: 'Ada — 8 week custom',
+            category: 'strength' as const,
+            level: 'intermediate' as const,
+            daysPerWeek: 4,
+            durationWeeks: 8,
+            description: null,
+            isOwn: true,
+            workoutCount: 1,
+          },
+        ],
+        enrollment: {
+          id: 'a2b7c1d4-3e5f-4a6b-8c9d-0e1f2a3b4c5d',
+          programId: '3f1a4d64-6b2f-4d0e-9d0a-3c2f9a5e1b77',
+          programSlug: 'upper-lower',
+          programName: 'Upper / Lower',
+          programVersion: 1,
+          startedAt: '2026-09-01T08:30:00.000Z',
+        },
+      },
+      externalConnections: [
+        {
+          provider: 'whoop' as const,
+          status: 'connected' as const,
+          externalUserId: 'whoop-user-123',
+          lastSyncAt: '2026-09-08T06:15:00.000Z',
+        },
+      ],
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;

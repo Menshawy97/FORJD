@@ -24,6 +24,11 @@ import { WorkoutsService } from "./workouts.service";
  * tables under one controller/service/repository set.
  *
  * `AuthProviderModule`/`UsersModule` are here for `JwtAuthGuard`'s own dependencies.
+ *
+ * `WorkoutsRepository` is exported (R4): `AccountModule` needs `listOwnTemplateIdsForUser` /
+ * `listSessionIdsForUser` / `findByIdForUser` / `findSessionByIdForUser` for
+ * `GET /users/me/export`, the same reason `BodyModule` and `HealthDataModule` already export
+ * their own repositories to it.
  */
 @Module({
   imports: [AuthProviderModule, UsersModule, ExercisesModule],
@@ -36,5 +41,6 @@ import { WorkoutsService } from "./workouts.service";
     ProgressRepository,
     JwtAuthGuard,
   ],
+  exports: [WorkoutsRepository],
 })
 export class WorkoutsModule {}

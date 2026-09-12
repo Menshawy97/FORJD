@@ -599,6 +599,22 @@ export class NutritionRepository {
     return rows.map((row) => this.toLogEntry(row));
   }
 
+  /**
+   * R4 -- every log entry the user has ever recorded, for account export. Unlike
+   * `HealthDataRepository.getObservationsForUser`, `listLogForDate` was never given a bounded
+   * "every date" mode to begin with, so this is a new read rather than a documented exception
+   * to an existing bound -- but the same reasoning applies: an export must be complete, and a
+   * date-scoped read cannot express that.
+   */
+  async listAllForUserForExport(userId: string): Promise<NutritionLogEntry[]> {
+    const rows = await this.db
+      .select()
+      .from(nutritionLogEntries)
+      .where(eq(nutritionLogEntries.userId, userId))
+      .orderBy(nutritionLogEntries.createdAt);
+    return rows.map((row) => this.toLogEntry(row));
+  }
+
   async deleteLogEntry(id: string, userId: string): Promise<boolean> {
     const rows = await this.db
       .delete(nutritionLogEntries)

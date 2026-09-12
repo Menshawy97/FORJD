@@ -7,10 +7,17 @@ import { NutritionController } from "./nutrition.controller";
 import { NutritionRepository } from "./nutrition.repository";
 import { NutritionService } from "./nutrition.service";
 
-/** Mirrors `ExercisesModule` exactly: `NutritionRepository` provided here rather than exported, since nothing outside this feature reads nutrition data yet. `AuthProviderModule`/`UsersModule` are for `JwtAuthGuard`'s own dependencies. */
+/**
+ * `AuthProviderModule`/`UsersModule` are for `JwtAuthGuard`'s own dependencies.
+ *
+ * `NutritionRepository` is now exported (R4): `AccountModule` needs `listAllForUserForExport`
+ * for `GET /users/me/export`, the same reason `BodyModule`/`HealthDataModule` already export
+ * their own repositories to it.
+ */
 @Module({
   imports: [AuthProviderModule, UsersModule],
   controllers: [NutritionController],
   providers: [NutritionService, NutritionRepository, JwtAuthGuard],
+  exports: [NutritionRepository],
 })
 export class NutritionModule {}
