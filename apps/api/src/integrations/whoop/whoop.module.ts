@@ -2,11 +2,11 @@ import { Module } from "@nestjs/common";
 
 import { AuthProviderModule } from "../../auth/auth-provider.module";
 import { UsersModule } from "../../users/users.module";
-import { tokenCipherProvider } from "../../common/crypto/token-cipher.provider";
+import { TOKEN_CIPHER, tokenCipherProvider } from "../../common/crypto/token-cipher.provider";
 import { HealthDataModule } from "../../health-data/health-data.module";
 import { WhoopCallbackService } from "./whoop-callback.service";
 import { WhoopConnectionRepository } from "./whoop-connection.repository";
-import { whoopClientProvider } from "./whoop-client";
+import { WHOOP_CLIENT, whoopClientProvider } from "./whoop-client";
 import { whoopOAuthServiceProvider } from "./whoop-oauth.service";
 import { WhoopProviderFactory } from "./whoop-provider.factory";
 import { WhoopSyncService } from "./whoop-sync.service";
@@ -33,5 +33,6 @@ import { WhoopWebhookService } from "./whoop-webhook.service";
     WhoopSyncService,
     WhoopWebhookService,
   ],
+  exports: [WhoopConnectionRepository, WHOOP_CLIENT, TOKEN_CIPHER],
 })
 export class WhoopModule {}

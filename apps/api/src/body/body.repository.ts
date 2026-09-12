@@ -127,6 +127,17 @@ export class BodyRepository {
     }));
   }
 
+  /**
+   * `photoKey` on its own -- deliberately not folded into `listScansForUser`, whose
+   * `ScanWithMeasurementsRow` shape is the public read contract and never leaks the storage
+   * key. Account deletion (R3) is the one caller that needs the key itself, to delete the
+   * object rather than merely read the scan.
+   */
+  async listScanPhotoKeysForUser(userId: string): Promise<string[]> {
+    const rows = await this.db.select({ photoKey: bodyScans.photoKey }).from(bodyScans).where(eq(bodyScans.userId, userId));
+    return rows.map((row) => row.photoKey);
+  }
+
   async getSeriesForUser(userId: string): Promise<MetricSeriesRow[]> {
     const rows = await this.db
       .select()

@@ -52,6 +52,9 @@ export interface WhoopClient {
   listRecovery(since: Date | null, accessToken: string): Promise<unknown[]>;
   listSleep(since: Date | null, accessToken: string): Promise<unknown[]>;
   listWorkout(since: Date | null, accessToken: string): Promise<unknown[]>;
+  /** RFC 7009 token revocation -- the OAuth2 grant is what "disconnect" and account deletion
+   *  actually mean to revoke, not just a locally-stored token whose grant lives on regardless. */
+  revokeToken(accessToken: string): Promise<void>;
 }
 
 export interface CreateWhoopClientOptions {
@@ -184,6 +187,22 @@ export function createWhoopClient(options: CreateWhoopClientOptions): WhoopClien
     listRecovery: (since, accessToken) => listResource("/v2/recovery", since, accessToken),
     listSleep: (since, accessToken) => listResource("/v2/activity/sleep", since, accessToken),
     listWorkout: (since, accessToken) => listResource("/v2/activity/workout", since, accessToken),
+    revokeToken: async (accessToken) => {
+      await requestWithRetry(
+        fetchImpl,
+        "https://api.prod.whoop.com/oauth/oauth2/revoke",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            token: accessToken,
+            client_id: options.clientId,
+            client_secret: options.clientSecret,
+          }).toString(),
+        },
+        "token revocation",
+      );
+    },
   };
 }
 

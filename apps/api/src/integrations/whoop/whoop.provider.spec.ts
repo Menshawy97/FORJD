@@ -74,6 +74,7 @@ function makeFakeClient(overrides: Partial<WhoopClient> = {}): WhoopClient {
     listRecovery: jest.fn().mockResolvedValue([recoveryFixture]),
     listSleep: jest.fn().mockResolvedValue([sleepFixture]),
     listWorkout: jest.fn().mockResolvedValue([workoutFixture]),
+    revokeToken: jest.fn(),
     ...overrides,
   };
 }

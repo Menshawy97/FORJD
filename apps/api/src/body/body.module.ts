@@ -15,5 +15,6 @@ import { BodyService } from "./body.service";
   imports: [AiModule, AuthProviderModule, StorageModule, UsersModule],
   controllers: [BodyController],
   providers: [BodyService, BodyRepository],
+  exports: [BodyRepository],
 })
 export class BodyModule {}
