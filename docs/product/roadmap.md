@@ -2367,7 +2367,8 @@ failure).
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
 | 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6F merged, readiness scoring (ADR-031, Accepted) and light-up-the-UI merged (#131, #132); 6F (`HealthConnectProvider`) is still **device-unverified** — merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md); a physical Android phone test is still owed before any UI screen calls `connect()`/`.sync()` on it (nothing does yet) |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **Complete** — [planned](phase-7-plan.md); 7A-7H done, [ADR-037](../decisions/ADR-037-whoop-integration-shape.md) records the closing shape. Owed: the live WHOOP OAuth round-trip (decision 1), the Phase 6F Health Connect device test (ADR-035, unrelated), decision E's readiness-baseline-crossover surfacing |
-| 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started |
+| Audit remediation | — | Fix the 2026-09-10 whole-repo audit, test-first | **Planned** — [plan](audit-remediation-plan.md); pulls account deletion and data export forward out of Phase 8 |
+| 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started — deletion and export land in the audit-remediation row above |
 | Limited Android beta | 35 | 12+ testers | Not started |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | Not started |
