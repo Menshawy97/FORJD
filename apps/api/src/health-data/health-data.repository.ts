@@ -143,6 +143,38 @@ export class HealthDataRepository {
     }));
   }
 
+  /**
+   * R4's deliberate, documented exception to R8's bounded-read rule above: `getObservationsForUser`
+   * requires a `metricTypes`/`since`/`limit` window on purpose, so that an unbounded
+   * `SELECT * WHERE user_id = ?` scan can never come back into existence by accident. An
+   * account export is the one caller that genuinely needs every observation, not a window --
+   * GDPR Art. 15/20 does not accept "the most recent 2000 readings" as a full copy of a
+   * person's data -- so it gets its own, separately named method rather than a way to call the
+   * bounded one with the bound switched off.
+   */
+  async getAllObservationsForExport(userId: string): Promise<ObservationRow[]> {
+    const rows = await this.db
+      .select()
+      .from(healthObservations)
+      .where(eq(healthObservations.userId, userId))
+      .orderBy(healthObservations.startTime);
+
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      metricType: r.metricType,
+      value: Number(r.value),
+      unit: r.unit,
+      startTime: r.startTime,
+      endTime: r.endTime,
+      source: r.source,
+      providerRecordId: r.providerRecordId,
+      deviceId: r.deviceId,
+      quality: r.quality === null ? null : Number(r.quality),
+      createdAt: r.createdAt,
+    }));
+  }
+
   async getConnectionsForUser(userId: string): Promise<ConnectionRow[]> {
     const rows = await this.db.select().from(healthConnections).where(eq(healthConnections.userId, userId));
 

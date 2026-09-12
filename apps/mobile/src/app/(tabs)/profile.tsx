@@ -9,6 +9,7 @@ import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { clearSession } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
+import { shareAccountExport } from '@/data-export/share-account-export';
 import { colors } from '@/theme/tokens';
 
 // Structure, copy and geometry from the prototype's `isProfile` branch of
@@ -103,7 +104,11 @@ interface SettingsRow {
   onPress?: () => void;
 }
 
-function buildGroups(identity: Identity): Array<{ label: string; rows: SettingsRow[] }> {
+function buildGroups(
+  identity: Identity,
+  onExportData: () => void,
+  isExportingData: boolean,
+): Array<{ label: string; rows: SettingsRow[] }> {
   return [
   {
     label: 'Training',
@@ -163,6 +168,18 @@ function buildGroups(identity: Identity): Array<{ label: string; rows: SettingsR
     label: 'Account',
     rows: [
       {
+        icon: 'share',
+        title: 'Export my data',
+        subtitle: isExportingData
+          ? 'Preparing your export…'
+          : 'Download a copy of everything we store',
+        // R4 (H2) -- GDPR Art. 15 & 20. Inline, not a separate confirmation screen like
+        // Delete account below: exporting is non-destructive, so there is nothing to
+        // confirm, only something to wait for while the file is prepared and handed to
+        // the OS share sheet.
+        onPress: isExportingData ? undefined : onExportData,
+      },
+      {
         icon: 'x',
         title: 'Delete account',
         subtitle: 'Permanently erase your data',
@@ -199,6 +216,8 @@ export default function ProfileScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isExportingData, setIsExportingData] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -248,6 +267,23 @@ export default function ProfileScreen() {
     }
   };
 
+  // Exporting never navigates away (unlike delete, which ends in the AuthGate redirect) and
+  // is not irreversible, so the control simply disables itself while the file is prepared and
+  // shared, then re-enables -- a second export a moment later is a perfectly normal thing to
+  // want, not a mistake to guard against the way retyping DELETE guards deletion.
+  const handleExportData = async () => {
+    if (isExportingData) return;
+    setExportError(null);
+    setIsExportingData(true);
+    try {
+      await shareAccountExport();
+    } catch {
+      setExportError('Could not export your data. Check your connection and try again.');
+    } finally {
+      setIsExportingData(false);
+    }
+  };
+
   return (
     <ScreenBackground>
       <ScrollView
@@ -263,7 +299,7 @@ export default function ProfileScreen() {
         <IdentityRow identity={identity} />
         <GoProBanner />
 
-        {buildGroups(identity).map((group, groupIndex) => (
+        {buildGroups(identity, handleExportData, isExportingData).map((group, groupIndex) => (
           <View key={group.label}>
             <Text
               className={`${groupIndex === 0 ? 'mt-2' : 'mt-section-gap'} mb-[2px] font-archivo text-section-label font-semibold uppercase text-label`}>
@@ -288,6 +324,12 @@ export default function ProfileScreen() {
         {logoutError && (
           <Text className="mt-[10px] font-archivo text-inline-error font-medium text-errorText">
             {logoutError}
+          </Text>
+        )}
+
+        {exportError && (
+          <Text className="mt-[10px] font-archivo text-inline-error font-medium text-errorText">
+            {exportError}
           </Text>
         )}
       </ScrollView>

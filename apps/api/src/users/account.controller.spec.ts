@@ -3,14 +3,17 @@ import { getClassGuards } from "../test-support/controller-metadata";
 import { fakeAuthenticatedRequest } from "../test-support/fake-authenticated-request";
 import { AccountController } from "./account.controller";
 import { AccountDeletionService } from "./account-deletion.service";
+import { AccountExportService } from "./account-export.service";
 
 describe("AccountController", () => {
-  let service: jest.Mocked<AccountDeletionService>;
+  let deletionService: jest.Mocked<AccountDeletionService>;
+  let exportService: jest.Mocked<AccountExportService>;
   let controller: AccountController;
 
   beforeEach(() => {
-    service = { deleteAccount: jest.fn() } as unknown as jest.Mocked<AccountDeletionService>;
-    controller = new AccountController(service);
+    deletionService = { deleteAccount: jest.fn() } as unknown as jest.Mocked<AccountDeletionService>;
+    exportService = { exportAccount: jest.fn() } as unknown as jest.Mocked<AccountExportService>;
+    controller = new AccountController(deletionService, exportService);
   });
 
   it("carries JwtAuthGuard at the class level", () => {
@@ -22,7 +25,19 @@ describe("AccountController", () => {
 
     await controller.deleteMe(request);
 
-    expect(service.deleteAccount).toHaveBeenCalledWith(request.user.id);
-    expect(service.deleteAccount).toHaveBeenCalledTimes(1);
+    expect(deletionService.deleteAccount).toHaveBeenCalledWith(request.user.id);
+    expect(deletionService.deleteAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("exports only the authenticated caller's own account -- never a client-supplied id", async () => {
+    const request = fakeAuthenticatedRequest();
+    const expected = { version: 1 } as never;
+    exportService.exportAccount.mockResolvedValue(expected);
+
+    const result = await controller.exportMe(request);
+
+    expect(exportService.exportAccount).toHaveBeenCalledWith(request.user.id, request.user.email);
+    expect(exportService.exportAccount).toHaveBeenCalledTimes(1);
+    expect(result).toBe(expected);
   });
 });

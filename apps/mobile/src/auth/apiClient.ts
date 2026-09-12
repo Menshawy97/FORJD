@@ -19,6 +19,7 @@ import axios, {
 } from 'axios';
 import Constants from 'expo-constants';
 import type {
+  AccountExportResponse,
   AvatarUploadResponse,
   CreateCustomFoodRequest,
   CreateExerciseRequest,
@@ -625,4 +626,14 @@ export async function disconnectWhoop(): Promise<void> {
  */
 export async function deleteAccount(): Promise<void> {
   await apiClient.delete('/users/me');
+}
+
+/**
+ * R4 (H2) -- GDPR Art. 15 & 20. A full copy of everything FORJD holds about the authenticated
+ * caller, as one JSON payload the Settings screen writes to a file and hands to the OS share
+ * sheet (`expo-sharing`) rather than rendering in-app.
+ */
+export async function exportAccount(): Promise<AccountExportResponse> {
+  const response = await apiClient.get<AccountExportResponse>('/users/me/export');
+  return response.data;
 }
