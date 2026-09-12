@@ -680,8 +680,12 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-Status as of 2026-09-13 (R5, R9, R14 merged; R4 in review). "Done" means merged to `main`
-with a green post-merge CI run confirmed, per this plan's own CHECKPOINT step.
+Status as of 2026-09-13 (R4, R5, R9, R14 merged this session). "Done" means merged to `main`
+with a green post-merge CI run confirmed, per this plan's own CHECKPOINT step. 15/29 slices
+merged. Remaining and unblocked: R13 (needs R11/R17), R17, R18 (needs R1 — now unblocked),
+R20 (needs R9 — now unblocked), R21 (needs R18), R22, R23 (needs R21), R24, R25 (needs R1 —
+now unblocked), R26, R28, R29 (last). R11, R19, and R27 each stop for a user decision (see
+"Points where this plan stops and asks" below).
 
 | # | Slice | Package | Status | Notes |
 |---|---|---|---|---|
@@ -689,7 +693,7 @@ with a green post-merge CI run confirmed, per this plan's own CHECKPOINT step.
 | R1b | Per-record-type Health Connect sync | mobile | ✅ Done (#148) | shipped with R1 |
 | R2 | AI consent gate, vision timeouts, vision throttle | api | ✅ Done (#149) | — |
 | R3 | Account deletion | api + mobile | ✅ Done (#150) | built the revoke helper R5 reuses |
-| R4 | Data export | api + mobile + contracts | Not started | after R3 — now unblocked |
+| R4 | Data export | api + mobile + contracts | ✅ Done (#161) | new mobile native dep (expo-file-system) needs a dev-client rebuild before on-device testing |
 | R5 | WHOOP revoke and token wipe | api | ✅ Done (#158) | reused R3's `whoop-revoke.ts` helper |
 | R6 | WHOOP unique external user | api + migration | ✅ Done (#152) | — |
 | R7 | Body-scan transaction | api | ✅ Done (#151) | — |
@@ -721,7 +725,14 @@ their listed order, in parallel (separate git worktrees, one PR per slice, merge
 with a confirmed green `main` between each) once each was confirmed to touch disjoint files with
 no declared dependency on the others. The plan's own per-slice TDD and CHECKPOINT discipline was
 still followed for every one of them individually; only the *ordering* across independent slices
-was relaxed, at the user's request.
+was relaxed, at the user's request. R5, R9 and R14 were run the same way in a second batch, with
+R4 (larger, touching contracts/api/mobile) alongside them; R4's branch needed a rebase onto `main`
+before merging since it was built before R9/R14 landed. One incident worth recording for future
+sessions: partway through R9's verification, an unexplained `git reset` cleared that worktree's
+uncommitted tracked-file changes (new untracked files survived) — recovered by reapplying the
+already-reviewed diff and committing immediately afterward. Root cause unconfirmed; committing
+work-in-progress sooner, rather than leaving verified changes uncommitted across multiple test
+runs, is the mitigation applied going forward.
 
 R1 through R4 are the ones that matter most. If the work has to stop early, stopping after R4
 leaves an app that no longer loses finished workouts, no longer sends health data to a third-party
