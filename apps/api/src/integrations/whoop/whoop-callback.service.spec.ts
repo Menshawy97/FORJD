@@ -122,4 +122,13 @@ describe("WhoopCallbackService", () => {
       ConflictException,
     );
   });
+
+  it("propagates a non-unique-violation error from upsertTokens unchanged", async () => {
+    const { service, connections } = makeService({
+      connections: { upsertTokens: jest.fn().mockRejectedValue(new Error("connection reset")) },
+    });
+
+    await expect(service.completeAuthorization("good-state", "auth-code")).rejects.toThrow("connection reset");
+    expect(connections.upsertTokens).toHaveBeenCalled();
+  });
 });
