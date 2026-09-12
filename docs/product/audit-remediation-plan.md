@@ -680,8 +680,8 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-Status as of 2026-09-13 (R5 merged). "Done" means merged to `main` with a green post-merge
-CI run confirmed, per this plan's own CHECKPOINT step.
+Status as of 2026-09-13 (R5, R14 merged; R4 and R9 in review). "Done" means merged to `main`
+with a green post-merge CI run confirmed, per this plan's own CHECKPOINT step.
 
 | # | Slice | Package | Status | Notes |
 |---|---|---|---|---|
@@ -699,7 +699,7 @@ CI run confirmed, per this plan's own CHECKPOINT step.
 | R11 | Low security and config batch | api + infra | Not started | **stops for the user** — supabase/config.toml question |
 | R12 | Conformance script and its own tests | scripts + CI | ✅ Done (#157) | prettier-in-CI deliberately deferred — see PR body, 403 files of pre-existing drift |
 | R13 | Coverage gates on all four packages | all | Not started | after R1–R12, R14–R16 — R14 still open |
-| R14 | `body/` unit tests | api | Not started | after R2 — now unblocked |
+| R14 | `body/` unit tests | api | ✅ Done (#159) | no bug found; closed the coverage gap |
 | R15 | `toLiveExercise` tests | mobile | ✅ Done (#156) | no bug found; closed the coverage gap |
 | R16 | Eleven controller specs | api | ✅ Done (#153) | discovery found 13 controllers, not 11 (two added since the audit); all 13 covered |
 | R17 | De-flake the route-tree suites | mobile | Not started | — |
