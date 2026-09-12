@@ -5,6 +5,7 @@ import type { WhoopClient } from "./whoop-client";
 import type { WhoopOAuthService } from "./whoop-oauth.service";
 import { mapRecoveryToObservations, mapSleepToObservations, mapWorkoutToObservations } from "./whoop-record-mapping";
 import { ensureUsableWhoopAccessToken } from "./whoop-token-access";
+import { revokeAndClearWhoopConnection } from "./whoop-revoke";
 import type { TokenCipher } from "../../common/crypto/token-cipher.provider";
 
 const RECOVERY_METRICS: readonly HealthMetricType[] = ["hrv", "resting_heart_rate"];
@@ -61,7 +62,7 @@ export class WhoopProvider implements HealthProvider {
   }
 
   async disconnect(): Promise<void> {
-    await this.connections.updateStatus(this.userId, "disconnected");
+    await revokeAndClearWhoopConnection(this.userId, this.connections, this.client, this.cipher);
   }
 
   async getCapabilities(): Promise<ProviderCapabilities> {

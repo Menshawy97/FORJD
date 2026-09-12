@@ -55,6 +55,9 @@ function makeFakeRepository(initial?: Partial<WhoopConnectionRow>): WhoopConnect
     updateStatus: jest.fn(async (_userId, status) => {
       if (row) row = { ...row, status };
     }),
+    clearTokens: jest.fn(async () => {
+      if (row) row = { ...row, status: "disconnected", encryptedAccessToken: "", encryptedRefreshToken: null, expiresAt: null, scopes: null };
+    }),
   } as unknown as WhoopConnectionRepository;
 }
 
@@ -135,13 +138,24 @@ describe("WhoopProvider", () => {
   });
 
   describe("disconnect", () => {
-    it("marks the connection disconnected", async () => {
+    it("revokes the grant at WHOOP before wiping the stored tokens", async () => {
       const repository = makeFakeRepository({});
-      const provider = makeProvider({ repository });
+      const client = makeFakeClient();
+      const provider = makeProvider({ repository, client });
 
       await provider.disconnect();
 
-      expect(repository.updateStatus).toHaveBeenCalledWith("user-1", "disconnected");
+      expect(client.revokeToken).toHaveBeenCalledWith("valid-access-token");
+      expect(repository.clearTokens).toHaveBeenCalledWith("user-1");
+    });
+
+    it("still wipes the local tokens when the revoke call itself fails", async () => {
+      const repository = makeFakeRepository({});
+      const client = makeFakeClient({ revokeToken: jest.fn().mockRejectedValue(new Error("WHOOP is down")) });
+      const provider = makeProvider({ repository, client });
+
+      await expect(provider.disconnect()).resolves.not.toThrow();
+      expect(repository.clearTokens).toHaveBeenCalledWith("user-1");
     });
 
     it("resolves without throwing even with no connection to disconnect", async () => {
