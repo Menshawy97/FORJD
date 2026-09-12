@@ -246,6 +246,63 @@ describe('workout contracts', () => {
       ).toBe(false);
     });
 
+    // R10 -- the audit's own example: 10,000 reps was accepted with no bound.
+    const withSet = (setOverrides: Record<string, unknown>) => ({
+      ...validSession,
+      exercises: [
+        {
+          exerciseId: '22222222-2222-4222-8222-222222222222',
+          sets: [{ type: 'working' as const, isCompleted: true, ...setOverrides }],
+        },
+      ],
+    });
+
+    it('rejects 10,000 reps -- the audit report\'s own corrupting example', () => {
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ reps: 10_000 })).success).toBe(false);
+    });
+
+    it('accepts reps up to 500 and rejects above it', () => {
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ reps: 500 })).success).toBe(true);
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ reps: 501 })).success).toBe(false);
+    });
+
+    it('accepts weightKg up to 500 (beyond the heaviest verified lifts) and rejects above it', () => {
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ weightKg: 500 })).success).toBe(true);
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ weightKg: 501 })).success).toBe(false);
+    });
+
+    it('accepts durationSeconds up to 24 hours and rejects above it', () => {
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ durationSeconds: 86_400 })).success).toBe(true);
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ durationSeconds: 86_401 })).success).toBe(false);
+    });
+
+    it('accepts distanceMeters up to 200km (an ultramarathon) and rejects above it', () => {
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ distanceMeters: 200_000 })).success).toBe(true);
+      expect(workoutSessionUploadRequestSchema.safeParse(withSet({ distanceMeters: 200_001 })).success).toBe(false);
+    });
+
+    it('caps sets per exercise and exercises per session', () => {
+      const tooManySets = {
+        ...validSession,
+        exercises: [
+          {
+            exerciseId: '22222222-2222-4222-8222-222222222222',
+            sets: Array.from({ length: 101 }, () => ({ type: 'working' as const, isCompleted: true })),
+          },
+        ],
+      };
+      expect(workoutSessionUploadRequestSchema.safeParse(tooManySets).success).toBe(false);
+
+      const tooManyExercises = {
+        ...validSession,
+        exercises: Array.from({ length: 101 }, (_, i) => ({
+          exerciseId: `22222222-2222-4222-8222-2222222222${String(i).padStart(2, '0')}`,
+          sets: [{ type: 'working' as const, isCompleted: true }],
+        })),
+      };
+      expect(workoutSessionUploadRequestSchema.safeParse(tooManyExercises).success).toBe(false);
+    });
+
     it('has no measure field on a session exercise -- the server snapshots it from the exercise it looks up, never from client input', () => {
       const parsed = workoutSessionUploadRequestSchema.parse({
         ...validSession,

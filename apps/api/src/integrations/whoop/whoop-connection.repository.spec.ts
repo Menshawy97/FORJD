@@ -180,6 +180,63 @@ describe("WhoopConnectionRepository", () => {
     expect(await repository.findByOAuthState("f1f2f3f4")).toBeNull();
   });
 
+  it("rejects a second connection claiming a WHOOP external_user_id another user already holds (H5)", async () => {
+    const firstUserId = await makeUser("dup-external-first");
+    const secondUserId = await makeUser("dup-external-second");
+    const sharedExternalId = `whoop-shared-${Date.now()}`;
+
+    await repository.upsertTokens(firstUserId, {
+      status: "connected",
+      externalUserId: sharedExternalId,
+      encryptedAccessToken: "enc-at-first",
+      encryptedRefreshToken: "enc-rt-first",
+      tokenKeyVersion: 1,
+      expiresAt: null,
+      scopes: null,
+    });
+
+    let caught: unknown;
+    try {
+      await repository.upsertTokens(secondUserId, {
+        status: "connected",
+        externalUserId: sharedExternalId,
+        encryptedAccessToken: "enc-at-second",
+        encryptedRefreshToken: "enc-rt-second",
+        tokenKeyVersion: 1,
+        expiresAt: null,
+        scopes: null,
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    // drizzle-orm wraps every node-postgres query failure in a DrizzleQueryError, with the
+    // real pg error -- and its `.code` -- attached as `.cause` rather than as a top-level
+    // property (same wrapping `users.repository.ts`'s isUniqueViolation already accounts for).
+    const code = (caught as { code?: unknown } | undefined)?.code;
+    const causeCode = (caught as { cause?: { code?: unknown } } | undefined)?.cause?.code;
+    expect(code === "23505" || causeCode === "23505").toBe(true);
+
+    // The first user's connection must be completely unaffected by the rejected attempt.
+    const firstRow = await repository.findByUserId(firstUserId);
+    expect(firstRow?.externalUserId).toBe(sharedExternalId);
+    expect(firstRow?.encryptedAccessToken).toBe("enc-at-first");
+
+    // The second user must not have gained a connection out of the rejected attempt either.
+    const secondRow = await repository.findByUserId(secondUserId);
+    expect(secondRow).toBeNull();
+  });
+
+  it("findByExternalUserId is deterministic when (in theory) more than one row could match", async () => {
+    // Even though the unique index above makes two non-null rows sharing an external_user_id
+    // impossible in practice, findByExternalUserId must still apply .limit(1) defensively --
+    // an unbounded `.select()...where(...)` with no `.limit` is the same class of bug the
+    // unique index protects against one layer down, and this locks the query shape in without
+    // invoking the method (which would hit the real DB as a side effect of this assertion).
+    const source = WhoopConnectionRepository.prototype.findByExternalUserId.toString();
+    expect(source).toMatch(/\.limit\(1\)/);
+  });
+
   it("updateStatus changes only the status", async () => {
     const userId = await makeUser("disconnect");
     await repository.upsertTokens(userId, {

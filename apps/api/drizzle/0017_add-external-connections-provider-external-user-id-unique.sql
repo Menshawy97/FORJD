@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "external_connections_provider_external_user_id_unique" ON "external_connections" USING btree ("provider","external_user_id") WHERE "external_connections"."external_user_id" IS NOT NULL;

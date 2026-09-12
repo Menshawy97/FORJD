@@ -120,6 +120,13 @@
       "when": 1788901002289,
       "tag": "0016_clear_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789222734797,
+      "tag": "0017_add-external-connections-provider-external-user-id-unique",
+      "breakpoints": true
     }
   ]
 }

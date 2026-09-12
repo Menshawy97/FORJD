@@ -1,3 +1,5 @@
+import { ConflictException } from "@nestjs/common";
+
 import { WhoopCallbackService } from "./whoop-callback.service";
 import type { WhoopConnectionRepository, WhoopConnectionRow } from "./whoop-connection.repository";
 import type { WhoopClient } from "./whoop-client";
@@ -93,5 +95,40 @@ describe("WhoopCallbackService", () => {
 
     await expect(service.completeAuthorization("good-state", "auth-code")).rejects.toThrow("profile fetch failed");
     expect(connections.upsertTokens).not.toHaveBeenCalled();
+  });
+
+  it("maps a duplicate external_user_id unique violation to a ConflictException (R6, H5)", async () => {
+    const duplicateViolation = {
+      cause: { code: "23505", constraint: "external_connections_provider_external_user_id_unique" },
+    };
+    const { service } = makeService({
+      connections: { upsertTokens: jest.fn().mockRejectedValue(duplicateViolation) },
+    });
+
+    await expect(service.completeAuthorization("good-state", "auth-code")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it("does not map an unrelated unique violation to a ConflictException", async () => {
+    const unrelatedViolation = {
+      cause: { code: "23505", constraint: "some_other_constraint" },
+    };
+    const { service } = makeService({
+      connections: { upsertTokens: jest.fn().mockRejectedValue(unrelatedViolation) },
+    });
+
+    await expect(service.completeAuthorization("good-state", "auth-code")).rejects.not.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it("propagates a non-unique-violation error from upsertTokens unchanged", async () => {
+    const { service, connections } = makeService({
+      connections: { upsertTokens: jest.fn().mockRejectedValue(new Error("connection reset")) },
+    });
+
+    await expect(service.completeAuthorization("good-state", "auth-code")).rejects.toThrow("connection reset");
+    expect(connections.upsertTokens).toHaveBeenCalled();
   });
 });

@@ -141,4 +141,60 @@ describe("health contracts", () => {
     };
     expect(healthConnectionListResponseSchema.safeParse(response).success).toBe(true);
   });
+
+  // R10 -- physiological bounds at the contract boundary. `value: z.number()` with no bounds
+  // fed `Math.log(0) = -Infinity` into readiness and let a corrupt row (a 5000 kg body scan,
+  // a 900,000 kcal meal) into aggregates unnoticed. Ranges below are documented on the schema
+  // itself alongside the citation each one is sourced from.
+  describe("per-metric physiological bounds", () => {
+    const withMetric = (metricType: string, value: number) => ({ ...validObservation, metricType, value });
+
+    it.each([
+      ["heart_rate", 20, 300],
+      ["walking_heart_rate", 20, 300],
+      ["resting_heart_rate", 20, 200],
+      ["hrv", 1, 300],
+      ["respiratory_rate", 4, 60],
+      ["sleep_duration", 0, 1440],
+      ["sleep_light_duration", 0, 1440],
+      ["sleep_deep_duration", 0, 1440],
+      ["sleep_rem_duration", 0, 1440],
+      ["sleep_awake_duration", 0, 1440],
+      ["steps", 0, 200_000],
+      ["active_energy", 0, 20_000],
+      ["weight", 20, 500],
+      ["vo2_max", 10, 95],
+    ])("accepts %s at both ends of its documented range (%d - %d)", (metricType, min, max) => {
+      expect(ingestHealthObservationSchema.safeParse(withMetric(metricType, min)).success).toBe(true);
+      expect(ingestHealthObservationSchema.safeParse(withMetric(metricType, max)).success).toBe(true);
+    });
+
+    it.each([
+      ["heart_rate", 19, 301],
+      ["resting_heart_rate", 19, 201],
+      ["respiratory_rate", 3, 61],
+      ["sleep_duration", -1, 1441],
+      ["weight", 19, 501],
+      ["vo2_max", 9, 96],
+    ])("rejects %s outside its documented range (below %d, above %d)", (metricType, tooLow, tooHigh) => {
+      expect(ingestHealthObservationSchema.safeParse(withMetric(metricType, tooLow)).success).toBe(false);
+      expect(ingestHealthObservationSchema.safeParse(withMetric(metricType, tooHigh)).success).toBe(false);
+    });
+
+    it("rejects zero for hrv -- the one metric readiness log-transforms (Math.log(0) = -Infinity)", () => {
+      expect(ingestHealthObservationSchema.safeParse(withMetric("hrv", 0)).success).toBe(false);
+    });
+
+    it("accepts zero sleep duration -- a real night can have zero minutes of a given stage", () => {
+      expect(ingestHealthObservationSchema.safeParse(withMetric("sleep_deep_duration", 0)).success).toBe(true);
+    });
+  });
+
+  it("batchIngestHealthObservationsRequestSchema caps the batch at 1000 observations", () => {
+    const tooMany = { observations: Array.from({ length: 1001 }, () => ({ ...validObservation })) };
+    expect(batchIngestHealthObservationsRequestSchema.safeParse(tooMany).success).toBe(false);
+
+    const atCap = { observations: Array.from({ length: 1000 }, () => ({ ...validObservation })) };
+    expect(batchIngestHealthObservationsRequestSchema.safeParse(atCap).success).toBe(true);
+  });
 });

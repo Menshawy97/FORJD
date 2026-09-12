@@ -102,6 +102,39 @@ describe("body contracts", () => {
     expect(confirmBodyScanRequestSchema.safeParse(payload).success).toBe(false);
   });
 
+  // R10 -- the audit's own example: a 5000 kg body scan was accepted and corrupted every
+  // aggregate that read it back. Bounds are generous but reject obvious corruption.
+  describe("per-metric physiological bounds on confirmed measurements", () => {
+    const withMeasurement = (metric: string, value: number) => ({
+      measuredAt: "2026-01-15T09:00:00.000Z",
+      measurements: [{ metric, value, unit: "kg", confidence: 0.9 }],
+    });
+
+    it.each([
+      ["weight_kg", 20, 400],
+      ["skeletal_muscle_mass_kg", 5, 100],
+      ["body_fat_mass_kg", 1, 200],
+      ["body_fat_percent", 2, 70],
+      ["visceral_fat_level", 1, 30],
+      ["total_body_water_l", 5, 100],
+      ["bmi", 10, 80],
+      ["basal_metabolic_rate_kcal", 500, 5000],
+      ["inbody_score", 0, 100],
+      ["right_arm", 0.5, 30],
+    ])("accepts %s at both ends of its documented range (%d - %d)", (metric, min, max) => {
+      expect(confirmBodyScanRequestSchema.safeParse(withMeasurement(metric, min)).success).toBe(true);
+      expect(confirmBodyScanRequestSchema.safeParse(withMeasurement(metric, max)).success).toBe(true);
+    });
+
+    it("rejects a 5000 kg body scan -- the audit's own corrupting example", () => {
+      expect(confirmBodyScanRequestSchema.safeParse(withMeasurement("weight_kg", 5000)).success).toBe(false);
+    });
+
+    it("rejects a body-fat percentage above 100", () => {
+      expect(confirmBodyScanRequestSchema.safeParse(withMeasurement("body_fat_percent", 150)).success).toBe(false);
+    });
+  });
+
   it("bodyScanResponseSchema accepts a confirmed scan", () => {
     const response = {
       id: "11111111-1111-1111-1111-111111111111",
