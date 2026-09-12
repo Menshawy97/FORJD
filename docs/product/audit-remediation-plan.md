@@ -680,7 +680,7 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-Status as of 2026-09-13 (R5, R14 merged; R4 and R9 in review). "Done" means merged to `main`
+Status as of 2026-09-13 (R5, R9, R14 merged; R4 in review). "Done" means merged to `main`
 with a green post-merge CI run confirmed, per this plan's own CHECKPOINT step.
 
 | # | Slice | Package | Status | Notes |
@@ -694,7 +694,7 @@ with a green post-merge CI run confirmed, per this plan's own CHECKPOINT step.
 | R6 | WHOOP unique external user | api + migration | ✅ Done (#152) | — |
 | R7 | Body-scan transaction | api | ✅ Done (#151) | — |
 | R8 | Bounded observation reads | api | ✅ Done (#155) | — |
-| R9 | helmet, env schema, ValidationPipe, compression | api | Not started | — |
+| R9 | helmet, env schema, ValidationPipe, compression | api | ✅ Done (#160) | — |
 | R10 | Contract bounds and array caps | contracts + domain | ✅ Done (#154) | — |
 | R11 | Low security and config batch | api + infra | Not started | **stops for the user** — supabase/config.toml question |
 | R12 | Conformance script and its own tests | scripts + CI | ✅ Done (#157) | prettier-in-CI deliberately deferred — see PR body, 403 files of pre-existing drift |
