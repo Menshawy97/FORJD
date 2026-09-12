@@ -680,8 +680,8 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-Status as of 2026-09-13. "Done" means merged to `main` with a green post-merge CI run
-confirmed, per this plan's own CHECKPOINT step.
+Status as of 2026-09-13 (R5 merged). "Done" means merged to `main` with a green post-merge
+CI run confirmed, per this plan's own CHECKPOINT step.
 
 | # | Slice | Package | Status | Notes |
 |---|---|---|---|---|
@@ -690,7 +690,7 @@ confirmed, per this plan's own CHECKPOINT step.
 | R2 | AI consent gate, vision timeouts, vision throttle | api | ✅ Done (#149) | — |
 | R3 | Account deletion | api + mobile | ✅ Done (#150) | built the revoke helper R5 reuses |
 | R4 | Data export | api + mobile + contracts | Not started | after R3 — now unblocked |
-| R5 | WHOOP revoke and token wipe | api | Not started | reuses R3's `whoop-revoke.ts` helper — now unblocked |
+| R5 | WHOOP revoke and token wipe | api | ✅ Done (#158) | reused R3's `whoop-revoke.ts` helper |
 | R6 | WHOOP unique external user | api + migration | ✅ Done (#152) | — |
 | R7 | Body-scan transaction | api | ✅ Done (#151) | — |
 | R8 | Bounded observation reads | api | ✅ Done (#155) | — |
