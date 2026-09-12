@@ -176,6 +176,39 @@ describe("WHOOP integration (e2e)", () => {
     expect(ownerSync.body.observationCount).toBeGreaterThan(0);
   });
 
+  it("a second user completing OAuth against an already-linked WHOOP account gets 409, and the first user's connection is unchanged (H5)", async () => {
+    // The owner's connection (external_user_id 555111) was established in the earlier
+    // "completes the full authorize -> callback round trip" test. `other` now tries to link
+    // the *same* WHOOP account -- WHOOP itself would only ever return one profile for one
+    // access token, so this can only happen if the two users are, in reality, the same person
+    // trying to double-link, or two accounts sharing one WHOOP login. Either way, letting the
+    // second link succeed would silently move the first user's WHOOP data association.
+    fakeClient.exchangeAuthorizationCode.mockResolvedValue({
+      access_token: "other-access-token",
+      refresh_token: "other-refresh-token",
+      expires_in: 3600,
+      scope: "read:recovery read:sleep read:workout offline",
+    });
+    fakeClient.getProfile.mockResolvedValue({ user_id: 555111, email: otherEmail, first_name: "O", last_name: "T" });
+
+    const authorizeResponse = await authorize("other-token").expect(200);
+    const authorizeUrl = new URL(authorizeResponse.body.authorizeUrl);
+    const state = authorizeUrl.searchParams.get("state");
+    expect(state).toBeTruthy();
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/integrations/whoop/callback?code=fake-auth-code-2&state=${state}`)
+      .expect(409);
+
+    // The first user's connection must be completely unaffected by the rejected attempt.
+    const ownerStatus = await status("owner-token").expect(200);
+    expect(ownerStatus.body.connected).toBe(true);
+
+    // The second user must not have gained a connection out of the rejected attempt.
+    const otherStatus = await status("other-token").expect(200);
+    expect(otherStatus.body.connected).toBe(false);
+  });
+
   it("rejects a webhook with a forged signature", async () => {
     const { rawBody, timestamp } = signWebhook(
       { user_id: 555111, id: "93845", type: "recovery.updated", trace_id: "t1" },

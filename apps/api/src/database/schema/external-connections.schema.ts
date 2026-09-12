@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { users } from "./users.schema";
@@ -79,6 +80,23 @@ export const externalConnections = pgTable(
      *  btree index answers an equality lookup on its own leading columns just as well as a
      *  separate plain index would, so no second index is needed here. */
     uniqueIndex("external_connections_user_provider_unique").on(table.userId, table.provider),
+    /**
+     * One WHOOP (or any provider) account can back at most one FORJD user (H5, whole-repo
+     * audit 2026-09-10). Without this, `findByExternalUserId` -- the only way an incoming
+     * webhook, which carries just the provider's own numeric user id, is matched back to an
+     * internal user -- could not tell two users claiming the same external account apart, and
+     * a webhook could silently ingest one person's health data into another person's account.
+     *
+     * Partial (`WHERE external_user_id IS NOT NULL`), not a plain unique index: every
+     * `pending` row from `setPendingState` starts with `externalUserId: null` before the OAuth
+     * callback learns the provider's real id, and Postgres unique indexes already treat
+     * multiple `NULL`s as distinct -- but the `WHERE` clause makes that non-collision
+     * intentional and explicit rather than relying on incidental NULL semantics, matching
+     * `profiles_username_unique` (ADR-019)'s own partial-index shape one column over.
+     */
+    uniqueIndex("external_connections_provider_external_user_id_unique")
+      .on(table.provider, table.externalUserId)
+      .where(sql`${table.externalUserId} IS NOT NULL`),
   ],
 );
 
