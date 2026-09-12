@@ -11,8 +11,9 @@ import OpenAI from "openai";
  */
 export const NVIDIA_VISION_CLIENT = Symbol("NVIDIA_VISION_CLIENT");
 
+/** Same reasoning as `openai-vision-client.ts`'s own docblock. */
 export function createNvidiaVisionClient(apiKey: string): OpenAI {
-  return new OpenAI({ apiKey, baseURL: "https://integrate.api.nvidia.com/v1" });
+  return new OpenAI({ apiKey, baseURL: "https://integrate.api.nvidia.com/v1", timeout: 30_000, maxRetries: 0 });
 }
 
 export const nvidiaVisionClientProvider: Provider = {

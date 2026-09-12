@@ -10,8 +10,15 @@ import OpenAI from "openai";
  */
 export const OPENAI_VISION_CLIENT = Symbol("OPENAI_VISION_CLIENT");
 
+/**
+ * `timeout: 30_000, maxRetries: 0` -- without this, a hung vendor call occupies a request
+ * handler for minutes (the SDK's own default is ten), and the SDK's default retry behaviour
+ * retries non-retryable 4xx responses. WHOOP already caps every call at ten seconds
+ * (`whoop-client.ts`); this brings vision into line at a bound appropriate for a
+ * multi-second inference rather than a simple REST call.
+ */
 export function createOpenAiVisionClient(apiKey: string): OpenAI {
-  return new OpenAI({ apiKey });
+  return new OpenAI({ apiKey, timeout: 30_000, maxRetries: 0 });
 }
 
 export const openAiVisionClientProvider: Provider = {
