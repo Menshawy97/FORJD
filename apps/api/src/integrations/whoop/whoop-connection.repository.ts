@@ -56,7 +56,8 @@ export class WhoopConnectionRepository {
     const [row] = await this.db
       .select()
       .from(externalConnections)
-      .where(and(eq(externalConnections.provider, PROVIDER), eq(externalConnections.externalUserId, externalUserId)));
+      .where(and(eq(externalConnections.provider, PROVIDER), eq(externalConnections.externalUserId, externalUserId)))
+      .limit(1);
 
     return row ?? null;
   }

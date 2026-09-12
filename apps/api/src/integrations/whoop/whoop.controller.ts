@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -112,7 +113,16 @@ export class WhoopController {
     let result;
     try {
       result = await this.callbackService.completeAuthorization(state, code);
-    } catch {
+    } catch (error: unknown) {
+      // A WHOOP account already linked to a different user (H5) is a real conflict the
+      // caller needs to see as such -- rethrow so Nest's exception layer sends a proper 409,
+      // rather than folding it into the same generic "exchange_failed" redirect every other
+      // failure gets (the mobile client never sees a redirect's status code anyway; this
+      // response is consumed by whatever manual/API-testing flow is completing the callback).
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
       redirectWithStatus("error", "exchange_failed");
       return;
     }
