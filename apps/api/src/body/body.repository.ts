@@ -43,6 +43,12 @@ export interface MetricSeriesRow {
 export class BodyRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
+  /**
+   * R7 (H3): both inserts run inside one `db.transaction` -- a crash or thrown error between
+   * them (the measurements insert previously ran as a separate statement, after the photo
+   * was already uploaded) used to leave an unrecoverable scan row with zero measurements,
+   * since vision extraction is never re-run. Either both rows land, or neither does.
+   */
   async createScan(
     userId: string,
     measuredAt: Date,
@@ -50,24 +56,26 @@ export class BodyRepository {
     photoKey: string,
     measurements: NewMeasurementInput[],
   ): Promise<string> {
-    const [scan] = await this.db.insert(bodyScans).values({ userId, measuredAt, source, photoKey }).returning();
-    if (!scan) throw new Error("insert did not return a row");
+    return this.db.transaction(async (tx) => {
+      const [scan] = await tx.insert(bodyScans).values({ userId, measuredAt, source, photoKey }).returning();
+      if (!scan) throw new Error("insert did not return a row");
 
-    if (measurements.length > 0) {
-      await this.db.insert(bodyMeasurements).values(
-        measurements.map((m) => ({
-          scanId: scan.id,
-          userId,
-          metric: m.metric,
-          value: m.value.toString(),
-          unit: m.unit,
-          confidence: m.confidence.toString(),
-          measuredAt,
-        })),
-      );
-    }
+      if (measurements.length > 0) {
+        await tx.insert(bodyMeasurements).values(
+          measurements.map((m) => ({
+            scanId: scan.id,
+            userId,
+            metric: m.metric,
+            value: m.value.toString(),
+            unit: m.unit,
+            confidence: m.confidence.toString(),
+            measuredAt,
+          })),
+        );
+      }
 
-    return scan.id;
+      return scan.id;
+    });
   }
 
   async getScanById(userId: string, scanId: string): Promise<ScanWithMeasurementsRow | null> {
