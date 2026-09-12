@@ -18,10 +18,11 @@ import { UsersModule } from './users/users.module';
 import { AccountModule } from './users/account.module';
 import { StorageModule } from './storage/storage.module';
 import { WorkoutsModule } from './workouts/workouts.module';
+import { validateEnv } from './common/config/env-validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     LoggerModule.forRoot({
       pinoHttp: {
         transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty' },
