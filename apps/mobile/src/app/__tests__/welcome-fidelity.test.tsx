@@ -7,7 +7,7 @@
 // inlines the bar-chart mark `M5 19V11M12 19V5M19 19v-6` there instead, and the prototype
 // wins — so that is what this asserts.
 import { processColor } from 'react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 import { colors } from '@/theme/tokens';
 
@@ -41,7 +41,7 @@ const FEATURE_GLYPH_PATHS = {
 
 describe('welcome screen - design fidelity', () => {
   it('renders a glyph on each of the three feature rows, in accent orange at 19px', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/welcome' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/welcome' });
     await findByText(/Training\./);
 
     const nodes = flatten(toJSON());
@@ -70,7 +70,7 @@ describe('welcome screen - design fidelity', () => {
   });
 
   it('keeps the wordmark and the three feature captions', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/welcome' });
+    const { findByText } = await renderApp({ initialUrl: '/welcome' });
 
     await findByText('FORJD');
     await findByText('Strength · Running · Cross Training · Mobility');

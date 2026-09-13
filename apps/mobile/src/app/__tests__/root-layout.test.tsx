@@ -7,7 +7,7 @@
 // its extra helpers (getPathname, etc.) directly onto that Promise instance and returns it
 // un-awaited, so the call site must both hold onto the returned value (for the extra
 // helpers) and `await` it (to unwrap the actual query helpers, e.g. findByText).
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 // getCachedHasSession is what the root layout's useSyncExternalStore reads for its
 // redirect decision (phase 5); hasSession() only drives the one-time initial "has fonts +
@@ -30,7 +30,7 @@ describe('root layout auth gate', () => {
     (hasSession as jest.Mock).mockResolvedValue(false);
     (getCachedHasSession as jest.Mock).mockReturnValue(false);
 
-    const rendered = renderRouter('src/app', { initialUrl: '/' });
+    const rendered = renderApp({ initialUrl: '/' });
     const { findByText, queryByText } = await rendered;
 
     await findByText(/Training\./);
@@ -54,7 +54,7 @@ describe('root layout auth gate', () => {
     (hasSession as jest.Mock).mockResolvedValue(false);
     (getCachedHasSession as jest.Mock).mockReturnValue(false);
 
-    const rendered = renderRouter('src/app', { initialUrl: '/edit-profile' });
+    const rendered = renderApp({ initialUrl: '/edit-profile' });
     const { findByText } = await rendered;
 
     await findByText(/Training\./);
@@ -66,7 +66,7 @@ describe('root layout auth gate', () => {
     (hasSession as jest.Mock).mockResolvedValue(true);
     (getCachedHasSession as jest.Mock).mockReturnValue(true);
 
-    const rendered = renderRouter('src/app', { initialUrl: '/' });
+    const rendered = renderApp({ initialUrl: '/' });
     const { findByText, queryByText } = await rendered;
 
     await findByText('Home');
@@ -85,7 +85,7 @@ describe('root layout auth gate', () => {
     (hasSession as jest.Mock).mockRejectedValue(new Error('SecureStore unavailable'));
     (getCachedHasSession as jest.Mock).mockReturnValue(false);
 
-    const rendered = renderRouter('src/app', { initialUrl: '/' });
+    const rendered = renderApp({ initialUrl: '/' });
     const { findByText } = await rendered;
 
     await findByText(/Training\./);

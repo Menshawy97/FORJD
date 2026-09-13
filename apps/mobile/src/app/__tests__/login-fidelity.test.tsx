@@ -12,7 +12,7 @@
 // color of "Forgot password?" is pinned through its token class, which is the only place
 // the contract is observable in this environment.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -37,7 +37,7 @@ function flatten(node: unknown): HostNode[] {
 
 describe('login screen - design fidelity', () => {
   it('uses the prototype headline and subcopy', async () => {
-    const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/login' });
+    const { findByText, queryByText } = await renderApp({ initialUrl: '/login' });
 
     await findByText('Welcome back');
     await findByText('Log in to continue your training.');
@@ -45,7 +45,7 @@ describe('login screen - design fidelity', () => {
   });
 
   it('renders "Forgot password?" in the accent orange token, not dim grey', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/login' });
+    const { findByText } = await renderApp({ initialUrl: '/login' });
 
     const forgot = await findByText('Forgot password?');
     expect(String(forgot.props.className)).toContain('text-accent');
@@ -53,14 +53,14 @@ describe('login screen - design fidelity', () => {
   });
 
   it('renders the "No account? Create one" footer', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/login' });
+    const { findByText } = await renderApp({ initialUrl: '/login' });
 
     await findByText(/No account\?/);
     await findByText('Create one');
   });
 
   it('renders the 20x20 back chevron glyph, not a text character', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/login' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/login' });
     await findByText('Welcome back');
 
     const nodes = flatten(toJSON());
@@ -74,7 +74,7 @@ describe('login screen - design fidelity', () => {
   // Kept last in the file: a real navigation mutates expo-router's module-level route
   // store, which is only reset per test *file* (see welcome-login-cta.test.tsx's header).
   it('tapping "Create one" navigates to signup', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/login' });
+    const rendered = renderApp({ initialUrl: '/login' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Create one'));

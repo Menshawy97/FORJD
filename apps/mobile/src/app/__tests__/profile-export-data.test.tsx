@@ -4,7 +4,7 @@
 // `profile-navigation-connect.test.tsx` mocks `@/auth/apiClient` -- one navigation/behavior
 // assertion per file, matching this directory's own convention.
 import { fireEvent, waitFor } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('expo-web-browser', () => ({ openAuthSessionAsync: jest.fn() }));
@@ -37,7 +37,7 @@ describe('profile tab (R4) — export my data', () => {
   it(
     'renders an Export my data row under Account',
     async () => {
-      const rendered = renderRouter('src/app', { initialUrl: '/profile' });
+      const rendered = renderApp({ initialUrl: '/profile' });
       const { findByText } = await rendered;
 
       expect(await findByText('Export my data')).toBeTruthy();
@@ -46,7 +46,7 @@ describe('profile tab (R4) — export my data', () => {
   );
 
   it('tapping Export my data calls the export/share flow and stays on the profile screen', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/profile' });
+    const rendered = renderApp({ initialUrl: '/profile' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Export my data'));
@@ -57,7 +57,7 @@ describe('profile tab (R4) — export my data', () => {
 
   it('shows an error and re-enables the row when the export fails', async () => {
     (shareAccountExport as jest.Mock).mockRejectedValue(new Error('network error'));
-    const rendered = renderRouter('src/app', { initialUrl: '/profile' });
+    const rendered = renderApp({ initialUrl: '/profile' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Export my data'));

@@ -19,7 +19,7 @@
 // plumbing runs, same reasoning as login.test.tsx.
 import { act, fireEvent } from '@testing-library/react-native';
 import { router } from 'expo-router';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 // Home is a real dashboard now, not a placeholder, and it loads on focus -- so landing on
@@ -66,7 +66,7 @@ describe('swipe-back stack reset - login', () => {
       expiresAt: '2026-01-01T00:00:00.000Z',
     });
 
-    const rendered = renderRouter('src/app', { initialUrl: '/welcome' });
+    const rendered = renderApp({ initialUrl: '/welcome' });
     const { findByText, findByPlaceholderText } = await rendered;
     await findByText(/Training\./);
 

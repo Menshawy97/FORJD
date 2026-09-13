@@ -9,7 +9,7 @@
 // fires before signup's own navigation, so the user is authenticated while still on `/signup`
 // for the first-run `goals` screen's back-chevron trap (slice2-screen-specs.md §4.1/§4.6,
 // deliberately implemented and tested in Phase H). Gating `signup` here would break that.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn(),
@@ -28,7 +28,7 @@ describe('authenticated user on a public route', () => {
   });
 
   it('redirects away from /welcome to the tabs', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/welcome' });
+    const rendered = renderApp({ initialUrl: '/welcome' });
     const { findByText, queryByText } = await rendered;
 
     await findByText('Home');
@@ -38,7 +38,7 @@ describe('authenticated user on a public route', () => {
   });
 
   it('redirects away from /login to the tabs', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/login' });
+    const rendered = renderApp({ initialUrl: '/login' });
     const { findByText, queryByText } = await rendered;
 
     await findByText('Home');
@@ -48,7 +48,7 @@ describe('authenticated user on a public route', () => {
   });
 
   it('does not redirect away from /signup — the first-run back-chevron trap depends on it', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/signup' });
+    const rendered = renderApp({ initialUrl: '/signup' });
     const { findByText } = await rendered;
 
     await findByText('Create account');

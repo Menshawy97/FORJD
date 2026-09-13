@@ -18,7 +18,7 @@
 // signup-field-highlight.test.tsx documents. The press state is different: it is a plain
 // style function, so its output is real style and is asserted as such.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -74,7 +74,7 @@ describe('primary CTAs carry the accent glow', () => {
     ['/login', 'Welcome back', 'Log In'],
     ['/signup', 'Create account', 'Create Account'],
   ] as const)('%s', async (url, settleOn, label) => {
-    const { findByText, findByLabelText } = await renderRouter('src/app', { initialUrl: url });
+    const { findByText, findByLabelText } = await renderApp({ initialUrl: url });
     await findByText(settleOn);
 
     expect(classesOf(await findByLabelText(label))).toContain('shadow-primary-button');
@@ -83,7 +83,7 @@ describe('primary CTAs carry the accent glow', () => {
 
 describe('controls acknowledge a press', () => {
   it('scales the welcome primary CTA to .985 while held', async () => {
-    const { findByText, findByLabelText } = await renderRouter('src/app', {
+    const { findByText, findByLabelText } = await renderApp({
       initialUrl: '/welcome',
     });
     await findByText(/Training\./);
@@ -106,7 +106,7 @@ describe('controls acknowledge a press', () => {
   // press-feedback.ts (Part 1.3 of ui-remediation-and-phase-i-plan.md), NOT the primary
   // CTA's scale transform: the prototype's `btn()` has no active/pressed rule for ghost.
   it('fills and brightens the welcome ghost CTA while held, with no scale transform', async () => {
-    const { findByText, findByLabelText } = await renderRouter('src/app', {
+    const { findByText, findByLabelText } = await renderApp({
       initialUrl: '/welcome',
     });
     await findByText(/Training\./);

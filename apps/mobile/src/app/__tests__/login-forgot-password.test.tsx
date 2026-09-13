@@ -9,7 +9,7 @@
 // sends nothing. That is exactly what the prototype does too — `flash()` is its only
 // behaviour there — so this is fidelity, not a stub pretending to be a feature.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -20,7 +20,7 @@ jest.mock('@/auth/secureStorage', () => ({
 
 describe('login "Forgot password?"', () => {
   it('raises the prototype confirmation and stays on the screen', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/login' });
+    const rendered = renderApp({ initialUrl: '/login' });
     const { findByText, queryByText } = await rendered;
 
     await findByText('Welcome back');

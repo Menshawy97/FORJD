@@ -15,7 +15,7 @@
 //
 // tabs-layout.test.tsx continues to own the tab count, order, labels, glyphs and colours;
 // nothing here changes those.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(true),
@@ -54,7 +54,7 @@ describe('tab bar', () => {
   });
 
   it('renders a blur behind the bar', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/' });
     await findByText('Home');
 
     const blurs = flatten(toJSON()).filter((node) => node.type.includes('Blur'));

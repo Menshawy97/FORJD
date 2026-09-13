@@ -5,7 +5,7 @@
 // prototype's `tabbar()` helper, not the placeholder dot the earlier pass shipped. The path
 // data below is the prototype's, so a regression back to a placeholder fails here.
 import { processColor } from 'react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 import { colors } from '@/theme/tokens';
 
@@ -47,7 +47,7 @@ const TAB_GLYPH_PATHS: Record<string, string> = {
 
 describe('(tabs) shell', () => {
   it('renders exactly 5 tabs, in order, with the correct labels', async () => {
-    const { findByText, getAllByText } = await renderRouter('src/app', { initialUrl: '/' });
+    const { findByText, getAllByText } = await renderApp({ initialUrl: '/' });
 
     await findByText('Home');
 
@@ -62,7 +62,7 @@ describe('(tabs) shell', () => {
   });
 
   it('renders the active (initial) tab label in the accent orange token color', async () => {
-    const { findByText, getByText } = await renderRouter('src/app', { initialUrl: '/' });
+    const { findByText, getByText } = await renderApp({ initialUrl: '/' });
 
     const home = await findByText('Home');
     expect(flattenColor(home.props.style)).toBe(colors.accent);
@@ -72,7 +72,7 @@ describe('(tabs) shell', () => {
   });
 
   it('renders the real prototype glyph for every tab, not a placeholder', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/' });
     await findByText('Home');
 
     const paths = flatten(toJSON())
@@ -90,7 +90,7 @@ describe('(tabs) shell', () => {
   // states are driven from the design tokens rather than hardcoded. Which of the two is
   // *shown* is covered by the label-color test above, where only one node exists per tab.
   it('strokes every tab glyph from the accent / tab-inactive token pair', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/' });
     await findByText('Home');
 
     const paths = flatten(toJSON()).filter((node) => node.type === 'RNSVGPath');
@@ -109,7 +109,7 @@ describe('(tabs) shell', () => {
   });
 
   it('renders the tab glyphs at the design size of 22', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/' });
     await findByText('Home');
 
     // 5 tabs x the accent/inactive crossfade pair described above.

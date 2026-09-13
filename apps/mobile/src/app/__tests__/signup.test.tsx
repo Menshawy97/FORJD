@@ -4,7 +4,7 @@
 // in-memory cache is a module-level singleton; file boundaries are Jest's real isolation
 // unit, not describe/it boundaries).
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -20,7 +20,7 @@ describe('signup screen - validation', () => {
   });
 
   it('shows the all-fields-required error on empty submit', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/signup' });
+    const { findByText } = await renderApp({ initialUrl: '/signup' });
 
     fireEvent.press(await findByText('Create Account'));
 

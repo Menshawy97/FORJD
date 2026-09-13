@@ -25,7 +25,7 @@
 // @forjd/domain is a one-member tuple (`['free']`, billing is Phase 10), so there is no
 // second value to branch on yet, not stale sample data.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/secureStorage', () => {
@@ -79,7 +79,7 @@ describe('profile screen', () => {
   });
 
   it('renders the identity row from real profile data', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('Ada Lovelace');
     await findByText('Free User');
@@ -89,7 +89,7 @@ describe('profile screen', () => {
   // `profileHandle` is one combined string (`'@'+handle+' · '+city`), not two lines — this
   // reproduces that exact join.
   it('renders the handle and city combined when username is set', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('@ada_l · Alexandria');
   });
@@ -100,7 +100,7 @@ describe('profile screen', () => {
       profile: { ...PROFILE, username: null },
     });
 
-    const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText, queryByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('Alexandria');
     expect(queryByText(/^@/)).toBeNull();
@@ -112,7 +112,7 @@ describe('profile screen', () => {
       profile: { ...PROFILE, city: null },
     });
 
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('@ada_l');
   });
@@ -123,13 +123,13 @@ describe('profile screen', () => {
       profile: { ...PROFILE, displayName: null },
     });
 
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('—');
   });
 
   it('renders the Goals and Units subtitles from real saved values', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('Training');
     await findByText('Goals & Activities');
@@ -144,13 +144,13 @@ describe('profile screen', () => {
       profile: { ...PROFILE, trainingGoals: [], activities: [] },
     });
 
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('No goal set');
   });
 
   it('renders the three labelled settings groups with the design rows', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('Data');
     await findByText('Connected Sources');
@@ -168,14 +168,14 @@ describe('profile screen', () => {
   });
 
   it('replaces the "coming soon" placeholder', async () => {
-    const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText, queryByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('Ada Lovelace');
     expect(queryByText('profile — coming soon')).toBeNull();
   });
 
   it('renders the Log out control', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('Log out');
   });
@@ -183,7 +183,7 @@ describe('profile screen', () => {
   it('shows an inline error rather than a blank screen when the load fails', async () => {
     (getMe as jest.Mock).mockRejectedValue(new Error('boom'));
 
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     expect(
       await findByText('Could not load your profile. Please try again.'),
@@ -194,7 +194,7 @@ describe('profile screen', () => {
 
   // The behavioural test this whole slice exists for.
   it('tapping "Log out" clears the session and lands back on welcome', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/profile' });
+    const rendered = renderApp({ initialUrl: '/profile' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Log out'));

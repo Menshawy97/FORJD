@@ -5,7 +5,7 @@
 // renderRouter() calls once real navigation has happened within a test *file*, only between
 // separate test *files* (fresh module registry per file).
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -16,7 +16,7 @@ jest.mock('@/auth/secureStorage', () => ({
 
 describe('welcome screen', () => {
   it('renders the headline and CTA copy', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/welcome' });
+    const { findByText } = await renderApp({ initialUrl: '/welcome' });
 
     await findByText(/Training\./);
     await findByText('One place for everything your body is doing.');
@@ -25,7 +25,7 @@ describe('welcome screen', () => {
   });
 
   it('tapping "Create Account" navigates to signup', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/welcome' });
+    const rendered = renderApp({ initialUrl: '/welcome' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Create Account'));

@@ -14,7 +14,7 @@
 // `deleteItemAsync` as resolving for every test in it, and a rejecting variant would have to
 // mutate shared module state mid-suite. Separate file, separate module registry.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 
@@ -49,7 +49,7 @@ describe('profile screen - sign-out failure', () => {
     const gate = deferred<void>();
     (SecureStore.deleteItemAsync as jest.Mock).mockReturnValue(gate.promise);
 
-    const rendered = renderRouter('src/app', { initialUrl: '/profile' });
+    const rendered = renderApp({ initialUrl: '/profile' });
     const { findByText, findByLabelText, queryByText } = await rendered;
 
     const control = () => findByLabelText('Log out');

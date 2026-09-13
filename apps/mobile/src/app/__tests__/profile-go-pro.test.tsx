@@ -21,7 +21,7 @@
 // The gradient is a *linear* one, so this is expo-linear-gradient rather than the SVG radial
 // used for the screen atmosphere.
 import { processColor } from 'react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 import { colors } from '@/theme/tokens';
 
@@ -83,14 +83,14 @@ function textsInOrder(tree: unknown): string[] {
 
 describe('profile screen - Go Pro banner', () => {
   it('renders the banner copy and its pill', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText } = await renderApp({ initialUrl: '/profile' });
 
     await findByText('Get Unlimited Access to Everything');
     await findByText('Go Pro');
   });
 
   it('sits between the identity row and the first settings group', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/profile' });
     await findByText('Get Unlimited Access to Everything');
 
     const texts = textsInOrder(toJSON());
@@ -104,7 +104,7 @@ describe('profile screen - Go Pro banner', () => {
   });
 
   it('draws the prototype gradient and accent outline', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/profile' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/profile' });
     await findByText('Get Unlimited Access to Everything');
 
     // expo-linear-gradient lowers to a view-manager adapter host node carrying its colours

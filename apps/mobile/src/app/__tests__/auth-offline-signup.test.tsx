@@ -5,7 +5,7 @@
 // nothing the user can act on: it reads as "we declined you" when the real answer is "we
 // never heard from the server". The account may well be creatable a minute later.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 import { AxiosError } from 'axios';
 
 jest.mock('expo-secure-store');
@@ -24,7 +24,7 @@ describe('signup screen - the request never arrived', () => {
   it('reports a connection problem, not a rejected account', async () => {
     (signup as jest.Mock).mockRejectedValue(new AxiosError('Network Error'));
 
-    const rendered = renderRouter('src/app', { initialUrl: '/signup' });
+    const rendered = renderApp({ initialUrl: '/signup' });
     const { findByText, findByLabelText, queryByText } = await rendered;
 
     await fireEvent.changeText(await findByLabelText('Full name'), 'James Mitchell');

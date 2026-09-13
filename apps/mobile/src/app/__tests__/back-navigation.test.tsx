@@ -8,7 +8,7 @@
 // dependency.
 import { act } from '@testing-library/react-native';
 import { router } from 'expo-router';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -19,7 +19,7 @@ jest.mock('@/auth/secureStorage', () => ({
 
 describe('back navigation', () => {
   it('returns to welcome from login', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/welcome' });
+    const rendered = renderApp({ initialUrl: '/welcome' });
     const { findByText } = await rendered;
     await findByText(/Training\./);
 
@@ -35,7 +35,7 @@ describe('back navigation', () => {
   });
 
   it('returns to welcome from signup', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/welcome' });
+    const rendered = renderApp({ initialUrl: '/welcome' });
     const { findByText } = await rendered;
     await findByText(/Training\./);
 

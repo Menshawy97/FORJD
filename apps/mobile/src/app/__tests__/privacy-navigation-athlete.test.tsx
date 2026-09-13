@@ -1,7 +1,7 @@
 // Slice 2, phase J. One navigation assertion per file — see
 // profile-navigation-edit-profile.test.tsx for why.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -40,7 +40,7 @@ describe('privacy navigation (slice 2) — athlete', () => {
   });
 
   it('tapping Preview my public profile opens the athlete screen', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/privacy' });
+    const rendered = renderApp({ initialUrl: '/privacy' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Preview my public profile'));

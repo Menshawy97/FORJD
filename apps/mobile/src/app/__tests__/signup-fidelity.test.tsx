@@ -2,7 +2,7 @@
 // password hint line, and labels the first field with its placeholder ("Your name") rather
 // than the prototype's "Full name". All three come straight from the prototype's
 // `s_signup()`.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -27,14 +27,14 @@ function flatten(node: unknown): HostNode[] {
 
 describe('signup screen - design fidelity', () => {
   it('renders the prototype headline and subcopy', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/signup' });
+    const { findByText } = await renderApp({ initialUrl: '/signup' });
 
     await findByText('Create account');
     await findByText('Start tracking everything in one place.');
   });
 
   it('renders the password requirements hint under the password field', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/signup' });
+    const { findByText } = await renderApp({ initialUrl: '/signup' });
 
     // Deliberate deviation from the prototype (see PASSWORD_HINT in signup.tsx): the
     // prototype's wording omits the uppercase and symbol requirements that the contract and
@@ -46,7 +46,7 @@ describe('signup screen - design fidelity', () => {
   });
 
   it('labels the fields the way the prototype does', async () => {
-    const { findByText, findByPlaceholderText } = await renderRouter('src/app', {
+    const { findByText, findByPlaceholderText } = await renderApp({
       initialUrl: '/signup',
     });
 
@@ -59,7 +59,7 @@ describe('signup screen - design fidelity', () => {
   });
 
   it('renders the 20x20 back chevron glyph, not a text character', async () => {
-    const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: '/signup' });
+    const { findByText, toJSON } = await renderApp({ initialUrl: '/signup' });
     await findByText('Create account');
 
     const back = flatten(toJSON()).find(

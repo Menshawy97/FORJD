@@ -1,7 +1,7 @@
 // Slice 2, phase I. One navigation assertion per file — see
 // profile-navigation-edit-profile.test.tsx for why.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -41,7 +41,7 @@ describe('profile tab navigation (slice 2) — notifs', () => {
   });
 
   it('tapping Notifications opens the notifications screen', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/profile' });
+    const rendered = renderApp({ initialUrl: '/profile' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Notifications'));

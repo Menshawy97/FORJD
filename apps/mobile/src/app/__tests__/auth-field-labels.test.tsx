@@ -12,7 +12,7 @@
 //
 // Querying by label rather than placeholder is deliberate: it makes the a11y contract the
 // thing the test enforces, so it cannot regress silently.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 
@@ -25,14 +25,14 @@ describe('auth screens - accessible field names', () => {
   });
 
   it('names every input on the login screen', async () => {
-    const { findByLabelText } = await renderRouter('src/app', { initialUrl: '/login' });
+    const { findByLabelText } = await renderApp({ initialUrl: '/login' });
 
     await findByLabelText('Email');
     await findByLabelText('Password');
   });
 
   it('names every input on the signup screen', async () => {
-    const { findByLabelText } = await renderRouter('src/app', { initialUrl: '/signup' });
+    const { findByLabelText } = await renderApp({ initialUrl: '/signup' });
 
     await findByLabelText('Full name');
     await findByLabelText('Email');

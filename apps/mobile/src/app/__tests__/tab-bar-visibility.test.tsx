@@ -3,7 +3,7 @@
 //
 // See root-layout.test.tsx for why renderRouter()'s return value must both be held onto
 // (for getPathname()-style helpers) and awaited (to unwrap the query helpers).
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -14,7 +14,7 @@ jest.mock('@/auth/secureStorage', () => ({
 
 describe('screens without a tab bar', () => {
   it('welcome renders without the tab bar', async () => {
-    const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/welcome' });
+    const { findByText, queryByText } = await renderApp({ initialUrl: '/welcome' });
 
     await findByText(/Training\./);
 
@@ -23,7 +23,7 @@ describe('screens without a tab bar', () => {
   });
 
   it('login renders without the tab bar', async () => {
-    const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/login' });
+    const { findByText, queryByText } = await renderApp({ initialUrl: '/login' });
 
     // "Welcome back" is the login headline per the prototype — see login-fidelity.test.tsx.
     await findByText('Welcome back');
@@ -32,7 +32,7 @@ describe('screens without a tab bar', () => {
   });
 
   it('signup renders without the tab bar', async () => {
-    const { findByText, queryByText } = await renderRouter('src/app', { initialUrl: '/signup' });
+    const { findByText, queryByText } = await renderApp({ initialUrl: '/signup' });
 
     await findByText('Create account');
 
