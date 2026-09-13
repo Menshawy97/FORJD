@@ -9,14 +9,68 @@ import {
   MuscleSplitRow,
 } from "@forjd/domain";
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { Database, DRIZZLE } from "../database/database.module";
+import { executeValidated } from "../database/db-utils";
 import {
   civilDateMs,
   civilDateString,
   localCalendarDate,
   weekStartOf,
 } from "./workouts.repository";
+
+/**
+ * One Zod schema per raw-SQL call site below (R24) -- each mirrors that query's own `select`
+ * column list exactly, so a silently renamed or retyped column fails loudly through
+ * `executeValidated` instead of flowing into this file's arithmetic as `undefined`. Exported
+ * so `progress.repository.spec.ts` can assert each schema against that call site's real
+ * column list without standing up Postgres.
+ */
+export const recentPersonalRecordsRowSchema = z.object({
+  exercise_id: z.string(),
+  exercise_name: z.string(),
+  weight_kg: z.string(),
+  reps: z.number(),
+  // node-postgres returns timestamp columns as Date objects for a plain SELECT, but this
+  // column is computed inside a CTE (`coalesce(wset.completed_at, ws.started_at)`), which the
+  // driver comes back with as an ISO string instead -- coerce rather than assert a fixed shape,
+  // matching this file's own pre-existing `new Date(row.achieved_at)` downstream.
+  achieved_at: z.coerce.date(),
+  prior_best_weight_kg: z.string().nullable(),
+});
+
+export const oneRepMaxTrendRowSchema = z.object({
+  local_date: z.string(),
+  weight_kg: z.string(),
+  reps: z.number(),
+});
+
+export const dailyVolumeRowSchema = z.object({
+  local_date: z.string(),
+  volume_kg: z.string(),
+  sessions: z.number(),
+});
+
+export const trainingCalendarDayRowSchema = z.object({
+  local_date: z.string(),
+  activities: z.array(z.string()),
+});
+
+export const muscleSplitRowSchema = z.object({
+  weight_kg: z.string(),
+  reps: z.number(),
+  primary_muscles: z.array(z.string()),
+});
+
+export const readyToProgressRowSchema = z.object({
+  exercise_id: z.string(),
+  exercise_name: z.string(),
+});
+
+export const firstCompletedSessionRowSchema = z.object({
+  local_date: z.string().nullable(),
+});
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_WEEK = MS_PER_DAY * 7;
@@ -176,14 +230,9 @@ export class ProgressRepository {
     limit: number,
     currentMonthPrefix: string,
   ): Promise<ProgressPersonalRecordRow[]> {
-    const result = await this.db.execute<{
-      exercise_id: string;
-      exercise_name: string;
-      weight_kg: string;
-      reps: number;
-      achieved_at: Date;
-      prior_best_weight_kg: string | null;
-    }>(sql`
+    const result = await executeValidated(
+      this.db,
+      sql`
       with completed_sets as (
         select
           wse.exercise_id,
@@ -228,9 +277,12 @@ export class ProgressRepository {
       left join prior_best pb on pb.exercise_id = rec.exercise_id
       order by rec.achieved_at desc
       limit ${limit}
-    `);
+    `,
+      recentPersonalRecordsRowSchema,
+      "recentPersonalRecords",
+    );
 
-    return result.rows.map((row) => ({
+    return result.map((row) => ({
       exerciseId: row.exercise_id,
       exerciseName: row.exercise_name,
       weightKg: Number(row.weight_kg),
@@ -256,7 +308,8 @@ export class ProgressRepository {
     timeZone: string,
     windowStart: string,
   ): Promise<OneRepMaxTrendPointRow[]> {
-    const result = await this.db.execute<{ local_date: string; weight_kg: string; reps: number }>(
+    const result = await executeValidated(
+      this.db,
       sql`
       select
         to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM-DD') as local_date,
@@ -273,10 +326,12 @@ export class ProgressRepository {
         and wset.reps is not null
         and (ws.started_at at time zone ${timeZone})::date >= ${windowStart}::date
     `,
+      oneRepMaxTrendRowSchema,
+      "oneRepMaxTrend",
     );
 
     const bestByWeek = new Map<string, number>();
-    for (const row of result.rows) {
+    for (const row of result) {
       const estimate = estimateOneRepMaxKg(Number(row.weight_kg), Number(row.reps));
       if (estimate === null) continue;
       const week = weekStartOf(row.local_date);
@@ -298,7 +353,8 @@ export class ProgressRepository {
     timeZone: string,
     windowStart: string,
   ): Promise<Map<string, { volumeKg: number; sessionCount: number }>> {
-    const result = await this.db.execute<{ local_date: string; volume_kg: string; sessions: number }>(
+    const result = await executeValidated(
+      this.db,
       sql`
       select
         to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM-DD') as local_date,
@@ -317,10 +373,12 @@ export class ProgressRepository {
         and (ws.started_at at time zone ${timeZone})::date >= ${windowStart}::date
       group by 1
     `,
+      dailyVolumeRowSchema,
+      "dailyVolume",
     );
 
     const byDate = new Map<string, { volumeKg: number; sessionCount: number }>();
-    for (const row of result.rows) {
+    for (const row of result) {
       byDate.set(row.local_date, {
         volumeKg: Number(row.volume_kg),
         sessionCount: Number(row.sessions),
@@ -340,7 +398,9 @@ export class ProgressRepository {
     timeZone: string,
     monthPrefix: string,
   ): Promise<TrainingCalendarDayRow[]> {
-    const result = await this.db.execute<{ local_date: string; activities: string[] }>(sql`
+    const result = await executeValidated(
+      this.db,
+      sql`
       select
         to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM-DD') as local_date,
         array_agg(distinct ws.activity) as activities
@@ -350,9 +410,12 @@ export class ProgressRepository {
         and ws.status = 'completed'
         and to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM') = ${monthPrefix}
       group by 1
-    `);
+    `,
+      trainingCalendarDayRowSchema,
+      "trainingCalendarDays",
+    );
 
-    return result.rows
+    return result
       .map((row) => ({
         date: row.local_date,
         activity: (row.activities.every((activity) => activity === "running")
@@ -375,11 +438,9 @@ export class ProgressRepository {
     timeZone: string,
     monthPrefix: string,
   ): Promise<MuscleSplitRow[]> {
-    const result = await this.db.execute<{
-      weight_kg: string;
-      reps: number;
-      primary_muscles: string[];
-    }>(sql`
+    const result = await executeValidated(
+      this.db,
+      sql`
       select wset.weight_kg, wset.reps, e.primary_muscles
       from workout_sets wset
       join workout_session_exercises wse on wse.id = wset.session_exercise_id
@@ -392,10 +453,13 @@ export class ProgressRepository {
         and wset.weight_kg is not null
         and wset.reps is not null
         and to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM') = ${monthPrefix}
-    `);
+    `,
+      muscleSplitRowSchema,
+      "muscleSplit",
+    );
 
     const totals: Partial<Record<MuscleSplitBucket, number>> = {};
-    for (const row of result.rows) {
+    for (const row of result) {
       const volumeKg = Number(row.weight_kg) * Number(row.reps);
       const buckets = row.primary_muscles
         .map((muscle) => muscleSplitBucketFor(muscle as MuscleGroup))
@@ -420,7 +484,9 @@ export class ProgressRepository {
    * there is nothing honest to compare their reps against.
    */
   private async readyToProgress(userId: string): Promise<ReadyToProgressRow | null> {
-    const result = await this.db.execute<{ exercise_id: string; exercise_name: string }>(sql`
+    const result = await executeValidated(
+      this.db,
+      sql`
       with sessions_with_template as (
         select ws.id as session_id, ws.started_at, ws.template_id
         from workout_sessions ws
@@ -465,9 +531,12 @@ export class ProgressRepository {
         and c2.top_reps >= c2.target_reps + 1
       order by c1.started_at desc
       limit 1
-    `);
+    `,
+      readyToProgressRowSchema,
+      "readyToProgress",
+    );
 
-    const row = result.rows[0];
+    const row = result[0];
     if (!row) return null;
     return { exerciseId: row.exercise_id, exerciseName: row.exercise_name };
   }
@@ -477,13 +546,18 @@ export class ProgressRepository {
     userId: string,
     timeZone: string,
   ): Promise<string | null> {
-    const result = await this.db.execute<{ local_date: string | null }>(sql`
+    const result = await executeValidated(
+      this.db,
+      sql`
       select min(to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM-DD')) as local_date
       from workout_sessions ws
       where ws.user_id = ${userId}::uuid
         and ws.deleted_at is null
         and ws.status = 'completed'
-    `);
-    return result.rows[0]?.local_date ?? null;
+    `,
+      firstCompletedSessionRowSchema,
+      "firstCompletedSessionLocalDate",
+    );
+    return result[0]?.local_date ?? null;
   }
 }
