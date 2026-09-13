@@ -4,7 +4,7 @@
 // This is the test that makes Phase H's `?back=privacy` param real: `location.tsx` was built
 // to accept it, with nothing in the app setting it until the privacy screen shipped.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -34,7 +34,7 @@ describe('privacy navigation (slice 2) — location', () => {
   });
 
   it('tapping Location permission opens location with back=privacy', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/privacy' });
+    const rendered = renderApp({ initialUrl: '/privacy' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Location permission'));

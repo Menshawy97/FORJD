@@ -6,7 +6,7 @@
 // gives each test *file* its own fresh module registry, so this is file-scoped isolation,
 // not per-test.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -17,7 +17,7 @@ jest.mock('@/auth/secureStorage', () => ({
 
 describe('welcome screen - Log In CTA', () => {
   it('tapping "Log In" navigates to login', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/welcome' });
+    const rendered = renderApp({ initialUrl: '/welcome' });
     const { findByText } = await rendered;
 
     fireEvent.press(await findByText('Log In'));

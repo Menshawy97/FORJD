@@ -10,7 +10,7 @@
 // back-navigation.test.tsx covers the stack behaviour itself and drives `router.back()`
 // directly rather than through this control, so it is unaffected by this change.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('@/auth/secureStorage', () => ({
   hasSession: jest.fn().mockResolvedValue(false),
@@ -21,7 +21,7 @@ jest.mock('@/auth/secureStorage', () => ({
 
 describe('login back control', () => {
   it('goes to welcome even when login was not reached from welcome', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/login' });
+    const rendered = renderApp({ initialUrl: '/login' });
     const { findByText, findByLabelText } = await rendered;
 
     await findByText('Welcome back');

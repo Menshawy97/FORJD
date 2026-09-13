@@ -10,7 +10,7 @@
 //
 // No events are fired here, so several `renderRouter()` calls in one file are safe — the
 // hazard documented in signup-field-highlight.test.tsx only applies after an event.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 // Defaults to unauthenticated: `welcome`/`login`/`signup` need that to render at all now that
 // _layout.tsx's AuthenticatedGate (Part 1.1 of ui-remediation-and-phase-i-plan.md) redirects an
@@ -81,7 +81,7 @@ function flatten(node: unknown): HostNode[] {
 }
 
 async function emberGradientCount(url: string, settleOn: RegExp | string) {
-  const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: url });
+  const { findByText, toJSON } = await renderApp({ initialUrl: url });
   await findByText(settleOn);
   return flatten(toJSON()).filter((node) => node.type === 'RNSVGRadialGradient').length;
 }

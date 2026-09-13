@@ -5,7 +5,7 @@
 // is the one-shot flag `clearSession({ expired: true })` sets for exactly that case; welcome.tsx
 // reads it once on mount and shows a plain-language banner instead of leaving the user to
 // wonder why they were signed out.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 const mockConsumeSessionExpired = jest.fn();
 
@@ -24,7 +24,7 @@ describe('welcome screen - session-expired banner', () => {
   it('shows the session-expired banner when apiClient force-cleared the session', async () => {
     mockConsumeSessionExpired.mockReturnValue(true);
 
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/welcome' });
+    const { findByText } = await renderApp({ initialUrl: '/welcome' });
 
     await findByText('Your session expired. Please log in again.');
   });
@@ -32,7 +32,7 @@ describe('welcome screen - session-expired banner', () => {
   it('does not show the banner on an ordinary visit (app launch, manual logout)', async () => {
     mockConsumeSessionExpired.mockReturnValue(false);
 
-    const { findByText, queryByText } = await renderRouter('src/app', {
+    const { findByText, queryByText } = await renderApp({
       initialUrl: '/welcome',
     });
 

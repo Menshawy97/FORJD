@@ -10,7 +10,7 @@
 // there first, and `pick-username.tsx`'s own Continue button is what carries the user on to
 // `/goals?returnTo=newAccount` (see pick-username.test.tsx).
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -44,7 +44,7 @@ describe('signup screen - successful submit', () => {
       },
     });
 
-    const rendered = renderRouter('src/app', { initialUrl: '/signup' });
+    const rendered = renderApp({ initialUrl: '/signup' });
     const { findByText, findByPlaceholderText } = await rendered;
 
     fireEvent.changeText(await findByPlaceholderText('Your name'), 'Ada Lovelace');

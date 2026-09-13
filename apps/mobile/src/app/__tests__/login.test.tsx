@@ -14,7 +14,7 @@
 // layout's `useSyncExternalStore`-driven AuthGate react to a successful login within the
 // same render pass. A hand-rolled no-op `subscribeToSession` mock breaks that reactivity.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 // Home is a real dashboard now, not a placeholder, and it loads on focus -- so landing on
@@ -61,7 +61,7 @@ describe('login screen - success', () => {
       expiresAt: '2026-01-01T00:00:00.000Z',
     });
 
-    const rendered = renderRouter('src/app', { initialUrl: '/login' });
+    const rendered = renderApp({ initialUrl: '/login' });
     const { findByText, findByPlaceholderText } = await rendered;
 
     fireEvent.changeText(

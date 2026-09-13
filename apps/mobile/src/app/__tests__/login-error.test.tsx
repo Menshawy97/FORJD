@@ -1,7 +1,7 @@
 // Phase 5 RED: login screen — wrong credentials render an error state without navigating
 // away. Split from login.test.tsx; see that file's header comment for why.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -22,7 +22,7 @@ describe('login screen - wrong credentials', () => {
       response: { status: 401, data: { message: 'Invalid credentials' } },
     });
 
-    const rendered = renderRouter('src/app', { initialUrl: '/login' });
+    const rendered = renderApp({ initialUrl: '/login' });
     const { findByText, findByPlaceholderText } = await rendered;
 
     fireEvent.changeText(

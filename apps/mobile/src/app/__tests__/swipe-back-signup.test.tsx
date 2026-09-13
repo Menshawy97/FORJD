@@ -20,7 +20,7 @@
 // as signup-submit.test.tsx.
 import { act, fireEvent } from '@testing-library/react-native';
 import { router } from 'expo-router';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -54,7 +54,7 @@ describe('swipe-back stack reset - signup', () => {
       },
     });
 
-    const rendered = renderRouter('src/app', { initialUrl: '/welcome' });
+    const rendered = renderApp({ initialUrl: '/welcome' });
     const { findByText, findByPlaceholderText } = await rendered;
     await findByText(/Training\./);
 

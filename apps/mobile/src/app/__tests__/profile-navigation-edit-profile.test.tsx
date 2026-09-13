@@ -4,7 +4,7 @@
 // `/profile`, so this and profile-navigation-units.test.tsx each get their own fresh module
 // registry from Jest instead of sharing one.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
 jest.mock('@/auth/apiClient', () => ({
@@ -23,7 +23,7 @@ describe('profile tab navigation (slice 2) — editProfile', () => {
   });
 
   it('tapping the identity row opens editProfile', async () => {
-    const rendered = renderRouter('src/app', { initialUrl: '/profile' });
+    const rendered = renderApp({ initialUrl: '/profile' });
     const { findByText } = await rendered;
 
     // This file's getMe() mock resolves `profile: null`, so the identity row falls back to

@@ -32,7 +32,7 @@
 // compiled style is absent but the `className` prop survives on the host node — that is what
 // these assertions read.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 import { registerRequestSchema } from '@forjd/contracts';
 
 // Structural type rather than `ReactTestInstance` from react-test-renderer: that package is
@@ -78,7 +78,7 @@ describe('signup screen - which field gets the error border', () => {
   });
 
   it('points at the field that actually failed, at every step of the validation ladder', async () => {
-    const { findByText, findByLabelText, queryByText } = await renderRouter('src/app', {
+    const { findByText, findByLabelText, queryByText } = await renderApp({
       initialUrl: '/signup',
     });
 

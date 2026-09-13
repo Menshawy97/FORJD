@@ -10,7 +10,7 @@
 // Both facts under test are wiring, not pixels. Nothing in Jest rasterises a navigator
 // transition, so what is asserted is which theme object the provider receives and which
 // status-bar style is requested — the two inputs the flash follows from.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { Appearance } from 'react-native';
 
@@ -54,7 +54,7 @@ describe('root layout theming', () => {
     // `useColorScheme()` reports it the way it would on such a device.
     Appearance.setColorScheme('light');
 
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/welcome' });
+    const { findByText } = await renderApp({ initialUrl: '/welcome' });
     await findByText(/Training\./);
 
     expect(mockThemeValues.length).toBeGreaterThan(0);
@@ -71,7 +71,7 @@ describe('root layout theming', () => {
   });
 
   it('renders light status bar content', async () => {
-    const { findByText } = await renderRouter('src/app', { initialUrl: '/welcome' });
+    const { findByText } = await renderApp({ initialUrl: '/welcome' });
     await findByText(/Training\./);
 
     // Dark ground, so the clock and battery must be light. `expo-status-bar` is a

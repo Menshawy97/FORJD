@@ -9,7 +9,7 @@
 // renders an empty tree (see signup-field-highlight.test.tsx's header), and signup's own
 // offline path is covered in auth-offline-signup.test.tsx for the same reason.
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 import { AxiosError } from 'axios';
 
 jest.mock('expo-secure-store');
@@ -30,7 +30,7 @@ describe('login screen - the request never arrived', () => {
     // The shape axios produces when nothing came back: no `response` at all.
     (login as jest.Mock).mockRejectedValue(new AxiosError('Network Error'));
 
-    const rendered = renderRouter('src/app', { initialUrl: '/login' });
+    const rendered = renderApp({ initialUrl: '/login' });
     const { findByText, findByLabelText, queryByText } = await rendered;
 
     await fireEvent.changeText(await findByLabelText('Email'), 'user@example.com');

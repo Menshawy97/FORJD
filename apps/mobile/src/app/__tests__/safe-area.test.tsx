@@ -9,7 +9,7 @@
 //
 // The inset is applied once, by `ScreenBackground`, because it is the one thing every screen
 // already goes through — see src/components/screen-background.tsx.
-import { renderRouter } from 'expo-router/testing-library';
+import { renderApp } from './render-app';
 
 // A notched-phone inset, distinct from every constant in the codebase so a hardcoded value
 // cannot pass by coincidence.
@@ -91,7 +91,7 @@ function paddingTops(tree: unknown): number[] {
 }
 
 async function open(url: string, settleOn: RegExp | string) {
-  const { findByText, toJSON } = await renderRouter('src/app', { initialUrl: url });
+  const { findByText, toJSON } = await renderApp({ initialUrl: url });
   await findByText(settleOn);
   return toJSON();
 }
