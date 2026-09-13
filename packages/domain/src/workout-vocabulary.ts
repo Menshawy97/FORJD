@@ -42,6 +42,21 @@ export const WORKOUT_BLOCK_TYPE_DISPLAY_NAMES: Record<WorkoutBlockType, string> 
 };
 
 /**
+ * Exhaustiveness guard for a `switch` over `WorkoutBlockType` (H16, R22). `WorkoutBlock` below
+ * is a discriminated union keyed on `type`; a `switch` that ends its `default:` branch with
+ * `assertNeverWorkoutBlockType(value)` only type-checks once every member of
+ * `WORKOUT_BLOCK_TYPES` has its own `case` -- the compiler narrows the unhandled branch to
+ * `never` only then, so a block type added to the tuple later without a corresponding handler
+ * fails the build instead of silently falling through. At runtime this is reachable only if a
+ * caller bypasses the type system entirely (an unvalidated DB row, for instance), so it throws
+ * rather than doing nothing -- a silent no-op here would hide exactly the bug this guard exists
+ * to catch.
+ */
+export function assertNeverWorkoutBlockType(value: never): never {
+  throw new Error(`Unhandled workout block type: ${JSON.stringify(value)}`);
+}
+
+/**
  * What a single logged set *was*. The design's live screen writes only `working` -- it draws
  * an undifferentiated list of sets with no warm-up affordance -- so the other two are
  * deliberately unreachable from the UI today. They exist for the same reason the
@@ -195,17 +210,17 @@ export interface WorkoutTemplate {
 }
 
 /**
- * One grouped unit of work inside a template. Carries its `type` from day one even while
- * only `straight_sets` is implemented -- see `WORKOUT_BLOCK_TYPES`.
+ * Fields every block kind carries, regardless of `type`. Split out so the discriminated union
+ * below (`WorkoutBlock`) doesn't repeat them per member -- see that type's own docblock for why
+ * a union at all, given every member currently has the identical field set.
  *
  * The round/work/rest fields are the ones the non-straight-set types need (the design's
  * "8 rounds x 60s" conditioning workout is an interval block). They are `null` for
  * `straight_sets`, where the per-exercise prescription carries everything instead.
  */
-export interface WorkoutBlock {
+interface WorkoutBlockCommonFields {
   id: string;
   templateId: string;
-  type: WorkoutBlockType;
   /** Position within the template. Dense and zero-based; the repository assigns it. */
   orderIndex: number;
   /** An optional label the design shows on multi-block workouts, e.g. "Strength A". */
@@ -220,6 +235,23 @@ export interface WorkoutBlock {
   capSeconds: number | null;
   exercises: WorkoutExercise[];
 }
+
+/**
+ * One grouped unit of work inside a template, discriminated on `type` (H16, R22). Carries its
+ * `type` from day one even while only `straight_sets` is implemented -- see
+ * `WORKOUT_BLOCK_TYPES`.
+ *
+ * This is a union, not a flat interface with a `type: WorkoutBlockType` field, even though
+ * every member below has the same shape today: only `straight_sets` is implemented, so there is
+ * no field that yet differs *by* kind. The union exists so that a `switch (block.type)` written
+ * against it is exhaustiveness-checked by `assertNeverWorkoutBlockType` the moment `interval`,
+ * `amrap` or `superset` gain block-specific fields (or their own handler) -- a flat interface
+ * gives the compiler nothing to narrow on and a missed `case` would silently no-op instead of
+ * failing the build.
+ */
+export type WorkoutBlock = {
+  [K in WorkoutBlockType]: WorkoutBlockCommonFields & { type: K };
+}[WorkoutBlockType];
 
 /**
  * One prescribed exercise inside a block -- the `workout_exercises` row.

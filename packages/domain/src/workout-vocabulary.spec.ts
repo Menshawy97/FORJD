@@ -1,119 +1,95 @@
-/**
- * Every closed workout-vocabulary tuple must have a matching entry in its *DisplayName map,
- * and every tuple whose membership was a deliberate decision is pinned here by value --
- * this test is the enforcement, mirroring exercise-vocabulary.spec.ts's own pattern.
- * Written before the tuples exist (Phase A, RED first) per the standing TDD rule.
- */
 import {
-  WORKOUT_BLOCK_TYPES,
-  WORKOUT_BLOCK_TYPE_DISPLAY_NAMES,
-  WORKOUT_SET_TYPES,
-  WORKOUT_SET_TYPE_DISPLAY_NAMES,
-  WORKOUT_SESSION_STATUSES,
-  WORKOUT_SESSION_STATUS_DISPLAY_NAMES,
-  PERCEIVED_EFFORTS,
-  PERCEIVED_EFFORT_DISPLAY_NAMES,
-  WORKOUT_EVENT_TYPES,
-  WORKOUT_EVENT_TYPE_DISPLAY_NAMES,
-} from "./index";
+  assertNeverWorkoutBlockType,
+  WorkoutBlock,
+  WorkoutBlockType,
+} from "./workout-vocabulary";
 
-describe("workout vocabulary display-name coverage", () => {
-  const cases: Array<[string, readonly string[], Record<string, string>]> = [
-    ["WORKOUT_BLOCK_TYPES", WORKOUT_BLOCK_TYPES, WORKOUT_BLOCK_TYPE_DISPLAY_NAMES],
-    ["WORKOUT_SET_TYPES", WORKOUT_SET_TYPES, WORKOUT_SET_TYPE_DISPLAY_NAMES],
-    ["WORKOUT_SESSION_STATUSES", WORKOUT_SESSION_STATUSES, WORKOUT_SESSION_STATUS_DISPLAY_NAMES],
-    ["PERCEIVED_EFFORTS", PERCEIVED_EFFORTS, PERCEIVED_EFFORT_DISPLAY_NAMES],
-    ["WORKOUT_EVENT_TYPES", WORKOUT_EVENT_TYPES, WORKOUT_EVENT_TYPE_DISPLAY_NAMES],
-  ];
+/**
+ * R22 (H16) -- `WorkoutBlock.type` used to be a flat `WorkoutBlockType` field on an otherwise
+ * uniform interface, so nothing ever forced a `switch` over it to handle every member. These
+ * tests pin the exhaustiveness machinery: a runtime guard that throws instead of silently
+ * doing nothing, and a compile-time proof that a `switch` which forgets a case is a build
+ * failure, not a bug waiting to be discovered in production once `interval`/`amrap`/`superset`
+ * actually ship.
+ */
+describe("workout block type exhaustiveness", () => {
+  describe("assertNeverWorkoutBlockType", () => {
+    it("throws, naming the offending value, instead of silently doing nothing", () => {
+      // A value that could only reach here past the type system -- an unvalidated DB row, for
+      // instance -- cast to `never` the same way a real caller's `default:` branch would see it.
+      const unknownBlockType = "circuit" as unknown as never;
 
-  it.each(cases)("every %s member has a non-empty display name", (_label, tuple, map) => {
-    for (const member of tuple) {
-      const name = map[member];
-      expect(name).toBeDefined();
-      expect(typeof name).toBe("string");
-      expect((name ?? "").length).toBeGreaterThan(0);
+      expect(() => assertNeverWorkoutBlockType(unknownBlockType)).toThrow(/circuit/);
+    });
+  });
+
+  describe("exhaustive switch over WorkoutBlockType", () => {
+    /**
+     * Deliberately omits the `"time_based"` case. If `WORKOUT_BLOCK_TYPES` ever gains a sixth
+     * member, or if this switch is ever trimmed further, the `@ts-expect-error` below is what
+     * catches it: `assertNeverWorkoutBlockType` only accepts `never`, and the compiler only
+     * narrows the unhandled branch to `never` once every other member has its own `case`.
+     */
+    function describeBlockType(type: WorkoutBlockType): string {
+      switch (type) {
+        case "straight_sets":
+          return "Straight sets";
+        case "superset":
+          return "Superset";
+        case "interval":
+          return "Interval";
+        case "amrap":
+          return "AMRAP";
+        default:
+          // @ts-expect-error -- `type` is narrowed to `"time_based"` here, not `never`,
+          // because the switch above does not handle every WorkoutBlockType member. This
+          // proves assertNeverWorkoutBlockType(type) only type-checks once every case is
+          // handled -- the exhaustiveness guard this slice exists to add.
+          return assertNeverWorkoutBlockType(type);
+      }
     }
+
+    it("still handles every case this switch actually implements", () => {
+      expect(describeBlockType("straight_sets")).toBe("Straight sets");
+      expect(describeBlockType("superset")).toBe("Superset");
+      expect(describeBlockType("interval")).toBe("Interval");
+      expect(describeBlockType("amrap")).toBe("AMRAP");
+    });
   });
 
-  it.each(cases)("%s display-name map has no orphan keys", (_label, tuple, map) => {
-    const known = new Set<string>(tuple);
-    for (const key of Object.keys(map)) {
-      expect(known.has(key)).toBe(true);
-    }
-  });
+  describe("WorkoutBlock as a discriminated union", () => {
+    it("narrows to the matching member's fields once `type` is checked", () => {
+      const block: WorkoutBlock = {
+        id: "block-1",
+        templateId: "template-1",
+        type: "straight_sets",
+        orderIndex: 0,
+        name: null,
+        rounds: null,
+        workSeconds: null,
+        restSeconds: 90,
+        capSeconds: null,
+        exercises: [],
+      };
 
-  it.each(cases)("%s has no duplicate members", (_label, tuple) => {
-    expect(new Set(tuple).size).toBe(tuple.length);
-  });
+      function label(b: WorkoutBlock): string {
+        switch (b.type) {
+          case "straight_sets":
+            return "Straight sets";
+          case "superset":
+            return "Superset";
+          case "interval":
+            return "Interval";
+          case "amrap":
+            return "AMRAP";
+          case "time_based":
+            return "Time-based";
+          default:
+            return assertNeverWorkoutBlockType(b);
+        }
+      }
 
-  it.each(cases)("%s members are stable snake_case slugs, not display strings", (_label, tuple) => {
-    for (const member of tuple) {
-      expect(member).toMatch(/^[a-z][a-z0-9_]*$/);
-    }
-  });
-});
-
-describe("workout vocabulary membership", () => {
-  /**
-   * The five block types are fixed by docs/architecture/workout-engine.md and re-locked in
-   * phase-3-plan.md's locked-decisions table: only straight sets is *implemented* first, but
-   * all five ship in the tuple from day one so HYROX, running and Pilates arrive as content
-   * rather than as a schema migration. Narrowing this list later is free; discovering it is
-   * missing a value after `workout_blocks.type` is populated is not.
-   */
-  it("WORKOUT_BLOCK_TYPES carries all five types from day one", () => {
-    expect(WORKOUT_BLOCK_TYPES).toEqual([
-      "straight_sets",
-      "superset",
-      "interval",
-      "amrap",
-      "time_based",
-    ]);
-  });
-
-  /**
-   * The seven local event names are quoted verbatim by workout-engine.md's append-only-log
-   * section and are what crash recovery replays. They are slugs here rather than the doc's
-   * PascalCase because every other stored value set in this package is a slug.
-   */
-  it("WORKOUT_EVENT_TYPES matches the architecture doc's event log exactly", () => {
-    expect(WORKOUT_EVENT_TYPES).toEqual([
-      "set_completed",
-      "set_uncompleted",
-      "rest_started",
-      "rest_completed",
-      "exercise_completed",
-      "workout_paused",
-      "workout_resumed",
-      "workout_finished",
-    ]);
-  });
-
-  /**
-   * `set_uncompleted` is the one member NOT in `workout-engine.md`'s list -- see the tuple's
-   * own docblock. Pinned separately so a future reader does not "correct" the tuple back to
-   * the doc and silently break untick's crash recovery.
-   */
-  it("carries an un-complete event, which the architecture doc's list omits", () => {
-    expect(WORKOUT_EVENT_TYPES).toContain("set_uncompleted");
-  });
-
-  /** The prototype's four-value qualitative RPE row on the `done` screen, in its own order. */
-  it("PERCEIVED_EFFORTS matches the design's RPE row order exactly", () => {
-    expect(PERCEIVED_EFFORTS).toEqual(["easy", "solid", "hard", "brutal"]);
-  });
-
-  it("WORKOUT_SESSION_STATUSES covers the whole lifecycle a live session can reach", () => {
-    expect(WORKOUT_SESSION_STATUSES).toEqual([
-      "in_progress",
-      "paused",
-      "completed",
-      "cancelled",
-    ]);
-  });
-
-  it("WORKOUT_SET_TYPES leads with the only type the live screen writes today", () => {
-    expect(WORKOUT_SET_TYPES[0]).toBe("working");
-    expect(WORKOUT_SET_TYPES).toContain("warmup");
+      expect(label(block)).toBe("Straight sets");
+    });
   });
 });

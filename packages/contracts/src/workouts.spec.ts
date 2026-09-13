@@ -115,8 +115,54 @@ describe('workout contracts', () => {
       expect(parsed.basedOnTemplateId).toBeUndefined();
     });
 
-    it('accepts weight and distance targets as bare numbers -- kg and metres are fixed by contract, never a co-travelling unit field', () => {
+    it('accepts a weight target as a bare number -- kg is fixed by contract, never a co-travelling unit field', () => {
       const parsed = createWorkoutTemplateRequestSchema.parse({
+        ...validTemplate,
+        blocks: [
+          {
+            type: 'straight_sets' as const,
+            exercises: [
+              {
+                exerciseId: '11111111-1111-4111-8111-111111111111',
+                targetWeightKg: 100,
+              },
+            ],
+          },
+        ],
+      });
+      expect(parsed.blocks[0]?.exercises[0]).not.toHaveProperty('targetWeightUnit');
+      expect(parsed.blocks[0]?.exercises[0]?.targetWeightKg).toBe(100);
+    });
+
+    /**
+     * R22 (H16) -- `targetWeightKg`, `targetSeconds` and `targetDistanceMeters` follow the
+     * referenced exercise's `measure` and are mutually exclusive; sending more than one is
+     * never a legitimate request regardless of which measure the exercise turns out to have.
+     * The audit left open whether a service-layer check exists -- it does not -- so this
+     * boundary check is the only enforcement of the rule.
+     */
+    it('rejects an exercise carrying targetWeightKg, targetSeconds and targetDistanceMeters simultaneously', () => {
+      const result = createWorkoutTemplateRequestSchema.safeParse({
+        ...validTemplate,
+        blocks: [
+          {
+            type: 'straight_sets' as const,
+            exercises: [
+              {
+                exerciseId: '11111111-1111-4111-8111-111111111111',
+                targetWeightKg: 100,
+                targetSeconds: 45,
+                targetDistanceMeters: 2000,
+              },
+            ],
+          },
+        ],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects an exercise carrying just two of the three mutually-exclusive targets', () => {
+      const result = createWorkoutTemplateRequestSchema.safeParse({
         ...validTemplate,
         blocks: [
           {
@@ -131,9 +177,20 @@ describe('workout contracts', () => {
           },
         ],
       });
-      expect(parsed.blocks[0]?.exercises[0]).not.toHaveProperty('targetWeightUnit');
-      expect(parsed.blocks[0]?.exercises[0]?.targetWeightKg).toBe(100);
-      expect(parsed.blocks[0]?.exercises[0]?.targetDistanceMeters).toBe(2000);
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts an exercise with none of the three targets set', () => {
+      const result = createWorkoutTemplateRequestSchema.safeParse({
+        ...validTemplate,
+        blocks: [
+          {
+            type: 'straight_sets' as const,
+            exercises: [{ exerciseId: '11111111-1111-4111-8111-111111111111' }],
+          },
+        ],
+      });
+      expect(result.success).toBe(true);
     });
   });
 
@@ -147,6 +204,25 @@ describe('workout contracts', () => {
         updateWorkoutTemplateRequestSchema.safeParse({
           blocks: [
             { type: 'circuit', exercises: [{ exerciseId: '11111111-1111-4111-8111-111111111111' }] },
+          ],
+        }).success,
+      ).toBe(false);
+    });
+
+    it('still rejects mutually-exclusive targets on an exercise inside an updated block (R22)', () => {
+      expect(
+        updateWorkoutTemplateRequestSchema.safeParse({
+          blocks: [
+            {
+              type: 'straight_sets',
+              exercises: [
+                {
+                  exerciseId: '11111111-1111-4111-8111-111111111111',
+                  targetWeightKg: 100,
+                  targetSeconds: 45,
+                },
+              ],
+            },
           ],
         }).success,
       ).toBe(false);
