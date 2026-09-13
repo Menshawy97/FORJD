@@ -105,7 +105,19 @@ describe('Home total-load-failure state (R26)', () => {
 
     expect(mockGetMe).toHaveBeenCalledTimes(1);
 
-    mockGetMe.mockResolvedValue({ id: 'u1', email: 'a@example.com', profile: null, privacy: null });
+    mockGetMe.mockResolvedValue({
+      id: 'u1',
+      email: 'a@example.com',
+      profile: null,
+      privacy: {
+        publicProfile: false,
+        leaderboardOptIn: false,
+        locationForLeaderboard: false,
+        aiFeaturesConsent: false,
+        aiFeaturesConsentAt: null,
+        crashDiagnostics: false,
+      },
+    });
     mockListLog.mockResolvedValue({ items: [] });
 
     await fireEvent.press(retryButton);
