@@ -848,19 +848,41 @@ export const perceivedEffortSchema = z.enum(PERCEIVED_EFFORTS);
  * lookup this schema cannot perform, so it is a service-layer concern (Phase D), the same
  * division `createExerciseRequestSchema` draws around `goal`.
  */
-const createWorkoutExerciseInputSchema = z.object({
-  exerciseId: z.string().uuid(),
-  setCount: z.number().int().min(1).optional(),
-  targetReps: z.number().int().min(1).optional(),
-  targetRepsMax: z.number().int().min(1).optional(),
-  /** Always kilograms (ADR-016) -- there is no unit field to disagree with it. */
-  targetWeightKg: z.number().min(0).optional(),
-  targetSeconds: z.number().int().min(1).optional(),
-  /** Always metres, for the same reason weight is always kilograms. */
-  targetDistanceMeters: z.number().min(0).optional(),
-  restSeconds: z.number().int().min(0).optional(),
-  notes: z.string().trim().max(2000).optional(),
-});
+/**
+ * R22 (H16) -- `targetWeightKg`, `targetSeconds` and `targetDistanceMeters` are mutually
+ * exclusive: which one is meaningful follows the referenced exercise's `measure`
+ * (`weight | time | distance`), and that discriminator only ever selects one of them. This
+ * schema cannot look up the exercise to confirm *which* one applies -- see the docblock below
+ * -- but it can and does reject a request that sends more than one, which is never legitimate
+ * regardless of measure. The audit left open whether a service-layer check exists; it does not
+ * (`workouts.service.ts` copies these fields through unchecked), so this is the only place the
+ * cross-field rule is enforced today.
+ */
+const createWorkoutExerciseInputSchema = z
+  .object({
+    exerciseId: z.string().uuid(),
+    setCount: z.number().int().min(1).optional(),
+    targetReps: z.number().int().min(1).optional(),
+    targetRepsMax: z.number().int().min(1).optional(),
+    /** Always kilograms (ADR-016) -- there is no unit field to disagree with it. */
+    targetWeightKg: z.number().min(0).optional(),
+    targetSeconds: z.number().int().min(1).optional(),
+    /** Always metres, for the same reason weight is always kilograms. */
+    targetDistanceMeters: z.number().min(0).optional(),
+    restSeconds: z.number().int().min(0).optional(),
+    notes: z.string().trim().max(2000).optional(),
+  })
+  .refine(
+    (exercise) =>
+      [exercise.targetWeightKg, exercise.targetSeconds, exercise.targetDistanceMeters].filter(
+        (target) => target !== undefined,
+      ).length <= 1,
+    {
+      message:
+        "targetWeightKg, targetSeconds and targetDistanceMeters are mutually exclusive -- only one may be set per exercise.",
+      path: ["targetWeightKg"],
+    },
+  );
 
 /**
  * One block inside a create/update template. `type` is the tuple built above -- an unknown
