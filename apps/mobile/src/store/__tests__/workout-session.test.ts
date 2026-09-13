@@ -30,8 +30,18 @@ class FakeSqliteConnection implements SqliteConnection {
     string,
     { payload: string; status: string; attempt_count: number; next_retry_at: string; last_error: string | null }
   >();
+  /** Backs `PRAGMA user_version` -- see the `schema versioning (R25)` tests below. */
+  userVersion: number;
 
-  execAsync(): Promise<void> {
+  constructor(userVersion = 0) {
+    this.userVersion = userVersion;
+  }
+
+  execAsync(source: string): Promise<void> {
+    const versionMatch = /^\s*PRAGMA user_version\s*=\s*(\d+)/.exec(source);
+    if (versionMatch) {
+      this.userVersion = Number(versionMatch[1]);
+    }
     return Promise.resolve();
   }
 
@@ -83,6 +93,9 @@ class FakeSqliteConnection implements SqliteConnection {
   }
 
   getAllAsync<T>(source: string, params: unknown[] = []): Promise<T[]> {
+    if (source.trim() === 'PRAGMA user_version') {
+      return Promise.resolve([{ user_version: this.userVersion }] as unknown as T[]);
+    }
     if (source.startsWith('UPDATE session_queue SET attempt_count = attempt_count + 1')) {
       const [lastError, sessionId] = params as [string, string];
       const row = this.queue.get(sessionId);
@@ -476,6 +489,48 @@ describe('workout-session store', () => {
       expect(first.failed.length + second.failed.length).toBeGreaterThan(0);
       const rows = await getQueuedSessions(db);
       expect(rows[0]?.attemptCount).toBe(2);
+    });
+  });
+
+  describe('schema versioning (R25)', () => {
+    it('migrates a version-1 database to the latest version, preserving existing rows', async () => {
+      // A database already at version 1 -- the pre-R25 schema shape -- with a real row in it,
+      // as if the app had been used before this migration machinery existed.
+      const versionOneDb = new FakeSqliteConnection(1);
+      versionOneDb.events.push({
+        id: 1,
+        session_id: 'session-1',
+        type: 'workout_finished',
+        occurred_at: '2026-09-02T09:00:00.000Z',
+        payload: '{}',
+      });
+      versionOneDb.nextEventId = 2;
+
+      await ensureWorkoutSessionSchema(versionOneDb);
+
+      expect(versionOneDb.userVersion).toBe(2);
+      const events = await getSessionEvents(versionOneDb, 'session-1');
+      expect(events).toHaveLength(1);
+      expect(events[0]?.type).toBe('workout_finished');
+    });
+
+    it('is a no-op on a database already at the latest version', async () => {
+      const upToDateDb = new FakeSqliteConnection(2);
+
+      await expect(ensureWorkoutSessionSchema(upToDateDb)).resolves.toBeUndefined();
+
+      expect(upToDateDb.userVersion).toBe(2);
+    });
+
+    it('throws rather than silently proceeding when the database is newer than this app build understands', async () => {
+      // Simulates a newer build of the app (or a future migration) having already run against
+      // this database -- opening it with older code must fail loudly, not corrupt data.
+      const newerDb = new FakeSqliteConnection(99);
+
+      await expect(ensureWorkoutSessionSchema(newerDb)).rejects.toThrow(/version 99/);
+
+      // And it must not have silently bumped the version down or mutated it.
+      expect(newerDb.userVersion).toBe(99);
     });
   });
 });

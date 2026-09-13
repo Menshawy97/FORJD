@@ -26,8 +26,18 @@ class FakeSqliteConnection implements SqliteConnection {
   cache = new Map<string, { name: string; category: string; is_custom: number; is_favourite: number; data: string }>();
   fts = new Map<string, { name: string; muscles: string; equipment: string }>();
   meta = new Map<string, string>();
+  /** Backs `PRAGMA user_version` -- see the `schema versioning (R25)` tests below. */
+  userVersion: number;
 
-  execAsync(): Promise<void> {
+  constructor(userVersion = 0) {
+    this.userVersion = userVersion;
+  }
+
+  execAsync(source: string): Promise<void> {
+    const versionMatch = /^\s*PRAGMA user_version\s*=\s*(\d+)/.exec(source);
+    if (versionMatch) {
+      this.userVersion = Number(versionMatch[1]);
+    }
     return Promise.resolve();
   }
 
@@ -71,6 +81,9 @@ class FakeSqliteConnection implements SqliteConnection {
   }
 
   getAllAsync<T>(source: string, params: unknown[] = []): Promise<T[]> {
+    if (source.trim() === 'PRAGMA user_version') {
+      return Promise.resolve([{ user_version: this.userVersion }] as unknown as T[]);
+    }
     if (source.startsWith('SELECT value FROM catalogue_meta')) {
       const [key] = params as [string];
       const value = this.meta.get(key);
@@ -431,6 +444,45 @@ describe('exercise catalogue store', () => {
       await setLocalFavourite(db, 'a', true);
 
       expect(await getStoredCatalogueVersion(db)).toBe('v1');
+    });
+  });
+
+  describe('schema versioning (R25)', () => {
+    it('migrates a version-1 database to the latest version, preserving existing rows', async () => {
+      // A database already at version 1 -- the pre-R25 schema shape -- with a real row in it,
+      // as if the app had been used before this migration machinery existed.
+      const versionOneDb = new FakeSqliteConnection(1);
+      versionOneDb.cache.set('a', {
+        name: 'Barbell Bench Press',
+        category: 'strength',
+        is_custom: 0,
+        is_favourite: 0,
+        data: JSON.stringify(exercise({ id: 'a' })),
+      });
+
+      await ensureExerciseCatalogueSchema(versionOneDb);
+
+      expect(versionOneDb.userVersion).toBe(2);
+      expect(await getCachedExercise(versionOneDb, 'a')).not.toBeNull();
+    });
+
+    it('is a no-op on a database already at the latest version', async () => {
+      const upToDateDb = new FakeSqliteConnection(2);
+
+      await expect(ensureExerciseCatalogueSchema(upToDateDb)).resolves.toBeUndefined();
+
+      expect(upToDateDb.userVersion).toBe(2);
+    });
+
+    it('throws rather than silently proceeding when the database is newer than this app build understands', async () => {
+      // Simulates a newer build of the app (or a future migration) having already run against
+      // this database -- opening it with older code must fail loudly, not corrupt data.
+      const newerDb = new FakeSqliteConnection(99);
+
+      await expect(ensureExerciseCatalogueSchema(newerDb)).rejects.toThrow(/version 99/);
+
+      // And it must not have silently bumped the version down or mutated it.
+      expect(newerDb.userVersion).toBe(99);
     });
   });
 });
