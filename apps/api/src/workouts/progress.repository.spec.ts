@@ -1,20 +1,51 @@
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
-import { inArray } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { randomUUID } from "crypto";
+import { z } from "zod";
 import { MuscleGroup } from "@forjd/domain";
 
+import { Database } from "../database/database.module";
+import { executeValidated, RawSqlValidationError } from "../database/db-utils";
 import { exercises } from "../database/schema/exercises.schema";
 import { users } from "../database/schema/users.schema";
 import { workoutSessions, workoutTemplates } from "../database/schema/workouts.schema";
 import { ExercisesRepository } from "../exercises/exercises.repository";
-import { ProgressRepository } from "./progress.repository";
+import {
+  dailyVolumeRowSchema,
+  firstCompletedSessionRowSchema,
+  muscleSplitRowSchema,
+  oneRepMaxTrendRowSchema,
+  ProgressRepository,
+  readyToProgressRowSchema,
+  recentPersonalRecordsRowSchema,
+  trainingCalendarDayRowSchema,
+} from "./progress.repository";
 import {
   CreateWorkoutSessionExerciseInput,
   CreateWorkoutSessionInput,
   CreateWorkoutTemplateInput,
   WorkoutsRepository,
 } from "./workouts.repository";
+
+/**
+ * A fake `Database` whose `execute` resolves to whatever rows the test hands it -- enough to
+ * exercise `executeValidated`'s own parsing/throwing behaviour without a real Postgres
+ * connection. Only `execute` is used by `executeValidated`, so the rest of the `Database`
+ * surface is deliberately left unimplemented.
+ */
+function fakeDbReturning(rows: unknown[]): Database {
+  return {
+    execute: jest.fn().mockResolvedValue({ rows }),
+  } as unknown as Database;
+}
+
+/** Returns a shallow copy of `row` with `column` removed -- simulates a renamed column. */
+function withoutColumn<T extends Record<string, unknown>>(row: T, column: keyof T): Partial<T> {
+  const copy: Partial<T> = { ...row };
+  delete copy[column];
+  return copy;
+}
 
 /**
  * Exercised against real Postgres, matching `workouts.repository.spec.ts`'s own rationale:
@@ -325,5 +356,158 @@ describe("ProgressRepository", () => {
       const resultAfterTwo = await progressRepository.progressStrengthForUser(owner, ZONE, NOW);
       expect(resultAfterTwo.readyToProgress?.exerciseId).toBe(exerciseId);
     });
+  });
+});
+
+/**
+ * R24 -- unit-level coverage for the `executeValidated` wrapper itself and for every raw-SQL
+ * call site's Zod schema in `progress.repository.ts`. These run against a fake `Database`
+ * (no Postgres required) because the behaviour under test is "does a malformed driver row
+ * throw a named error instead of silently yielding `undefined`" -- a fact about the wrapper
+ * and the schemas, not about SQL execution.
+ */
+describe("executeValidated", () => {
+  const dummySchema = z.object({ id: z.string(), count: z.number() });
+
+  it("returns parsed rows when every row matches the schema", async () => {
+    const db = fakeDbReturning([{ id: "a", count: 1 }, { id: "b", count: 2 }]);
+
+    const rows = await executeValidated(db, sql`select 1`, dummySchema, "dummyCall");
+
+    expect(rows).toEqual([{ id: "a", count: 1 }, { id: "b", count: 2 }]);
+  });
+
+  it("throws a RawSqlValidationError, not undefined-propagating data, when a column is missing", async () => {
+    const db = fakeDbReturning([{ id: "a" }]);
+
+    await expect(executeValidated(db, sql`select 1`, dummySchema, "dummyCall")).rejects.toThrow(
+      RawSqlValidationError,
+    );
+  });
+
+  it("names the failing call site and row index in the thrown error", async () => {
+    const db = fakeDbReturning([{ id: "a", count: 1 }, { id: "b" }]);
+
+    await expect(executeValidated(db, sql`select 1`, dummySchema, "dummyCall")).rejects.toThrow(
+      /dummyCall.*row 1/,
+    );
+  });
+
+  it("throws when a column has the wrong type instead of yielding undefined into arithmetic", async () => {
+    const db = fakeDbReturning([{ id: "a", count: "not-a-number" }]);
+
+    await expect(executeValidated(db, sql`select 1`, dummySchema, "dummyCall")).rejects.toThrow(
+      RawSqlValidationError,
+    );
+  });
+});
+
+describe("progress.repository raw-SQL row schemas (R24, one per call site)", () => {
+  it("recentPersonalRecords: validates a good row and rejects a row missing exercise_name", async () => {
+    const goodRow = {
+      exercise_id: randomUUID(),
+      exercise_name: "Back Squat",
+      weight_kg: "140.00",
+      reps: 1,
+      achieved_at: new Date("2026-08-12T09:05:00Z"),
+      prior_best_weight_kg: null,
+    };
+    const dbGood = fakeDbReturning([goodRow]);
+    await expect(
+      executeValidated(dbGood, sql`select 1`, recentPersonalRecordsRowSchema, "recentPersonalRecords"),
+    ).resolves.toEqual([goodRow]);
+
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "exercise_name")]);
+    await expect(
+      executeValidated(dbBad, sql`select 1`, recentPersonalRecordsRowSchema, "recentPersonalRecords"),
+    ).rejects.toThrow(RawSqlValidationError);
+  });
+
+  it("oneRepMaxTrend: validates a good row and rejects reps sent as a string", async () => {
+    const goodRow = { local_date: "2026-08-17", weight_kg: "100.00", reps: 5 };
+    const dbGood = fakeDbReturning([goodRow]);
+    await expect(
+      executeValidated(dbGood, sql`select 1`, oneRepMaxTrendRowSchema, "oneRepMaxTrend"),
+    ).resolves.toEqual([goodRow]);
+
+    const dbBad = fakeDbReturning([{ ...goodRow, reps: "5" }]);
+    await expect(
+      executeValidated(dbBad, sql`select 1`, oneRepMaxTrendRowSchema, "oneRepMaxTrend"),
+    ).rejects.toThrow(RawSqlValidationError);
+  });
+
+  it("dailyVolume: validates a good row and rejects a row missing sessions", async () => {
+    const goodRow = { local_date: "2026-08-17", volume_kg: "500.00", sessions: 2 };
+    const dbGood = fakeDbReturning([goodRow]);
+    await expect(
+      executeValidated(dbGood, sql`select 1`, dailyVolumeRowSchema, "dailyVolume"),
+    ).resolves.toEqual([goodRow]);
+
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "sessions")]);
+    await expect(
+      executeValidated(dbBad, sql`select 1`, dailyVolumeRowSchema, "dailyVolume"),
+    ).rejects.toThrow(RawSqlValidationError);
+  });
+
+  it("trainingCalendarDays: validates a good row and rejects activities sent as a scalar, not an array", async () => {
+    const goodRow = { local_date: "2026-08-17", activities: ["strength"] };
+    const dbGood = fakeDbReturning([goodRow]);
+    await expect(
+      executeValidated(dbGood, sql`select 1`, trainingCalendarDayRowSchema, "trainingCalendarDays"),
+    ).resolves.toEqual([goodRow]);
+
+    const dbBad = fakeDbReturning([{ local_date: "2026-08-17", activities: "strength" }]);
+    await expect(
+      executeValidated(dbBad, sql`select 1`, trainingCalendarDayRowSchema, "trainingCalendarDays"),
+    ).rejects.toThrow(RawSqlValidationError);
+  });
+
+  it("muscleSplit: validates a good row and rejects a row missing primary_muscles", async () => {
+    const goodRow = { weight_kg: "100.00", reps: 10, primary_muscles: ["quads"] };
+    const dbGood = fakeDbReturning([goodRow]);
+    await expect(
+      executeValidated(dbGood, sql`select 1`, muscleSplitRowSchema, "muscleSplit"),
+    ).resolves.toEqual([goodRow]);
+
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "primary_muscles")]);
+    await expect(
+      executeValidated(dbBad, sql`select 1`, muscleSplitRowSchema, "muscleSplit"),
+    ).rejects.toThrow(RawSqlValidationError);
+  });
+
+  it("readyToProgress: validates a good row and rejects a row missing exercise_id", async () => {
+    const goodRow = { exercise_id: randomUUID(), exercise_name: "Bench Press" };
+    const dbGood = fakeDbReturning([goodRow]);
+    await expect(
+      executeValidated(dbGood, sql`select 1`, readyToProgressRowSchema, "readyToProgress"),
+    ).resolves.toEqual([goodRow]);
+
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "exercise_id")]);
+    await expect(
+      executeValidated(dbBad, sql`select 1`, readyToProgressRowSchema, "readyToProgress"),
+    ).rejects.toThrow(RawSqlValidationError);
+  });
+
+  it("firstCompletedSessionLocalDate: validates a null local_date and rejects local_date sent as a number", async () => {
+    const goodRow = { local_date: null };
+    const dbGood = fakeDbReturning([goodRow]);
+    await expect(
+      executeValidated(
+        dbGood,
+        sql`select 1`,
+        firstCompletedSessionRowSchema,
+        "firstCompletedSessionLocalDate",
+      ),
+    ).resolves.toEqual([goodRow]);
+
+    const dbBad = fakeDbReturning([{ local_date: 20260817 }]);
+    await expect(
+      executeValidated(
+        dbBad,
+        sql`select 1`,
+        firstCompletedSessionRowSchema,
+        "firstCompletedSessionLocalDate",
+      ),
+    ).rejects.toThrow(RawSqlValidationError);
   });
 });
