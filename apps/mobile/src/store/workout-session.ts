@@ -4,6 +4,7 @@ import type { WorkoutEventType, WorkoutSessionStatus } from '@forjd/domain';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 
 import type { SqliteConnection } from './exercise-catalogue';
+import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
 
 /**
  * The offline layer for a live workout session (Phase 3F, ADR-025). `expo-sqlite` behind the
@@ -35,39 +36,67 @@ export async function openWorkoutSessionDb(): Promise<SqliteConnection> {
   return SQLite.openDatabaseAsync(DATABASE_NAME);
 }
 
-/** Idempotent, run before every use -- see `exercise-catalogue.ts`'s own note on why (`IF NOT EXISTS` on every statement, cheap, no init step for a caller to forget). */
+/**
+ * Ordered schema history for this database, tracked by `PRAGMA user_version` (R25,
+ * `docs/product/audit-remediation-plan.md`) rather than bare `CREATE TABLE IF NOT EXISTS`
+ * statements -- see `sqlite-migrations.ts` for why that distinction matters once a schema
+ * changes on a device that already has data.
+ *
+ * v1 is exactly the three tables this store shipped with pre-R25. v2 adds an index on
+ * `session_events.session_id`: every read (`getSessionEvents`, `clearSessionEvents`) filters
+ * by it, and the table is unbounded (append-only for the lifetime of the app), so this is a
+ * real, load-bearing index, not one invented only to exercise the migration machinery.
+ */
+const MIGRATIONS: SqliteMigration[] = [
+  {
+    version: 1,
+    async up(db) {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS session_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          occurred_at TEXT NOT NULL,
+          payload TEXT NOT NULL
+        );
+      `);
+      // What the event log alone cannot rebuild. Replaying `session_events` restores *what
+      // happened* -- which sets were ticked, when the athlete paused -- but not *what the
+      // session is*: its name, its exercises, or the targets prescribed for each set. Without
+      // this row, a force-killed app has a log it cannot interpret. One row per unfinished
+      // session; dropped when the session finishes and is handed to the queue.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS session_snapshot (
+          session_id TEXT PRIMARY KEY,
+          payload TEXT NOT NULL,
+          started_at TEXT NOT NULL
+        );
+      `);
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS session_queue (
+          session_id TEXT PRIMARY KEY,
+          payload TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          attempt_count INTEGER NOT NULL DEFAULT 0,
+          next_retry_at TEXT NOT NULL,
+          last_error TEXT
+        );
+      `);
+    },
+  },
+  {
+    version: 2,
+    async up(db) {
+      await db.execAsync(`
+        CREATE INDEX IF NOT EXISTS idx_session_events_session_id ON session_events(session_id);
+      `);
+    },
+  },
+];
+
+/** Idempotent, run before every use -- see `exercise-catalogue.ts`'s own note on why (cheap, no init step for a caller to forget). Applies every migration a given database is missing; see `MIGRATIONS` above and `sqlite-migrations.ts` for the mechanism. */
 export async function ensureWorkoutSessionSchema(db: SqliteConnection): Promise<void> {
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS session_events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      type TEXT NOT NULL,
-      occurred_at TEXT NOT NULL,
-      payload TEXT NOT NULL
-    );
-  `);
-  // What the event log alone cannot rebuild. Replaying `session_events` restores *what happened*
-  // -- which sets were ticked, when the athlete paused -- but not *what the session is*: its
-  // name, its exercises, or the targets prescribed for each set. Without this row, a
-  // force-killed app has a log it cannot interpret. One row per unfinished session; dropped
-  // when the session finishes and is handed to the queue.
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS session_snapshot (
-      session_id TEXT PRIMARY KEY,
-      payload TEXT NOT NULL,
-      started_at TEXT NOT NULL
-    );
-  `);
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS session_queue (
-      session_id TEXT PRIMARY KEY,
-      payload TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending',
-      attempt_count INTEGER NOT NULL DEFAULT 0,
-      next_retry_at TEXT NOT NULL,
-      last_error TEXT
-    );
-  `);
+  await runSqliteMigrations(db, MIGRATIONS);
 }
 
 /**

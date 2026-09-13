@@ -3,6 +3,8 @@ import type { SQLiteBindValue } from 'expo-sqlite';
 
 import type { ExerciseCatalogueResponse, ExerciseResponse } from '@forjd/contracts';
 
+import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
+
 /**
  * The on-device exercise library (Phase H). `expo-sqlite` behind a function seam, the way
  * `notification-preferences.ts` wraps AsyncStorage: screens never touch SQLite directly, and
@@ -42,9 +44,9 @@ export async function openExerciseCatalogueDb(): Promise<SqliteConnection> {
 }
 
 /**
- * Idempotent, run before every use rather than once at app startup -- cheap (`IF NOT EXISTS`
- * on every statement) and it means a test or a caller never has to remember an init step
- * happened first.
+ * Idempotent, run before every use rather than once at app startup -- a test or a caller never
+ * has to remember an init step happened first; `runSqliteMigrations` below is itself cheap to
+ * call repeatedly (a single `PRAGMA user_version` read when there is nothing left to apply).
  *
  * `exercises_cache.data` holds the full `ExerciseResponse` JSON, minus `isFavourite` --
  * deliberately not baked into the blob, because favourite state is written far more often
@@ -53,41 +55,69 @@ export async function openExerciseCatalogueDb(): Promise<SqliteConnection> {
  * searchable text is duplicated into the index by design, but the row it belongs to is always
  * fetched from `exercises_cache` by id, never from the FTS table itself, so there is exactly
  * one place a row's real content lives.
+ *
+ * Each table/index is still its own `execAsync` call, not one call carrying several statements
+ * separated by `;` -- kept from the pre-R25 shape of this function, which split them while
+ * investigating a `NativeDatabase.execAsync` -> `NullPointerException` seen on the Android
+ * **emulator** (API 34, x86_64). The split alone did not resolve that issue, so the cause is
+ * not multi-statement parsing, but it is a strictly simpler call shape and makes a future
+ * native-side investigation easier to pinpoint (each statement fails or succeeds
+ * independently). See the same investigation's note in ADR-022 for what is and isn't
+ * confirmed about where this reproduces.
  */
 /**
- * One `execAsync` call per statement, not one call carrying all three separated by `;`.
- * Split while investigating a `NativeDatabase.execAsync` -> `NullPointerException` seen on
- * the Android **emulator** (API 34, x86_64) — the split alone did not resolve it, so the
- * cause is not multi-statement parsing. Kept anyway: it is a strictly simpler call shape and
- * makes a future native-side investigation easier to pinpoint (each statement fails or
- * succeeds independently). See the same investigation's note in ADR-022 for what is and
- * isn't confirmed about where this reproduces.
+ * Ordered schema history for this database, tracked by `PRAGMA user_version` (R25,
+ * `docs/product/audit-remediation-plan.md`) rather than bare `CREATE TABLE IF NOT EXISTS`
+ * statements -- see `sqlite-migrations.ts` for why that distinction matters once a schema
+ * changes on a device that already has data.
+ *
+ * v1 is exactly the three tables/index this store shipped with pre-R25. v2 adds an index on
+ * `exercises_cache.category`: `listCachedExercises`'s `category = ?` filter is a real,
+ * frequently-hit query path (the library screen's category chips) over a ~1,700-row table, so
+ * this is a load-bearing index, not one invented only to exercise the migration machinery.
  */
+const MIGRATIONS: SqliteMigration[] = [
+  {
+    version: 1,
+    async up(db) {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS exercises_cache (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          category TEXT NOT NULL,
+          is_custom INTEGER NOT NULL,
+          is_favourite INTEGER NOT NULL DEFAULT 0,
+          data TEXT NOT NULL
+        );
+      `);
+      await db.execAsync(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS exercises_fts USING fts5(
+          id UNINDEXED,
+          name,
+          muscles,
+          equipment
+        );
+      `);
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS catalogue_meta (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        );
+      `);
+    },
+  },
+  {
+    version: 2,
+    async up(db) {
+      await db.execAsync(`
+        CREATE INDEX IF NOT EXISTS idx_exercises_cache_category ON exercises_cache(category);
+      `);
+    },
+  },
+];
+
 export async function ensureExerciseCatalogueSchema(db: SqliteConnection): Promise<void> {
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS exercises_cache (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      is_custom INTEGER NOT NULL,
-      is_favourite INTEGER NOT NULL DEFAULT 0,
-      data TEXT NOT NULL
-    );
-  `);
-  await db.execAsync(`
-    CREATE VIRTUAL TABLE IF NOT EXISTS exercises_fts USING fts5(
-      id UNINDEXED,
-      name,
-      muscles,
-      equipment
-    );
-  `);
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS catalogue_meta (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
+  await runSqliteMigrations(db, MIGRATIONS);
 }
 
 export async function getStoredCatalogueVersion(db: SqliteConnection): Promise<string | null> {
