@@ -40,6 +40,13 @@ function fakeDbReturning(rows: unknown[]): Database {
   } as unknown as Database;
 }
 
+/** Returns a shallow copy of `row` with `column` removed -- simulates a renamed column. */
+function withoutColumn<T extends Record<string, unknown>>(row: T, column: keyof T): Partial<T> {
+  const copy: Partial<T> = { ...row };
+  delete copy[column];
+  return copy;
+}
+
 /**
  * Exercised against real Postgres, matching `workouts.repository.spec.ts`'s own rationale:
  * the behaviour under test is date-window SQL and multi-table joins, which a mock would only
@@ -410,8 +417,7 @@ describe("progress.repository raw-SQL row schemas (R24, one per call site)", () 
       executeValidated(dbGood, sql`select 1`, recentPersonalRecordsRowSchema, "recentPersonalRecords"),
     ).resolves.toEqual([goodRow]);
 
-    const { exercise_name: _dropped, ...malformedRow } = goodRow;
-    const dbBad = fakeDbReturning([malformedRow]);
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "exercise_name")]);
     await expect(
       executeValidated(dbBad, sql`select 1`, recentPersonalRecordsRowSchema, "recentPersonalRecords"),
     ).rejects.toThrow(RawSqlValidationError);
@@ -437,8 +443,7 @@ describe("progress.repository raw-SQL row schemas (R24, one per call site)", () 
       executeValidated(dbGood, sql`select 1`, dailyVolumeRowSchema, "dailyVolume"),
     ).resolves.toEqual([goodRow]);
 
-    const { sessions: _dropped, ...malformedRow } = goodRow;
-    const dbBad = fakeDbReturning([malformedRow]);
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "sessions")]);
     await expect(
       executeValidated(dbBad, sql`select 1`, dailyVolumeRowSchema, "dailyVolume"),
     ).rejects.toThrow(RawSqlValidationError);
@@ -464,8 +469,7 @@ describe("progress.repository raw-SQL row schemas (R24, one per call site)", () 
       executeValidated(dbGood, sql`select 1`, muscleSplitRowSchema, "muscleSplit"),
     ).resolves.toEqual([goodRow]);
 
-    const { primary_muscles: _dropped, ...malformedRow } = goodRow;
-    const dbBad = fakeDbReturning([malformedRow]);
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "primary_muscles")]);
     await expect(
       executeValidated(dbBad, sql`select 1`, muscleSplitRowSchema, "muscleSplit"),
     ).rejects.toThrow(RawSqlValidationError);
@@ -478,8 +482,7 @@ describe("progress.repository raw-SQL row schemas (R24, one per call site)", () 
       executeValidated(dbGood, sql`select 1`, readyToProgressRowSchema, "readyToProgress"),
     ).resolves.toEqual([goodRow]);
 
-    const { exercise_id: _dropped, ...malformedRow } = goodRow;
-    const dbBad = fakeDbReturning([malformedRow]);
+    const dbBad = fakeDbReturning([withoutColumn(goodRow, "exercise_id")]);
     await expect(
       executeValidated(dbBad, sql`select 1`, readyToProgressRowSchema, "readyToProgress"),
     ).rejects.toThrow(RawSqlValidationError);
