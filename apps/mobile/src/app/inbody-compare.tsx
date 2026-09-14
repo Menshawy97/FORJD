@@ -1,10 +1,11 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { BodyScanResponse } from '@forjd/contracts';
 import { BODY_METRIC_DISPLAY_NAMES, type BodyMetric } from '@forjd/domain';
 
 import { getBodyScan } from '@/auth/apiClient';
+import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { formatScanDate } from '@/features/body/format-scan-date';
@@ -15,41 +16,73 @@ import { colors } from '@/theme/tokens';
  *  nine BODY_METRICS keys. */
 const HIGHER_IS_BETTER = new Set<BodyMetric>(['skeletal_muscle_mass_kg', 'inbody_score']);
 
+/** R26: distinct from the empty state (missing params), and offers a retry that re-issues
+ *  both requests -- matching `program/[id].tsx`'s error-view shape. */
+function errorMessage(error: unknown): string {
+  return classifyRequestFailure(error) === 'offline'
+    ? OFFLINE_MESSAGE
+    : 'Could not load these scans. Please try again.';
+}
+
 /** `s_inbodyCompare()` (`FORJD Mobile.dc.html:2200`). No dedicated screenshot -- same gap as
  *  the confirm and scan-detail screens. */
 export default function InBodyCompareScreen() {
   const { a, b } = useLocalSearchParams<{ a: string; b: string }>();
   const [scanA, setScanA] = useState<BodyScanResponse | null>(null);
   const [scanB, setScanB] = useState<BodyScanResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    if (!a || !b) return;
+    setError(null);
+    Promise.all([getBodyScan(a), getBodyScan(b)])
+      .then(([resA, resB]) => {
+        // Earlier first, regardless of which the user tapped first.
+        if (new Date(resA.measuredAt) <= new Date(resB.measuredAt)) {
+          setScanA(resA);
+          setScanB(resB);
+        } else {
+          setScanA(resB);
+          setScanB(resA);
+        }
+      })
+      .catch((cause: unknown) => {
+        setScanA(null);
+        setScanB(null);
+        setError(errorMessage(cause));
+      });
+  }, [a, b]);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      if (a && b) {
-        Promise.all([getBodyScan(a), getBodyScan(b)])
-          .then(([resA, resB]) => {
-            if (cancelled) return;
-            // Earlier first, regardless of which the user tapped first.
-            if (new Date(resA.measuredAt) <= new Date(resB.measuredAt)) {
-              setScanA(resA);
-              setScanB(resB);
-            } else {
-              setScanA(resB);
-              setScanB(resA);
-            }
-          })
-          .catch(() => {
-            if (!cancelled) {
-              setScanA(null);
-              setScanB(null);
-            }
-          });
-      }
-      return () => {
-        cancelled = true;
-      };
-    }, [a, b]),
+      load();
+    }, [load]),
   );
+
+  if (error) {
+    return (
+      <ScreenBackground>
+        <Header title="Compare Scans" onBack={() => router.back()} />
+        <View className="flex-1 items-center justify-center px-screen-x">
+          <Text
+            className="mb-4 text-center font-archivo text-[13px]"
+            style={{ color: colors.dim }}>
+            {error}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retry"
+            onPress={load}
+            className="rounded-button border px-4 py-2"
+            style={{ borderColor: colors.border }}>
+            <Text className="font-archivo text-[13px] font-semibold" style={{ color: colors.text }}>
+              Retry
+            </Text>
+          </Pressable>
+        </View>
+      </ScreenBackground>
+    );
+  }
 
   if (!scanA || !scanB) {
     return (

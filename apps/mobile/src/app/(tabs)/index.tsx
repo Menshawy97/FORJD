@@ -7,7 +7,7 @@ import type {
 } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   getHealthObservationSeries,
@@ -18,6 +18,7 @@ import {
   getWorkoutStats,
   listNutritionLog,
 } from '@/auth/apiClient';
+import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { ScreenBackground } from '@/components/screen-background';
 import { formatHomeDate } from '@/features/home/date';
 import { FailedSyncBanner, FailedSyncBannerSession } from '@/features/home/failed-sync-banner';
@@ -61,9 +62,15 @@ import { syncPendingSessions } from '@/workouts/sync-sessions';
  * Loading mirrors `nutrition.tsx`: `useFocusEffect` rather than a mount-only effect (logging
  * a meal and coming back must not leave a stale calorie count), `Promise.allSettled` so one
  * failed request cannot empty the sections the others fill, and one `setState` commit per
- * load. Nothing here shows an error toast --
- * Home is the launch screen, and the honest empty state a failed request falls back to is
- * already the state this screen renders before any data arrives.
+ * load. A single request failing shows no error toast -- Home is the launch screen, and the
+ * honest empty state that request's own section falls back to is already the state it renders
+ * before any data arrives.
+ *
+ * **R26.** A *total* failure (every request in the batch rejecting -- no network reachable at
+ * all) is a different case: six sections all going honestly-empty at once reads exactly like a
+ * brand-new account, which is the wrong message for "you're offline". That case gets one
+ * dismissable-by-retry banner instead, distinguishing "nothing to show yet" from "couldn't
+ * reach the server" without touching the per-section honest-empty behaviour above.
  */
 export default function HomeScreen() {
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -73,6 +80,7 @@ export default function HomeScreen() {
   const [healthSeries, setHealthSeries] = useState<HealthObservationSeriesResponse | null>(null);
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
   const [failedSessions, setFailedSessions] = useState<FailedSyncBannerSession[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Bumped by every load and by every blur, so only the newest in-flight load may commit.
   // Without it, flicking between tabs can land an older response after a newer one and show
@@ -98,6 +106,23 @@ export default function HomeScreen() {
       ]);
 
     if (generation !== loadGeneration.current) return;
+
+    // R26: distinguishes "no network reachable at all" from an ordinary new account, without
+    // touching the per-section honest-empty fallback below for a partial failure.
+    const settled = [meResult, logResult, goalsResult, statsResult, healthSeriesResult, readinessResult];
+    const allFailed = settled.every((result) => result.status === 'rejected');
+    if (allFailed) {
+      const firstRejection = settled.find(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      );
+      setLoadError(
+        firstRejection && classifyRequestFailure(firstRejection.reason) === 'offline'
+          ? OFFLINE_MESSAGE
+          : 'Could not load your dashboard. Please try again.',
+      );
+    } else {
+      setLoadError(null);
+    }
 
     // `displayName` is nullable (ADR-019) and the profile itself can be absent, so the
     // greeting has three states, not two -- and "Hi, null" is none of them.
@@ -198,6 +223,19 @@ export default function HomeScreen() {
         <Text className="mb-[14px] mt-[6px] font-archivo text-home-meta font-medium text-dimmer">
           {formatHomeDate(new Date())}
         </Text>
+
+        {loadError ? (
+          <View className="mb-[14px] items-center rounded-card border border-border bg-surface px-4 py-4">
+            <Text className="mb-3 text-center font-archivo text-[13px] text-dimmer">{loadError}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Retry"
+              onPress={() => void load()}
+              className="rounded-button border border-border px-4 py-2">
+              <Text className="font-archivo text-[13px] font-semibold text-text">Retry</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <FailedSyncBanner failedSessions={failedSessions} onRetry={handleRetryFailedSession} />
 
