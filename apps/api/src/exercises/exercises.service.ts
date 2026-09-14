@@ -114,6 +114,45 @@ export class ExercisesService {
   }
 
   /**
+   * The conditional-GET variant behind `R20`: the same single row fetch as `getCatalogue`
+   * above, but the ~1,700-row body is serialized only when the caller's `If-None-Match`
+   * does not already match the current `catalogueVersion`. `getCatalogue` is left
+   * untouched -- and this method does not call it -- so the existing unconditional callers
+   * and their tests keep behaving exactly as before; the two share `deriveCatalogueVersion`
+   * and `toDetail` rather than duplicating either.
+   *
+   * Deliberately not a HEAD-style "just the version" query: computing the version already
+   * requires reading every row (the hash is over every row's `id:updatedAt`, see
+   * `deriveCatalogueVersion`), so there is no cheaper query to run first. What conditional
+   * GET buys here is entirely on the wire -- skipping ~1,700 rows of JSON -- not in Postgres.
+   */
+  async getCatalogueConditional(
+    viewer: User,
+    ifNoneMatch: string | undefined,
+  ): Promise<{ notModified: true } | { notModified: false; catalogue: ExerciseCatalogueResponse }> {
+    const rows = await this.exercisesRepository.listForSync(viewer.id);
+    const version = this.deriveCatalogueVersion(rows);
+
+    if (ifNoneMatch !== undefined && ExercisesService.matchesETag(ifNoneMatch, version)) {
+      return { notModified: true };
+    }
+
+    return {
+      notModified: false,
+      catalogue: { exercises: rows.map((row) => this.toDetail(row)), catalogueVersion: version },
+    };
+  }
+
+  /**
+   * Strips the weak-validator prefix and quoting a client may send (`W/"<hash>"` or `"<hash>"`)
+   * down to the bare hash `deriveCatalogueVersion` produces, so the comparison does not depend
+   * on which quoting style the caller used.
+   */
+  private static matchesETag(ifNoneMatch: string, version: string): boolean {
+    return ifNoneMatch.replace(/^W\//, "").replace(/^"|"$/g, "").trim() === version;
+  }
+
+  /**
    * A content hash, not a counter or a bare `MAX(updatedAt)`: a counter needs somewhere to
    * live and something to remember to bump, and a timestamp alone misses a soft-delete --
    * removing a row from the visible set changes nothing about any *surviving* row's

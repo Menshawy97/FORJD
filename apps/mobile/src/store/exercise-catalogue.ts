@@ -140,25 +140,56 @@ function rowToExercise(row: { data: string; is_favourite: number }): ExerciseRes
 }
 
 /**
- * Version-gated: fetches the remote catalogue unconditionally (every launch still makes the
- * network call), but only pays for the SQLite rebuild and FTS5 reindex -- the expensive part
- * -- when `catalogueVersion` actually differs from what is already stored. Matches
- * `ExercisesService.getCatalogue`'s own contract: the version deliberately ignores favourite
- * status, so a favourite toggle alone never triggers a rebuild here either.
+ * The result of a conditional catalogue fetch (R20): either the server confirmed nothing
+ * changed since `storedVersion` -- the local equivalent of an HTTP 304, no body to parse --
+ * or it returned the full catalogue. `fetchCatalogue` below is expected to send
+ * `storedVersion` to the server as a conditional header (`If-None-Match`) so the *response
+ * body itself* -- not just the local SQLite rebuild -- is skipped when nothing changed. That
+ * is the difference from the pre-R20 shape of this function: this module now decides whether
+ * a full body is worth asking for, rather than always downloading one and only deciding
+ * afterwards whether to use it.
+ */
+export type CatalogueFetchResult =
+  | { notModified: true }
+  | { notModified: false; catalogue: ExerciseCatalogueResponse };
+
+/**
+ * Version-gated, and now conditional (R20): `fetchCatalogue` receives the locally stored
+ * version so it can ask the server for the full body only when that version is stale --
+ * `ExercisesService.getCatalogueConditional`'s `If-None-Match` handling on the other end
+ * answers `304` with no body when they already match, which is what stops the ~1,700-row
+ * transfer on every app launch that R9's gzip alone did not. Matches
+ * `ExercisesService`'s own contract either way: the version deliberately ignores favourite
+ * status, so a favourite toggle alone never triggers a rebuild here.
  *
- * The rebuild is a full replace inside one transaction, not a diff -- there is no id-level
- * change feed from the server to diff against, and at ~1,700 rows a full rewrite is cheap
- * enough that building one would cost more than it saves.
+ * **On `notModified`, the local catalogue is left completely untouched** -- no delete, no
+ * schema touch beyond `ensureExerciseCatalogueSchema` above, nothing -- which is the fix for
+ * the regression this slice exists to prevent: a 304 must never be mistaken for "empty" and
+ * used to clear a user's library.
+ *
+ * The rebuild on a real change is still a full replace inside one transaction, not a diff --
+ * there is no id-level change feed from the server to diff against, and at ~1,700 rows a full
+ * rewrite is cheap enough that building one would cost more than it saves.
  */
 export async function syncExerciseCatalogue(
   db: SqliteConnection,
-  fetchCatalogue: () => Promise<ExerciseCatalogueResponse>,
+  fetchCatalogue: (storedVersion: string | null) => Promise<CatalogueFetchResult>,
 ): Promise<{ synced: boolean; count: number }> {
   await ensureExerciseCatalogueSchema(db);
 
-  const remote = await fetchCatalogue();
   const storedVersion = await getStoredCatalogueVersion(db);
+  const result = await fetchCatalogue(storedVersion);
 
+  if (result.notModified) {
+    const untouched = await listCachedExercises(db);
+    return { synced: false, count: untouched.length };
+  }
+
+  const remote = result.catalogue;
+
+  // Defensive, not the primary gate any more: a `fetchCatalogue` that does not implement the
+  // conditional header (or a server that answers 200 with an unchanged body regardless) would
+  // otherwise still pay for a pointless rebuild.
   if (storedVersion === remote.catalogueVersion) {
     return { synced: false, count: remote.exercises.length };
   }
