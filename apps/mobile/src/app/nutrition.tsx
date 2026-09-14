@@ -1,12 +1,11 @@
 import {
   MEAL_SLOT_DISPLAY_NAMES,
-  MEAL_SLOTS,
   type MealSlot,
 } from '@forjd/domain';
 import type { FoodResponse, MacroGoalsResponse, NutritionLogEntryResponse, SavedMealResponse } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import {
   createSavedMeal,
@@ -22,12 +21,13 @@ import {
 import { classifyRequestFailure, isConflict, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
-import { MealSlotChip } from '@/components/meal-slot-chip';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
-import { ConcentricRings, type RingBand } from '@/nutrition/concentric-rings';
+import { DaySummary } from '@/nutrition/day-summary';
 import { todayLocalDate } from '@/nutrition/date';
+import { NutritionEntryList } from '@/nutrition/entry-list';
+import { type EditGoalsValues, NutritionSheets } from '@/nutrition/meal-sheets';
 import { sumTotals } from '@/nutrition/totals';
 import { colors } from '@/theme/tokens';
 
@@ -51,58 +51,24 @@ import { colors } from '@/theme/tokens';
  * **Grouped log rows (`groupId`) now render collapsed, per a Phase H follow-up fix.** Phase F
  * originally rendered every item individually, reasoning that nothing in the wire model
  * recorded a saved meal's name once it was logged. `groupName` (added this phase, snapshotted
- * server-side at `logSavedMeal` time) is that name source arriving -- `buildLogRows` below
- * groups entries sharing a `groupId` into one collapsed row ("<name> · N items · tap to
- * view/collapse · kcal"), matching `s_nutrition()`'s own `mealSection()`/`toggleGroup`
- * interaction (extracted verbatim from the prototype for this fix) and the real screenshot
- * this phase's bug report named (`logsavedmeal.png` -- not actually present in this repo's
- * `screenshots/` directory at the time this was written; the prototype source is the fallback
- * source of truth here, the same "prototype outranks every summary" rule the plan states
- * elsewhere, applied because there was no screenshot to check against this time). Tapping the
- * row expands it to the individual items (indented, no per-item delete, matching the
- * prototype); the single × on the collapsed row deletes the whole group via `deleteLogGroup`.
+ * server-side at `logSavedMeal` time) is that name source arriving -- `buildLogRows` (now in
+ * `nutrition/entry-list.tsx`) groups entries sharing a `groupId` into one collapsed row
+ * ("<name> · N items · tap to view/collapse · kcal"), matching `s_nutrition()`'s own
+ * `mealSection()`/`toggleGroup` interaction (extracted verbatim from the prototype for this
+ * fix) and the real screenshot this phase's bug report named (`logsavedmeal.png` -- not
+ * actually present in this repo's `screenshots/` directory at the time this was written; the
+ * prototype source is the fallback source of truth here, the same "prototype outranks every
+ * summary" rule the plan states elsewhere, applied because there was no screenshot to check
+ * against this time). Tapping the row expands it to the individual items (indented, no
+ * per-item delete, matching the prototype); the single × on the collapsed row deletes the
+ * whole group via `deleteLogGroup`.
+ *
+ * **Split for R23b** into three presentational pieces so this file stays a thin composition
+ * of screen-level state and handlers: `nutrition/day-summary.tsx` (the ring + macro card),
+ * `nutrition/entry-list.tsx` (per-slot logged entries + saved-meals preview, including
+ * `buildLogRows`), and `nutrition/meal-sheets.tsx` (the three bottom sheets). Pure refactor --
+ * no behavior changed, nothing moved out of this file's own state/handlers.
  */
-
-interface LogRow {
-  group: boolean;
-  groupId?: string;
-  groupName?: string | null;
-  items: NutritionLogEntryResponse[];
-}
-
-/** Splits a slot's entries into grouped rows (one per distinct `groupId`, preserving each
- *  group's own item order) and individually-logged singles, groups first -- mirrors the
- *  prototype's own `rows=[...groups,...singles]` construction in `mealSection()`. */
-function buildLogRows(items: NutritionLogEntryResponse[]): LogRow[] {
-  const groups = new Map<string, LogRow>();
-  const singles: LogRow[] = [];
-  for (const item of items) {
-    if (!item.groupId) {
-      singles.push({ group: false, items: [item] });
-      continue;
-    }
-    const existing = groups.get(item.groupId);
-    if (existing) {
-      existing.items.push(item);
-    } else {
-      groups.set(item.groupId, { group: true, groupId: item.groupId, groupName: item.groupName, items: [item] });
-    }
-  }
-  return [...groups.values(), ...singles];
-}
-
-// Sized larger than the single ring this replaced (120px/r52) specifically to protect the
-// kcal number centered inside the innermost band: nesting three more rings inward eats into
-// that clear space, so the box grows enough (150px/r62, thinner 6px strokes) to leave the
-// centered text roughly the room it always had, rather than shrinking around it.
-const RING_SIZE = 150;
-const RING_OUTER_RADIUS = 62;
-const RING_STROKE = 6;
-const RING_GAP = 2;
-
-function ratio(value: number, goal: number): number {
-  return goal <= 0 ? 0 : Math.min(1, value / goal);
-}
 
 function errorMessage(error: unknown): string {
   return classifyRequestFailure(error) === 'offline' ? OFFLINE_MESSAGE : 'Something went wrong. Try again.';
@@ -140,7 +106,7 @@ export default function NutritionScreen() {
   const [loggingMeal, setLoggingMeal] = useState(false);
 
   const [editGoalsOpen, setEditGoalsOpen] = useState(false);
-  const [editGoalsVals, setEditGoalsVals] = useState({ kcal: '', protein: '', carbs: '', fat: '' });
+  const [editGoalsVals, setEditGoalsVals] = useState<EditGoalsValues>({ kcal: '', protein: '', carbs: '', fat: '' });
 
   // Which grouped log rows (keyed by groupId) are expanded to show their individual items --
   // `s_nutrition()`'s own `toggleGroup`/`expandedGroups` interaction.
@@ -351,6 +317,10 @@ export default function NutritionScreen() {
     setEditGoalsOpen(true);
   };
 
+  const changeEditGoalsVal = (key: keyof EditGoalsValues, value: string) => {
+    setEditGoalsVals((current) => ({ ...current, [key]: value }));
+  };
+
   const saveGoals = async () => {
     const kcal = parseInt(editGoalsVals.kcal, 10);
     const protein = parseInt(editGoalsVals.protein, 10);
@@ -411,400 +381,47 @@ export default function NutritionScreen() {
       />
 
       <ScrollView className="flex-1 px-screen-x" showsVerticalScrollIndicator={false}>
-        {goals ? (
-          <View
-            className="flex-row items-center rounded-card border border-border bg-surface p-[18px]"
-            style={{ gap: 18 }}>
-            <ConcentricRings
-              size={RING_SIZE}
-              outerRadius={RING_OUTER_RADIUS}
-              strokeWidth={RING_STROKE}
-              gap={RING_GAP}
-              trackColor={colors.restRingTrack}
-              bands={
-                [
-                  { key: 'calories', color: colors.accent, filled: ratio(totals.kcal, goals.kcal) },
-                  { key: 'protein', color: colors.protein, filled: ratio(totals.protein, goals.protein) },
-                  { key: 'carbs', color: colors.nutritionCarbs, filled: ratio(totals.carbs, goals.carbs) },
-                  { key: 'fat', color: colors.green, filled: ratio(totals.fat, goals.fat) },
-                ] satisfies RingBand[]
-              }>
-              <Text
-                className="font-archivo text-[22px] font-bold text-text"
-                style={{ fontVariant: ['tabular-nums'] }}>
-                {Math.round(totals.kcal)}
-              </Text>
-              <Text className="mt-0.5 font-archivo text-[10px] text-dimmer">{`/ ${goals.kcal} kcal`}</Text>
-            </ConcentricRings>
-            <View className="flex-1" style={{ minWidth: 0 }}>
-              <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color={colors.protein} />
-              <MacroBar label="Carbs" value={totals.carbs} goal={goals.carbs} color={colors.nutritionCarbs} />
-              <MacroBar label="Fat" value={totals.fat} goal={goals.fat} color={colors.green} />
-            </View>
-          </View>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            onPress={openEditGoals}
-            className="rounded-card border border-border bg-surface p-[18px]">
-            <Text className="font-archivo text-[15px] font-bold text-text">Set your daily goals</Text>
-            <Text className="mt-1 font-archivo text-[12.5px] text-dimmer">
-              Track calories and macros against a target you choose.
-            </Text>
-          </Pressable>
-        )}
+        <DaySummary goals={goals} totals={totals} onEditGoals={openEditGoals} />
 
-        {MEAL_SLOTS.map((slot) => {
-          const items = entriesBySlot[slot];
-          const subtotal = Math.round(sumTotals(items).kcal);
-          return (
-            <View key={slot} style={{ marginTop: 26 }}>
-              <View className="flex-row items-baseline justify-between">
-                <Text className="font-archivo text-[11px] font-semibold uppercase tracking-wide text-label">
-                  {MEAL_SLOT_DISPLAY_NAMES[slot]}
-                </Text>
-                {items.length > 0 ? (
-                  <View className="flex-row items-center" style={{ gap: 12 }}>
-                    <Text className="font-archivo text-[11px] text-dimmer">{`${subtotal} kcal`}</Text>
-                    <Pressable accessibilityRole="button" onPress={openSaveMeal(slot)}>
-                      <Text className="font-archivo text-[11px] font-semibold text-accent">Save as meal</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-
-              {buildLogRows(items).map((row) => {
-                if (!row.group) {
-                  const entry = row.items[0];
-                  const food = foodsById[entry.foodId];
-                  return (
-                    <Pressable
-                      key={entry.id}
-                      accessibilityRole="button"
-                      onPress={openFoodDetail(entry)}
-                      className="flex-row items-center border-b border-borderFaint py-3"
-                      style={{ gap: 12 }}>
-                      <View className="flex-1" style={{ minWidth: 0 }}>
-                        <Text className="font-archivo text-[14px] font-semibold text-text" numberOfLines={1}>
-                          {food?.name ?? '…'}
-                        </Text>
-                        <Text className="mt-0.5 font-archivo text-[11.5px] text-dimmer">{entry.servingLabel}</Text>
-                      </View>
-                      <Text
-                        className="font-archivo text-[13px] font-semibold text-text"
-                        style={{ fontVariant: ['tabular-nums'] }}>
-                        {`${Math.round(entry.kcal)} kcal`}
-                      </Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove ${food?.name ?? 'item'}`}
-                        onPress={deleteItem(entry)}
-                        hitSlop={8}>
-                        <Icon name="x" color={colors.dim} size={14} />
-                      </Pressable>
-                    </Pressable>
-                  );
-                }
-
-                const groupId = row.groupId as string;
-                const open = !!expandedGroups[groupId];
-                const groupTotals = sumTotals(row.items);
-                return (
-                  <View key={groupId} className="border-b border-borderFaint">
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => toggleGroup(groupId)}
-                      className="flex-row items-center py-3"
-                      style={{ gap: 12 }}>
-                      <View className="flex-1" style={{ minWidth: 0 }}>
-                        <Text className="font-archivo text-[14px] font-semibold text-text" numberOfLines={1}>
-                          {row.groupName ?? 'Meal'}
-                        </Text>
-                        <Text className="mt-0.5 font-archivo text-[11.5px] text-dimmer">
-                          {`${row.items.length} items · tap to ${open ? 'collapse' : 'view'}`}
-                        </Text>
-                      </View>
-                      <Text
-                        className="font-archivo text-[13px] font-semibold text-text"
-                        style={{ fontVariant: ['tabular-nums'] }}>
-                        {`${Math.round(groupTotals.kcal)} kcal`}
-                      </Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove ${row.groupName ?? 'meal'}`}
-                        onPress={deleteGroup(groupId, slot)}
-                        hitSlop={8}>
-                        <Icon name="x" color={colors.dim} size={14} />
-                      </Pressable>
-                    </Pressable>
-                    {open ? (
-                      <View style={{ paddingBottom: 12, paddingLeft: 14, gap: 8 }}>
-                        {row.items.map((entry) => {
-                          const food = foodsById[entry.foodId];
-                          return (
-                            <Pressable
-                              key={entry.id}
-                              accessibilityRole="button"
-                              onPress={openFoodDetail(entry)}
-                              className="flex-row items-center"
-                              style={{ gap: 10 }}>
-                              <View className="flex-1" style={{ minWidth: 0 }}>
-                                <Text
-                                  className="font-archivo text-[12.5px] font-medium text-textSecondary"
-                                  numberOfLines={1}>
-                                  {food?.name ?? '…'}
-                                </Text>
-                                <Text className="mt-0.5 font-archivo text-[10.5px] text-dimmer">
-                                  {entry.servingLabel}
-                                </Text>
-                              </View>
-                              <Text
-                                className="font-archivo text-[11.5px] text-dimmer"
-                                style={{ fontVariant: ['tabular-nums'] }}>
-                                {`${Math.round(entry.kcal)} kcal`}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              })}
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={openAddFood(slot)}
-                className="flex-row items-center py-[9px]"
-                style={{ gap: 8, marginTop: items.length > 0 ? 6 : 8 }}>
-                <Icon name="plus" color={colors.accent} size={15} />
-                <Text className="font-archivo text-[13px] font-semibold text-accent">Add food</Text>
-              </Pressable>
-            </View>
-          );
-        })}
-
-        {savedMealsList.length > 0 ? (
-          <View style={{ marginTop: 28, marginBottom: 24 }}>
-            <View className="flex-row items-baseline justify-between">
-              <Text className="font-archivo text-[11px] font-semibold uppercase tracking-wide text-label">
-                Saved meals
-              </Text>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/saved-meals')}>
-                <Text className="font-archivo text-[11px] font-semibold text-accent">See all</Text>
-              </Pressable>
-            </View>
-            <View style={{ marginTop: 8, gap: 8 }}>
-              {savedMealsList.slice(0, 3).map((meal) => {
-                const mealKcal = Math.round(
-                  meal.items.reduce((sum, item) => {
-                    const food = foodsById[item.foodId];
-                    if (!food) return sum;
-                    return sum + (food.macrosPer100g.kcal * item.grams) / 100;
-                  }, 0),
-                );
-                return (
-                  <View
-                    key={meal.id}
-                    className="flex-row items-center rounded-xl border border-border bg-surface px-[14px] py-3"
-                    style={{ gap: 12 }}>
-                    <View className="flex-1" style={{ minWidth: 0 }}>
-                      <Text className="font-archivo text-[13.5px] font-semibold text-text" numberOfLines={1}>
-                        {meal.name}
-                      </Text>
-                      <Text className="mt-0.5 font-archivo text-[11.5px] text-dimmer">
-                        {`${meal.items.length} items · ${mealKcal} kcal`}
-                      </Text>
-                    </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={openLogMeal(meal)}
-                      className="rounded-[9px] border px-[14px] py-2"
-                      style={{ backgroundColor: 'rgba(233,113,47,.14)', borderColor: 'rgba(233,113,47,.4)' }}>
-                      <Text className="font-archivo text-[12px] font-bold text-accent">Log</Text>
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
+        <NutritionEntryList
+          entriesBySlot={entriesBySlot}
+          foodsById={foodsById}
+          expandedGroups={expandedGroups}
+          onToggleGroup={toggleGroup}
+          onOpenFoodDetail={openFoodDetail}
+          onDeleteItem={deleteItem}
+          onDeleteGroup={deleteGroup}
+          onOpenAddFood={openAddFood}
+          onOpenSaveMeal={openSaveMeal}
+          savedMealsList={savedMealsList}
+          onOpenLogMeal={openLogMeal}
+          onSeeAllSavedMeals={() => router.push('/saved-meals')}
+        />
       </ScrollView>
 
       <TabBar active="home" />
 
-      {saveMealSlot ? (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="absolute inset-0 z-20 items-end justify-end"
-          style={{ backgroundColor: colors.scrim }}>
-          <View
-            className="w-full rounded-t-[18px] border-t border-border bg-surface px-[22px] pb-[24px] pt-[20px]"
-            style={{ gap: 14 }}>
-            <Text className="font-archivo text-[18px] font-bold text-text">
-              {`Save ${MEAL_SLOT_DISPLAY_NAMES[saveMealSlot]} as a meal`}
-            </Text>
-            <View>
-              <TextInput
-                value={saveMealName}
-                onChangeText={changeSaveMealName}
-                className="h-[50px] rounded-[11px] border border-border bg-fieldBg px-[15px] font-archivo text-[14.5px] font-semibold text-text"
-              />
-              {saveMealError && (
-                <Text className="mt-[10px] font-archivo text-inline-error font-medium text-errorText">
-                  {saveMealError}
-                </Text>
-              )}
-            </View>
-            <View className="flex-row" style={{ gap: 9 }}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={confirmSaveMeal}
-                className="h-[52px] flex-1 items-center justify-center rounded-button bg-accent">
-                <Text className="font-archivo text-[14px] font-bold text-white">Save</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setSaveMealSlot(null)}
-                className="h-[52px] w-24 items-center justify-center rounded-button border border-border">
-                <Text className="font-archivo text-[14px] font-bold text-dim">Cancel</Text>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      ) : null}
-
-      {logMealSheet ? (
-        <View
-          testID="log-meal-sheet"
-          className="absolute inset-0 z-20 items-end justify-end"
-          style={{ backgroundColor: colors.scrim }}>
-          <View
-            className="w-full rounded-t-[18px] border-t border-border bg-surface px-[22px] pb-[24px] pt-[20px]"
-            style={{ gap: 14 }}>
-            <Text className="font-archivo text-[18px] font-bold text-text">{`Log "${logMealSheet.name}"`}</Text>
-            <Text className="font-archivo text-[13px] text-dimmer">Add all items to which meal?</Text>
-            <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-              {MEAL_SLOTS.map((slot) => (
-                <MealSlotChip
-                  key={slot}
-                  label={MEAL_SLOT_DISPLAY_NAMES[slot]}
-                  selected={slot === logMealSlot}
-                  onPress={() => setLogMealSlot(slot)}
-                />
-              ))}
-            </View>
-            <View className="flex-row" style={{ gap: 9, marginTop: 6 }}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: loggingMeal }}
-                disabled={loggingMeal}
-                onPress={confirmLogMeal}
-                className="h-[52px] flex-1 items-center justify-center rounded-button bg-accent"
-                style={loggingMeal ? { opacity: 0.6 } : undefined}>
-                <Text className="font-archivo text-[14px] font-bold text-white">
-                  {loggingMeal ? 'Logging…' : 'Log'}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setLogMealSheet(null)}
-                className="h-[52px] w-24 items-center justify-center rounded-button border border-border">
-                <Text className="font-archivo text-[14px] font-bold text-dim">Cancel</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      ) : null}
-
-      {editGoalsOpen ? (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="absolute inset-0 z-20 items-end justify-end"
-          style={{ backgroundColor: colors.scrim }}>
-          <View
-            className="w-full rounded-t-[18px] border-t border-border bg-surface px-[22px] pb-[24px] pt-[20px]"
-            style={{ gap: 14 }}>
-            <Text className="font-archivo text-[18px] font-bold text-text">Set daily goals</Text>
-            {/* Auto-calculate depends on InBody data, which does not exist until Phase 5
-                (ADR-020) -- shown disabled with honest copy rather than computing from fake
-                defaults, per nutrition-screen-specs.md §2's explicit instruction. */}
-            <View
-              className="flex-row items-center rounded-[11px] border px-[14px] py-3 opacity-50"
-              style={{ gap: 10, borderColor: 'rgba(233,113,47,.4)', backgroundColor: 'rgba(233,113,47,.1)' }}>
-              <Icon name="bolt" color={colors.accent} size={17} />
-              <View className="flex-1" style={{ minWidth: 0 }}>
-                <Text className="font-archivo text-[13px] font-bold text-accent">Auto-calculate</Text>
-                <Text className="mt-0.5 font-archivo text-[11px] text-weekScoreLabel">
-                  Available once your InBody scan is set up
-                </Text>
-              </View>
-            </View>
-            {(['kcal', 'protein', 'carbs', 'fat'] as const).map((key) => (
-              <View key={key} className="flex-row items-center justify-between" style={{ gap: 10 }}>
-                <Text className="font-archivo text-[13px] font-semibold capitalize text-text">
-                  {key === 'kcal' ? 'Calories' : key}
-                </Text>
-                <View
-                  className="flex-row items-center rounded-lg border px-[10px] py-[6px]"
-                  style={{ gap: 6, borderColor: colors.borderCheckbox, backgroundColor: colors.bg }}>
-                  <TextInput
-                    value={editGoalsVals[key]}
-                    onChangeText={(value) =>
-                      setEditGoalsVals((current) => ({ ...current, [key]: value.replace(/[^0-9]/g, '') }))
-                    }
-                    keyboardType="number-pad"
-                    className="w-[52px] text-right font-archivo text-[14px] font-bold text-text"
-                  />
-                  <Text className="font-archivo text-[12px] text-dimmer">{key === 'kcal' ? 'kcal' : 'g'}</Text>
-                </View>
-              </View>
-            ))}
-            <View className="flex-row" style={{ gap: 9, marginTop: 6 }}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={saveGoals}
-                className="h-[52px] flex-1 items-center justify-center rounded-button bg-accent">
-                <Text className="font-archivo text-[14px] font-bold text-white">Save</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setEditGoalsOpen(false)}
-                className="h-[52px] w-24 items-center justify-center rounded-button border border-border">
-                <Text className="font-archivo text-[14px] font-bold text-dim">Cancel</Text>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      ) : null}
+      <NutritionSheets
+        saveMealSlot={saveMealSlot}
+        saveMealName={saveMealName}
+        saveMealError={saveMealError}
+        onChangeSaveMealName={changeSaveMealName}
+        onConfirmSaveMeal={confirmSaveMeal}
+        onCancelSaveMeal={() => setSaveMealSlot(null)}
+        logMealSheet={logMealSheet}
+        logMealSlot={logMealSlot}
+        onChangeLogMealSlot={setLogMealSlot}
+        loggingMeal={loggingMeal}
+        onConfirmLogMeal={confirmLogMeal}
+        onCancelLogMeal={() => setLogMealSheet(null)}
+        editGoalsOpen={editGoalsOpen}
+        editGoalsVals={editGoalsVals}
+        onChangeEditGoalsVal={changeEditGoalsVal}
+        onSaveGoals={saveGoals}
+        onCancelEditGoals={() => setEditGoalsOpen(false)}
+      />
 
       <Toast message={toast.message} />
     </ScreenBackground>
-  );
-}
-
-interface MacroBarProps {
-  label: string;
-  value: number;
-  goal: number;
-  color: string;
-}
-
-function MacroBar({ label, value, goal, color }: MacroBarProps) {
-  const width = goal > 0 ? Math.min(100, Math.round((value / goal) * 100)) : 0;
-  return (
-    <View style={{ marginTop: 12 }}>
-      <View className="flex-row items-center justify-between" style={{ marginBottom: 6 }}>
-        <Text className="font-archivo text-[12px] font-semibold text-text">{label}</Text>
-        <Text
-          className="font-archivo text-[11.5px] font-medium text-dimmer"
-          style={{ fontVariant: ['tabular-nums'] }}>
-          {`${Math.round(value)}g / ${goal}g`}
-        </Text>
-      </View>
-      <View className="h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,.08)' }}>
-        <View style={{ width: `${width}%`, height: 6, borderRadius: 4, backgroundColor: color }} />
-      </View>
-    </View>
   );
 }
