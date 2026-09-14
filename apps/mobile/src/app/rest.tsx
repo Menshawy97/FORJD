@@ -48,11 +48,20 @@ export default function RestScreen() {
    */
   const hasReturned = useRef(false);
 
+  /**
+   * R21 (H15): was a 250ms tick, re-rendering this screen and the countdown ring's SVG up to
+   * four times a second -- 1,400 to 2,900 renders across a real workout, all on the JS thread.
+   * 1Hz matches `live.tsx`'s own elapsed clock (see its comment for why): still wall-clock
+   * based, so a backgrounded app never drifts, but the displayed number and the announcement
+   * schedule below only need to notice a change once a second. The ring's own sub-second sweep
+   * moved to a Reanimated shared value inside `CountdownRing` so it keeps animating smoothly
+   * between these once-a-second ticks without any extra JS-thread renders.
+   */
   useEffect(() => {
     if (isFinished) return;
     const tick = () => setRemaining((endsAt - Date.now()) / 1000);
     tick();
-    const id = setInterval(tick, 250);
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [endsAt, isFinished]);
 
