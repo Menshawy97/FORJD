@@ -1,15 +1,13 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   EXERCISE_GOAL_DISPLAY_NAMES,
   distanceForDisplay,
-  distanceFromDisplay,
   nextDistanceUnit,
   nextWeightUnit,
   weightForDisplay,
-  weightFromDisplay,
   type DistanceDisplayUnit,
   type ExerciseGoal,
   type WeightDisplayUnit,
@@ -68,6 +66,11 @@ import {
   type LiveSessionChange,
   type PendingEvent,
 } from '@/workouts/live-session';
+import { GOAL_GUIDE } from '@/workouts/goal-guide';
+import { LiveExerciseCard } from '@/workouts/live-exercise-card';
+import { LiveSessionHeader } from '@/workouts/live-session-header';
+import { RestTimerCard } from '@/workouts/rest-timer-card';
+import { TrainingGuideCard } from '@/workouts/training-guide-card';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -98,65 +101,6 @@ export function formatElapsed(totalSeconds: number): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 }
-
-/** The rest card reads `1:30`, never `90` -- it is a duration, not a count. */
-function formatRest(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
-const MEASURE_SUBTITLE: Record<string, string> = {
-  weight: 'Weight',
-  time: 'Time',
-  distance: 'Distance',
-};
-
-/**
- * The "How to train this" guide, ported verbatim from the prototype's `guideTable()`. Static
- * reference content, not advice generated about this user -- which is why it can ship now,
- * unlike the Watch card's heart rate.
- */
-const GOAL_GUIDE: { goal: ExerciseGoal; load: string; reps: string; rest: string; execution: string; advice: string }[] = [
-  {
-    goal: 'strength',
-    load: '80–95% 1RM',
-    reps: '1–5 reps',
-    rest: '3–5 min rest',
-    execution: 'Controlled down, aggressive press',
-    advice: 'Move heavy weight with excellent technique',
-  },
-  {
-    goal: 'hypertrophy',
-    load: '60–80% 1RM',
-    reps: '6–15 reps',
-    rest: '1.5–3 min rest',
-    execution: 'Controlled eccentric, full range of motion',
-    advice: 'Maximise muscle tension and train close to failure',
-  },
-  {
-    goal: 'power',
-    load: '30–70% 1RM',
-    reps: '2–5 reps',
-    rest: '2–4 min rest',
-    execution: 'Explosive concentric, reset every rep',
-    advice: 'Move the bar as fast as possible',
-  },
-  {
-    goal: 'muscular_endurance',
-    load: '40–60% 1RM',
-    reps: '12–25+ reps',
-    rest: '30–90 s rest',
-    execution: 'Controlled, steady tempo',
-    advice: 'Hold form while fatigue accumulates',
-  },
-  {
-    goal: 'mobility',
-    load: 'Bodyweight',
-    reps: '5–10 per side',
-    rest: 'Minimal rest',
-    execution: 'Slow, breathe through the position',
-    advice: 'Own the end range instead of bouncing into it',
-  },
-];
 
 export default function LiveScreen() {
   const [session, setSession] = useState<LiveSession | null>(null);
@@ -518,186 +462,96 @@ export default function LiveScreen() {
     void setExerciseUnit(exerciseId, next);
   };
 
+  const handlePauseResume = () => {
+    const now = new Date();
+    apply(isPaused ? resumeSession(session, now) : pauseSession(session, now));
+  };
 
+  /**
+   * Navigation used to fire unconditionally, with the enqueue running in an uncaught,
+   * unawaited IIFE (H6): a rejection there was both an unhandled promise rejection and a
+   * silently lost workout, because the screen had already moved on to workout-done.
+   * `router.replace` now only happens once the session is durably queued; any failure -- the
+   * enqueue rejecting, or `db` never having opened at all -- keeps the athlete on this screen
+   * with a warning instead of discarding the workout.
+   */
+  const handleFinish = () => {
+    const endedAt = new Date();
+    const change = finishSession(session, endedAt);
+    apply(change);
+
+    const finished = change.session;
+    const summary = sessionStats(finished);
+
+    void (async () => {
+      try {
+        const db = await dbRef.current;
+        if (!db) {
+          throw new Error('Local database unavailable');
+        }
+        // Hand the session to the sync queue. This is the one place it happens --
+        // `appendSessionEvent` does NOT enqueue on `workout_finished`, despite what
+        // the store's module docblock used to claim.
+        await enqueueSessionUpload(db, toUploadRequest(finished, endedAt, elapsedSeconds));
+        // The snapshot exists only to recover an *unfinished* session; leaving it
+        // would offer this workout back on the next launch.
+        await clearSessionSnapshot(db, finished.id);
+
+        setCompletedSummary({
+          name: finished.name,
+          durationSeconds: elapsedSeconds,
+          volumeKg: summary.volumeKg,
+          completedSetCount: summary.completedSetCount,
+          exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
+          // Completed sets only, and in the unit the athlete was reading -- this is a
+          // record of what they did, not of what was prescribed.
+          exercises: finished.exercises
+            .map((exercise) => {
+              const done = exercise.sets.filter((set) => set.isCompleted);
+              const first = done[0];
+              const unit = weightUnitFor(exercise.exerciseId);
+              const detail =
+                first === undefined
+                  ? ''
+                  : exercise.measure === 'time'
+                    ? `${first.durationSeconds ?? 0} s`
+                    : exercise.measure === 'distance'
+                      ? `${distanceForDisplay(first.distanceMeters ?? 0, distanceUnitFor(exercise.exerciseId))} ${distanceUnitFor(exercise.exerciseId)}`
+                      : `${weightForDisplay(first.weightKg ?? 0, unit)} ${unit}`;
+              return {
+                exerciseId: exercise.exerciseId,
+                name: exercise.name,
+                setCount: done.length,
+                detail,
+              };
+            })
+            .filter((line) => line.setCount > 0),
+          origin: 'live',
+        });
+        router.replace('/workout-done');
+      } catch {
+        // The most safety-critical message in the app: the session is finished in
+        // memory but not yet durable anywhere else. Staying on this screen keeps the
+        // in-memory state (and the athlete's option to retry Finish) alive rather
+        // than navigating away from data that only exists here.
+        toast.show('Workout not saved — check your connection and try Finish again.');
+      }
+    })();
+  };
 
   return (
     <ScreenBackground>
-      {/*
-        The fixed header block. Prototype: `padding:'0 22px 14px'` -- and note the Watch card
-        lives HERE, inside the non-scrolling header, not in the list below it.
-      */}
-      <View className="flex-none px-screen-x pb-[14px]">
-        <View className="flex-row items-center" style={{ gap: 8 }}>
-          <View className="h-[7px] w-[7px] rounded-[4px]" style={{ backgroundColor: colors.accent }} />
-          <Text
-            numberOfLines={1}
-            className="flex-1 font-archivo text-[10px] font-semibold uppercase tracking-[.14em] text-accent">
-            {`${isPaused ? 'Paused' : 'Live'} · ${session.name}`}
-          </Text>
-        </View>
-
-        <View className="mt-[10px] flex-row items-center justify-between" style={{ gap: 8 }}>
-          {/* `font:'700 28px/1 Archivo', letterSpacing:'-.02em'` */}
-          <Text className="font-archivo text-[28px] font-bold tracking-[-.02em] text-text">
-            {formatElapsed(elapsedSeconds)}
-          </Text>
-          <View className="flex-row items-center" style={{ gap: 6 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Cancel workout"
-              onPress={() => router.back()}
-              className="h-[44px] w-[44px] items-center justify-center rounded-[12px]"
-              style={{ backgroundColor: 'rgba(255,255,255,.06)' }}>
-              <Icon name="x" size={15} color="#C9503C" />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={isPaused ? 'Resume workout' : 'Pause workout'}
-              onPress={() => {
-                const now = new Date();
-                apply(isPaused ? resumeSession(session, now) : pauseSession(session, now));
-              }}
-              className="h-[44px] items-center justify-center rounded-[12px] px-[14px]"
-              style={{ backgroundColor: 'rgba(255,255,255,.06)' }}>
-              <Text className="font-archivo text-[12px] font-bold text-text">{isPaused ? 'Resume' : 'Pause'}</Text>
-            </Pressable>
-            {/* Deliberately 34px tall, not 44 -- the prototype's own asymmetry. */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Finish workout"
-              onPress={() => {
-                const endedAt = new Date();
-                const change = finishSession(session, endedAt);
-                apply(change);
-
-                const finished = change.session;
-                const summary = sessionStats(finished);
-
-                /**
-                 * Navigation used to fire unconditionally, with the enqueue running in an
-                 * uncaught, unawaited IIFE (H6): a rejection there was both an unhandled promise
-                 * rejection and a silently lost workout, because the screen had already moved on
-                 * to workout-done. `router.replace` now only happens once the session is
-                 * durably queued; any failure -- the enqueue rejecting, or `db` never having
-                 * opened at all -- keeps the athlete on this screen with a warning instead of
-                 * discarding the workout.
-                 */
-                void (async () => {
-                  try {
-                    const db = await dbRef.current;
-                    if (!db) {
-                      throw new Error('Local database unavailable');
-                    }
-                    // Hand the session to the sync queue. This is the one place it happens --
-                    // `appendSessionEvent` does NOT enqueue on `workout_finished`, despite what
-                    // the store's module docblock used to claim.
-                    await enqueueSessionUpload(db, toUploadRequest(finished, endedAt, elapsedSeconds));
-                    // The snapshot exists only to recover an *unfinished* session; leaving it
-                    // would offer this workout back on the next launch.
-                    await clearSessionSnapshot(db, finished.id);
-
-                    setCompletedSummary({
-                      name: finished.name,
-                      durationSeconds: elapsedSeconds,
-                      volumeKg: summary.volumeKg,
-                      completedSetCount: summary.completedSetCount,
-                      exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
-                      // Completed sets only, and in the unit the athlete was reading -- this is a
-                      // record of what they did, not of what was prescribed.
-                      exercises: finished.exercises
-                        .map((exercise) => {
-                          const done = exercise.sets.filter((set) => set.isCompleted);
-                          const first = done[0];
-                          const unit = weightUnitFor(exercise.exerciseId);
-                          const detail =
-                            first === undefined
-                              ? ''
-                              : exercise.measure === 'time'
-                                ? `${first.durationSeconds ?? 0} s`
-                                : exercise.measure === 'distance'
-                                  ? `${distanceForDisplay(first.distanceMeters ?? 0, distanceUnitFor(exercise.exerciseId))} ${distanceUnitFor(exercise.exerciseId)}`
-                                  : `${weightForDisplay(first.weightKg ?? 0, unit)} ${unit}`;
-                          return {
-                            exerciseId: exercise.exerciseId,
-                            name: exercise.name,
-                            setCount: done.length,
-                            detail,
-                          };
-                        })
-                        .filter((line) => line.setCount > 0),
-                      origin: 'live',
-                    });
-                    router.replace('/workout-done');
-                  } catch {
-                    // The most safety-critical message in the app: the session is finished in
-                    // memory but not yet durable anywhere else. Staying on this screen keeps the
-                    // in-memory state (and the athlete's option to retry Finish) alive rather
-                    // than navigating away from data that only exists here.
-                    toast.show('Workout not saved — check your connection and try Finish again.');
-                  }
-                })();
-              }}
-              className="h-[34px] items-center justify-center rounded-[10px] px-[14px]"
-              style={{ backgroundColor: colors.accent }}>
-              <Text className="font-archivo text-[12px] font-bold text-white">Finish</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View className="mt-[14px] flex-row items-center" style={{ gap: 10 }}>
-          <View className="h-[3px] flex-1 overflow-hidden rounded-[2px]" style={{ backgroundColor: '#232427' }}>
-            <View
-              accessibilityLabel="Workout progress"
-              className="h-[3px]"
-              style={{ width: `${stats.progress * 100}%`, backgroundColor: colors.accent }}
-            />
-          </View>
-          <Text className="font-archivo text-[11px] font-semibold" style={{ color: '#9A9A92' }}>
-            {`${stats.completedSetCount}/${stats.totalSetCount} sets`}
-          </Text>
-          <Text className="font-archivo text-[11px] font-semibold" style={{ color: '#6E6E66' }}>
-            {`${stats.volumeKg.toLocaleString()} kg`}
-          </Text>
-        </View>
-
-        {/*
-          Watch card. Container matched exactly (`#141517`, radius 11, `10px 13px`, gap 9), but
-          it ships an HONEST EMPTY STATE where the prototype shows `145 bpm / 142 avg`: those
-          numbers are simulated (`Math.sin(elapsed/9)`) and no `HealthProvider` feeds this
-          screen yet. Phase J established that invented numbers shown as a user's own training
-          data are not acceptable, so the layout renders with a "not connected" line instead.
-        */}
-        <View
-          className="mt-[12px] flex-row items-center rounded-[11px] px-[13px] py-[10px]"
-          style={{ backgroundColor: '#141517', borderWidth: 1, borderColor: colors.border, gap: 9 }}>
-          <View className="h-[8px] w-[8px] rounded-[5px]" style={{ backgroundColor: '#6E6E66' }} />
-          <Text
-            className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.12em]"
-            style={{ color: '#77776F' }}>
-            Watch
-          </Text>
-          <View className="flex-1" />
-          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
-            No watch connected
-          </Text>
-        </View>
-
-        {isLogging ? null : (
-          <Text
-            accessibilityLiveRegion="assertive"
-            className="mt-[8px] font-archivo text-[11px] font-semibold"
-            style={{ color: colors.errorText }}>
-            Not saving — this session may be lost if the app closes
-          </Text>
-        )}
-
-        {/* Says plainly that nothing was lost, rather than leaving the athlete to work it out. */}
-        {resumed ? (
-          <Text className="mt-[8px] font-archivo text-[11px] font-semibold" style={{ color: colors.green }}>
-            Session resumed — your logged sets were recovered
-          </Text>
-        ) : null}
-      </View>
+      <LiveSessionHeader
+        sessionName={session.name}
+        isPaused={isPaused}
+        elapsedLabel={formatElapsed(elapsedSeconds)}
+        stats={stats}
+        isLogging={isLogging}
+        resumed={resumed}
+        onCancel={() => router.back()}
+        onPauseResume={handlePauseResume}
+        onFinish={handleFinish}
+      />
 
       {/*
         Scroll area. Prototype: `padding:'0 22px 26px'`.
@@ -717,480 +571,46 @@ export default function LiveScreen() {
         showsVerticalScrollIndicator={false}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled">
-        {/* "How to train this" -- `margin-bottom:14px`, radius 14, `#17181a`. */}
-        <View
-          className="mb-[14px] overflow-hidden rounded-[14px]"
-          style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={guideOpen ? 'Hide how to train this' : 'How to train this'}
-            onPress={() => setGuideOpen((open) => !open)}
-            className="flex-row items-center px-[15px] py-[13px]"
-            style={{ gap: 11 }}>
-            <View
-              className="h-[30px] w-[30px] items-center justify-center rounded-[9px]"
-              style={{ backgroundColor: 'rgba(233,113,47,.13)' }}>
-              <Icon name="target" size={17} color={colors.accent} />
-            </View>
-            <View className="flex-1">
-              <Text className="font-archivo text-[13px] font-semibold text-text">How to train this</Text>
-              <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
-                {guideSubtitle}
-              </Text>
-            </View>
-            <Icon name="chevron" size={16} color="#8B8B83" />
-          </Pressable>
+        <TrainingGuideCard
+          guideOpen={guideOpen}
+          guideSubtitle={guideSubtitle}
+          currentGoal={currentGoal}
+          onToggle={() => setGuideOpen((open) => !open)}
+        />
 
-          {guideOpen ? (
-            <View className="px-[15px] pb-[15px]">
-              {GOAL_GUIDE.map((row) => {
-                const isCurrent = row.goal === currentGoal;
-                return (
-                  <View
-                    key={row.goal}
-                    className="mt-[13px] pt-[13px]"
-                    style={{
-                      borderTopWidth: 1,
-                      borderTopColor: 'rgba(255,255,255,.06)',
-                      opacity: isCurrent ? 1 : 0.66,
-                    }}>
-                    <View className="flex-row items-center justify-between" style={{ gap: 8 }}>
-                      <View className="flex-row items-center" style={{ gap: 7 }}>
-                        <Text
-                          className="font-archivo text-[12.5px] font-bold"
-                          style={{ color: isCurrent ? colors.accent : '#C8C8C0' }}>
-                          {EXERCISE_GOAL_DISPLAY_NAMES[row.goal]}
-                        </Text>
-                        {isCurrent ? (
-                          <View
-                            className="rounded-[5px] px-[7px] py-[3px]"
-                            style={{ backgroundColor: 'rgba(233,113,47,.16)' }}>
-                            <Text className="font-archivo text-[8.5px] font-bold uppercase tracking-[.1em] text-accent">
-                              This lift
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#8B8B83' }}>
-                        {row.load}
-                      </Text>
-                    </View>
-                    <View className="mt-[9px] flex-row" style={{ gap: 6 }}>
-                      {[row.reps, row.rest].map((pill) => (
-                        <View
-                          key={pill}
-                          className="rounded-[7px] px-[9px] py-[5px]"
-                          style={{ backgroundColor: '#1B1C1E' }}>
-                          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#A9A9A1' }}>
-                            {pill}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                    <Text className="mt-[8px] font-archivo text-[11px]" style={{ color: '#8B8B83' }}>
-                      {row.execution}
-                    </Text>
-                    <Text className="mt-[5px] font-archivo text-[11.5px] font-semibold" style={{ color: '#E4E2DE' }}>
-                      {row.advice}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          ) : null}
-        </View>
-
-        {/* Rest timer card -- radius 14, `12px 15px`, gap 11, 30px tile. */}
-        <View
-          className="mb-[14px] flex-row items-center rounded-[14px] px-[15px] py-[12px]"
-          style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 11 }}>
-          <View
-            className="h-[30px] w-[30px] items-center justify-center rounded-[9px]"
-            style={{ backgroundColor: 'rgba(255,255,255,.05)' }}>
-            <Icon name="clock" size={16} color="#8B8B83" />
-          </View>
-          <View className="flex-1">
-            <Text className="font-archivo text-[13px] font-semibold text-text">Rest timer</Text>
-            <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
-              Applies to every set in this workout
-            </Text>
-          </View>
-          <View
-            className="flex-row items-center rounded-[9px] p-[2px]"
-            style={{ backgroundColor: '#101011', borderWidth: 1, borderColor: colors.border, gap: 2 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Decrease rest"
-              onPress={() => setSession(setRestSeconds(session, session.restSeconds - 15))}
-              className="h-[26px] w-[28px] items-center justify-center rounded-[7px]">
-              <Text className="font-archivo text-[15px] font-bold" style={{ color: '#9A9A92' }}>
-                −
-              </Text>
-            </Pressable>
-            <Text className="min-w-[46px] text-center font-archivo text-[13px] font-bold text-text">
-              {formatRest(session.restSeconds)}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Increase rest"
-              onPress={() => setSession(setRestSeconds(session, session.restSeconds + 15))}
-              className="h-[26px] w-[28px] items-center justify-center rounded-[7px]">
-              <Text className="font-archivo text-[15px] font-bold" style={{ color: '#9A9A92' }}>
-                +
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+        <RestTimerCard
+          restSeconds={session.restSeconds}
+          onDecrease={() => setSession(setRestSeconds(session, session.restSeconds - 15))}
+          onIncrease={() => setSession(setRestSeconds(session, session.restSeconds + 15))}
+        />
 
         {session.exercises.map((exercise, exerciseIndex) => (
-          <View
+          <LiveExerciseCard
             key={`${exercise.exerciseId}-${exerciseIndex}`}
-            className="mb-[14px] rounded-[14px] px-[16px] py-[15px]"
-            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-            <View className="flex-row items-start justify-between" style={{ gap: 10 }}>
-              <View className="flex-1">
-                <Text className="font-archivo text-[15.5px] font-bold text-text">{exercise.name}</Text>
-                <View className="mt-[7px] flex-row flex-wrap items-center" style={{ gap: 7 }}>
-                  {/*
-                    The goal chip, and the sheet behind it. `goal` arrives derived server-side
-                    from `measure` -- a client must not invent one -- but the athlete chooses how
-                    to train it *today*, which is the prototype's own `sessionGoals` override.
-                    The chevron was always drawn here; now it leads somewhere.
-                  */}
-                  {exercise.goal ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Training goal for ${exercise.name}`}
-                      onPress={() => {
-                        setGoalPickAll(false);
-                        setGoalPickIndex(exerciseIndex);
-                      }}
-                      hitSlop={6}
-                      className="flex-row items-center rounded-[5px] px-[7px] py-[3px]"
-                      style={{ backgroundColor: 'rgba(233,113,47,.13)', gap: 5 }}>
-                      <Text className="font-archivo text-[8.5px] font-bold uppercase tracking-[.1em] text-accent">
-                        {EXERCISE_GOAL_DISPLAY_NAMES[exercise.goal]}
-                      </Text>
-                      <Icon name="chevron" size={9} color={colors.accent} />
-                    </Pressable>
-                  ) : null}
-                  <Text className="font-archivo text-[11.5px]" style={{ color: '#6E6E66' }}>
-                    {`${MEASURE_SUBTITLE[exercise.measure] ?? 'Weight'} · ${exercise.sets.length} sets`}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center" style={{ gap: 4 }}>
-                {exercise.measure === 'distance' || exercise.sets.some((set) => set.distanceMeters !== null) ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      exercise.measure === 'distance'
-                        ? `Set ${exercise.name} as time`
-                        : `Set ${exercise.name} as distance`
-                    }
-                    onPress={() =>
-                      setSession(
-                        setExerciseMeasure(
-                          session,
-                          exerciseIndex,
-                          exercise.measure === 'distance' ? 'time' : 'distance',
-                        ),
-                      )
-                    }
-                    className="rounded-[8px] px-[9px] py-[5px]"
-                    style={{
-                      backgroundColor: 'rgba(233,113,47,.1)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(233,113,47,.28)',
-                    }}>
-                    <Text className="font-archivo text-[10px] font-bold tracking-[.04em] text-accent">
-                      {exercise.measure === 'distance' ? 'Set as time' : 'Set as distance'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {/*
-                  The unit chip is a button, not a label -- the prototype wires it to
-                  `toggleUnit(e.name, m)` and shows it whenever the measure is not time. It changes
-                  only what is displayed: the set keeps the kilograms it already held.
-                */}
-                {exercise.measure === 'time' ? null : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Switch ${exercise.name} to ${
-                      exercise.measure === 'distance'
-                        ? nextDistanceUnit(distanceUnitFor(exercise.exerciseId))
-                        : nextWeightUnit(weightUnitFor(exercise.exerciseId))
-                    }`}
-                    onPress={() => toggleUnit(exercise.exerciseId, exercise.measure)}
-                    hitSlop={6}
-                    className="rounded-[8px] px-[9px] py-[5px]"
-                    style={{ backgroundColor: 'rgba(255,255,255,.05)', borderWidth: 1, borderColor: colors.border }}>
-                    <Text
-                      className="font-archivo text-[10px] font-bold uppercase tracking-[.06em]"
-                      style={{ color: '#9A9A92' }}>
-                      {(exercise.measure === 'distance'
-                        ? distanceUnitFor(exercise.exerciseId)
-                        : weightUnitFor(exercise.exerciseId)
-                      ).toUpperCase()}
-                    </Text>
-                  </Pressable>
-                )}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${exercise.name} history`}
-                  onPress={() => router.push(`/exercise/${exercise.exerciseId}`)}
-                  className="p-[4px]"
-                  style={{ opacity: 0.55 }}>
-                  <Icon name="bars" size={18} color="#C8C8C0" />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${exercise.name}`}
-                  onPress={() => setSession(removeExercise(session, exerciseIndex))}
-                  className="p-[4px]"
-                  style={{ opacity: 0.45 }}>
-                  <Icon name="x" size={15} color="#C9503C" />
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Column headers: `padding:'0 11px 6px'`, widths 16 / 66 / flex / 44. */}
-            <View className="mt-[12px] flex-row items-center px-[11px] pb-[6px]" style={{ gap: 8 }}>
-              <Text
-                className="w-[16px] text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
-                style={{ color: '#4D4D47' }}>
-                Set
-              </Text>
-              <Text
-                className="w-[66px] text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
-                style={{ color: '#4D4D47' }}>
-                Prev
-              </Text>
-              <Text
-                className="flex-1 text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
-                style={{ color: '#4D4D47' }}>
-                Target
-              </Text>
-              <View className="w-[44px]" />
-            </View>
-
-            <View style={{ gap: 7 }}>
-              {exercise.sets.map((set, setIndex) => {
-                const numberColor = set.isCompleted ? colors.green : colors.text;
-                return (
-                  <View
-                    key={setIndex}
-                    className="flex-row items-center rounded-[10px] px-[11px] py-[10px]"
-                    style={{
-                      backgroundColor: set.isCompleted ? 'rgba(121,185,138,.09)' : '#141517',
-                      borderWidth: 1,
-                      borderColor: set.isCompleted ? 'rgba(121,185,138,.25)' : colors.border,
-                      gap: 8,
-                    }}>
-                    <Text
-                      className="w-[16px] text-center font-archivo text-[11.5px] font-semibold"
-                      style={{ color: '#5C5C55' }}>
-                      {setIndex + 1}
-                    </Text>
-                    {/*
-                      PREV stays blank until local history exists -- same principle as the Watch
-                      card. A first-ever session has nothing to compare against, and inventing a
-                      previous performance would be inventing the athlete's own past.
-                    */}
-                    <Text
-                      numberOfLines={1}
-                      className="w-[66px] text-center font-archivo text-[10.5px] font-medium"
-                      style={{ color: '#5C5C55' }}>
-                      —
-                    </Text>
-
-                    <View
-                      className="flex-1 flex-row items-center justify-center"
-                      style={{ gap: exercise.measure === 'time' ? 4 : 6 }}>
-                      {exercise.measure === 'weight' ? (
-                        <>
-                          <TextInput
-                            accessibilityLabel={`Weight for set ${setIndex + 1} of ${exercise.name}`}
-                            // Displayed in this exercise's unit, stored in kilograms always
-                            // (ADR-016). The conversion is symmetric, so toggling the chip and
-                            // toggling back leaves the bar at exactly the weight it started at --
-                            // `unit-conversion.spec.ts` pins that round trip.
-                            value={
-                              set.weightKg === null
-                                ? ''
-                                : String(weightForDisplay(set.weightKg, weightUnitFor(exercise.exerciseId)))
-                            }
-                            keyboardType="decimal-pad"
-                            onChangeText={(raw) =>
-                              setSession(
-                                updateSet(session, exerciseIndex, setIndex, {
-                                  weightKg:
-                                    raw === ''
-                                      ? null
-                                      : weightFromDisplay(
-                                          Number(raw.replace(/[^0-9.]/g, '')) || 0,
-                                          weightUnitFor(exercise.exerciseId),
-                                        ),
-                                }),
-                              )
-                            }
-                            className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
-                            style={{ color: numberColor }}
-                          />
-                          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
-                            {weightUnitFor(exercise.exerciseId)}
-                          </Text>
-                          <Text className="font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
-                            ×
-                          </Text>
-                          <TextInput
-                            accessibilityLabel={`Reps for set ${setIndex + 1} of ${exercise.name}`}
-                            value={set.reps === null ? '' : String(set.reps)}
-                            keyboardType="number-pad"
-                            onChangeText={(raw) =>
-                              setSession(
-                                updateSet(session, exerciseIndex, setIndex, {
-                                  reps: raw === '' ? null : parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0,
-                                }),
-                              )
-                            }
-                            className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
-                            style={{ color: numberColor }}
-                          />
-                        </>
-                      ) : exercise.measure === 'time' ? (
-                        <>
-                          {/* The design logs a timed set as mm:ss, not one seconds field. */}
-                          <TextInput
-                            accessibilityLabel={`Minutes for set ${setIndex + 1} of ${exercise.name}`}
-                            value={String(Math.floor((set.durationSeconds ?? 0) / 60))}
-                            keyboardType="number-pad"
-                            onChangeText={(raw) =>
-                              setSession(
-                                updateSet(session, exerciseIndex, setIndex, {
-                                  durationSeconds:
-                                    (parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0) * 60 +
-                                    ((set.durationSeconds ?? 0) % 60),
-                                }),
-                              )
-                            }
-                            className="w-[26px] py-[1px] text-right font-archivo text-[14px] font-semibold"
-                            style={{ color: numberColor }}
-                          />
-                          <Text className="font-archivo text-[14px] font-bold" style={{ color: '#6E6E66' }}>
-                            :
-                          </Text>
-                          <TextInput
-                            accessibilityLabel={`Seconds for set ${setIndex + 1} of ${exercise.name}`}
-                            value={String((set.durationSeconds ?? 0) % 60)}
-                            keyboardType="number-pad"
-                            onChangeText={(raw) =>
-                              setSession(
-                                updateSet(session, exerciseIndex, setIndex, {
-                                  durationSeconds:
-                                    Math.floor((set.durationSeconds ?? 0) / 60) * 60 +
-                                    (parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0),
-                                }),
-                              )
-                            }
-                            className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
-                            style={{ color: numberColor }}
-                          />
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`Start timer for set ${setIndex + 1} of ${exercise.name}`}
-                            onPress={() => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
-                            className="ml-[2px] flex-row items-center rounded-[8px] px-[9px] py-[5px]"
-                            style={{ backgroundColor: 'rgba(233,113,47,.14)', gap: 5 }}>
-                            <Icon name="chevron" size={10} color={colors.accent} />
-                            <Text className="font-archivo text-[10.5px] font-bold text-accent">Timer</Text>
-                          </Pressable>
-                        </>
-                      ) : (
-                        <>
-                          <TextInput
-                            accessibilityLabel={`Distance for set ${setIndex + 1} of ${exercise.name}`}
-                            // Metres on the wire and in the log, miles only on screen -- the same
-                            // display-only conversion the weight row above does.
-                            value={
-                              set.distanceMeters === null
-                                ? ''
-                                : String(
-                                    distanceForDisplay(
-                                      set.distanceMeters,
-                                      distanceUnitFor(exercise.exerciseId),
-                                    ),
-                                  )
-                            }
-                            keyboardType="decimal-pad"
-                            onChangeText={(raw) =>
-                              setSession(
-                                updateSet(session, exerciseIndex, setIndex, {
-                                  distanceMeters:
-                                    raw === ''
-                                      ? null
-                                      : distanceFromDisplay(
-                                          Number(raw.replace(/[^0-9.]/g, '')) || 0,
-                                          distanceUnitFor(exercise.exerciseId),
-                                        ),
-                                }),
-                              )
-                            }
-                            className="w-[44px] py-[1px] text-center font-archivo text-[14px] font-semibold"
-                            style={{ color: numberColor }}
-                          />
-                          <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
-                            {distanceUnitFor(exercise.exerciseId)}
-                          </Text>
-                        </>
-                      )}
-                    </View>
-
-                    {exercise.sets.length > 1 ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove set ${setIndex + 1} of ${exercise.name}`}
-                        onPress={() => setSession(removeSet(session, exerciseIndex, setIndex))}
-                        hitSlop={6}
-                        style={{ opacity: 0.4 }}>
-                        <Icon name="x" size={14} color="#C9503C" />
-                      </Pressable>
-                    ) : null}
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        set.isCompleted
-                          ? `Untick set ${setIndex + 1} of ${exercise.name}`
-                          : `Complete set ${setIndex + 1} of ${exercise.name}`
-                      }
-                      onPress={() => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
-                      className="h-[24px] w-[24px] items-center justify-center rounded-[12px]"
-                      style={
-                        set.isCompleted
-                          ? { backgroundColor: colors.green }
-                          : { borderWidth: 1.5, borderColor: '#37383C' }
-                      }>
-                      {set.isCompleted ? <Icon name="check" size={13} color="#101011" /> : null}
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Add set to ${exercise.name}`}
-              onPress={() => setSession(addSet(session, exerciseIndex))}
-              className="mt-[9px] h-[36px] flex-row items-center justify-center rounded-[9px]"
-              style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,.13)', gap: 7 }}>
-              <Icon name="plus" size={15} color={colors.accent} />
-              <Text className="font-archivo text-[12px] font-semibold" style={{ color: '#9A9A92' }}>
-                Add set
-              </Text>
-            </Pressable>
-          </View>
+            exercise={exercise}
+            weightUnit={weightUnitFor(exercise.exerciseId)}
+            distanceUnit={distanceUnitFor(exercise.exerciseId)}
+            onOpenGoalPicker={() => {
+              setGoalPickAll(false);
+              setGoalPickIndex(exerciseIndex);
+            }}
+            onToggleMeasure={() =>
+              setSession(
+                setExerciseMeasure(
+                  session,
+                  exerciseIndex,
+                  exercise.measure === 'distance' ? 'time' : 'distance',
+                ),
+              )
+            }
+            onToggleUnit={() => toggleUnit(exercise.exerciseId, exercise.measure)}
+            onOpenHistory={() => router.push(`/exercise/${exercise.exerciseId}`)}
+            onRemoveExercise={() => setSession(removeExercise(session, exerciseIndex))}
+            onUpdateSet={(setIndex, patch) => setSession(updateSet(session, exerciseIndex, setIndex, patch))}
+            onCompleteSet={(setIndex) => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
+            onRemoveSet={(setIndex) => setSession(removeSet(session, exerciseIndex, setIndex))}
+            onAddSet={() => setSession(addSet(session, exerciseIndex))}
+          />
         ))}
 
         <Pressable
