@@ -169,7 +169,13 @@ export const savedMealItems = pgTable(
     grams: numeric("grams", { precision: 8, scale: 2 }).notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
   },
-  (table) => [index("saved_meal_items_meal_idx").on(table.savedMealId, table.sortOrder)],
+  (table) => [
+    index("saved_meal_items_meal_idx").on(table.savedMealId, table.sortOrder),
+    // R28: `foodId` is a foreign key with no covering index of its own -- an ON DELETE CASCADE
+    // from `foods` (or any lookup keyed by food) would otherwise force a sequential scan of this
+    // table to find the referencing rows.
+    index("saved_meal_items_food_idx").on(table.foodId),
+  ],
 );
 
 export type SavedMealItemRow = typeof savedMealItems.$inferSelect;
@@ -234,6 +240,9 @@ export const nutritionLogEntries = pgTable(
     // is the whole WHERE clause of that query.
     index("nutrition_log_entries_user_date_idx").on(table.userId, table.loggedDate),
     index("nutrition_log_entries_group_idx").on(table.groupId),
+    // R28: `foodId` is a foreign key (ON DELETE RESTRICT) with no covering index -- every
+    // `mustFindFoodRow`/delete-cascade check against this table was a sequential scan without it.
+    index("nutrition_log_entries_food_idx").on(table.foodId),
   ],
 );
 

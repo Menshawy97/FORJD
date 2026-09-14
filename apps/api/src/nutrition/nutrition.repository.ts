@@ -307,11 +307,10 @@ export class NutritionRepository {
       .orderBy(foods.name, foods.id)
       .limit(limit);
 
-    const results: Food[] = [];
-    for (const row of rows) {
-      results.push(this.toFood(row, await this.listServings(row.id)));
-    }
-    return results;
+    // R28: batch the N+1 -- one `IN (...)` query for every result row's servings instead of a
+    // per-row round trip, mirroring `listSavedMeals`'s own batching below.
+    const servingsByFoodId = await this.listServingsForFoods(rows.map((row) => row.id));
+    return rows.map((row) => this.toFood(row, servingsByFoodId.get(row.id) ?? []));
   }
 
   /** Soft delete only -- log entries reference foods by id (mirrors exercises.repository.ts's own reasoning). */
@@ -344,6 +343,30 @@ export class NutritionRepository {
       .where(eq(foodServings.foodId, foodId))
       .orderBy(foodServings.sortOrder);
     return rows.map((row) => ({ label: row.label, grams: Number(row.grams) }));
+  }
+
+  /**
+   * Batched form of `listServings` for a set of food ids -- one `IN (...)` query instead of one
+   * round trip per food, the R28 fix for `searchFoods`'s own N+1 (found the same shape
+   * `bulkUpsertCatalogueFoods` was already written around: N round trips to a hosted Postgres
+   * each pay full network latency, not just local query time).
+   */
+  private async listServingsForFoods(foodIds: string[]): Promise<Map<string, Serving[]>> {
+    const byFoodId = new Map<string, Serving[]>();
+    if (foodIds.length === 0) return byFoodId;
+
+    const rows = await this.db
+      .select()
+      .from(foodServings)
+      .where(inArray(foodServings.foodId, foodIds))
+      .orderBy(foodServings.foodId, foodServings.sortOrder);
+
+    for (const row of rows) {
+      const servings = byFoodId.get(row.foodId) ?? [];
+      servings.push({ label: row.label, grams: Number(row.grams) });
+      byFoodId.set(row.foodId, servings);
+    }
+    return byFoodId;
   }
 
   private toFood(row: FoodRow, servings: Serving[]): Food {
@@ -460,25 +483,29 @@ export class NutritionRepository {
       .where(eq(savedMeals.userId, userId))
       .orderBy(savedMeals.createdAt);
 
-    const results: SavedMealWithItems[] = [];
-    for (const meal of mealRows) {
+    // R28: batch the N+1 -- one `IN (...)` query for every saved meal's items instead of a
+    // per-meal round trip, the same fix as `searchFoods`'s own `listServingsForFoods` above.
+    const itemsByMealId = new Map<string, Array<{ foodId: string; servingLabel: string; grams: number }>>();
+    if (mealRows.length > 0) {
       const itemRows = await this.db
         .select()
         .from(savedMealItems)
-        .where(eq(savedMealItems.savedMealId, meal.id))
-        .orderBy(savedMealItems.sortOrder);
-      results.push(
-        this.toSavedMealWithItems(
-          meal,
-          itemRows.map((item) => ({
-            foodId: item.foodId,
-            servingLabel: item.servingLabel,
-            grams: Number(item.grams),
-          })),
-        ),
-      );
+        .where(
+          inArray(
+            savedMealItems.savedMealId,
+            mealRows.map((meal) => meal.id),
+          ),
+        )
+        .orderBy(savedMealItems.savedMealId, savedMealItems.sortOrder);
+
+      for (const item of itemRows) {
+        const items = itemsByMealId.get(item.savedMealId) ?? [];
+        items.push({ foodId: item.foodId, servingLabel: item.servingLabel, grams: Number(item.grams) });
+        itemsByMealId.set(item.savedMealId, items);
+      }
     }
-    return results;
+
+    return mealRows.map((meal) => this.toSavedMealWithItems(meal, itemsByMealId.get(meal.id) ?? []));
   }
 
   async deleteSavedMeal(id: string, userId: string): Promise<boolean> {
