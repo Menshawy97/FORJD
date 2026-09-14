@@ -13,7 +13,7 @@ describe("ExercisesController", () => {
   beforeEach(() => {
     service = {
       list: jest.fn(),
-      getCatalogue: jest.fn(),
+      getCatalogueConditional: jest.fn(),
       getById: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -50,10 +50,47 @@ describe("ExercisesController", () => {
     expect(service.list).toHaveBeenCalledWith(request.user, query);
   });
 
-  it("getCatalogue scopes by request.user only", async () => {
+  const fakeResponse = () =>
+    ({ status: jest.fn(), setHeader: jest.fn() }) as unknown as jest.Mocked<
+      import("express").Response
+    >;
+
+  it("getCatalogue scopes by request.user and forwards If-None-Match", async () => {
     const request = fakeAuthenticatedRequest();
-    await controller.getCatalogue(request);
-    expect(service.getCatalogue).toHaveBeenCalledWith(request.user);
+    const response = fakeResponse();
+    service.getCatalogueConditional.mockResolvedValue({
+      notModified: false,
+      catalogue: { exercises: [], catalogueVersion: "v1" },
+    });
+
+    await controller.getCatalogue(request, '"v0"', response);
+
+    expect(service.getCatalogueConditional).toHaveBeenCalledWith(request.user, '"v0"');
+  });
+
+  it("getCatalogue answers 304 with no body when the service reports no change", async () => {
+    const request = fakeAuthenticatedRequest();
+    const response = fakeResponse();
+    service.getCatalogueConditional.mockResolvedValue({ notModified: true });
+
+    const result = await controller.getCatalogue(request, '"v1"', response);
+
+    expect(response.status).toHaveBeenCalledWith(304);
+    expect(result).toBeUndefined();
+  });
+
+  it("getCatalogue sets the ETag header and returns the body on a real change", async () => {
+    const request = fakeAuthenticatedRequest();
+    const response = fakeResponse();
+    service.getCatalogueConditional.mockResolvedValue({
+      notModified: false,
+      catalogue: { exercises: [], catalogueVersion: "v2" },
+    });
+
+    const result = await controller.getCatalogue(request, undefined, response);
+
+    expect(response.setHeader).toHaveBeenCalledWith("ETag", '"v2"');
+    expect(result).toEqual({ exercises: [], catalogueVersion: "v2" });
   });
 
   it("getById passes request.user and the path id -- the service enforces ownership, not the controller", async () => {

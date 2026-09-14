@@ -74,6 +74,8 @@ import type {
   WhoopStatusResponse,
 } from '@forjd/contracts';
 
+import type { CatalogueFetchResult } from '@/store/exercise-catalogue';
+
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
 
 const apiBaseUrl = (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ?? 'http://localhost:3000';
@@ -222,9 +224,30 @@ export async function getAthlete(userId: string): Promise<PublicProfileResponse>
   return response.data;
 }
 
-export async function getExerciseCatalogue(): Promise<ExerciseCatalogueResponse> {
-  const response = await apiClient.get<ExerciseCatalogueResponse>('/exercises/catalogue');
-  return response.data;
+/**
+ * Conditional GET (R20): sends the mobile store's locally cached `catalogueVersion` back as
+ * `If-None-Match` so `ExercisesService.getCatalogueConditional` on the API side can answer
+ * `304` with no body when nothing changed -- gzip (R9) shrank the transfer, this skips it
+ * entirely. `validateStatus` must accept 304 explicitly: axios's default range (`2xx` only)
+ * would otherwise throw it as an error, which would turn "nothing changed" into a caught
+ * exception `syncExerciseCatalogue`'s offline-first callers would treat as a failed sync.
+ *
+ * Returns the same `CatalogueFetchResult` shape `syncExerciseCatalogue` expects, so this
+ * function can be passed to it directly, exactly as the pre-R20 unconditional version was.
+ */
+export async function getExerciseCatalogue(
+  storedVersion: string | null,
+): Promise<CatalogueFetchResult> {
+  const response = await apiClient.get<ExerciseCatalogueResponse>('/exercises/catalogue', {
+    headers: storedVersion ? { 'If-None-Match': `"${storedVersion}"` } : {},
+    validateStatus: (status) => status === 200 || status === 304,
+  });
+
+  if (response.status === 304) {
+    return { notModified: true };
+  }
+
+  return { notModified: false, catalogue: response.data };
 }
 
 export async function createExercise(body: CreateExerciseRequest): Promise<ExerciseResponse> {

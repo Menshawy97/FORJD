@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -11,8 +12,10 @@ import {
   Put,
   Query,
   Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
+import type { Response } from "express";
 import type {
   CreateExerciseRequest,
   ExerciseCatalogueResponse,
@@ -56,10 +59,29 @@ export class ExercisesController {
    * collection route: Nest matches in declaration order, and a `:id` route declared first
    * would swallow this one, treating "catalogue" as an exercise id rather than the literal
    * path segment it is.
+   *
+   * **Conditional GET (R20).** `If-None-Match` carries the mobile store's locally cached
+   * `catalogueVersion` (`ExercisesService.deriveCatalogueVersion`'s own hash, unchanged) --
+   * when it still matches, this answers `304` with no body rather than re-sending the whole
+   * catalogue on every app launch. `@Res({ passthrough: true })` is required the moment a
+   * route needs to reach for `304`/headers directly: Nest's default response handling only
+   * ever sends `200`.
    */
   @Get("catalogue")
-  getCatalogue(@Req() request: AuthenticatedRequest): Promise<ExerciseCatalogueResponse> {
-    return this.exercisesService.getCatalogue(request.user);
+  async getCatalogue(
+    @Req() request: AuthenticatedRequest,
+    @Headers("if-none-match") ifNoneMatch: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ExerciseCatalogueResponse | undefined> {
+    const result = await this.exercisesService.getCatalogueConditional(request.user, ifNoneMatch);
+
+    if (result.notModified) {
+      response.status(HttpStatus.NOT_MODIFIED);
+      return undefined;
+    }
+
+    response.setHeader("ETag", `"${result.catalogue.catalogueVersion}"`);
+    return result.catalogue;
   }
 
   /**

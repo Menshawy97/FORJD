@@ -362,15 +362,55 @@ describe('apiClient - profile reads and writes', () => {
     expect(instance.get).toHaveBeenCalledWith('/athletes/u2');
   });
 
-  it('getExerciseCatalogue reads GET /exercises/catalogue through the authenticated client', async () => {
-    const { getExerciseCatalogue } = loadApiClient();
-    const instance = apiClientInstance();
-    const body = { exercises: [], catalogueVersion: 'v1' };
-    instance.get.mockResolvedValue({ data: body });
+  describe('getExerciseCatalogue (R20 conditional GET)', () => {
+    it('sends no If-None-Match and returns the full body when there is no stored version yet', async () => {
+      const { getExerciseCatalogue } = loadApiClient();
+      const instance = apiClientInstance();
+      const body = { exercises: [], catalogueVersion: 'v1' };
+      instance.get.mockResolvedValue({ status: 200, data: body });
 
-    await expect(getExerciseCatalogue()).resolves.toEqual(body);
+      await expect(getExerciseCatalogue(null)).resolves.toEqual({ notModified: false, catalogue: body });
 
-    expect(instance.get).toHaveBeenCalledWith('/exercises/catalogue');
+      expect(instance.get).toHaveBeenCalledWith(
+        '/exercises/catalogue',
+        expect.objectContaining({ headers: {} }),
+      );
+    });
+
+    it('sends the stored version as If-None-Match', async () => {
+      const { getExerciseCatalogue } = loadApiClient();
+      const instance = apiClientInstance();
+      const body = { exercises: [], catalogueVersion: 'v1' };
+      instance.get.mockResolvedValue({ status: 200, data: body });
+
+      await getExerciseCatalogue('v1');
+
+      expect(instance.get).toHaveBeenCalledWith(
+        '/exercises/catalogue',
+        expect.objectContaining({ headers: { 'If-None-Match': '"v1"' } }),
+      );
+    });
+
+    it('reports notModified on a 304 rather than throwing or returning an empty catalogue', async () => {
+      const { getExerciseCatalogue } = loadApiClient();
+      const instance = apiClientInstance();
+      instance.get.mockResolvedValue({ status: 304, data: undefined });
+
+      await expect(getExerciseCatalogue('v1')).resolves.toEqual({ notModified: true });
+    });
+
+    it('accepts 304 as a valid status -- axios would otherwise reject it as an error', async () => {
+      const { getExerciseCatalogue } = loadApiClient();
+      const instance = apiClientInstance();
+      instance.get.mockResolvedValue({ status: 304, data: undefined });
+
+      await getExerciseCatalogue('v1');
+
+      const [, config] = instance.get.mock.calls[0] as [string, { validateStatus: (status: number) => boolean }];
+      expect(config.validateStatus(200)).toBe(true);
+      expect(config.validateStatus(304)).toBe(true);
+      expect(config.validateStatus(500)).toBe(false);
+    });
   });
 
   it('setExerciseFavourite(true) sends PUT /exercises/:id/favourite', async () => {

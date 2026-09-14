@@ -359,6 +359,51 @@ describe('Exercise library (e2e)', () => {
         .set('Authorization', 'Bearer owner-token')
         .expect(204);
     });
+
+    /**
+     * R20: the conditional-GET half of "the catalogue stops re-downloading every launch".
+     * `catalogueVersion` is already the right cache key for this -- see the "returns the
+     * same version on two consecutive calls" and "does not change ... favourite toggles"
+     * tests above, which establish it is stable across repeat reads within one suite run
+     * and does not thrash on the one kind of write (favouriting) this suite's other tests
+     * perform between catalogue reads. That stability is what makes it safe to assert a
+     * literal 304 here rather than only comparing two 200 bodies.
+     */
+    it('answers 304 with no body when If-None-Match already matches the current version', async () => {
+      const first = await request(app.getHttpServer())
+        .get('/api/v1/exercises/catalogue')
+        .set('Authorization', 'Bearer owner-token')
+        .expect(200);
+      const currentVersion = first.body.catalogueVersion as string;
+
+      const conditional = await request(app.getHttpServer())
+        .get('/api/v1/exercises/catalogue')
+        .set('Authorization', 'Bearer owner-token')
+        .set('If-None-Match', `"${currentVersion}"`)
+        .expect(304);
+
+      expect(conditional.body).toEqual({});
+      expect(conditional.text).toBe('');
+    });
+
+    it('answers 200 with the full body when If-None-Match names a stale version', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/exercises/catalogue')
+        .set('Authorization', 'Bearer owner-token')
+        .set('If-None-Match', '"not-the-current-version"')
+        .expect(200);
+
+      expect(() => exerciseCatalogueResponseSchema.parse(response.body)).not.toThrow();
+    });
+
+    it('sets an ETag header on a full 200 response matching catalogueVersion', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/exercises/catalogue')
+        .set('Authorization', 'Bearer owner-token')
+        .expect(200);
+
+      expect(response.headers.etag).toBe(`"${response.body.catalogueVersion}"`);
+    });
   });
 
   describe('GET /exercises/:id', () => {

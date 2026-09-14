@@ -1,6 +1,7 @@
 import type { ExerciseCatalogueResponse, ExerciseResponse } from '@forjd/contracts';
 
 import {
+  CatalogueFetchResult,
   ensureExerciseCatalogueSchema,
   getCachedExercise,
   getStoredCatalogueVersion,
@@ -169,12 +170,36 @@ const catalogueOf = (
   catalogueVersion = 'v1',
 ): ExerciseCatalogueResponse => ({ exercises, catalogueVersion });
 
+/**
+ * Wraps a plain `ExerciseCatalogueResponse` into the always-fresh shape `fetchCatalogue` must
+ * return: the server has no stored version to compare against, so it always answers with the
+ * full body. Kept as the default helper so every pre-existing test below (written before R20
+ * introduced conditional fetch) keeps expressing "the server returns this catalogue" without
+ * caring about the new `notModified` branch.
+ */
+const alwaysFresh =
+  (response: ExerciseCatalogueResponse) =>
+  (): Promise<CatalogueFetchResult> =>
+    Promise.resolve({ notModified: false, catalogue: response });
+
+/**
+ * A `fetchCatalogue` stand-in for a real conditional-GET server: it answers `notModified` only
+ * when the stored version it is called with already matches `serverVersion`, exactly like
+ * `ExercisesService.getCatalogueConditional`'s `If-None-Match` comparison on the API side.
+ */
+const conditionalServer =
+  (response: ExerciseCatalogueResponse, serverVersion = response.catalogueVersion) =>
+  (storedVersion: string | null): Promise<CatalogueFetchResult> =>
+    Promise.resolve(
+      storedVersion === serverVersion ? { notModified: true } : { notModified: false, catalogue: response },
+    );
+
 describe('exercise catalogue store', () => {
   describe('syncExerciseCatalogue', () => {
     it('populates the cache and stores the version on first sync', async () => {
       const db = new FakeSqliteConnection();
 
-      const result = await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise()])));
+      const result = await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise()])));
 
       expect(result).toEqual({ synced: true, count: 1 });
       expect(await getStoredCatalogueVersion(db)).toBe('v1');
@@ -182,21 +207,19 @@ describe('exercise catalogue store', () => {
 
     it('skips the rebuild when the version has not changed', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise()])));
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise()])));
 
-      const result = await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise()])));
+      const result = await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise()])));
 
       expect(result.synced).toBe(false);
     });
 
     it('replaces the whole cache when the version has changed', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', name: 'Old One' })], 'v1')),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', name: 'Old One' })], 'v1')),
       );
 
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'b', name: 'New One' })], 'v2')),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'b', name: 'New One' })], 'v2')),
       );
 
       expect(await getCachedExercise(db, 'a')).toBeNull();
@@ -208,8 +231,59 @@ describe('exercise catalogue store', () => {
       const db = new FakeSqliteConnection();
 
       await expect(
-        syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise()]))),
+        syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise()]))),
       ).resolves.not.toThrow();
+    });
+
+    describe('conditional fetch (R20)', () => {
+      it('does not request the full catalogue body when the stored version already matches the server', async () => {
+        const db = new FakeSqliteConnection();
+        await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise()], 'v1')));
+
+        const fetchCatalogue = jest.fn(conditionalServer(catalogueOf([exercise()], 'v1'), 'v1'));
+        const result = await syncExerciseCatalogue(db, fetchCatalogue);
+
+        // The mock was still called -- a conditional request still goes out -- but it was
+        // called with the stored version so it could answer 304 rather than a full body, and
+        // the sync result reflects that no full body was ever produced.
+        expect(fetchCatalogue).toHaveBeenCalledWith('v1');
+        await expect(fetchCatalogue.mock.results[0]?.value).resolves.toEqual({ notModified: true });
+        expect(result.synced).toBe(false);
+      });
+
+      it('fetches and replaces the catalogue when the stored version differs from the server', async () => {
+        const db = new FakeSqliteConnection();
+        await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', name: 'Old One' })], 'v1')));
+
+        const fetchCatalogue = conditionalServer(
+          catalogueOf([exercise({ id: 'b', name: 'New One' })], 'v2'),
+          'v2',
+        );
+        const result = await syncExerciseCatalogue(db, fetchCatalogue);
+
+        expect(result).toEqual({ synced: true, count: 1 });
+        expect(await getCachedExercise(db, 'a')).toBeNull();
+        expect(await getCachedExercise(db, 'b')).not.toBeNull();
+        expect(await getStoredCatalogueVersion(db)).toBe('v2');
+      });
+
+      it('leaves the local catalogue completely untouched on a 304 -- the regression this slice exists to prevent', async () => {
+        const db = new FakeSqliteConnection();
+        await syncExerciseCatalogue(
+          db,
+          alwaysFresh(catalogueOf([exercise({ id: 'a', name: 'Alpha' }), exercise({ id: 'b', name: 'Bravo' })], 'v1')),
+        );
+
+        const notModified: CatalogueFetchResult = { notModified: true };
+        const result = await syncExerciseCatalogue(db, () => Promise.resolve(notModified));
+
+        expect(result.synced).toBe(false);
+        // The library must not have been emptied by a 304 being mistaken for "no data".
+        expect(await getCachedExercise(db, 'a')).not.toBeNull();
+        expect(await getCachedExercise(db, 'b')).not.toBeNull();
+        expect((await listCachedExercises(db)).map((row) => row.id).sort()).toEqual(['a', 'b']);
+        expect(await getStoredCatalogueVersion(db)).toBe('v1');
+      });
     });
   });
 
@@ -225,8 +299,7 @@ describe('exercise catalogue store', () => {
   describe('listCachedExercises', () => {
     it('returns every cached exercise, ordered by name, with no filter', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(
+      await syncExerciseCatalogue(db, alwaysFresh(
           catalogueOf([
             exercise({ id: 'b', name: 'Bravo' }),
             exercise({ id: 'a', name: 'Alpha' }),
@@ -241,8 +314,7 @@ describe('exercise catalogue store', () => {
 
     it('filters by category', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(
+      await syncExerciseCatalogue(db, alwaysFresh(
           catalogueOf([
             exercise({ id: 'a', name: 'Alpha', category: 'strength' }),
             exercise({ id: 'b', name: 'Bravo', category: 'mobility' }),
@@ -257,8 +329,7 @@ describe('exercise catalogue store', () => {
 
     it('filters to favourites only', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(
+      await syncExerciseCatalogue(db, alwaysFresh(
           catalogueOf([
             exercise({ id: 'a', name: 'Alpha', isFavourite: true }),
             exercise({ id: 'b', name: 'Bravo', isFavourite: false }),
@@ -273,8 +344,7 @@ describe('exercise catalogue store', () => {
 
     it('filters to custom exercises only', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(
+      await syncExerciseCatalogue(db, alwaysFresh(
           catalogueOf([
             exercise({ id: 'a', name: 'Alpha', isCustom: true }),
             exercise({ id: 'b', name: 'Bravo', isCustom: false }),
@@ -289,8 +359,7 @@ describe('exercise catalogue store', () => {
 
     it('combines category and favouritesOnly', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(
+      await syncExerciseCatalogue(db, alwaysFresh(
           catalogueOf([
             exercise({ id: 'a', name: 'Alpha', category: 'strength', isFavourite: true }),
             exercise({ id: 'b', name: 'Bravo', category: 'strength', isFavourite: false }),
@@ -306,8 +375,7 @@ describe('exercise catalogue store', () => {
 
     it('reflects a favourite toggle written by setLocalFavourite', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', isFavourite: false })])),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', isFavourite: false })])),
       );
       await setLocalFavourite(db, 'a', true);
 
@@ -332,8 +400,7 @@ describe('exercise catalogue store', () => {
 
     it('reattaches isFavourite from its own column, not the stored JSON blob', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', isFavourite: true })])),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', isFavourite: true })])),
       );
 
       expect((await getCachedExercise(db, 'a'))?.isFavourite).toBe(true);
@@ -343,8 +410,7 @@ describe('exercise catalogue store', () => {
   describe('searchExercises', () => {
     it('finds an exercise by a name prefix', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', name: 'Barbell Bench Press' })])),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', name: 'Barbell Bench Press' })])),
       );
 
       const results = await searchExercises(db, 'bench');
@@ -354,8 +420,7 @@ describe('exercise catalogue store', () => {
 
     it('finds an exercise by a muscle it targets', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(
+      await syncExerciseCatalogue(db, alwaysFresh(
           catalogueOf([exercise({ id: 'a', name: 'Something Else', primaryMuscles: ['glutes'] })]),
         ),
       );
@@ -367,8 +432,7 @@ describe('exercise catalogue store', () => {
 
     it('finds an exercise by equipment', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', name: 'Something Else', equipment: ['kettlebell'] })])),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', name: 'Something Else', equipment: ['kettlebell'] })])),
       );
 
       const results = await searchExercises(db, 'kettlebell');
@@ -378,14 +442,14 @@ describe('exercise catalogue store', () => {
 
     it('returns an empty array for a blank query rather than every row', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise()])));
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise()])));
 
       expect(await searchExercises(db, '   ')).toEqual([]);
     });
 
     it('returns an empty array when nothing matches', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise()])));
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise()])));
 
       expect(await searchExercises(db, 'zzzznomatch')).toEqual([]);
     });
@@ -394,8 +458,7 @@ describe('exercise catalogue store', () => {
   describe('removeCachedExercise', () => {
     it('removes the row so it no longer appears in a list or a direct lookup', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', name: 'Alpha' }), exercise({ id: 'b', name: 'Bravo' })])),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', name: 'Alpha' }), exercise({ id: 'b', name: 'Bravo' })])),
       );
 
       await removeCachedExercise(db, 'a');
@@ -406,8 +469,7 @@ describe('exercise catalogue store', () => {
 
     it('removes the row from the FTS index too, not only the cache table', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', name: 'Alpha Barbell Row' })])),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', name: 'Alpha Barbell Row' })])),
       );
 
       await removeCachedExercise(db, 'a');
@@ -417,7 +479,7 @@ describe('exercise catalogue store', () => {
 
     it('does not touch the stored catalogueVersion', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise({ id: 'a' })])));
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a' })])));
 
       await removeCachedExercise(db, 'a');
 
@@ -428,8 +490,7 @@ describe('exercise catalogue store', () => {
   describe('setLocalFavourite', () => {
     it('updates the cached row without waiting for the next sync', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () =>
-        Promise.resolve(catalogueOf([exercise({ id: 'a', isFavourite: false })])),
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a', isFavourite: false })])),
       );
 
       await setLocalFavourite(db, 'a', true);
@@ -439,7 +500,7 @@ describe('exercise catalogue store', () => {
 
     it('does not touch the stored catalogueVersion', async () => {
       const db = new FakeSqliteConnection();
-      await syncExerciseCatalogue(db, () => Promise.resolve(catalogueOf([exercise({ id: 'a' })])));
+      await syncExerciseCatalogue(db, alwaysFresh(catalogueOf([exercise({ id: 'a' })])));
 
       await setLocalFavourite(db, 'a', true);
 
