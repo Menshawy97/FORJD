@@ -1,6 +1,7 @@
 import { ConflictException } from "@nestjs/common";
+import { Food } from "@forjd/domain";
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
-import { inArray } from "drizzle-orm";
+import { inArray, sql, SQL } from "drizzle-orm";
 import { Pool } from "pg";
 import { randomUUID } from "crypto";
 
@@ -9,7 +10,9 @@ import {
   macroGoals,
   nutritionLogEntries,
   savedMeals,
+  savedMealItems,
 } from "../database/schema/nutrition.schema";
+import { goals } from "../database/schema/goals.schema";
 import { users } from "../database/schema/users.schema";
 import { NutritionRepository } from "./nutrition.repository";
 
@@ -468,5 +471,229 @@ describe("NutritionRepository", () => {
       expect(await repository.deleteLogEntry(entry.id, other)).toBe(false);
       expect(await repository.deleteLogEntry(entry.id, owner)).toBe(true);
     });
+  });
+
+  /**
+   * R28: the plan's own scope -- missing foreign-key indexes on `nutrition_log_entries(food_id)`,
+   * `goals(user_id)`, and `saved_meal_items(food_id)` (migration `0018_add-nutrition-goals-fk-
+   * indexes.sql`), plus batching the food-search and saved-meals N+1s in `nutrition.repository.ts`.
+   *
+   * Seeds a few thousand rows per table so the target `food_id`/`user_id` is selective enough
+   * (a handful of matches out of thousands) that Postgres's own cost-based planner -- not a
+   * forced `enable_seqscan = off` -- prefers an index scan once the index exists. `ANALYZE` runs
+   * after each bulk insert so the planner's row-count estimates reflect the seeded data.
+   */
+  describe("R28: FK indexes and N+1 batching", () => {
+    /** Bulk-inserts minimal catalogue foods directly (bypassing createCatalogueFood's per-row servings round trip) purely as FK targets for the seeded rows below. */
+    const seedBulkFoods = async (count: number, label: string): Promise<string[]> => {
+      const rows = Array.from({ length: count }, (_, index) => ({
+        ownerUserId: null,
+        name: `R28 Bulk Food ${label} ${index} ${randomUUID()}`,
+        category: "snacks" as const,
+        kcalPer100g: "10",
+        proteinPer100g: "1",
+        carbsPer100g: "1",
+        fatPer100g: "1",
+        source: null,
+        sourceId: null,
+      }));
+      const inserted = await db.insert(foods).values(rows).returning({ id: foods.id });
+      const ids = inserted.map((row) => row.id);
+      createdFoodIds.push(...ids);
+      return ids;
+    };
+
+    /** Runs `EXPLAIN` and concatenates every `QUERY PLAN` line into one string. */
+    const explainPlan = async (query: SQL): Promise<string> => {
+      const result = await db.execute(sql`EXPLAIN ${query}`);
+      return (result.rows as Array<{ "QUERY PLAN": string }>).map((row) => row["QUERY PLAN"]).join("\n");
+    };
+
+    it("nutrition_log_entries(food_id): Postgres uses nutrition_log_entries_food_idx, not a sequential scan, for a selective food_id lookup", async () => {
+      const userId = await makeUser("r28-log-explain");
+      const foodIds = await seedBulkFoods(60, "log-explain");
+      const targetFoodId = foodIds[0];
+      if (!targetFoodId) throw new Error("seedBulkFoods returned no ids");
+
+      // 60 foods x 60 entries each = 3600 rows, ~1.7% of which match the target food_id --
+      // selective enough that a cost-based planner with the index available will use it.
+      const rows = foodIds.flatMap((foodId) =>
+        Array.from({ length: 60 }, () => ({
+          userId,
+          foodId,
+          loggedDate: "2026-08-30",
+          slot: "snack",
+          servingLabel: "100 g",
+          grams: "100",
+          kcal: "10",
+          protein: "1",
+          carbs: "1",
+          fat: "1",
+          groupId: null,
+        })),
+      );
+      for (let i = 0; i < rows.length; i += 500) {
+        await db.insert(nutritionLogEntries).values(rows.slice(i, i + 500));
+      }
+      await db.execute(sql`ANALYZE nutrition_log_entries`);
+
+      const plan = await explainPlan(
+        sql`SELECT id FROM nutrition_log_entries WHERE food_id = ${targetFoodId}`,
+      );
+
+      expect(plan).toContain("nutrition_log_entries_food_idx");
+      expect(plan).not.toContain("Seq Scan on nutrition_log_entries");
+    }, 30000);
+
+    it("goals(user_id): Postgres uses goals_user_id_idx, not a sequential scan, for a selective user_id lookup", async () => {
+      const targetUserId = await makeUser("r28-goals-explain-target");
+      const otherUsers = await Promise.all(
+        Array.from({ length: 40 }, (_, index) => makeUser(`r28-goals-explain-other-${index}`)),
+      );
+
+      // 40 other users x 60 goals each, plus the target's own single goal -- the target is a
+      // 1-in-2401 match.
+      const rows = otherUsers.flatMap((userId) =>
+        Array.from({ length: 60 }, () => ({
+          userId,
+          type: "weight",
+          status: "active",
+        })),
+      );
+      for (let i = 0; i < rows.length; i += 500) {
+        await db.insert(goals).values(rows.slice(i, i + 500));
+      }
+      await db.insert(goals).values({ userId: targetUserId, type: "weight", status: "active" });
+      await db.execute(sql`ANALYZE goals`);
+
+      const plan = await explainPlan(sql`SELECT id FROM goals WHERE user_id = ${targetUserId}`);
+
+      expect(plan).toContain("goals_user_id_idx");
+      expect(plan).not.toContain("Seq Scan on goals");
+    }, 30000);
+
+    it("saved_meal_items(food_id): Postgres uses saved_meal_items_food_idx, not a sequential scan, for a selective food_id lookup", async () => {
+      const userId = await makeUser("r28-smi-explain");
+      const foodIds = await seedBulkFoods(50, "smi-explain");
+      const targetFoodId = foodIds[0];
+      if (!targetFoodId) throw new Error("seedBulkFoods returned no ids");
+
+      const meal = await repository.createSavedMeal(userId, `R28 SMI Explain ${randomUUID()}`, []);
+      createdSavedMealIds.push(meal.id);
+
+      const rows = foodIds.flatMap((foodId, foodIndex) =>
+        Array.from({ length: 50 }, (_, itemIndex) => ({
+          savedMealId: meal.id,
+          foodId,
+          servingLabel: "100 g",
+          grams: "100",
+          sortOrder: foodIndex * 50 + itemIndex,
+        })),
+      );
+      for (let i = 0; i < rows.length; i += 500) {
+        await db.insert(savedMealItems).values(rows.slice(i, i + 500));
+      }
+      await db.execute(sql`ANALYZE saved_meal_items`);
+
+      const plan = await explainPlan(sql`SELECT id FROM saved_meal_items WHERE food_id = ${targetFoodId}`);
+
+      expect(plan).toContain("saved_meal_items_food_idx");
+      expect(plan).not.toContain("Seq Scan on saved_meal_items");
+    }, 30000);
+
+    it("searchFoods batches its servings lookup into one query regardless of result count (the food-search N+1)", async () => {
+      const viewer = await makeUser("r28-search-n1");
+      const unique = randomUUID().replace(/-/g, "");
+      const created = await Promise.all(
+        Array.from({ length: 8 }, (_, index) =>
+          repository.createCatalogueFood(catalogueInput(`r28-search-n1-${unique}-${index}`)),
+        ),
+      );
+      createdFoodIds.push(...created.map((food: Food) => food.id));
+
+      const querySpy = jest.spyOn(pool, "query");
+      const results = await repository.searchFoods(viewer, `Test Banana r28-search-n1-${unique}`, 20);
+      const callCount = querySpy.mock.calls.length;
+      querySpy.mockRestore();
+
+      expect(results.length).toBeGreaterThanOrEqual(8);
+      // One query for the food rows, one batched `IN (...)` query for every result's servings --
+      // never N+1 (a query per result row). A generous upper bound (not `toBe(2)`) keeps this
+      // resilient to an unrelated extra round trip, while still catching the O(n) shape an N+1
+      // regression would produce (10 results would need 11 calls under the old per-row loop).
+      expect(callCount).toBeLessThanOrEqual(4);
+    });
+
+    it("listSavedMeals batches its items lookup into one query regardless of meal count (the saved-meals N+1)", async () => {
+      const userId = await makeUser("r28-savedmeals-n1");
+      const food = await repository.createCatalogueFood(catalogueInput(`r28-savedmeals-n1-${randomUUID()}`));
+      createdFoodIds.push(food.id);
+
+      const meals = await Promise.all(
+        Array.from({ length: 8 }, (_, index) =>
+          repository.createSavedMeal(userId, `R28 N1 Meal ${index} ${randomUUID()}`, [
+            { foodId: food.id, servingLabel: "100 g", grams: 100 },
+          ]),
+        ),
+      );
+      createdSavedMealIds.push(...meals.map((meal) => meal.id));
+
+      const querySpy = jest.spyOn(pool, "query");
+      const list = await repository.listSavedMeals(userId);
+      const callCount = querySpy.mock.calls.length;
+      querySpy.mockRestore();
+
+      expect(list.length).toBeGreaterThanOrEqual(8);
+      // One query for the meal rows, one batched `IN (...)` query for every meal's items --
+      // never N+1. Same generous bound rationale as the searchFoods test above.
+      expect(callCount).toBeLessThanOrEqual(4);
+    });
+
+    it("timing: listSavedMeals stays fast against a seeded set of meals -- a per-meal round trip would scale linearly with meal count", async () => {
+      const userId = await makeUser("r28-savedmeals-timing");
+      const food = await repository.createCatalogueFood(
+        catalogueInput(`r28-savedmeals-timing-${randomUUID()}`),
+      );
+      createdFoodIds.push(food.id);
+
+      const mealCount = 100;
+      for (let i = 0; i < mealCount; i += 20) {
+        const batch = await Promise.all(
+          Array.from({ length: Math.min(20, mealCount - i) }, (_, offset) =>
+            repository.createSavedMeal(userId, `R28 Timing Meal ${i + offset} ${randomUUID()}`, [
+              { foodId: food.id, servingLabel: "100 g", grams: 100 },
+            ]),
+          ),
+        );
+        createdSavedMealIds.push(...batch.map((meal) => meal.id));
+      }
+
+      const start = Date.now();
+      const list = await repository.listSavedMeals(userId);
+      const elapsedMs = Date.now() - start;
+
+      expect(list.length).toBeGreaterThanOrEqual(mealCount);
+      // Two round trips' worth of latency, not `mealCount` of them -- generous even under the
+      // shared-machine contention this repo's own test-running notes call out.
+      expect(elapsedMs).toBeLessThan(2000);
+    }, 30000);
+
+    it("timing: searchFoods stays fast against a seeded set of matching foods -- a per-result round trip would scale linearly with result count", async () => {
+      const viewer = await makeUser("r28-search-timing");
+      const unique = randomUUID().replace(/-/g, "");
+      const created = await Promise.all(
+        Array.from({ length: 50 }, (_, index) =>
+          repository.createCatalogueFood(catalogueInput(`r28-search-timing-${unique}-${index}`)),
+        ),
+      );
+      createdFoodIds.push(...created.map((food: Food) => food.id));
+
+      const start = Date.now();
+      const results = await repository.searchFoods(viewer, `Test Banana r28-search-timing-${unique}`, 50);
+      const elapsedMs = Date.now() - start;
+
+      expect(results.length).toBeGreaterThanOrEqual(50);
+      expect(elapsedMs).toBeLessThan(2000);
+    }, 30000);
   });
 });
