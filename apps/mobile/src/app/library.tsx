@@ -75,6 +75,54 @@ const FILTER_CHIPS: ReadonlyArray<{ id: LibraryFilter; label: string }> = [
  * with its own empty-state row, rather than needing a second component outside the list. */
 const EMPTY_SENTINEL = '__empty__';
 
+type LibrarySection = { key: string; title: string | null; data: Array<ExerciseResponse | typeof EMPTY_SENTINEL> };
+
+/**
+ * R21 (H15): every row is the same height -- a 38px icon tile plus 13px of vertical padding
+ * top and bottom, regardless of which exercise it names (`numberOfLines={1}` on both the title
+ * and subtitle keeps the text from ever growing the row). The two section headers are not the
+ * same height as each other, though: `recent`'s smaller top margin (6px vs 20px) is deliberate
+ * -- see the `renderSectionHeader` styling below -- so `getLibraryItemLayout` has to know which
+ * kind of header it is looking at, not just "a header".
+ */
+const ROW_HEIGHT = 64;
+const RECENT_HEADER_HEIGHT = 30;
+const DEFAULT_HEADER_HEIGHT = 44;
+
+/**
+ * `SectionList`'s `getItemLayout` index is flattened across every section -- each section
+ * contributes one header "row" followed by its data rows. Pulled out as a pure function (rather
+ * than inlined as a closure) so the ~1,700-row list's layout math can be unit-tested directly,
+ * without going through a mocked catalogue and a rendered tree.
+ */
+export function getLibraryItemLayout(
+  sections: ReadonlyArray<{ key: string; data: { length: number } }>,
+  index: number,
+): { length: number; offset: number; index: number } {
+  let offset = 0;
+  let remaining = index;
+
+  for (const section of sections) {
+    const headerHeight = section.key === 'recent' ? RECENT_HEADER_HEIGHT : DEFAULT_HEADER_HEIGHT;
+    if (remaining === 0) {
+      return { length: headerHeight, offset, index };
+    }
+    offset += headerHeight;
+    remaining -= 1;
+
+    const rowCount = section.data.length;
+    if (remaining < rowCount) {
+      return { length: ROW_HEIGHT, offset: offset + remaining * ROW_HEIGHT, index };
+    }
+    offset += rowCount * ROW_HEIGHT;
+    remaining -= rowCount;
+  }
+
+  // Out of range (SectionList can probe past the end while settling) -- degrade to the last
+  // known offset rather than throwing.
+  return { length: ROW_HEIGHT, offset, index };
+}
+
 function subtitleOf(exercise: ExerciseResponse): string {
   return exercise.primaryMuscles.map((muscle) => MUSCLE_GROUP_DISPLAY_NAMES[muscle]).join(' · ');
 }
@@ -217,55 +265,67 @@ export default function LibraryScreen() {
   // screen (Phase 3H), so it falls through to the original browse-mode behaviour.
   const goBack = () => (pick === 'builder' || pick === 'live' ? router.back() : router.replace('/train'));
 
-  const onPressRow = (exercise: ExerciseResponse) => {
-    if (pick === 'builder') {
-      setPickedExerciseForBuilder({
-        exerciseId: exercise.id,
-        name: exercise.name,
-        measure: exercise.measure,
-      });
-      router.back();
-      return;
-    }
-    if (pick === 'live') {
-      setPickedExerciseForLive({
-        exerciseId: exercise.id,
-        name: exercise.name,
-        measure: exercise.measure,
-        goal: exercise.goal,
-      });
-      router.back();
-      return;
-    }
-    // §3.6: browse mode's own row behaviour, unaffected by any pick mode.
-    router.push(`/exercise/${exercise.id}`);
-  };
+  const onPressRow = useCallback(
+    (exercise: ExerciseResponse) => {
+      if (pick === 'builder') {
+        setPickedExerciseForBuilder({
+          exerciseId: exercise.id,
+          name: exercise.name,
+          measure: exercise.measure,
+        });
+        router.back();
+        return;
+      }
+      if (pick === 'live') {
+        setPickedExerciseForLive({
+          exerciseId: exercise.id,
+          name: exercise.name,
+          measure: exercise.measure,
+          goal: exercise.goal,
+        });
+        router.back();
+        return;
+      }
+      // §3.6: browse mode's own row behaviour, unaffected by any pick mode.
+      router.push(`/exercise/${exercise.id}`);
+    },
+    [pick],
+  );
 
-  const onToggleFavourite = async (exercise: ExerciseResponse) => {
-    const db = dbRef.current;
-    if (!db) return;
-    const next = !exercise.isFavourite;
+  // `toast.show` rather than `toast` itself in the deps below: `useToast()` returns a fresh
+  // `{ message, show }` object literal every render (only `show` is memoized inside it), so
+  // depending on the whole object would recreate `onToggleFavourite` -- and therefore
+  // `renderItem`, which closes over it -- on every render for a reason that has nothing to do
+  // with favouriting.
+  const showToast = toast.show;
 
-    // Optimistic: the star flips immediately, and reverts only if the request actually fails.
-    await setLocalFavourite(db, exercise.id, next);
-    await refresh(filter, query);
+  const onToggleFavourite = useCallback(
+    async (exercise: ExerciseResponse) => {
+      const db = dbRef.current;
+      if (!db) return;
+      const next = !exercise.isFavourite;
 
-    try {
-      await setExerciseFavourite(exercise.id, next);
-    } catch (cause) {
-      await setLocalFavourite(db, exercise.id, !next);
+      // Optimistic: the star flips immediately, and reverts only if the request actually fails.
+      await setLocalFavourite(db, exercise.id, next);
       await refresh(filter, query);
-      toast.show(
-        classifyRequestFailure(cause) === 'offline'
-          ? OFFLINE_MESSAGE
-          : 'Could not update favourite. Please try again.',
-      );
-    }
-  };
 
-  const sections = useMemo(() => {
-    const built: Array<{ key: string; title: string | null; data: Array<ExerciseResponse | typeof EMPTY_SENTINEL> }> =
-      [];
+      try {
+        await setExerciseFavourite(exercise.id, next);
+      } catch (cause) {
+        await setLocalFavourite(db, exercise.id, !next);
+        await refresh(filter, query);
+        showToast(
+          classifyRequestFailure(cause) === 'offline'
+            ? OFFLINE_MESSAGE
+            : 'Could not update favourite. Please try again.',
+        );
+      }
+    },
+    [filter, query, refresh, showToast],
+  );
+
+  const sections = useMemo<LibrarySection[]>(() => {
+    const built: LibrarySection[] = [];
     if (recentItems.length > 0) {
       built.push({ key: 'recent', title: 'Recent', data: recentItems });
     }
@@ -276,6 +336,76 @@ export default function LibraryScreen() {
     });
     return built;
   }, [items, recentItems]);
+
+  /**
+   * R21 (H15): toggling one favourite re-fetches the whole `items` array from the catalogue
+   * store, which re-creates `sections` and would otherwise re-create this `renderItem` closure
+   * too -- and a `renderItem` that changes identity on every data refresh is exactly what makes
+   * `SectionList`/`VirtualizedList` re-render every visible row instead of just the one that
+   * changed. Depending on `filter` (used in the empty-state copy) plus the two stable,
+   * `useCallback`-wrapped handlers above -- not on `sections` or `items` -- keeps this function
+   * the same reference across a favourite toggle.
+   */
+  const renderItem = useCallback(
+    ({ item }: { item: ExerciseResponse | typeof EMPTY_SENTINEL }) => {
+      if (item === EMPTY_SENTINEL) {
+        return (
+          <Text className="font-archivo text-[13px] text-dimmer" style={{ paddingVertical: 26 }}>
+            {filter === 'favourites'
+              ? 'No favourite exercises yet — tap a star to add one.'
+              : filter === 'custom'
+                ? 'No custom exercises yet — tap New to create one.'
+                : 'No exercises match.'}
+          </Text>
+        );
+      }
+
+      const exercise = item;
+      return (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onPressRow(exercise)}
+          className="flex-row items-center gap-[16px] border-b border-b-borderFaint py-[13px]"
+          style={({ pressed }) => (pressed ? { backgroundColor: 'rgba(255,255,255,.025)' } : null)}>
+          <View
+            className="h-[38px] w-[38px] flex-none items-center justify-center rounded-[9px]"
+            style={{ backgroundColor: colors.elevated2 }}>
+            <Icon name="dumb" size={20} color={colors.metadata} />
+          </View>
+          <View className="flex-1" style={{ minWidth: 0 }}>
+            <Text className="font-archivo text-row-title font-semibold text-text" numberOfLines={1}>
+              {exercise.name}
+            </Text>
+            <Text className="mt-[5px] font-archivo text-[11.5px] text-dimmer" numberOfLines={1}>
+              {subtitleOf(exercise)}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={exercise.isFavourite ? 'Remove favourite' : 'Add favourite'}
+            onPress={() => onToggleFavourite(exercise)}
+            className="h-[32px] w-[32px] flex-none items-center justify-center rounded-[9px]"
+            style={({ pressed }) => pressed && { backgroundColor: 'rgba(255,255,255,.07)' }}>
+            <Icon
+              name="star"
+              size={19}
+              filled={exercise.isFavourite}
+              color={exercise.isFavourite ? colors.accent : colors.metadata}
+            />
+          </Pressable>
+          <View className="flex-none opacity-50">
+            <Icon name="chevron" size={15} color={colors.metadata} />
+          </View>
+        </Pressable>
+      );
+    },
+    [filter, onPressRow, onToggleFavourite],
+  );
+
+  const getItemLayout = useCallback(
+    (_data: LibrarySection[] | null | undefined, index: number) => getLibraryItemLayout(sections, index),
+    [sections],
+  );
 
   return (
     <ScreenBackground>
@@ -350,60 +480,8 @@ export default function LibraryScreen() {
             {section.title}
           </Text>
         )}
-        renderItem={({ item }) => {
-          if (item === EMPTY_SENTINEL) {
-            return (
-              <Text className="font-archivo text-[13px] text-dimmer" style={{ paddingVertical: 26 }}>
-                {filter === 'favourites'
-                  ? 'No favourite exercises yet — tap a star to add one.'
-                  : filter === 'custom'
-                    ? 'No custom exercises yet — tap New to create one.'
-                    : 'No exercises match.'}
-              </Text>
-            );
-          }
-
-          const exercise = item;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => onPressRow(exercise)}
-              className="flex-row items-center gap-[16px] border-b border-b-borderFaint py-[13px]"
-              style={({ pressed }) => (pressed ? { backgroundColor: 'rgba(255,255,255,.025)' } : null)}>
-              <View
-                className="h-[38px] w-[38px] flex-none items-center justify-center rounded-[9px]"
-                style={{ backgroundColor: colors.elevated2 }}>
-                <Icon name="dumb" size={20} color={colors.metadata} />
-              </View>
-              <View className="flex-1" style={{ minWidth: 0 }}>
-                <Text className="font-archivo text-row-title font-semibold text-text" numberOfLines={1}>
-                  {exercise.name}
-                </Text>
-                <Text
-                  className="mt-[5px] font-archivo text-[11.5px] text-dimmer"
-                  numberOfLines={1}>
-                  {subtitleOf(exercise)}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={exercise.isFavourite ? 'Remove favourite' : 'Add favourite'}
-                onPress={() => onToggleFavourite(exercise)}
-                className="h-[32px] w-[32px] flex-none items-center justify-center rounded-[9px]"
-                style={({ pressed }) => pressed && { backgroundColor: 'rgba(255,255,255,.07)' }}>
-                <Icon
-                  name="star"
-                  size={19}
-                  filled={exercise.isFavourite}
-                  color={exercise.isFavourite ? colors.accent : colors.metadata}
-                />
-              </Pressable>
-              <View className="flex-none opacity-50">
-                <Icon name="chevron" size={15} color={colors.metadata} />
-              </View>
-            </Pressable>
-          );
-        }}
+        renderItem={renderItem}
+        getItemLayout={getItemLayout}
       />
 
       <TabBar active="train" />

@@ -47,11 +47,16 @@ export default function SetTimerScreen() {
     router.back();
   }, [exerciseIndex, isDone, setIndex]);
 
+  /**
+   * R21 (H15): was a 250ms tick -- see `rest.tsx`'s matching comment for the full rationale.
+   * 1Hz matches `live.tsx`'s elapsed clock; the ring's sub-second sweep now comes from a
+   * Reanimated shared value inside `CountdownRing` instead of from this tick's frequency.
+   */
   useEffect(() => {
     if (isPaused || isDone) return;
     const tick = () => setRemaining((endsAt - Date.now()) / 1000);
     tick();
-    const id = setInterval(tick, 250);
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [endsAt, isPaused, isDone]);
 

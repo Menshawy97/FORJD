@@ -12,7 +12,7 @@
 //
 // NOTE: RTL v14 -- render() and every fireEvent.* return Promises and must be awaited.
 import { act, fireEvent, render as rtlRender, waitFor } from '@testing-library/react-native';
-import type { ReactElement } from 'react';
+import { Profiler, type ReactElement } from 'react';
 import { AccessibilityInfo } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -217,6 +217,38 @@ describe('the rest screen', () => {
     const timesUpCalls = announceSpy.mock.calls.filter(([message]) => message === "Time's up");
     expect(timesUpCalls).toHaveLength(1);
   });
+
+  /**
+   * R21 (H15): the countdown used to tick every 250ms, re-rendering this screen (and the
+   * countdown ring's SVG) up to four times a second -- 1,400 to 2,900 renders across a real
+   * workout, all on the JS thread. It now ticks once a second, matching `live.tsx`'s elapsed
+   * clock, so a 60-second countdown should commit roughly 60 times from the countdown alone,
+   * not roughly 240. `React.Profiler`'s `onRender` fires once per commit, which is exactly the
+   * signal a render-frequency regression needs -- counting `setState` calls would not catch a
+   * change that fires the same number of `setState`s more often, only a change in commits does.
+   *
+   * Advanced one second at a time, same as the coarse-announcement tests above -- one big
+   * `advanceTimersByTime` would coalesce React's batched updates into far fewer commits than
+   * the countdown actually produces on a real device and hide the regression this guards.
+   */
+  it('renders about once a second while counting down, not about four times a second', async () => {
+    setRestContext({ seconds: 60, upNextName: 'Bench Press', upNextDetail: '80 kg × 8 reps' });
+    const onRender = jest.fn();
+    await render(
+      <Profiler id="rest-timer" onRender={onRender}>
+        <RestScreen />
+      </Profiler>,
+    );
+    const rendersBeforeCountdown = onRender.mock.calls.length;
+
+    for (let i = 0; i < 60; i += 1) {
+      await advanceSeconds(1);
+    }
+
+    const countdownRenders = onRender.mock.calls.length - rendersBeforeCountdown;
+    // ~60 at 1Hz, ~240 at the old 4Hz -- the midpoint below cleanly separates the two.
+    expect(countdownRenders).toBeLessThan(100);
+  });
 });
 
 describe('the timed-set screen', () => {
@@ -327,5 +359,24 @@ describe('the timed-set screen', () => {
 
     const timesUpCalls = announceSpy.mock.calls.filter(([message]) => message === "Time's up");
     expect(timesUpCalls).toHaveLength(0);
+  });
+
+  /** Same regression and the same reasoning as the rest screen's matching test above. */
+  it('renders about once a second while holding, not about four times a second', async () => {
+    setTimerContext({ exerciseIndex: 1, setIndex: 0, exerciseName: 'Plank', seconds: 60 });
+    const onRender = jest.fn();
+    await render(
+      <Profiler id="set-timer" onRender={onRender}>
+        <SetTimerScreen />
+      </Profiler>,
+    );
+    const rendersBeforeCountdown = onRender.mock.calls.length;
+
+    for (let i = 0; i < 60; i += 1) {
+      await advanceSeconds(1);
+    }
+
+    const countdownRenders = onRender.mock.calls.length - rendersBeforeCountdown;
+    expect(countdownRenders).toBeLessThan(100);
   });
 });
