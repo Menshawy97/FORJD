@@ -683,7 +683,10 @@ export default function LiveScreen() {
         </View>
 
         {isLogging ? null : (
-          <Text className="mt-[8px] font-archivo text-[11px] font-semibold" style={{ color: colors.errorText }}>
+          <Text
+            accessibilityLiveRegion="assertive"
+            className="mt-[8px] font-archivo text-[11px] font-semibold"
+            style={{ color: colors.errorText }}>
             Not saving — this session may be lost if the app closes
           </Text>
         )}

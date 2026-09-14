@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { AccessibilityInfo, Text, View } from 'react-native';
 
 /**
  * The prototype's `flash()` — a transient pill above the tab bar, gone on its own after
@@ -52,12 +52,23 @@ interface ToastProps {
 }
 
 export function Toast({ message }: ToastProps) {
+  // Announced on the screen reader instead of leaving it purely visual -- there is nothing to
+  // dismiss and no focusable element for VoiceOver/TalkBack to land on otherwise, so without
+  // this a toast simply never happened for a screen-reader user.
+  useEffect(() => {
+    if (message) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  }, [message]);
+
   if (!message) {
     return null;
   }
 
   return (
-    <View className="absolute bottom-[96px] left-[22px] right-[22px] rounded-button border border-borderToast bg-toastBg px-4 py-[13px] shadow-toast">
+    <View
+      accessibilityLiveRegion="polite"
+      className="absolute bottom-[96px] left-[22px] right-[22px] rounded-button border border-borderToast bg-toastBg px-4 py-[13px] shadow-toast">
       <Text className="font-archivo text-toast font-semibold text-text">{message}</Text>
     </View>
   );

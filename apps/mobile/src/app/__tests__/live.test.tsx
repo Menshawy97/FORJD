@@ -783,6 +783,25 @@ describe('the offline path', () => {
     // Crash recovery is lost, but the workout itself must not be blocked on storage.
     expect(await findByText('1/4 sets')).toBeTruthy();
   });
+
+  /**
+   * R18 (H12): the "this session may be lost" warning was visual-only -- a blind athlete whose
+   * writes started silently failing had no way to know. `assertive` is deliberate here, the one
+   * place in the app where interrupting the screen reader is correct: every other announcement
+   * in this slice (the countdown rings, the toast) uses `polite` instead.
+   */
+  it('marks the not-saving warning as an assertive live region so a screen reader interrupts for it', async () => {
+    (openWorkoutSessionDb as jest.Mock).mockRejectedValue(new Error('no such file'));
+    stageSession();
+    const { findByLabelText, findByText } = await render(<LiveScreen />);
+
+    // The warning only appears once a write has actually been attempted against the (missing) db.
+    await fireEvent.press(await findByLabelText('Complete set 1 of Bench Press'));
+
+    const warning = await findByText('Not saving — this session may be lost if the app closes');
+
+    expect((warning.props as { accessibilityLiveRegion?: unknown }).accessibilityLiveRegion).toBe('assertive');
+  });
 });
 
 describe('finishing when the session cannot be handed to the sync queue (C3 / H6)', () => {
