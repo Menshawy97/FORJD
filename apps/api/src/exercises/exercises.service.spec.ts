@@ -319,6 +319,68 @@ describe("ExercisesService", () => {
     });
   });
 
+  describe("getCatalogueConditional", () => {
+    const makeSyncRepository = (rows: ReturnType<typeof exercise>[]) => {
+      const withFavourite = rows.map((row) => ({ exercise: row, isFavourite: false }));
+      return {
+        listForSync: () => Promise.resolve(withFavourite),
+      } as unknown as ExercisesRepository;
+    };
+
+    it("returns the full catalogue when ifNoneMatch is undefined", async () => {
+      const repository = makeSyncRepository([exercise()]);
+
+      const result = await makeService(repository).getCatalogueConditional(viewer, undefined);
+
+      expect(result.notModified).toBe(false);
+      if (!result.notModified) {
+        expect(result.catalogue.exercises).toHaveLength(1);
+      }
+    });
+
+    it("returns notModified when ifNoneMatch matches the current version exactly", async () => {
+      const repository = makeSyncRepository([exercise()]);
+      const service = makeService(repository);
+      const { catalogueVersion } = await service.getCatalogue(viewer);
+
+      const result = await service.getCatalogueConditional(viewer, catalogueVersion);
+
+      expect(result).toEqual({ notModified: true });
+    });
+
+    it("returns notModified when ifNoneMatch is quoted, as a real client sends it", async () => {
+      const repository = makeSyncRepository([exercise()]);
+      const service = makeService(repository);
+      const { catalogueVersion } = await service.getCatalogue(viewer);
+
+      const result = await service.getCatalogueConditional(viewer, `"${catalogueVersion}"`);
+
+      expect(result).toEqual({ notModified: true });
+    });
+
+    it("returns notModified when ifNoneMatch carries the weak-validator prefix", async () => {
+      const repository = makeSyncRepository([exercise()]);
+      const service = makeService(repository);
+      const { catalogueVersion } = await service.getCatalogue(viewer);
+
+      const result = await service.getCatalogueConditional(viewer, `W/"${catalogueVersion}"`);
+
+      expect(result).toEqual({ notModified: true });
+    });
+
+    it("returns the full catalogue when ifNoneMatch does not match the current version", async () => {
+      const repository = makeSyncRepository([exercise()]);
+
+      const result = await makeService(repository).getCatalogueConditional(viewer, "stale-version");
+
+      expect(result.notModified).toBe(false);
+      if (!result.notModified) {
+        expect(result.catalogue.exercises).toHaveLength(1);
+        expect(result.catalogue.catalogueVersion).not.toBe("stale-version");
+      }
+    });
+  });
+
   describe("getById", () => {
     it("returns the full exercise with every image resolved", async () => {
       const repository = makeRepository(undefined, {
