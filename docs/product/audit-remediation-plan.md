@@ -680,12 +680,12 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-Status as of 2026-09-13 (R4, R5, R9, R14 merged this session). "Done" means merged to `main`
-with a green post-merge CI run confirmed, per this plan's own CHECKPOINT step. 15/29 slices
-merged. Remaining and unblocked: R13 (needs R11/R17), R17, R18 (needs R1 — now unblocked),
-R20 (needs R9 — now unblocked), R21 (needs R18), R22, R23 (needs R21), R24, R25 (needs R1 —
-now unblocked), R26, R28, R29 (last). R11, R19, and R27 each stop for a user decision (see
-"Points where this plan stops and asks" below).
+Status as of 2026-09-14 (R17, R18, R20, R21, R22, R23, R24, R25, R26, R28 merged this
+session, on top of R4/R5/R9/R14 from the prior session). "Done" means merged to `main` with
+a green post-merge CI run confirmed, per this plan's own CHECKPOINT step. **27/29 slices
+merged.** Remaining: R13 (needs R11, still not started) and R29 (last, and itself needs a
+user answer on the one-rep-max formula). R11, R19, and R27 each stop for a user decision
+(see "Points where this plan stops and asks" below) — R13 is transitively blocked on R11.
 
 | # | Slice | Package | Status | Notes |
 |---|---|---|---|---|
@@ -702,22 +702,22 @@ now unblocked), R26, R28, R29 (last). R11, R19, and R27 each stop for a user dec
 | R10 | Contract bounds and array caps | contracts + domain | ✅ Done (#154) | — |
 | R11 | Low security and config batch | api + infra | Not started | **stops for the user** — supabase/config.toml question |
 | R12 | Conformance script and its own tests | scripts + CI | ✅ Done (#157) | prettier-in-CI deliberately deferred — see PR body, 403 files of pre-existing drift |
-| R13 | Coverage gates on all four packages | all | Not started | after R1–R12, R14–R16 — R14 still open |
+| R13 | Coverage gates on all four packages | all | Not started | **blocked on R11** (user question below) |
 | R14 | `body/` unit tests | api | ✅ Done (#159) | no bug found; closed the coverage gap |
 | R15 | `toLiveExercise` tests | mobile | ✅ Done (#156) | no bug found; closed the coverage gap |
 | R16 | Eleven controller specs | api | ✅ Done (#153) | discovery found 13 controllers, not 11 (two added since the audit); all 13 covered |
-| R17 | De-flake the route-tree suites | mobile | Not started | — |
-| R18 | Timer and toast announcements | mobile | Not started | after R1 — now unblocked |
+| R17 | De-flake the route-tree suites | mobile | ✅ Done (#164) | fixed a real bug (renderRouter's fake-timer leak) plus a testMatch gap; local flake-rate measurement was unreliable under this machine's concurrent-session load, CI's isolated runner confirmed green |
+| R18 | Timer and toast announcements | mobile | ✅ Done (#169) | — |
 | R19 | Contrast — **pauses for the user** | mobile | Not started | — |
-| R20 | Catalogue conditional fetch | mobile + api | Not started | after R9 |
-| R21 | 1 Hz timers, SectionList | mobile | Not started | after R18 |
-| R22 | Block-type union, cross-field targets | domain + contracts | Not started | — |
-| R23 | File splits | mobile + api + contracts | Not started | after R1 and R21 — R1 done, R21 still open |
-| R24 | Validated raw SQL | api | Not started | — |
-| R25 | SQLite schema versioning | mobile | Not started | after R1 — now unblocked |
-| R26 | Error states | mobile | Not started | — |
+| R20 | Catalogue conditional fetch | mobile + api | ✅ Done (#168) | needed a follow-up fix for a per-file 100% coverage gate on `exercises.service.ts` |
+| R21 | 1 Hz timers, SectionList | mobile | ✅ Done (#170) | found and fixed two real test-infra bugs along the way: Reanimated 4's own Jest mock crashes under `jest-expo` (replaced with a manual `__mocks__/react-native-reanimated.js`), and a `jest.mock('react-native', ...)` spread was triggering `DevMenu`'s native-only getter |
+| R22 | Block-type union, cross-field targets | domain + contracts | ✅ Done (#162) | — |
+| R23 | File splits | mobile + api + contracts | ✅ Done (#171, #172, #174, #173) | split into four independent sub-PRs (R23a `live.tsx`, R23b `nutrition.tsx`, R23c `workouts.repository.ts`, R23d `contracts/index.ts`) after one combined attempt stalled with no progress; each verified separately with zero pre-existing test edits. R23c surfaced a pre-existing flaky test (`listForUser`'s keyset-cursor pagination test) under real-Postgres conditions — confirmed identical on unmodified `main`, unrelated to the split, not fixed as part of this slice |
+| R24 | Validated raw SQL | api | ✅ Done (#163) | — |
+| R25 | SQLite schema versioning | mobile | ✅ Done (#165) | — |
+| R26 | Error states | mobile | ✅ Done (#166) | Home's per-section "honest empty" design was deliberately preserved; only the all-requests-failed case got a new error banner |
 | R27 | Compiler and lint parity | mobile + api | Not started | **stops for the user** — the four Expo packages question |
-| R28 | Indexes and the nutrition N+1 | api + migrations | Not started | — |
+| R28 | Indexes and the nutrition N+1 | api + migrations | ✅ Done (#167) | — |
 | R29 | Documentation, the ADR, store metadata | docs | Not started | last |
 
 **Deviation from the plan worth recording:** R6, R7, R8, R10, R15, R16 and R12 were done out of
@@ -733,6 +733,32 @@ uncommitted tracked-file changes (new untracked files survived) — recovered by
 already-reviewed diff and committing immediately afterward. Root cause unconfirmed; committing
 work-in-progress sooner, rather than leaving verified changes uncommitted across multiple test
 runs, is the mitigation applied going forward.
+
+**A second deviation, from the 2026-09-14 session that took the plan from 15/29 to 27/29:** the
+same parallel-worktree, sequential-merge pattern continued (R17, R22, R24 as the first batch;
+R25, R26 as a second; R28, R20, R18 as a third; R21 alone once R18 unblocked it), with one
+addition — R23 was split into four independent sub-slices (R23a–R23d, one file each) after a
+single combined attempt to split all four named files in one PR stalled twice with zero
+progress (an agent-runtime issue, not a code problem) under this session's heavy concurrent-CPU
+load. The narrower scope let each sub-slice actually finish. Two real bugs were found and fixed
+along the way, both in test infrastructure rather than production code: R17's `renderRouter()`
+leaves tests permanently in fake-timer mode, racing Jest's own teardown; R21 hit a Reanimated 4
+Jest-mock incompatibility and a `jest.mock('react-native', ...)` pattern that crashed on
+`DevMenu`'s native-only getter when spread rather than patched in place. R23c's verification
+surfaced a flaky real-Postgres test (`workouts.repository.spec.ts`'s keyset-cursor pagination
+case) that was confirmed to fail identically on unmodified `main` — recorded as a pre-existing
+issue, not fixed as part of the refactor slice that happened to surface it.
+
+This session also re-confirmed the local-machine-contention pattern documented in the prior
+incident: with several concurrent Claude Code sessions active on this machine (peaks of 34
+`node` processes, CPU pinned at 100%), local test timing became unreliable enough that a few
+PRs (R17, R20) needed CI's isolated runner as the authoritative signal rather than a local
+run. Where a background subagent stalled mid-task (four times this session, all attributed to
+either the same contention or transient API connectivity), resuming it correctly meant
+verifying and completing its own uncommitted worktree changes directly rather than accepting a
+fresh agent's re-launch into a *new*, empty worktree — the `Agent` tool's `isolation: "worktree"`
+always creates a new worktree, so it cannot resume prior uncommitted work; a stalled agent's
+real continuation has to happen by hand in its existing worktree.
 
 R1 through R4 are the ones that matter most. If the work has to stop early, stopping after R4
 leaves an app that no longer loses finished workouts, no longer sends health data to a third-party
