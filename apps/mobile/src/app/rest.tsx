@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, Text, View } from 'react-native';
 
 import { ScreenBackground } from '@/components/screen-background';
+import { shouldAnnounceCountdownSecond } from '@/workouts/countdown-announcements';
 import { CountdownRing } from '@/workouts/countdown-ring';
 import { getRestContext } from '@/workouts/live-handoff';
 import { cancelRestEndNotification, scheduleRestEndNotification } from '@/workouts/rest-notifications';
@@ -56,6 +57,24 @@ export default function RestScreen() {
   }, [endsAt, isFinished]);
 
   /**
+   * Announces the countdown to a screen reader on a coarse schedule -- every fifth second while
+   * there is time to spare, then every second once it matters -- rather than on every 250ms
+   * tick, which would talk over itself. Seeded to the starting second so the opening render
+   * (the full rest length) is never itself announced.
+   */
+  const lastAnnouncedSecondRef = useRef(Math.ceil(initialSeconds));
+
+  useEffect(() => {
+    if (isFinished) return;
+    const intSeconds = Math.ceil(Math.max(0, remaining));
+    if (intSeconds === lastAnnouncedSecondRef.current) return;
+    lastAnnouncedSecondRef.current = intSeconds;
+    if (shouldAnnounceCountdownSecond(intSeconds)) {
+      AccessibilityInfo.announceForAccessibility(`${intSeconds} seconds remaining`);
+    }
+  }, [remaining, isFinished]);
+
+  /**
    * Schedules the "rest complete" notification, re-scheduling whenever `endsAt` moves (the
    * ±15/+30 adjusters). Cancelling in the cleanup is what makes the pair symmetric: every exit
    * -- expiry, Skip Rest, hardware back, or an adjustment that supersedes it -- cancels the
@@ -86,6 +105,7 @@ export default function RestScreen() {
     if (remaining > 0 || hasReturned.current) return;
     hasReturned.current = true;
     setIsFinished(true);
+    AccessibilityInfo.announceForAccessibility("Time's up");
     // Rest is over: the prototype returns straight to the live screen rather than waiting for
     // a tap, so the next set is one glance away.
     router.back();

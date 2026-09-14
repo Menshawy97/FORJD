@@ -13,6 +13,7 @@
 // NOTE: RTL v14 -- render() and every fireEvent.* return Promises and must be awaited.
 import { act, fireEvent, render as rtlRender, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockBack = jest.fn();
@@ -58,16 +59,20 @@ async function advanceSeconds(seconds: number) {
   });
 }
 
+let announceSpy: jest.SpyInstance;
+
 beforeEach(() => {
   jest.clearAllMocks();
   consumeCompletedTimedSet();
   jest.useFakeTimers();
   jest.setSystemTime(new Date('2026-09-03T10:00:00.000Z'));
   mockUseLocalSearchParams.mockReturnValue({});
+  announceSpy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
 });
 
 afterEach(() => {
   jest.useRealTimers();
+  announceSpy.mockRestore();
 });
 
 describe('the rest screen', () => {
@@ -179,6 +184,39 @@ describe('the rest screen', () => {
 
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
+
+  /**
+   * R18 (H12): a blind athlete got no countdown at all -- `announceForAccessibility` never
+   * fired. It must not fire on every 250ms tick either, which would talk over itself; the
+   * schedule is coarse instead -- every fifth second while there is time to spare (55, 50, ...,
+   * 15 of a 60-second rest), then every single second once it matters (10, 9, ..., 1), plus
+   * "Time's up" exactly once on expiry. That is 9 + 10 + 1 = 20 calls total.
+   *
+   * Advanced one second at a time on purpose, same as the double-return regression above -- one
+   * big `advanceTimersByTime` coalesces React's batched re-renders and silently skips seconds.
+   */
+  it('announces the countdown on a coarse schedule, not on every tick', async () => {
+    setRestContext({ seconds: 60, upNextName: 'Bench Press', upNextDetail: '80 kg × 8 reps' });
+    await render(<RestScreen />);
+
+    for (let i = 0; i < 60; i += 1) {
+      await advanceSeconds(1);
+    }
+
+    expect(announceSpy).toHaveBeenCalledTimes(20);
+  });
+
+  it('announces "time\'s up" exactly once when the rest period expires', async () => {
+    setRestContext({ seconds: 60, upNextName: 'Bench Press', upNextDetail: '80 kg × 8 reps' });
+    await render(<RestScreen />);
+
+    for (let i = 0; i < 60; i += 1) {
+      await advanceSeconds(1);
+    }
+
+    const timesUpCalls = announceSpy.mock.calls.filter(([message]) => message === "Time's up");
+    expect(timesUpCalls).toHaveLength(1);
+  });
 });
 
 describe('the timed-set screen', () => {
@@ -256,5 +294,38 @@ describe('the timed-set screen', () => {
     expect(consumeCompletedTimedSet()).toEqual({ exerciseIndex: 1, setIndex: 0 });
     // Drained by the line above; the expiry must not have queued a second result.
     expect(consumeCompletedTimedSet()).toBeNull();
+  });
+
+  /** Same coarse schedule as the rest screen's countdown -- see that describe block for the math. */
+  it('announces the countdown on a coarse schedule, not on every tick', async () => {
+    setTimerContext({ exerciseIndex: 1, setIndex: 0, exerciseName: 'Plank', seconds: 60 });
+    await render(<SetTimerScreen />);
+
+    for (let i = 0; i < 60; i += 1) {
+      await advanceSeconds(1);
+    }
+
+    expect(announceSpy).toHaveBeenCalledTimes(20);
+  });
+
+  it('announces "time\'s up" exactly once when the hold expires on its own', async () => {
+    setTimerContext({ exerciseIndex: 1, setIndex: 0, exerciseName: 'Plank', seconds: 60 });
+    await render(<SetTimerScreen />);
+
+    for (let i = 0; i < 60; i += 1) {
+      await advanceSeconds(1);
+    }
+
+    const timesUpCalls = announceSpy.mock.calls.filter(([message]) => message === "Time's up");
+    expect(timesUpCalls).toHaveLength(1);
+  });
+
+  it('does not announce "time\'s up" when the athlete completes the set manually', async () => {
+    const { findByLabelText } = await render(<SetTimerScreen />);
+
+    await fireEvent.press(await findByLabelText('Complete set'));
+
+    const timesUpCalls = announceSpy.mock.calls.filter(([message]) => message === "Time's up");
+    expect(timesUpCalls).toHaveLength(0);
   });
 });

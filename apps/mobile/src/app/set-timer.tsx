@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
+import { shouldAnnounceCountdownSecond } from '@/workouts/countdown-announcements';
 import { CountdownRing } from '@/workouts/countdown-ring';
 import { getTimerContext, setCompletedTimedSet } from '@/workouts/live-handoff';
 import { colors } from '@/theme/tokens';
@@ -54,8 +55,26 @@ export default function SetTimerScreen() {
     return () => clearInterval(id);
   }, [endsAt, isPaused, isDone]);
 
+  /**
+   * Same coarse announcement schedule as the rest screen's countdown -- see its comment. Paused
+   * time does not advance the schedule either, since `remaining` itself does not change while
+   * paused.
+   */
+  const lastAnnouncedSecondRef = useRef(Math.ceil(targetSeconds));
+
+  useEffect(() => {
+    if (isDone) return;
+    const intSeconds = Math.ceil(Math.max(0, remaining));
+    if (intSeconds === lastAnnouncedSecondRef.current) return;
+    lastAnnouncedSecondRef.current = intSeconds;
+    if (shouldAnnounceCountdownSecond(intSeconds)) {
+      AccessibilityInfo.announceForAccessibility(`${intSeconds} seconds remaining`);
+    }
+  }, [remaining, isDone]);
+
   useEffect(() => {
     if (isPaused || isDone || remaining > 0) return;
+    AccessibilityInfo.announceForAccessibility("Time's up");
     complete();
   }, [complete, isPaused, isDone, remaining]);
 

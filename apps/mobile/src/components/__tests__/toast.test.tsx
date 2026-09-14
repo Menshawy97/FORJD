@@ -12,7 +12,7 @@
 // those are asserted as classes. The 1900ms dismissal is real behaviour and is asserted as
 // behaviour, on fake timers.
 import { act, render } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { AccessibilityInfo, Text } from 'react-native';
 
 import { Toast, TOAST_DURATION_MS, useToast } from '../toast';
 
@@ -51,6 +51,26 @@ describe('Toast', () => {
     expect(classes).toContain('shadow-toast');
 
     expect(String(label.props.className)).toContain('text-toast');
+  });
+
+  // R18 (H12): a toast disappearing after 1900ms with no announcement meant a screen-reader
+  // user never learned it happened at all -- the message was purely visual.
+  it('announces its message for a screen reader', async () => {
+    const announceSpy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+
+    await render(<Toast message="Reset link sent to your email" />);
+
+    expect(announceSpy).toHaveBeenCalledWith('Reset link sent to your email');
+    announceSpy.mockRestore();
+  });
+
+  it('does not announce anything when there is no message', async () => {
+    const announceSpy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+
+    await render(<Toast message={null} />);
+
+    expect(announceSpy).not.toHaveBeenCalled();
+    announceSpy.mockRestore();
   });
 });
 

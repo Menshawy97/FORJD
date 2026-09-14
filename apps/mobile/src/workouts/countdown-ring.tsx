@@ -28,7 +28,7 @@ interface CountdownRingProps {
 export function CountdownRing({ progress, label, caption }: CountdownRingProps) {
   const clamped = Math.min(1, Math.max(0, progress));
   return (
-    <View style={{ width: SIZE, height: SIZE }}>
+    <View accessibilityLiveRegion="polite" style={{ width: SIZE, height: SIZE }}>
       <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: [{ rotate: '-90deg' }] }}>
         <Circle cx={100} cy={100} r={RADIUS} fill="none" stroke="#1E1F22" strokeWidth={8} />
         <Circle
