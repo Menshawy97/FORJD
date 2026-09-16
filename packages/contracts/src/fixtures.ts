@@ -564,14 +564,17 @@ export const responseFixtures = {
   /**
    * The exercise-detail screen's tiles, trend and History list for one exercise (Phase 3J-d).
    *
-   * `estimatedOneRepMaxKg` is Epley's estimate from `bestSet`: 100 x 3 gives 106.7, which is
-   * exactly where the design's own demo tile of "106 kg" beside "100 kg x 3" comes from.
+   * `estimatedOneRepMaxKg` is Epley's estimate from `bestSet`: 100 x 3 gives 110 under standard
+   * Epley (`weight x (1 + reps/30)`). This was 106.7 before the R29 audit remediation
+   * (ADR-038), when `training-calculations.ts` implemented a `reps - 1` variant instead of the
+   * standard, published formula its own docblock claimed -- the design's demo tile of "106 kg"
+   * beside "100 kg x 3" predates that correction and is now off by the same ~3 percent.
    */
   'exercise-history-response': {
     schema: exerciseHistoryResponseSchema,
     sample: {
       bestSet: { weightKg: 100, reps: 3, achievedAt: '2026-08-08T10:20:00.000Z' },
-      estimatedOneRepMaxKg: 106.7,
+      estimatedOneRepMaxKg: 110,
       sessions: [
         {
           sessionId: '11111111-1111-4111-8111-111111111111',

@@ -22,7 +22,7 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "API_BASE_URL": "https://forjd-api.REPLACE_WITH_CLOUD_RUN_URL.run.app"
+        "API_BASE_URL": "REPLACE_WITH_PRODUCTION_CLOUD_RUN_URL__see_docs_product_roadmap_md_Slice_12_and_ADR-015__no_prod_service_deployed_yet"
       }
     }
   },
