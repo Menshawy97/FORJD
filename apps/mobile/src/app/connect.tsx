@@ -32,7 +32,8 @@ import { colors } from '@/theme/tokens';
  *   icon tile: 38x38, radius 10
  *   info card: `card()`'s own shape (surface/border/radius 14), 14/13px padding, mt 14px
  *   footer: border-top rgba(255,255,255,.06), 22/12/24px padding, Save button unchanged from
- *     every other settings screen (h-52, rounded-button, bg-accent, shadow-primary-button)
+ *     every other settings screen (h-52, rounded-button, bg-accentDark, shadow-primary-button --
+ *     R19/H13 darkened the fill from `bg-accent`, see the button below)
  */
 
 interface SourceMeta {
@@ -179,7 +180,8 @@ export default function ConnectScreen() {
           accessibilityLabel="Save"
           onPress={handleSave}
           style={pressScale}
-          className="h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
+          // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+          className="h-[52px] items-center justify-center rounded-button bg-accentDark shadow-primary-button">
           <Text className="font-archivo text-button font-bold text-white">Save</Text>
         </Pressable>
       </View>

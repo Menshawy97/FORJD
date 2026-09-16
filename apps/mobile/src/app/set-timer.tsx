@@ -167,7 +167,8 @@ export default function SetTimerScreen() {
             accessibilityLabel="Complete set"
             onPress={complete}
             className="h-[52px] flex-1 items-center justify-center rounded-[12px]"
-            style={{ backgroundColor: colors.accent }}>
+            // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+            style={{ backgroundColor: colors.accentDark }}>
             <Text className="font-archivo text-[14.5px] font-bold text-white">Complete set</Text>
           </Pressable>
         </View>
