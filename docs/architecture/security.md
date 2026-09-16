@@ -15,10 +15,19 @@ statement.
 TLS everywhere. Encrypted DB fields where appropriate. Encrypted object
 storage. Secrets in a secret manager, never mobile source (`CLAUDE.md` rule
 5). Token encryption for `ExternalConnection` records. Access control
-enforced in NestJS guards, RLS as defense-in-depth only (`CLAUDE.md` rule
-12). Audit logs. User data export and deletion (real deletion, not hiding).
-Provider disconnect. Consent tracking. Minimal permissions requested per
-provider capability, not blanket grants.
+enforced in NestJS guards — **and only there.** Row-level security is not
+enabled on any table, and `apps/api` connects to Postgres directly through
+`pg.Pool` with `DATABASE_URL`'s configured role, not through Supabase's
+PostgREST/anon-key path that RLS policies actually gate — so even adding
+RLS today would be bypassed by that role rather than acting as a real second
+layer. NestJS guards are the sole authorization layer, and that is
+consistent with `CLAUDE.md` rule 12 ("a rule that exists only in SQL is a
+rule you can't unit test"), not a gap in it. See
+[ADR-038](../decisions/ADR-038-audit-remediation-pass-2026-09.md) for the
+record of this correction (this line previously, and incorrectly, claimed
+RLS existed as defense-in-depth). Audit logs. User data export and deletion
+(real deletion, not hiding). Provider disconnect. Consent tracking. Minimal
+permissions requested per provider capability, not blanket grants.
 
 ## Session revocation has a window, and the window is the token lifetime
 

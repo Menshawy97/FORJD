@@ -54,7 +54,9 @@ function render(ui: ReactElement) {
 
 const history = (overrides: Record<string, unknown> = {}) => ({
   bestSet: { weightKg: 100, reps: 3, achievedAt: '2026-08-12T10:20:00.000Z' },
-  estimatedOneRepMaxKg: 106.7,
+  // Standard Epley (ADR-038, R29 audit remediation): 100 x (1 + 3/30) = 110. Was 106.7 under
+  // the pre-remediation reps-1 variant.
+  estimatedOneRepMaxKg: 110,
   sessions: [
     {
       sessionId: '11111111-1111-4111-8111-111111111111',
@@ -111,7 +113,7 @@ describe('the stat tiles', () => {
     const screen = await render(<ExerciseDetailScreen />);
 
     expect(await screen.findByText('100 kg × 3')).toBeTruthy();
-    expect(await screen.findByText('106.7')).toBeTruthy();
+    expect(await screen.findByText('110')).toBeTruthy();
   });
 
   // The two tiles are independent: Epley refuses past twelve reps, so a real best set can have

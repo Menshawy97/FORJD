@@ -3,21 +3,30 @@ import { estimateOneRepMaxKg } from './training-calculations';
 /**
  * RED first. These are the project's first training calculations, and CLAUDE.md rule 8 names
  * them explicitly: "unit tests for training/analytics calculations".
+ *
+ * R29 audit remediation (ADR-038): this file's implementation previously used a `reps - 1`
+ * exponent that read about 3 percent low against the published Epley formula and disagreed
+ * with `training-calculations.ts`'s own top-of-file docblock. Presented with both curves, the
+ * user chose the standard, published formula -- `weight x (1 + reps / 30)`, unmodified, for
+ * every rep count in range. The tests below pin that formula's exact output; they failed
+ * against the pre-remediation `reps - 1` implementation (see the PR body for the recorded RED
+ * failure).
  */
 describe('estimateOneRepMaxKg', () => {
-  // Epley: weight x (1 + reps/30). A single rep is already a one-rep max, so the formula must
-  // return the lift itself rather than inflating it -- which the naive `1 + reps/30` does not
-  // do on its own (it would give 103.33 for 100x1).
-  it('returns the lift itself for a single rep', () => {
-    expect(estimateOneRepMaxKg(100, 1)).toBe(100);
-    expect(estimateOneRepMaxKg(62.5, 1)).toBe(62.5);
+  // Standard Epley, unmodified, including at one rep: weight x (1 + reps/30). At exactly one
+  // rep this is a touch above the lifted weight (100 x 31/30 = 103.33) rather than the weight
+  // itself -- that is the published formula's own behaviour at its boundary, not a special case
+  // this function adds.
+  it('estimates at a single rep using the unmodified formula', () => {
+    expect(estimateOneRepMaxKg(100, 1)).toBe(103.3);
+    expect(estimateOneRepMaxKg(62.5, 1)).toBeCloseTo(64.6, 1);
   });
 
   it('extrapolates upward from a multi-rep set', () => {
-    // 100 x 5 -> 100 * (1 + 4/30) = 113.33
-    expect(estimateOneRepMaxKg(100, 5)).toBeCloseTo(113.3, 1);
-    // 80 x 8 -> 80 * (1 + 7/30) = 98.67
-    expect(estimateOneRepMaxKg(80, 8)).toBeCloseTo(98.7, 1);
+    // 100 x 5 -> 100 * (1 + 5/30) = 116.67
+    expect(estimateOneRepMaxKg(100, 5)).toBeCloseTo(116.7, 1);
+    // 80 x 8 -> 80 * (1 + 8/30) = 101.33
+    expect(estimateOneRepMaxKg(80, 8)).toBeCloseTo(101.3, 1);
   });
 
   it('grows with both load and reps', () => {
@@ -65,7 +74,9 @@ describe('estimateOneRepMaxKg', () => {
   // Displayed to one decimal, so it is rounded once here rather than at each call site --
   // otherwise two screens showing "the same" estimate could disagree in the last digit.
   it('rounds to a single decimal place', () => {
-    expect(estimateOneRepMaxKg(100, 5)).toBe(113.3);
-    expect(estimateOneRepMaxKg(102.5, 3)).toBe(109.3);
+    // 100 x 5 -> 100 * (1 + 5/30) = 116.666... -> 116.7
+    expect(estimateOneRepMaxKg(100, 5)).toBe(116.7);
+    // 102.5 x 3 -> 102.5 * (1 + 3/30) = 112.75 -> 112.8
+    expect(estimateOneRepMaxKg(102.5, 3)).toBe(112.8);
   });
 });

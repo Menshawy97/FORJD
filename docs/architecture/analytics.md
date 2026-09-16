@@ -31,6 +31,19 @@ observation, a fixed source-priority policy), the aggregation job re-runs
 over the affected window — the aggregate is never hand-patched. This is
 what keeps aggregates trustworthy as a rebuild target.
 
+**This rule currently has no referent, and that's expected, not a defect.**
+The Progress tab's Strength view — today's one real construction of the
+"Aggregated" layer — computes on read rather than persisting a rollup
+([ADR-029](../decisions/ADR-029-progress-analytics-computed-on-read.md)).
+There is no stored aggregate anywhere in the system today, so there is
+nothing for rule 9 to protect: every response is recomputed from raw data
+on every request, which is the strictest possible way to honor the rule
+rather than a way of dodging it. Rule 9 stays in `CLAUDE.md` for if and when
+this pipeline moves to persisted staged aggregates (see ADR-029's "Revisit
+trigger" — likely alongside Phase 6's health-observation volume and the
+BullMQ/Redis infrastructure Phase 5 is expected to bring in). Until then,
+don't read the rule's silence as unenforced; read it as unneeded.
+
 ## Progress engine
 
 Input: workout history, health data, body composition, goals. Output:
