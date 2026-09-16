@@ -1,4 +1,4 @@
-# ADR-038: `pnpm audit` triage — what gets overridden, what stays
+# ADR-039: `pnpm audit` triage — what gets overridden, what stays
 
 **Status:** Accepted
 **Date:** 2026-09-16
@@ -73,3 +73,19 @@ but which pnpm's workspace hoisting still installs because `apps/mobile` depends
   triage them the same way decision 1 did (a direct dependency bump, or a `pnpm.overrides`
   entry), not assume the whole list is `eas-cli` noise -- that assumption is exactly what this
   ADR found to be stale on 2026-09-16, before this slice landed.
+- **Correction (2026-09-16, post-merge CI fixup):** this ADR's claim that `decode-uri-component`
+  and `uuid` reach the graph only through `drizzle-orm`'s optional `expo-sqlite` driver
+  dependency was wrong. `decode-uri-component` is also a real, always-loaded dependency of
+  `query-string`, which `expo-router` imports directly; `uuid` is likewise pulled in by `xcode`
+  inside `@expo/config-plugins`, part of `expo`'s own dependency chain. Forcing both to
+  ESM-only versions (`decode-uri-component@0.5.0`, `uuid@14.x`, both `"type": "module"`) broke
+  every `apps/mobile` Jest suite that imports `expo-router/testing-library`, because
+  `jest-expo`'s preset `transformIgnorePatterns` only carves out the react-native/expo package
+  family for transformation and pnpm's nested `node_modules/.pnpm/<pkg>/node_modules/<pkg>`
+  layout matches the ignore pattern for anything outside that carve-out. Fixed by adding
+  `decode-uri-component` and `uuid` to `apps/mobile/jest.config.js`'s `transformIgnorePatterns`
+  rather than by loosening the version floor -- the security fix in `pnpm-workspace.yaml`
+  itself is unchanged. Anyone touching this override block again should verify against a real
+  `apps/mobile` Jest run, not just `pnpm audit`'s finding count, since a version floor that
+  "resolves cleanly" in the dependency graph can still break the one consumer that needs the
+  older, CJS-only major.

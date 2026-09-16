@@ -13,11 +13,11 @@ allowBuilds:
   dtrace-provider: false
   esbuild: true
 
-# R11 (audit-remediation-plan.md), ADR-038: pnpm audit findings that resolve cleanly without
+# R11 (audit-remediation-plan.md), ADR-039: pnpm audit findings that resolve cleanly without
 # touching eas-cli (apps/mobile devDependency, dev/CI-tooling-only -- see the ADR for why its
 # own vulnerable subtree, node-forge/tar/minimatch/ajv/diff, is left alone). qs and multer are
 # on apps/api's actual request path (express body parsing, multipart upload handling); the
-# rest are dev-tooling-only but resolve for free. See ADR-038 for the full audit and the
+# rest are dev-tooling-only but resolve for free. See ADR-039 for the full audit and the
 # eas-cli rationale.
 overrides:
   qs: ">=6.16.0"
