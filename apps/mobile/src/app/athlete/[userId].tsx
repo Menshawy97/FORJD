@@ -135,7 +135,8 @@ export default function AthleteScreen() {
               accessibilityRole="button"
               onPress={() => router.replace('/privacy')}
               style={pressScale}
-              className="mt-4 h-[52px] w-full items-center justify-center rounded-button bg-accent shadow-primary-button">
+              // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+              className="mt-4 h-[52px] w-full items-center justify-center rounded-button bg-accentDark shadow-primary-button">
               <Text className="font-archivo text-button font-bold text-white">
                 Open Privacy Settings
               </Text>

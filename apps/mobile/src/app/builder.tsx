@@ -335,7 +335,8 @@ export default function BuilderScreen() {
           disabled={saving}
           onPress={save}
           className="h-[52px] flex-1 items-center justify-center rounded-[12px]"
-          style={{ backgroundColor: colors.accent, opacity: isValid ? 1 : 0.5 }}>
+          // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+          style={{ backgroundColor: colors.accentDark, opacity: isValid ? 1 : 0.5 }}>
           <Text className="font-archivo text-[14.5px] font-bold text-white">
             {saving ? 'Saving…' : 'Save workout'}
           </Text>

@@ -364,7 +364,8 @@ function GoProBanner() {
         <Text className="font-archivo text-pro-label font-bold text-text">
           Get Unlimited Access to Everything
         </Text>
-        <Text className="rounded-chip bg-accent px-[14px] py-[9px] font-archivo text-chip font-bold text-white">
+        {/* R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor. */}
+        <Text className="rounded-chip bg-accentDark px-[14px] py-[9px] font-archivo text-chip font-bold text-white">
           Go Pro
         </Text>
       </View>

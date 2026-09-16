@@ -68,7 +68,10 @@ export function PreviousWorkoutCard({
           accessibilityRole="button"
           accessibilityLabel={`Repeat ${name}`}
           onPress={onRepeat}
-          className="h-[44px] min-w-0 flex-1 flex-row items-center justify-center gap-[7px] rounded-field bg-accent shadow-repeat-button">
+          // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+          // `shadow-repeat-button`'s glow is left at its original accent-orange colour -- see
+          // the note in features/home/start-workout-cta.tsx.
+          className="h-[44px] min-w-0 flex-1 flex-row items-center justify-center gap-[7px] rounded-field bg-accentDark shadow-repeat-button">
           {/*
             The one filled glyph in the set: the prototype draws this triangle with `fill:'#fff'`
             and no stroke, so `strokeWidth={0}` keeps it at exactly that geometry.
