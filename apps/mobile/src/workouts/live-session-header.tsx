@@ -78,7 +78,10 @@ export function LiveSessionHeader({
             accessibilityLabel="Finish workout"
             onPress={onFinish}
             className="h-[34px] items-center justify-center rounded-[10px] px-[14px]"
-            style={{ backgroundColor: colors.accent }}>
+            // R19 (H13): white text on the raw `accent` fill measured 3.06:1, below the 4.5:1
+            // AA floor for body-weight text. `accentDark` is the user-approved fix (Option A) --
+            // see apps/mobile/src/theme/__tests__/tokens.test.ts.
+            style={{ backgroundColor: colors.accentDark }}>
             <Text className="font-archivo text-[12px] font-bold text-white">Finish</Text>
           </Pressable>
         </View>

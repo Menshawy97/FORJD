@@ -199,7 +199,8 @@ export default function SavedMealsScreen() {
                 <Pressable
                   accessibilityRole="button"
                   onPress={openLogMeal(meal)}
-                  className="mt-[14px] h-[52px] items-center justify-center rounded-button bg-accent">
+                  // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+                  className="mt-[14px] h-[52px] items-center justify-center rounded-button bg-accentDark">
                   <Text className="font-archivo text-[14px] font-bold text-white">Log this meal</Text>
                 </Pressable>
               </View>
@@ -238,7 +239,8 @@ export default function SavedMealsScreen() {
                 accessibilityState={{ disabled: loggingMeal }}
                 disabled={loggingMeal}
                 onPress={confirmLogMeal}
-                className="h-[52px] flex-1 items-center justify-center rounded-button bg-accent"
+                // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+                className="h-[52px] flex-1 items-center justify-center rounded-button bg-accentDark"
                 style={loggingMeal ? { opacity: 0.6 } : undefined}>
                 <Text className="font-archivo text-[14px] font-bold text-white">
                   {loggingMeal ? 'Logging…' : 'Log'}

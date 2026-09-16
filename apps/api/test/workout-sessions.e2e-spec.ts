@@ -326,9 +326,10 @@ describe('Workout sessions (e2e)', () => {
       const response = await history(exerciseId).expect(200);
 
       expect(() => exerciseHistoryResponseSchema.parse(response.body)).not.toThrow();
-      // validBody() logs 95kg x 6; Epley from that is 95 * (1 + 5/30) = 110.8.
+      // validBody() logs 95kg x 6; standard Epley from that is 95 * (1 + 6/30) = 114.0
+      // (ADR-038, R29 audit remediation -- was 110.8 under the pre-remediation reps-1 variant).
       expect(response.body.bestSet.weightKg).toBe(95);
-      expect(response.body.estimatedOneRepMaxKg).toBeCloseTo(110.8, 1);
+      expect(response.body.estimatedOneRepMaxKg).toBeCloseTo(114.0, 1);
       expect(response.body.sessions.length).toBeGreaterThan(0);
     });
 

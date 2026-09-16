@@ -24,6 +24,13 @@ const config: ExpoConfig = {
     // access outright with no system prompt at all if this is missing.
     infoPlist: {
       NSCameraUsageDescription: 'FORJD uses your camera to let you take a photo for your nutrition share card background.',
+      // R29 audit remediation (ADR-038): missing on Apple's checklist was a genuine App Store
+      // submission rejection risk, since inbody.tsx's `pickFromLibrary` already calls
+      // `ImagePicker.launchImageLibraryAsync` to attach an InBody scan photo -- iOS refuses
+      // library access outright with no system prompt at all if this key is missing, the same
+      // failure mode NSCameraUsageDescription above already documents for the camera.
+      NSPhotoLibraryUsageDescription:
+        'FORJD needs access to your photo library so you can attach a photo of your InBody scan.',
     },
   },
   android: {

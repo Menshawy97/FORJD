@@ -7,6 +7,55 @@
 import tailwindConfig from '../../../tailwind.config';
 import { colors } from '../tokens';
 
+// WCAG 2.x relative-luminance / contrast-ratio formulas
+// (https://www.w3.org/TR/WCAG21/#dfn-relative-luminance,
+// https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio). Only used against the app's own solid hex
+// tokens, so it takes a `#rrggbb` string, not the alpha-aware `rgba(...)` strings this file
+// also carries -- those never sit behind small body text.
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!match) {
+    throw new Error(`Not a solid #rrggbb hex color: ${hex}`);
+  }
+  return {
+    r: parseInt(match[1], 16),
+    g: parseInt(match[2], 16),
+    b: parseInt(match[3], 16),
+  };
+}
+
+function channelLuminance(channel8Bit: number): number {
+  const channel = channel8Bit / 255;
+  return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  return 0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
+}
+
+function contrastRatio(hexA: string, hexB: string): number {
+  const lumA = relativeLuminance(hexA);
+  const lumB = relativeLuminance(hexB);
+  const lighter = Math.max(lumA, lumB);
+  const darker = Math.min(lumA, lumB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+describe('contrastRatio (WCAG formula self-check)', () => {
+  it('rates black on white at the known 21:1 maximum', () => {
+    expect(contrastRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 1);
+  });
+
+  it('rates a color against itself at 1:1', () => {
+    expect(contrastRatio('#E9712F', '#E9712F')).toBeCloseTo(1, 5);
+  });
+
+  it('is symmetric in argument order', () => {
+    expect(contrastRatio('#F6F5F3', '#08090A')).toBeCloseTo(contrastRatio('#08090A', '#F6F5F3'), 10);
+  });
+});
+
 describe('theme tokens', () => {
   // The header above calls this file "the guard against them drifting apart", but until now
   // it only spot-checked five values in tokens.ts and never opened tailwind.config.ts at
@@ -52,5 +101,25 @@ describe('theme tokens', () => {
     const fontSize = tailwindConfig.theme?.extend?.fontSize as Record<string, unknown>;
 
     expect(fontSize['profile-name']).toEqual(['19px', { lineHeight: '1', letterSpacing: '-.01em' }]);
+  });
+});
+
+// R19 (docs/product/audit-remediation-plan.md) -- H13: white `onAccent` text painted directly on
+// the raw `accent` fill measures 3.06:1, below the 4.5:1 WCAG AA floor for body-weight text, on
+// every primary CTA (Finish, Complete Set, Log In, Save Changes, and the many other buttons that
+// share this "white text on a solid accent fill" style). Recorded here rather than skipped: the
+// user has chosen Option A (darken the fill to the existing `accentDark` token, keep white text)
+// over Option B (near-black text on the unchanged `accent`), so this asserts the pair every
+// primary-CTA call site now actually paints, not a pair nobody has approved.
+describe('primary accent CTA contrast (R19, H13)', () => {
+  it('confirms the original white-on-accent CTA fill actually failed AA (3.06:1)', () => {
+    expect(contrastRatio(colors.onAccent, colors.accent)).toBeCloseTo(3.06, 1);
+    expect(contrastRatio(colors.onAccent, colors.accent)).toBeLessThan(4.5);
+  });
+
+  it('clears AA body-text contrast (4.5:1) for white text on the decided accentDark fill', () => {
+    const ratio = contrastRatio(colors.onAccent, colors.accentDark);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect(ratio).toBeCloseTo(5.6, 1);
   });
 });

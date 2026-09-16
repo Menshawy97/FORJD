@@ -277,7 +277,8 @@ export default function ProgramOverviewScreen() {
               accessibilityLabel="Start Following"
               onPress={() => void follow()}
               className="h-[48px] items-center justify-center rounded-[11px]"
-              style={{ backgroundColor: colors.accent }}>
+              // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+              style={{ backgroundColor: colors.accentDark }}>
               <Text className="font-archivo text-[14px] font-bold text-white">Start Following</Text>
             </Pressable>
           )}

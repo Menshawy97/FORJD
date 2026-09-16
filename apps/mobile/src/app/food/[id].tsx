@@ -413,7 +413,8 @@ export default function FoodDetailScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={onPrimary}
-          className="h-[52px] items-center justify-center rounded-button bg-accent">
+          // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+          className="h-[52px] items-center justify-center rounded-button bg-accentDark">
           <Text className="font-archivo text-[14px] font-bold text-white">{footerLabel}</Text>
         </Pressable>
         {editing ? (

@@ -88,8 +88,16 @@ later swap to S3 or R2 a single new file.
 - `SupabaseStorageProvider` ships in Phase 1 with no caller; InBody upload in Phase 5 is its
   first consumer. Building it now is deliberate: it is written while the pattern is fresh and
   the alternative is writing it under Phase 5 deadline pressure.
-- RLS still gets enabled on user-owned tables, but as defense-in-depth only. Authorization
-  lives in NestJS guards (`CLAUDE.md` rule 12).
+- **Correction (2026-09-16, R29):** this line originally said RLS "still gets enabled on
+  user-owned tables, but as defense-in-depth only." That was aspirational, not descriptive —
+  RLS is not enabled on any table, and `apps/api`'s `DatabaseModule` (`database.module.ts`)
+  connects with `pg.Pool` using `DATABASE_URL`'s configured role directly, not through
+  Supabase's PostgREST/anon-key path that RLS policies actually gate. A direct Postgres
+  connection using that role bypasses RLS regardless of whether policies exist, which makes
+  adding RLS here mostly theatre rather than a real second layer. Authorization is, and
+  remains, exclusively in NestJS guards (`CLAUDE.md` rule 12) — see
+  [ADR-038](./ADR-038-audit-remediation-pass-2026-09.md) for the fuller record of this
+  correction.
 - Accepted once both adapters existed and the conformance check passed against real code.
   `SupabaseAuthProvider` and `SupabaseStorageProvider` are the only two files in the
   repository that import `@supabase/supabase-js`, verified by grep and enforced in CI.
