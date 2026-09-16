@@ -180,11 +180,16 @@ rule 8 ("unit tests for training/analytics calculations"). It is there rather th
 the app because both sides will eventually want the same answer, and two implementations of a
 formula are two chances to disagree about an athlete's numbers.
 
-It uses Epley — `weight x (1 + (reps - 1) / 30)`. Two things about that expression are
-deliberate:
+It uses Epley. This section originally documented a `reps - 1` exponent (`weight x (1 + (reps -
+1) / 30)`) as deliberate, on the reasoning that one rep already is a one-rep max and the
+unadjusted formula would report a 100 kg single as 103.3. **Correction (R29 audit remediation,
+2026-09-16):** that variant read about 3 percent low against the standard, published Epley
+formula this same section's opening sentence claimed, and the two were never reconciled. Shown
+both curves, the user chose the standard formula, `weight x (1 + reps / 30)`, unmodified —
+including at one rep, where it now returns a touch above the lifted weight rather than the
+weight itself. See [ADR-038](../decisions/ADR-038-audit-remediation-pass-2026-09.md) and
+`training-calculations.ts`'s current docblock for the corrected formula and reasoning.
 
-- **The exponent is `reps - 1`, not `reps`.** One rep *is* a one-rep max; the unadjusted formula
-  would report a 100 kg single as 103.3.
 - **It returns `null` past twelve reps.** Epley extrapolates a 20-rep set to roughly 1.63x the
   load, which is not a number to put in front of an athlete as their own max. `null` is a real
   answer here, not an error path, and the tile renders its em dash — the same call already made

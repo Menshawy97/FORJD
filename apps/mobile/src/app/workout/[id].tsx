@@ -198,7 +198,8 @@ export default function WorkoutDetailScreen() {
                 accessibilityLabel="Start workout"
                 onPress={startWorkout}
                 className="h-[52px] items-center justify-center rounded-[12px]"
-                style={{ backgroundColor: colors.accent }}>
+                // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+                style={{ backgroundColor: colors.accentDark }}>
                 <Text className="font-archivo text-[14.5px] font-bold text-white">Start workout</Text>
               </Pressable>
               <Pressable

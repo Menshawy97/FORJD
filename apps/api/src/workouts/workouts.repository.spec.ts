@@ -765,9 +765,10 @@ describe("WorkoutsRepository", () => {
 
       expect(history.bestSet?.weightKg).toBe(100);
       expect(history.bestSet?.reps).toBe(3);
-      // Epley from 100x3: 100 * (1 + 2/30) = 106.7 -- and the design's own demo tile reads
-      // "106 kg" beside a "100 kg x 3" best set, which is where that number comes from.
-      expect(history.estimatedOneRepMaxKg).toBeCloseTo(106.7, 1);
+      // Standard Epley from 100x3: 100 * (1 + 3/30) = 110 (ADR-038, R29 audit remediation --
+      // was 106.7 under the pre-remediation reps-1 variant, which is also what the design's
+      // "106 kg" demo tile beside a "100 kg x 3" best set reflects and is now stale against).
+      expect(history.estimatedOneRepMaxKg).toBeCloseTo(110, 1);
     });
 
     // A set the athlete never ticked was never performed, and a record built on one would be a

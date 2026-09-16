@@ -359,7 +359,8 @@ export default function EditProfileScreen() {
                     Upgrade for unlimited access
                   </Text>
                 </View>
-                <View className="flex-none rounded-chip bg-accent px-[13px] py-2">
+                {/* R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor. */}
+                <View className="flex-none rounded-chip bg-accentDark px-[13px] py-2">
                   <Text className="font-archivo text-chip font-bold text-white">Go Pro</Text>
                 </View>
               </View>
@@ -378,7 +379,8 @@ export default function EditProfileScreen() {
                 disabled={saving}
                 onPress={handleSave}
                 style={pressScale}
-                className="h-[52px] items-center justify-center rounded-button bg-accent shadow-primary-button">
+                // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+                className="h-[52px] items-center justify-center rounded-button bg-accentDark shadow-primary-button">
                 <Text className="font-archivo text-button font-bold text-white">
                   Save Changes
                 </Text>

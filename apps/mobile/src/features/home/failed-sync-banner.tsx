@@ -53,7 +53,8 @@ export function FailedSyncBanner({ failedSessions, onRetry }: FailedSyncBannerPr
         disabled={retryingId === first.sessionId}
         onPress={handleRetry}
         className="items-center justify-center rounded-[10px] px-3 py-[6px]"
-        style={{ backgroundColor: colors.accent }}>
+        // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+        style={{ backgroundColor: colors.accentDark }}>
         <Text className="font-archivo text-[12px] font-bold text-white">
           {retryingId === first.sessionId ? 'Retrying…' : 'Retry'}
         </Text>

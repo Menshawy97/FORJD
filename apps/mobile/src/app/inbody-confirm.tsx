@@ -409,7 +409,8 @@ export default function InBodyConfirmScreen() {
             style={{
               height: 52,
               borderRadius: 12,
-              backgroundColor: colors.accent,
+              // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
+              backgroundColor: colors.accentDark,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: saving ? 0.6 : 1,

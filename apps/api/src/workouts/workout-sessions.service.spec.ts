@@ -390,7 +390,8 @@ describe("WorkoutSessionsService", () => {
   describe("exerciseHistory", () => {
     const historyRow: WorkoutExerciseHistoryRow = {
       bestSet: { weightKg: 100, reps: 3, achievedAt: new Date("2026-08-08T10:20:00.000Z") },
-      estimatedOneRepMaxKg: 106.7,
+      // Standard Epley, 100 x 3: 100 * (1 + 3/30) = 110 (ADR-038, R29 audit remediation).
+      estimatedOneRepMaxKg: 110,
       sessions: [
         {
           sessionId: "33333333-3333-4333-8333-333333333333",
@@ -420,7 +421,7 @@ describe("WorkoutSessionsService", () => {
 
       expect(result.bestSet?.achievedAt).toBe("2026-08-08T10:20:00.000Z");
       expect(result.sessions[0]?.performedAt).toBe("2026-08-08T10:00:00.000Z");
-      expect(result.estimatedOneRepMaxKg).toBe(106.7);
+      expect(result.estimatedOneRepMaxKg).toBe(110);
     });
 
     it("scopes the read to the caller and forwards the limit", async () => {
