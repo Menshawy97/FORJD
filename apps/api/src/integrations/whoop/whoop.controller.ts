@@ -158,6 +158,16 @@ export class WhoopController {
   @SkipThrottle()
   @HttpCode(HttpStatus.OK)
   async webhook(@Req() request: RawBodyRequest<Request>): Promise<void> {
+    // R11 (audit-remediation-plan.md): `getOrThrow` here used to turn an unconfigured
+    // secret into an uncaught Error -- an anonymously reachable 500 on a public route,
+    // rather than the 401 every other invalid-signature case gets. `get(..., "")` plus an
+    // explicit empty-string check keeps "unconfigured" and "wrong" indistinguishable to the
+    // caller, both failing exactly the same way.
+    const secret = this.config.get<string>("WHOOP_WEBHOOK_SECRET", "");
+    if (!secret) {
+      throw new UnauthorizedException("WHOOP webhook secret is not configured");
+    }
+
     const rawBody = request.rawBody?.toString("utf8") ?? "";
     const signature = request.headers["x-whoop-signature"];
     const timestamp = request.headers["x-whoop-signature-timestamp"];
@@ -169,7 +179,7 @@ export class WhoopController {
         rawBody,
         timestamp,
         signature,
-        secret: this.config.getOrThrow<string>("WHOOP_WEBHOOK_SECRET"),
+        secret,
       });
 
     if (!isValid) {

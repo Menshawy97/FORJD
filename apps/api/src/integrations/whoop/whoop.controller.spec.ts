@@ -24,7 +24,7 @@ describe("WhoopController", () => {
   let syncService: jest.Mocked<WhoopSyncService>;
   let providerFactory: jest.Mocked<WhoopProviderFactory>;
   let webhookService: jest.Mocked<WhoopWebhookService>;
-  let config: { getOrThrow: jest.Mock };
+  let config: { getOrThrow: jest.Mock; get: jest.Mock };
   let controller: WhoopController;
 
   beforeEach(() => {
@@ -38,7 +38,10 @@ describe("WhoopController", () => {
     const disconnect = jest.fn();
     providerFactory = { forUser: jest.fn().mockReturnValue({ disconnect }) } as never;
     webhookService = { processEvent: jest.fn() } as never;
-    config = { getOrThrow: jest.fn().mockReturnValue(WEBHOOK_SECRET) };
+    config = {
+      getOrThrow: jest.fn().mockReturnValue(WEBHOOK_SECRET),
+      get: jest.fn().mockReturnValue(WEBHOOK_SECRET),
+    };
 
     controller = new WhoopController(
       oauthService,

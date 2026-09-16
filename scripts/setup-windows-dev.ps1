@@ -10,10 +10,6 @@ Set-ItemProperty -Path $devModeKey -Name "AllowDevelopmentWithoutDevLicense" -Va
 Write-Host "Enabling NTFS long path support..."
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -Type DWord
 
-Write-Host "Excluding repo and dev SDKs from Windows Defender real-time scanning..."
-Add-MpPreference -ExclusionPath "C:\Users\Mostafa Ashraf\Desktop\FORJD"
-Add-MpPreference -ExclusionPath "C:\dev"
-
 Write-Host "Enabling WSL2 (required by Docker Desktop)..."
 Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart
 Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart

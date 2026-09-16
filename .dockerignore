@@ -12,5 +12,5 @@ supabase
 docs
 FORJD mobile app design
 *.log
-.env
-.env.*
+**/.env
+**/.env.*

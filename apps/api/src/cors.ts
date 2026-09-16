@@ -18,5 +18,12 @@ export function applyCors(app: INestApplication): void {
     origin: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    // DO NOT add `credentials: true` here without re-reading the comment above in full.
+    // Noted 2026-09-16 (audit-remediation-plan.md R11): `origin: true` reflects any caller's
+    // Origin header, which is safe only because credentials are off -- a browser will not
+    // send/read cookies on a cross-site request without `Access-Control-Allow-Credentials`.
+    // Enabling credentials while origin is still reflected turns this into an open CORS
+    // misconfiguration: any site could make an authenticated, credentialed request on a
+    // signed-in user's behalf. See cors.spec.ts, which pins this combination.
   });
 }

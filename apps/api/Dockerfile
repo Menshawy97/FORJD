@@ -36,6 +36,12 @@ WORKDIR /app
 COPY --from=build /workspace/deploy/package.json ./package.json
 COPY --from=build /workspace/deploy/dist ./dist
 COPY --from=build /workspace/deploy/node_modules ./node_modules
+# R11 (audit-remediation-plan.md): run as the non-root `node` user the base image already
+# ships, rather than root -- a compromised process in this container gets no more than that
+# unprivileged user's filesystem access. chown so the unprivileged user can still read what
+# was copied in as root above.
+RUN chown -R node:node /app
+USER node
 
 # Cloud Run injects PORT and expects the process to bind it on all interfaces;
 # main.ts's app.listen(port) does this with no host argument (Node's default).
