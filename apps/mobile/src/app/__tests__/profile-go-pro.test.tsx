@@ -114,13 +114,14 @@ describe('profile screen - Go Pro banner', () => {
     );
     expect(gradients).toHaveLength(1);
 
-    expect(gradients[0].props.colors).toEqual([
+    // Non-null: the toHaveLength assertion above guarantees this element exists.
+    expect(gradients[0]!.props.colors).toEqual([
       processColor(colors.proBanner),
       processColor(colors.surface),
     ]);
 
     // 135deg in CSS runs top-left to bottom-right.
-    expect(gradients[0].props.startPoint).toEqual([0, 0]);
-    expect(gradients[0].props.endPoint).toEqual([1, 1]);
+    expect(gradients[0]!.props.startPoint).toEqual([0, 0]);
+    expect(gradients[0]!.props.endPoint).toEqual([1, 1]);
   });
 });

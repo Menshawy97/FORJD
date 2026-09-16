@@ -201,7 +201,7 @@ describe('Repeat', () => {
     expect(pending?.name).toBe('Upper Body Push');
     // Attribution survives the repeat, so progression analytics still sees the template.
     expect(pending?.templateId).toBe('template-7');
-    expect(pending?.exercises[0].name).toBe('Bench Press');
+    expect(pending?.exercises[0]?.name).toBe('Bench Press');
   });
 
   it('hands over a fresh session id, not the finished session it was built from', async () => {
@@ -219,7 +219,7 @@ describe('Repeat', () => {
 
     await fireEvent.press(await findByLabelText('Repeat Upper Body Push'));
 
-    const sets = consumePendingLiveSession()?.exercises[0].sets ?? [];
+    const sets = consumePendingLiveSession()?.exercises[0]?.sets ?? [];
     expect(sets.map((s) => [s.weightKg, s.reps, s.isCompleted])).toEqual([
       [80, 8, false],
       [82.5, 6, false],

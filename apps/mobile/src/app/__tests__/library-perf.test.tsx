@@ -125,7 +125,8 @@ describe('library screen -- renderItem and getItemLayout', () => {
     await render(<LibraryScreen />);
 
     await waitFor(() => expect(capturedSectionListProps.length).toBeGreaterThan(0));
-    const last = capturedSectionListProps[capturedSectionListProps.length - 1];
+    // Non-null: the waitFor above guarantees at least one captured props object.
+    const last = capturedSectionListProps[capturedSectionListProps.length - 1]!;
     expect(typeof last.getItemLayout).toBe('function');
   });
 
@@ -142,26 +143,29 @@ describe('library screen -- renderItem and getItemLayout', () => {
 
     const star = await findByLabelText('Add favourite');
     const rendersBeforeToggle = capturedSectionListProps.length;
-    const renderItemBeforeToggle = capturedSectionListProps[rendersBeforeToggle - 1].renderItem;
+    // Non-null: findByLabelText above only resolves once at least one render has been captured.
+    const renderItemBeforeToggle = capturedSectionListProps[rendersBeforeToggle - 1]!.renderItem;
 
     fireEvent.press(star);
     await waitFor(() => expect(setLocalFavourite).toHaveBeenCalledWith({}, 'ex1', true));
     await waitFor(() => expect(setExerciseFavourite).toHaveBeenCalledWith('ex1', true));
     await waitFor(() => expect(capturedSectionListProps.length).toBeGreaterThan(rendersBeforeToggle));
 
-    const renderItemAfterToggle = capturedSectionListProps[capturedSectionListProps.length - 1].renderItem;
+    // Non-null: the waitFor above guarantees a render past rendersBeforeToggle exists.
+    const renderItemAfterToggle = capturedSectionListProps[capturedSectionListProps.length - 1]!.renderItem;
     expect(renderItemAfterToggle).toBe(renderItemBeforeToggle);
   });
 
   it('changes renderItem when the empty-state copy it closes over actually changes (the Favourites filter)', async () => {
     const { findByText } = await render(<LibraryScreen />);
     await waitFor(() => expect(capturedSectionListProps.length).toBeGreaterThan(0));
-    const renderItemBeforeFilterChange = capturedSectionListProps[capturedSectionListProps.length - 1].renderItem;
+    // Non-null: the waitFor above guarantees at least one captured props object.
+    const renderItemBeforeFilterChange = capturedSectionListProps[capturedSectionListProps.length - 1]!.renderItem;
 
     fireEvent.press(await findByText('Favourites'));
     await waitFor(() => expect(listCachedExercises).toHaveBeenLastCalledWith({}, expect.anything()));
 
-    const renderItemAfterFilterChange = capturedSectionListProps[capturedSectionListProps.length - 1].renderItem;
+    const renderItemAfterFilterChange = capturedSectionListProps[capturedSectionListProps.length - 1]!.renderItem;
     expect(renderItemAfterFilterChange).not.toBe(renderItemBeforeFilterChange);
   });
 });

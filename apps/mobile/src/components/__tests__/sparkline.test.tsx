@@ -37,7 +37,9 @@ describe('Sparkline', () => {
   });
 
   it('spreads the points evenly across the full width and starts at the left edge', async () => {
-    const [, line] = await paths([0, 10, 20, 30]);
+    // Non-null: Sparkline always renders exactly two paths (fill, then line) -- see the
+    // toHaveLength(2) assertion above.
+    const [, line] = (await paths([0, 10, 20, 30])) as [string, string];
 
     expect(line.startsWith('M0.0 ')).toBe(true);
     expect(line).toContain('L100.0 ');

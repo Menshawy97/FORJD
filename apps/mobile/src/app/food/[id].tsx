@@ -159,6 +159,9 @@ export default function FoodDetailScreen() {
     return () => {
       cancelled = true;
     };
+    // paramSlot is re-derived from params on every render and only matters for the initial
+    // default; the state setters are stable. Depending on paramSlot would re-run this
+    // fetch-and-populate effect on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, entryId]);
 

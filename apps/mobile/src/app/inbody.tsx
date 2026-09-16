@@ -70,7 +70,8 @@ export default function InBodyScreen() {
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.9 });
     if (result.canceled || result.assets.length === 0) return;
-    await runExtraction(result.assets[0].uri);
+    // Non-null: the length check above guarantees at least one asset.
+    await runExtraction(result.assets[0]!.uri);
   };
 
   const takePhoto = async () => {
@@ -81,13 +82,15 @@ export default function InBodyScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
     if (result.canceled || result.assets.length === 0) return;
-    await runExtraction(result.assets[0].uri);
+    // Non-null: the length check above guarantees at least one asset.
+    await runExtraction(result.assets[0]!.uri);
   };
 
   const toggleSelection = (scanId: string) => {
     setCompareSelection((current) => {
       if (current.includes(scanId)) return current.filter((id) => id !== scanId);
-      if (current.length >= 2) return [current[1], scanId];
+      // Non-null: the length check above guarantees index 1 exists.
+      if (current.length >= 2) return [current[1]!, scanId];
       return [...current, scanId];
     });
   };

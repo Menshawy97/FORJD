@@ -61,10 +61,11 @@ describe('startSession', () => {
     const live = session();
 
     expect(live.exercises).toHaveLength(2);
-    expect(live.exercises[0].sets).toHaveLength(2);
-    expect(live.exercises[0].sets.every((set) => !set.isCompleted)).toBe(true);
+    // Non-null: the toHaveLength(2) above guarantees index 0 exists.
+    expect(live.exercises[0]!.sets).toHaveLength(2);
+    expect(live.exercises[0]!.sets.every((set) => !set.isCompleted)).toBe(true);
     // The domain's own note: an unfinished session carries incomplete rows, never missing ones.
-    expect(live.exercises[1].sets[0].durationSeconds).toBe(45);
+    expect(live.exercises[1]!.sets[0]!.durationSeconds).toBe(45);
   });
 
   it('starts in progress with the design default rest of 90 seconds', () => {
@@ -114,7 +115,7 @@ describe('completeSet', () => {
   it('marks the set done and emits set_completed carrying the id and index', () => {
     const change = completeSet(session(), 0, 0, NOW);
 
-    expect(change.session.exercises[0].sets[0].isCompleted).toBe(true);
+    expect(change.session.exercises[0]!.sets[0]!.isCompleted).toBe(true);
     expect(change.events).toContainEqual({
       type: 'set_completed',
       occurredAt: NOW.toISOString(),
@@ -150,7 +151,7 @@ describe('completeSet', () => {
 
     expect(change.refusal).toBe('Complete set 1 first');
     expect(change.events).toEqual([]);
-    expect(change.session.exercises[0].sets[1].isCompleted).toBe(false);
+    expect(change.session.exercises[0]!.sets[1]!.isCompleted).toBe(false);
   });
 
   it('refuses to untick a set while a later one is still ticked', () => {
@@ -160,7 +161,7 @@ describe('completeSet', () => {
     const change = completeSet(live, 0, 0, LATER);
 
     expect(change.refusal).toBe('Untick later sets first');
-    expect(change.session.exercises[0].sets[0].isCompleted).toBe(true);
+    expect(change.session.exercises[0]!.sets[0]!.isCompleted).toBe(true);
   });
 
   it('unticks with its own event, because the log is append-only', () => {
@@ -168,7 +169,7 @@ describe('completeSet', () => {
 
     const change = completeSet(live, 0, 0, LATER);
 
-    expect(change.session.exercises[0].sets[0].isCompleted).toBe(false);
+    expect(change.session.exercises[0]!.sets[0]!.isCompleted).toBe(false);
     expect(change.events).toEqual([
       { type: 'set_uncompleted', occurredAt: LATER.toISOString(), payload: { exerciseId: 'ex-1', setIndex: 0 } },
     ]);
@@ -180,7 +181,7 @@ describe('completeSet', () => {
     const change = completeSet(session(), 1, 0, NOW);
 
     expect(change.opensTimerFor).toEqual({ exerciseIndex: 1, setIndex: 0, seconds: 45 });
-    expect(change.session.exercises[1].sets[0].isCompleted).toBe(false);
+    expect(change.session.exercises[1]!.sets[0]!.isCompleted).toBe(false);
     expect(change.events).toEqual([]);
   });
 
@@ -229,7 +230,7 @@ describe('editing the session in flight', () => {
   it('writes an edited weight onto the set without logging anything yet', () => {
     const live = updateSet(session(), 0, 0, { weightKg: 82.5 });
 
-    expect(live.exercises[0].sets[0].weightKg).toBe(82.5);
+    expect(live.exercises[0]!.sets[0]!.weightKg).toBe(82.5);
   });
 
   it('carries the edited values into the set_completed payload', () => {
@@ -243,19 +244,22 @@ describe('editing the session in flight', () => {
   it('copies the last set when adding one, which is what the design implies', () => {
     const live = addSet(updateSet(session(), 0, 1, { weightKg: 85, reps: 5 }), 0);
 
-    expect(live.exercises[0].sets).toHaveLength(3);
-    expect(live.exercises[0].sets[2]).toMatchObject({ weightKg: 85, reps: 5, isCompleted: false });
+    // Non-null: the toHaveLength(3) above guarantees index 0 exists.
+    expect(live.exercises[0]!.sets).toHaveLength(3);
+    expect(live.exercises[0]!.sets[2]!).toMatchObject({ weightKg: 85, reps: 5, isCompleted: false });
   });
 
   it('removes a set and keeps the remaining set indices dense', () => {
     const live = removeSet(session(), 0, 0);
 
-    expect(live.exercises[0].sets).toHaveLength(1);
-    expect(live.exercises[0].sets[0].setIndex).toBe(0);
+    // Non-null: the toHaveLength(1) above guarantees index 0 exists.
+    expect(live.exercises[0]!.sets).toHaveLength(1);
+    expect(live.exercises[0]!.sets[0]!.setIndex).toBe(0);
   });
 
   it('refuses to remove the only set of an exercise', () => {
-    expect(removeSet(session(), 1, 0).exercises[1].sets).toHaveLength(1);
+    // Non-null: session() fixture always has two exercises, so index 1 exists.
+    expect(removeSet(session(), 1, 0).exercises[1]!.sets).toHaveLength(1);
   });
 
   it('removes an exercise from this session only', () => {
@@ -287,9 +291,9 @@ describe('restoreSession', () => {
       completedSetKeys: ['ex-1:0', 'ex-2:0'],
     });
 
-    expect(restored.exercises[0].sets[0].isCompleted).toBe(true);
-    expect(restored.exercises[0].sets[1].isCompleted).toBe(false);
-    expect(restored.exercises[1].sets[0].isCompleted).toBe(true);
+    expect(restored.exercises[0]!.sets[0]!.isCompleted).toBe(true);
+    expect(restored.exercises[0]!.sets[1]!.isCompleted).toBe(false);
+    expect(restored.exercises[1]!.sets[0]!.isCompleted).toBe(true);
   });
 
   it('keeps the prescription the snapshot carries, which the log does not', () => {
@@ -298,9 +302,10 @@ describe('restoreSession', () => {
     // The event log records what happened; only the snapshot knows the session's name, its
     // exercises and their targets.
     expect(restored.name).toBe('Upper / Lower');
-    expect(restored.exercises[0].name).toBe('Bench Press');
-    expect(restored.exercises[0].sets[0].weightKg).toBe(80);
-    expect(restored.exercises[1].sets[0].durationSeconds).toBe(45);
+    // Non-null: session() fixture always has two exercises, so index 0 exists.
+    expect(restored.exercises[0]!.name).toBe('Bench Press');
+    expect(restored.exercises[0]!.sets[0]!.weightKg).toBe(80);
+    expect(restored.exercises[1]!.sets[0]!.durationSeconds).toBe(45);
   });
 
   it('comes back paused when the athlete left it paused', () => {
@@ -313,7 +318,7 @@ describe('restoreSession', () => {
     // The replay applies set_uncompleted by removing the key, so it simply is not in the list.
     const restored = restoreSession(session(), { status: 'in_progress', completedSetKeys: [] });
 
-    expect(restored.exercises[0].sets[0].isCompleted).toBe(false);
+    expect(restored.exercises[0]!.sets[0]!.isCompleted).toBe(false);
   });
 
   it('round-trips a real sequence of actions through replay', () => {

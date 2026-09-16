@@ -1,4 +1,4 @@
-import { computeRingGeometry } from '../concentric-rings';
+import { computeRingGeometry, type RingGeometry } from '../concentric-rings';
 
 describe('computeRingGeometry', () => {
   it('steps each ring inward from the previous by strokeWidth + gap', () => {
@@ -20,7 +20,8 @@ describe('computeRingGeometry', () => {
     const geometry = computeRingGeometry(bands, 60, 4, 1);
 
     for (let i = 1; i < geometry.length; i += 1) {
-      expect(geometry[i - 1].radius - geometry[i].radius).toBe(5);
+      // Non-null: both indices are within [0, geometry.length) by the loop bounds.
+      expect(geometry[i - 1]!.radius - geometry[i]!.radius).toBe(5);
     }
   });
 
@@ -30,7 +31,8 @@ describe('computeRingGeometry', () => {
       { key: 'inner', filled: 0.5, color: '#000' },
     ];
 
-    const [outer, inner] = computeRingGeometry(bands, 40, 6, 2);
+    // Non-null: computeRingGeometry returns exactly one entry per band passed in.
+    const [outer, inner] = computeRingGeometry(bands, 40, 6, 2) as [RingGeometry, RingGeometry];
 
     expect(outer.circumference).toBeCloseTo(2 * Math.PI * 40, 6);
     expect(inner.circumference).toBeCloseTo(2 * Math.PI * 32, 6);
@@ -41,8 +43,9 @@ describe('computeRingGeometry', () => {
   });
 
   it('dashoffset is the full circumference at 0% and 0 at 100%', () => {
-    const [empty] = computeRingGeometry([{ key: 'a', filled: 0, color: '#000' }], 20, 4, 0);
-    const [full] = computeRingGeometry([{ key: 'a', filled: 1, color: '#000' }], 20, 4, 0);
+    // Non-null: computeRingGeometry returns exactly one entry per band passed in.
+    const [empty] = computeRingGeometry([{ key: 'a', filled: 0, color: '#000' }], 20, 4, 0) as [RingGeometry];
+    const [full] = computeRingGeometry([{ key: 'a', filled: 1, color: '#000' }], 20, 4, 0) as [RingGeometry];
 
     expect(empty.dashoffset).toBeCloseTo(empty.circumference, 6);
     expect(full.dashoffset).toBeCloseTo(0, 6);

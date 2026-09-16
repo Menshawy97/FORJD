@@ -63,7 +63,8 @@ function seriesFor(series: BodyScanSeriesResponse | null, metric: BodyMetric | S
 
 function delta(points: ReadonlyArray<{ value: number }>): number {
   if (points.length < 2) return 0;
-  return points[points.length - 1].value - points[0].value;
+  // Non-null: the length check above guarantees both ends exist.
+  return points[points.length - 1]!.value - points[0]!.value;
 }
 
 function formatDelta(metric: BodyMetric, points: ReadonlyArray<{ value: number }>, unit: string) {
@@ -95,7 +96,8 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {bodyWidgets.map((metric, slot) => {
           const s = seriesFor(series, metric);
-          const latest = s && s.points.length > 0 ? s.points[s.points.length - 1].value : null;
+          // Non-null: the length check guarantees the last point exists.
+          const latest = s && s.points.length > 0 ? s.points[s.points.length - 1]!.value : null;
           const { text: deltaText, good } = s ? formatDelta(metric, s.points, s.unit) : { text: '—', good: null };
           const label = WIDGET_CATALOG.find((w) => w.metric === metric)?.label ?? BODY_METRIC_DISPLAY_NAMES[metric];
           return (
@@ -278,7 +280,8 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
         <>
           {SEGMENTAL_SITES.map((site) => {
             const s = seriesFor(series, site);
-            const latest = s && s.points.length > 0 ? s.points[s.points.length - 1].value : null;
+            // Non-null: the length check guarantees the last point exists.
+            const latest = s && s.points.length > 0 ? s.points[s.points.length - 1]!.value : null;
             const pct = latest != null ? Math.round((latest / SEGMENTAL_REFERENCE_KG[site]) * 100) : 0;
             return (
               <View

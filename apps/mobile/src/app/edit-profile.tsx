@@ -38,7 +38,11 @@ const SEX_OPTIONS: ReadonlyArray<{ value: Sex; label: string }> = [
  * numeric parts via the local-time constructor sidesteps the UTC interpretation entirely.
  */
 export function parseIsoDate(iso: string): Date {
-  const [year, month, day] = iso.split('-').map(Number);
+  const parts = iso.split('-').map(Number);
+  const [year, month, day] = parts;
+  if (parts.length !== 3 || year === undefined || month === undefined || day === undefined || [year, month, day].some(Number.isNaN)) {
+    throw new Error(`parseIsoDate: invalid date "${iso}"`);
+  }
   return new Date(year, month - 1, day);
 }
 
@@ -127,7 +131,8 @@ export default function EditProfileScreen() {
       return;
     }
 
-    const asset = result.assets[0];
+    // Non-null: the length check above guarantees at least one asset.
+    const asset = result.assets[0]!;
     setAvatarPreviewUri(asset.uri);
     try {
       // ADR-024: resize/re-encode client-side before the upload leaves the device -- a

@@ -17,10 +17,13 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   if (!match) {
     throw new Error(`Not a solid #rrggbb hex color: ${hex}`);
   }
+  // Non-null assertions: the regex has exactly three capture groups and `match` is
+  // already confirmed non-null above, so `match[1..3]` are provably present --
+  // `noUncheckedIndexedAccess` cannot see that guarantee through a fixed-arity regex match.
   return {
-    r: parseInt(match[1], 16),
-    g: parseInt(match[2], 16),
-    b: parseInt(match[3], 16),
+    r: parseInt(match[1]!, 16),
+    g: parseInt(match[2]!, 16),
+    b: parseInt(match[3]!, 16),
   };
 }
 

@@ -296,7 +296,7 @@ describe('Customise hands off to the builder', () => {
 
     await fireEvent.press(await findByLabelText('Customise'));
 
-    expect(consumeBuilderPrefill()?.exercises[0].name).toBe('Barbell Row');
+    expect(consumeBuilderPrefill()?.exercises[0]?.name).toBe('Barbell Row');
   });
 
   it('defaults an uncached exercise to the weight measure so the builder still renders it', async () => {
@@ -306,7 +306,7 @@ describe('Customise hands off to the builder', () => {
 
     await fireEvent.press(await findByLabelText('Customise'));
 
-    expect(consumeBuilderPrefill()?.exercises[0].measure).toBe('weight');
+    expect(consumeBuilderPrefill()?.exercises[0]?.measure).toBe('weight');
   });
 
   it('offers nothing to press before the template has loaded', async () => {
@@ -342,9 +342,10 @@ describe('Start workout', () => {
     const pending = consumePendingLiveSession();
     expect(pending).toMatchObject({ templateId: 'template-1', name: 'Upper / Lower', activity: 'strength' });
     // 4 prescribed sets of 8 become four individually tickable rows, each carrying the target.
-    expect(pending?.exercises[0].sets).toHaveLength(4);
+    expect(pending?.exercises[0]?.sets).toHaveLength(4);
     expect(pending?.exercises[0]).toMatchObject({ exerciseId: 'ex-1', name: 'Bench Press', measure: 'weight' });
-    expect(pending?.exercises[0].sets[3]).toMatchObject({ reps: 8, isCompleted: false });
+    // Non-null: the toHaveLength(4) assertion above guarantees index 3 exists.
+    expect(pending?.exercises[0]?.sets[3]).toMatchObject({ reps: 8, isCompleted: false });
   });
 
   it('carries a timed exercise across as a duration, not reps', async () => {
@@ -365,7 +366,7 @@ describe('Start workout', () => {
     await fireEvent.press(await findByLabelText('Start workout'));
 
     const pending = consumePendingLiveSession();
-    expect(pending?.exercises[0].sets[0]).toMatchObject({ durationSeconds: 45, reps: null });
+    expect(pending?.exercises[0]?.sets[0]).toMatchObject({ durationSeconds: 45, reps: null });
   });
 
   it('does nothing before the template has loaded', async () => {

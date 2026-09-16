@@ -186,7 +186,8 @@ describe('apiClient - in-flight refresh dedup', () => {
     });
     replayInstance.request.mockResolvedValue({ data: 'ok' });
 
-    const onRejected = asMock(apiClient).interceptors.response.handlers[0].onRejected as (
+    // Non-null: apiClient registers exactly one response interceptor at module load.
+    const onRejected = asMock(apiClient).interceptors.response.handlers[0]!.onRejected as (
       error: unknown,
     ) => Promise<unknown>;
 
@@ -233,7 +234,8 @@ describe('apiClient - what a failure on the retry path is allowed to destroy', (
       // Construction order in apiClient.ts: public, refresh, api, replay.
       refreshInstance: instances[1] as unknown as { post: jest.Mock },
       replayInstance: instances[3] as unknown as { request: jest.Mock },
-      onRejected: asMock(mod.apiClient).interceptors.response.handlers[0].onRejected as (
+      // Non-null: apiClient registers exactly one response interceptor at module load.
+      onRejected: asMock(mod.apiClient).interceptors.response.handlers[0]!.onRejected as (
         error: unknown,
       ) => Promise<unknown>,
     };

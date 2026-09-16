@@ -62,6 +62,7 @@ describe('tab bar', () => {
 
     // 12px in CSS. expo-blur's `intensity` is a 0-100 scale, not pixels, so the value is
     // named as a constant in the layout rather than pretending to be the CSS number.
-    expect(blurs[0].props.intensity).toBeGreaterThan(0);
+    // Non-null: the length assertion above guarantees this element exists.
+    expect(blurs[0]!.props.intensity).toBeGreaterThan(0);
   });
 });

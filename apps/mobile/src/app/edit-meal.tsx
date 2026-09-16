@@ -100,6 +100,9 @@ export default function EditMealScreen() {
     return () => {
       cancelled = true;
     };
+    // toast and startDraft come from context and are not guaranteed stable identity; depending
+    // on them would re-run this fetch-and-populate effect on every render instead of only when
+    // the route's editMealId or the in-progress draft actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editMealId, draft?.id]);
 
