@@ -16,6 +16,11 @@ import { applyCors } from './cors';
  * credential for a hostile page to ride. If someone later adds cookie/session auth, that
  * combination becomes a CSRF hole, and pinning the exact object means this test fails and
  * forces the conversation instead of silently permitting it.
+ *
+ * Noted 2026-09-16 (R11, audit-remediation-plan.md): this is the exact day this combination
+ * was re-confirmed safe and worth pinning. DO NOT add `credentials: true` to `applyCors`
+ * while `origin` stays `true`/reflected without re-deriving this from scratch — see the
+ * paragraph above for why. Narrow `origin` to an explicit allowlist first.
  */
 describe('applyCors', () => {
   it('reflects any origin, and allows only the methods and headers the client uses', () => {
