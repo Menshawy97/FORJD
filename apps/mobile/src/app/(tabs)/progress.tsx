@@ -155,7 +155,7 @@ function StrengthView({
 
   // Always exactly two slots, honest-empty rather than hidden -- an account with fewer than
   // two personal records still sees the tile row's full chrome (PrTile's own docblock).
-  const prSlots: (typeof personalRecords)[number][] | null[] = [
+  const prSlots: ((typeof personalRecords)[number] | null)[] = [
     personalRecords[0] ?? null,
     personalRecords[1] ?? null,
   ];

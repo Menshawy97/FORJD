@@ -71,7 +71,8 @@ export default function PickUsernameScreen() {
       return;
     }
 
-    const asset = result.assets[0];
+    // Non-null: the length check above guarantees at least one asset.
+    const asset = result.assets[0]!;
     setAvatarPreviewUri(asset.uri);
     try {
       // ADR-024: resize/re-encode client-side before the upload leaves the device -- a

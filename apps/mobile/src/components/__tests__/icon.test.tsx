@@ -35,7 +35,8 @@ async function renderIcon(element: React.ReactElement) {
   const rendered = await render(element);
   const nodes = flatten(rendered.toJSON());
   return {
-    root: nodes[0],
+    // Non-null: every Icon renders at least its own SVG root node.
+    root: nodes[0]!,
     ofType: (type: string) => nodes.filter((node) => node.type === type),
   };
 }
@@ -83,7 +84,8 @@ describe('Icon', () => {
   it('defaults the color to the dim token when none is given', async () => {
     const { ofType } = await renderIcon(<Icon name="bolt" />);
 
-    expect(ofType('RNSVGPath')[0].props.stroke).toMatchObject({
+    // Non-null: the bolt glyph always renders at least one path.
+    expect(ofType('RNSVGPath')[0]!.props.stroke).toMatchObject({
       payload: processColor(colors.dim),
     });
   });
@@ -100,7 +102,8 @@ describe('Icon', () => {
     const { root, ofType } = await renderIcon(<Icon name="heart" />);
 
     expect(root.props).toMatchObject({ vbWidth: 24, vbHeight: 24, minX: 0, minY: 0 });
-    expect(ofType('RNSVGPath')[0].props).toMatchObject({ strokeWidth: 1.6 });
+    // Non-null: the heart glyph always renders at least one path.
+    expect(ofType('RNSVGPath')[0]!.props).toMatchObject({ strokeWidth: 1.6 });
   });
 
   it("uses strokeWidth 1.3 for the runner glyph's third path only", async () => {
@@ -113,20 +116,22 @@ describe('Icon', () => {
     const { root, ofType } = await renderIcon(<Icon name="back" />);
 
     expect(root.props).toMatchObject({ width: 20, height: 20, vbWidth: 20, vbHeight: 20 });
-    expect(ofType('RNSVGPath')[0].props).toMatchObject({
+    // Non-null: the back glyph always renders at least one path.
+    expect(ofType('RNSVGPath')[0]!.props).toMatchObject({
       d: 'M12.5 4 6.5 10l6 6',
       strokeWidth: 1.7,
       stroke: { payload: processColor(colors.text) },
     });
     // ...and is NOT the same shape as the 24x24 list-row chevron.
     const listChevron = await renderIcon(<Icon name="chevron" />);
-    expect(listChevron.ofType('RNSVGPath')[0].props.d).toBe('m9.6 6.4 5 5.6-5 5.6');
+    expect(listChevron.ofType('RNSVGPath')[0]!.props.d).toBe('m9.6 6.4 5 5.6-5 5.6');
   });
 
   it('applies an explicit strokeWidth prop over the glyph default', async () => {
     const { ofType } = await renderIcon(<Icon name="check" strokeWidth={2.6} />);
 
-    expect(ofType('RNSVGPath')[0].props.strokeWidth).toBe(2.6);
+    // Non-null: the check glyph always renders at least one path.
+    expect(ofType('RNSVGPath')[0]!.props.strokeWidth).toBe(2.6);
   });
 
   // The prototype draws Train's Repeat button with a *filled* triangle and no stroke
@@ -137,7 +142,8 @@ describe('Icon', () => {
   it('draws the play triangle as a fill with no stroke', async () => {
     const { ofType } = await renderIcon(<Icon name="play" color="#fff" filled strokeWidth={0} />);
 
-    const [triangle] = ofType('RNSVGPath');
+    // Non-null: the play glyph always renders exactly one path.
+    const [triangle] = ofType('RNSVGPath') as [HostNode];
     expect(triangle.props.fill).toEqual(expect.objectContaining({ payload: expect.anything() }));
     expect(triangle.props.strokeWidth).toBe(0);
   });

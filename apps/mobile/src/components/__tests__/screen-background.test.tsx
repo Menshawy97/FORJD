@@ -74,7 +74,8 @@ describe('ScreenBackground', () => {
     expect(gradients).toHaveLength(1);
 
     // react-native-svg keeps these as the strings/numbers they were given.
-    expect(gradients[0].props).toMatchObject({
+    // Non-null: the toHaveLength assertion above guarantees this element exists.
+    expect(gradients[0]!.props).toMatchObject({
       cx: '0.5',
       cy: '-0.1',
       rx: '1.3',

@@ -218,7 +218,9 @@ export function completeSet(
   const set = exercise.sets[setIndex];
   if (!set) return unchanged(session);
 
-  if (!set.isCompleted && setIndex > 0 && !exercise.sets[setIndex - 1].isCompleted) {
+  // Non-null: setIndex is a valid index into exercise.sets (checked above), and setIndex > 0
+  // guarantees setIndex - 1 is too.
+  if (!set.isCompleted && setIndex > 0 && !exercise.sets[setIndex - 1]!.isCompleted) {
     return unchanged(session, `Complete set ${setIndex} first`);
   }
   if (set.isCompleted && exercise.sets.slice(setIndex + 1).some((later) => later.isCompleted)) {
@@ -271,7 +273,9 @@ export function completeSet(
     },
   ];
 
-  if (nextSession.exercises[exerciseIndex].sets.every((each) => each.isCompleted)) {
+  // Non-null: mapExercise's .map() preserves length/order, so this index exists whenever the
+  // earlier `exercise` lookup on `session.exercises[exerciseIndex]` succeeded.
+  if (nextSession.exercises[exerciseIndex]!.sets.every((each) => each.isCompleted)) {
     events.push({ type: 'exercise_completed', occurredAt, payload: { exerciseId: exercise.exerciseId } });
   }
 
@@ -320,7 +324,9 @@ export function completeTimedSet(
     },
   ];
 
-  if (nextSession.exercises[exerciseIndex].sets.every((each) => each.isCompleted)) {
+  // Non-null: mapExercise's .map() preserves length/order, so this index exists whenever the
+  // earlier `exercise` lookup on `session.exercises[exerciseIndex]` succeeded.
+  if (nextSession.exercises[exerciseIndex]!.sets.every((each) => each.isCompleted)) {
     events.push({ type: 'exercise_completed', occurredAt, payload: { exerciseId: exercise.exerciseId } });
   }
   events.push({ type: 'rest_started', occurredAt, payload: { seconds: session.restSeconds } });

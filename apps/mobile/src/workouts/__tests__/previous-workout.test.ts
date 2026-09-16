@@ -336,7 +336,9 @@ describe('toRepeatExercises', () => {
     });
 
   it('keeps every set with the load that was logged, so nothing has to be retyped', () => {
-    const [bench] = toRepeatExercises(twoExerciseSession(), resolveExercise);
+    const exercises = toRepeatExercises(twoExerciseSession(), resolveExercise);
+    // Non-null: twoExerciseSession() always yields two repeated exercises.
+    const bench = exercises[0]!;
 
     expect(bench.sets).toEqual([
       { setIndex: 0, isCompleted: false, weightKg: 80, reps: 8, durationSeconds: null, distanceMeters: null },
@@ -377,7 +379,8 @@ describe('toRepeatExercises', () => {
       resolveExercise,
     );
 
-    expect(exercises[0].sets.map((s) => s.setIndex)).toEqual([0, 1]);
+    // Non-null: the session fixture above defines exactly one exercise.
+    expect(exercises[0]!.sets.map((s) => s.setIndex)).toEqual([0, 1]);
   });
 
   // An exercise that has been deleted from the catalogue since is still something the athlete
@@ -400,8 +403,9 @@ describe('toRepeatExercises', () => {
     );
 
     expect(exercises).toHaveLength(1);
-    expect(exercises[0].name).toBe('Exercise');
-    expect(exercises[0].goal).toBeNull();
+    // Non-null: the toHaveLength(1) above guarantees index 0 exists.
+    expect(exercises[0]!.name).toBe('Exercise');
+    expect(exercises[0]!.goal).toBeNull();
   });
 });
 

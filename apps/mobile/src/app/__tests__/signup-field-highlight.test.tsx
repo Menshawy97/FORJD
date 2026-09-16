@@ -65,7 +65,8 @@ const weakPasswordMessage = (() => {
   if (result.success) {
     throw new Error(`Contract accepts "${WEAK_PASSWORD}" — this test needs a rejected password.`);
   }
-  return result.error.issues[0].message;
+  // Non-null: a failed Zod parse always has at least one issue.
+  return result.error.issues[0]!.message;
 })();
 
 function highlighted(input: NodeWithClassName): boolean {

@@ -85,6 +85,8 @@ export default function SavedMealsScreen() {
     } catch (error) {
       toast.show(errorMessage(error));
     }
+    // Same rationale as nutrition.tsx's loadAll: `toast` is a fresh object every render, only
+    // `toast.show` is stable -- depending on the whole object would refetch forever.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast.show]);
 

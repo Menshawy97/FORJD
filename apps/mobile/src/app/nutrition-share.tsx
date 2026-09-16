@@ -168,7 +168,8 @@ export default function NutritionShareScreen() {
   }, [loadAll]);
 
   const totals = useMemo(() => sumTotals(log), [log]);
-  const activeLayout = SHARE_LAYOUTS.find((candidate) => candidate.id === layout) ?? SHARE_LAYOUTS[0];
+  // Non-null: SHARE_LAYOUTS is a fixed non-empty literal array.
+  const activeLayout = SHARE_LAYOUTS.find((candidate) => candidate.id === layout) ?? SHARE_LAYOUTS[0]!;
 
   const selectLayout = (id: ShareLayoutId) => () => setLayout(id);
   // Expo Go cannot load `react-native-view-shot` at all (see `share-capture.ts`'s addendum), so
@@ -244,7 +245,8 @@ export default function NutritionShareScreen() {
       return;
     }
 
-    await applyPickedPhoto(result.assets[0].uri);
+    // Non-null: the length check above guarantees at least one asset.
+    await applyPickedPhoto(result.assets[0]!.uri);
   };
 
   const takePhoto = async () => {
@@ -263,7 +265,8 @@ export default function NutritionShareScreen() {
       return;
     }
 
-    await applyPickedPhoto(result.assets[0].uri);
+    // Non-null: the length check above guarantees at least one asset.
+    await applyPickedPhoto(result.assets[0]!.uri);
   };
 
   return (

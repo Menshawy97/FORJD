@@ -199,7 +199,10 @@ export async function updateProfile(patch: UpdateProfileRequest): Promise<Profil
 export async function uploadAvatar(imageUri: string): Promise<AvatarUploadResponse> {
   const filename = imageUri.split('/').pop() ?? 'avatar.jpg';
   const extensionMatch = /\.(\w+)$/.exec(filename);
-  const mimeType = extensionMatch ? `image/${extensionMatch[1].toLowerCase()}` : 'image/jpeg';
+  // extensionMatch[1] is the capture group; guaranteed present whenever the regex matches, but
+  // noUncheckedIndexedAccess can't see that -- fall back to jpeg if it's ever missing.
+  const extension = extensionMatch?.[1];
+  const mimeType = extension ? `image/${extension.toLowerCase()}` : 'image/jpeg';
 
   const formData = new FormData();
   // React Native's FormData accepts this `{ uri, name, type }` shape for a file field — it is
@@ -537,7 +540,10 @@ export async function getWorkoutSession(id: string): Promise<WorkoutSessionRespo
 function scanPhotoFormPart(imageUri: string): { uri: string; name: string; type: string } {
   const filename = imageUri.split('/').pop() ?? 'scan.jpg';
   const extensionMatch = /\.(\w+)$/.exec(filename);
-  const mimeType = extensionMatch ? `image/${extensionMatch[1].toLowerCase()}` : 'image/jpeg';
+  // extensionMatch[1] is the capture group; guaranteed present whenever the regex matches, but
+  // noUncheckedIndexedAccess can't see that -- fall back to jpeg if it's ever missing.
+  const extension = extensionMatch?.[1];
+  const mimeType = extension ? `image/${extension.toLowerCase()}` : 'image/jpeg';
   return { uri: imageUri, name: filename, type: mimeType };
 }
 

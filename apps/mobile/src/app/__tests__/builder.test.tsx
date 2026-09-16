@@ -332,8 +332,9 @@ describe('Start now', () => {
     expect(pending).toMatchObject({ name: 'Push day', activity: 'strength', templateId: null });
     expect(pending?.exercises).toHaveLength(1);
     // Three prescribed sets become three individually tickable rows.
-    expect(pending?.exercises[0].sets).toHaveLength(3);
-    expect(pending?.exercises[0].sets[0]).toMatchObject({ reps: 10, isCompleted: false });
+    // Non-null: toHaveLength assertions above guarantee these indices exist.
+    expect(pending?.exercises[0]!.sets).toHaveLength(3);
+    expect(pending?.exercises[0]!.sets[0]).toMatchObject({ reps: 10, isCompleted: false });
     expect(pending?.id).toEqual(expect.any(String));
   });
 

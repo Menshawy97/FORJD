@@ -86,7 +86,8 @@ function goalsSubtitle(trainingGoals: TrainingGoal[], activities: Activity[]): s
   if (trainingGoals.length === 0) {
     return 'No goal set';
   }
-  const goal = GOAL_LABELS[trainingGoals[0]];
+  // Non-null: the length check above guarantees index 0 exists.
+  const goal = GOAL_LABELS[trainingGoals[0]!];
   const activityNames = activities.map((activity) => ACTIVITY_LABELS[activity]);
   return activityNames.length > 0 ? `${goal} · ${activityNames.join(', ')}` : goal;
 }

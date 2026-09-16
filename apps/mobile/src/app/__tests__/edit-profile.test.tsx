@@ -301,6 +301,20 @@ describe('EditProfileScreen', () => {
     expect(parsed.getTime()).toBe(new Date(1990, 6, 4).getTime());
   });
 
+  /**
+   * Regression: `iso.split('-').map(Number)` destructured into `[year, month, day]` without
+   * checking the split actually produced three parts. A malformed value (truncated, extra
+   * dashes, non-numeric segment) silently fed `undefined`/`NaN` into `new Date(...)`, producing
+   * an "Invalid Date" instead of a clear failure -- the birthday screen would have then shown
+   * a nonsense date with no indication anything was wrong. `noUncheckedIndexedAccess` surfaced
+   * this because the destructured elements are typed `number | undefined`.
+   */
+  it('throws a clear error instead of silently producing an Invalid Date for malformed input', () => {
+    expect(() => parseIsoDate('1990-07')).toThrow(/invalid.*date/i);
+    expect(() => parseIsoDate('not-a-date')).toThrow(/invalid.*date/i);
+    expect(() => parseIsoDate('')).toThrow(/invalid.*date/i);
+  });
+
   // ADR-019: Username field, added between Name and Birthday (screenshot order).
   it('loads the username into its own field, separate from Name', async () => {
     (getMe as jest.Mock).mockResolvedValue(ME);

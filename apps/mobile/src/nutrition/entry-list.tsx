@@ -98,7 +98,8 @@ export function NutritionEntryList({
 
             {buildLogRows(items).map((row) => {
               if (!row.group) {
-                const entry = row.items[0];
+                // Non-null: buildLogRows only ever creates a non-group row with exactly one item.
+                const entry = row.items[0]!;
                 const food = foodsById[entry.foodId];
                 return (
                   <Pressable

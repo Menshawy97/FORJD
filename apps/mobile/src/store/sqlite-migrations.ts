@@ -32,7 +32,8 @@ export async function runSqliteMigrations(
   migrations: SqliteMigration[],
 ): Promise<void> {
   const ordered = [...migrations].sort((a, b) => a.version - b.version);
-  const latestKnownVersion = ordered.length > 0 ? ordered[ordered.length - 1].version : 0;
+  // Non-null: the length check guarantees the last element exists.
+  const latestKnownVersion = ordered.length > 0 ? ordered[ordered.length - 1]!.version : 0;
 
   const rows = await db.getAllAsync<{ user_version: number }>('PRAGMA user_version', []);
   const currentVersion = rows[0]?.user_version ?? 0;
