@@ -423,6 +423,38 @@ packages.
 - Raise `apps/api`'s global gate to whatever R1–R12 and R14–R16 leave it at.
 - Record the ratchet target here and revisit at the end of the stream.
 
+**Ratchet targets recorded 2026-09-17** (all four packages now gated in CI via `test:cov`):
+
+| Package | Measured (stmts/branches/funcs/lines) | Gate set (1-2pt buffer) | Notes |
+|---|---|---|---|
+| `packages/domain` | 86.87 / 94.73 / 81.66 / 86.45 | 85 / 93 / 80 / 85 | `collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts"]` |
+| `packages/contracts` | 94.6 / 63.63 / 66.66 / 95.35 | 93 / 62 / 65 / 94 | excludes `fixtures.ts` (a fixture-writing helper analogous to api's excluded ingest scripts), matches `**/*.ts, !**/*.spec.ts` otherwise |
+| `apps/mobile` | 84.09 / 74.54 / 83.29 / 85.49 | 83 / 73 / 82 / 84 | `collectCoverageFrom` scans every `src/**/*.{ts,tsx}` (minus spec/test/`__tests__`/`.d.ts`), so an untested file counts as 0% rather than disappearing from the report |
+| `apps/api` (raised) | 88.5 / 76.94 / 87.17 / 89.16 | 87 / 75 / 86 / 88 | raised from the original audit baseline (43/47/35/44); `collectCoverageFrom`/per-file 100% overrides unchanged |
+
+Measured with a real local Postgres (api) and a real Jest run (all four), each on a clean,
+uncontended checkout — this machine runs several concurrent Claude Code sessions against the
+same repo (see the memory note on shared-worktree contention), and an early attempt to measure
+`apps/api` and `apps/mobile` in the primary worktree produced spurious failures from two
+unrelated causes worth recording: (1) CPU contention from concurrent sessions caused real
+Postgres round trips to exceed Jest's default hook/test timeouts, and a second api run reused a
+now-non-empty database across runs, which broke `programs.seed-repository.spec.ts`'s "a first
+run" assumptions — both resolved by measuring api against a disposable, freshly-migrated
+Postgres container on an alternate port; (2) this worktree's path contains a `.claude` segment,
+and Jest's `<rootDir>`-token substitution in `testPathIgnorePatterns` does not regex-escape the
+literal path before compiling it into a pattern, so the sequence `\.claude` in the path is
+parsed as an escaped-dot regex token instead of "backslash then literal dot" — which silently
+broke the existing exclusion of `apps/mobile/src/app/__tests__/render-app.ts` (a shared test
+harness with no tests of its own) only inside this worktree. Resolved by measuring `apps/mobile`
+from a second, disposable worktree at a dot-free path. Neither issue is a real regression; the
+one genuine pre-existing flake seen during measurement (`workouts.repository.spec.ts`'s
+keyset-cursor pagination test) is the same one R23c already recorded as failing identically on
+unmodified `main`.
+
+All four packages' `coverageThreshold`s pass against these measured numbers with room to spare;
+revisit raising them further once test debt work (Stream 4 and beyond) pushes real coverage
+higher.
+
 ---
 
 # Stream 4 — Test debt
