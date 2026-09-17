@@ -712,18 +712,19 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-Status as of 2026-09-16 (R11, R19, R27, R29 all merged this session, on top of R17, R18, R20,
-R21, R22, R23, R24, R25, R26, R28 from the 2026-09-14 session and R4/R5/R9/R14 before that).
-"Done" means merged to `main` with a green post-merge CI run confirmed, per this plan's own
-CHECKPOINT step. **28/29 slices merged.** The user answered all four stopping questions this
-session (R11's supabase/config.toml scope, R19's accent treatment, R27's four packages, and
-R29's one-rep-max formula). **R13 is the only slice remaining** — it was blocked on R11, which
-is now merged, so it is unblocked.
+Status as of 2026-09-17 (R11, R13, R19, R27, R29 all merged this session, on top of R17, R18,
+R20, R21, R22, R23, R24, R25, R26, R28 from the 2026-09-14 session and R4/R5/R9/R14 before
+that). "Done" means merged to `main` with a green post-merge CI run confirmed, per this plan's
+own CHECKPOINT step. **29/29 slices merged — this plan is complete.** The user answered all
+four stopping questions this session (R11's supabase/config.toml scope, R19's accent treatment,
+R27's four packages, and R29's one-rep-max formula), and R13 (coverage gates), unblocked once
+R11 landed, closed out the plan.
 
 One caveat carried forward from R19: the plan's separate "GREEN part 1" fix (lightening the
 `dimmer`/`tabInactive`/`label` text tokens for 4.5:1 contrast) was never actually applied by an
-earlier slice, despite R19's own section implying it didn't need the user's input. This is
-tracked as an open follow-up, not blocking R13 or closing out the plan.
+earlier slice, despite R19's own section implying it didn't need the user's input. This is the
+one open item left by this plan — not a blocked slice, since the plan itself is finished, but a
+genuine gap worth a short follow-up task.
 
 | # | Slice | Package | Status | Notes |
 |---|---|---|---|---|
@@ -740,7 +741,7 @@ tracked as an open follow-up, not blocking R13 or closing out the plan.
 | R10 | Contract bounds and array caps | contracts + domain | ✅ Done (#154) | — |
 | R11 | Low security and config batch | api + infra | ✅ Done (#176) | User confirmed the app's live signup already requires email confirmation and a strong password, so `supabase/config.toml` now matches: 8-char minimum, `lower_upper_letters_digits_symbols`, `enable_confirmations = true`; also fixed a CI break this slice introduced (a `ConfigService` mock missing `.get()`, and a `pnpm audit` override forcing an ESM-only transitive dep that broke mobile Jest parsing) and renumbered its ADR after colliding with R29's ADR-038 |
 | R12 | Conformance script and its own tests | scripts + CI | ✅ Done (#157) | prettier-in-CI deliberately deferred — see PR body, 403 files of pre-existing drift |
-| R13 | Coverage gates on all four packages | all | Not started | **blocked on R11** (user question below) |
+| R13 | Coverage gates on all four packages | all | ✅ Done (#179) | Ratchet floors set at each package's measured coverage (see the R13 section above for exact percentages); `apps/api`'s first-pass gate was set from a local Postgres measurement, ran red on CI, and was corrected to CI's actual number instead — CI is the authoritative signal, not local timing, per this plan's own note |
 | R14 | `body/` unit tests | api | ✅ Done (#159) | no bug found; closed the coverage gap |
 | R15 | `toLiveExercise` tests | mobile | ✅ Done (#156) | no bug found; closed the coverage gap |
 | R16 | Eleven controller specs | api | ✅ Done (#153) | discovery found 13 controllers, not 11 (two added since the audit); all 13 covered |
