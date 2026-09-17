@@ -68,6 +68,7 @@
     "web": "expo start --web",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "jest",
+    "test:cov": "jest --coverage",
     "typecheck": "tsc --noEmit",
     "build:development": "eas build --profile development",
     "build:staging": "eas build --profile staging",

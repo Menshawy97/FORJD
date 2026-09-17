@@ -93,10 +93,10 @@
     "testEnvironment": "node",
     "coverageThreshold": {
       "global": {
-        "statements": 43,
-        "branches": 47,
-        "functions": 35,
-        "lines": 44
+        "statements": 84,
+        "branches": 64,
+        "functions": 82,
+        "lines": 85
       },
       "./src/auth/guards/**/*.ts": {
         "statements": 100,

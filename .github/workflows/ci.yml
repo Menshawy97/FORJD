@@ -125,7 +125,10 @@ jobs:
       # Postgres dependency, so it runs here rather than getting a job of its own. `pnpm -r
       # build` above only type-checks these files as a build artifact; without this step they
       # would never actually execute in CI.
-      - run: pnpm --filter @forjd/domain test
+      #
+      # test:cov, not test (R13): domain's own coverageThreshold gate in packages/domain/package.json
+      # only fires under `--coverage`, mirroring the api job's `test:cov` step below.
+      - run: pnpm --filter @forjd/domain test:cov
 
       # @forjd/contracts gained a real jest suite in Phase E (exercises.spec.ts) where its
       # `test` script had been an `echo "no tests yet"` stub. Same reasoning as the domain
@@ -133,7 +136,9 @@ jobs:
       # 29 tests pinning the list envelope and the query coercions would never run in CI —
       # and the query schema is exactly where `?favourite=false` silently becoming `true`
       # would hide.
-      - run: pnpm --filter @forjd/contracts test
+      #
+      # test:cov, not test (R13): same reasoning as the domain step above.
+      - run: pnpm --filter @forjd/contracts test:cov
 
       # Its `lint` script existed but nothing ran it, and the very first spec added to the
       # package shipped an eslint error that only a local run caught. `@forjd/domain` has the
@@ -227,7 +232,10 @@ jobs:
       # watch-mode UI, but not the watch-mode plugins/prompts that still register the
       # process as attached to a TTY; passed explicitly so a runner never hangs waiting
       # for input. Runs all 35 tests (15 suites) under jest-expo.
-      - run: pnpm --filter @forjd/mobile test --ci --watchAll=false
+      #
+      # --coverage (R13): mobile's own coverageThreshold gate in apps/mobile/jest.config.js
+      # only fires under this flag, mirroring the api job's `test:cov` step above.
+      - run: pnpm --filter @forjd/mobile test:cov --ci --watchAll=false
 
       # expo-doctor is deliberately not wired in here yet. It runs without any account
       # or auth step (only npm registry access, which this job already has), but two of

@@ -41,4 +41,22 @@ module.exports = {
   // number directly — a test that is actually broken now fails on its own assertion long
   // before hitting this ceiling, instead of surfacing as an indistinguishable timeout.
   testTimeout: 60000,
+  // R13: collectCoverageFrom widens coverage to every source file, not just the ones a test
+  // happens to import -- without it, an untested file is simply absent from the report rather
+  // than counting as 0%, which would let real gaps hide behind an inflated percentage.
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.spec.ts',
+    '!src/**/*.test.{ts,tsx}',
+    '!src/**/__tests__/**',
+    '!src/**/*.d.ts',
+  ],
+  coverageThreshold: {
+    global: {
+      statements: 83,
+      branches: 73,
+      functions: 82,
+      lines: 84,
+    },
+  },
 };
