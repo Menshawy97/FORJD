@@ -680,12 +680,18 @@ Documentation is memory in this repository, so this slice is not optional tidyin
 
 # Sequencing and checkpoints
 
-Status as of 2026-09-14 (R17, R18, R20, R21, R22, R23, R24, R25, R26, R28 merged this
-session, on top of R4/R5/R9/R14 from the prior session). "Done" means merged to `main` with
-a green post-merge CI run confirmed, per this plan's own CHECKPOINT step. **27/29 slices
-merged.** Remaining: R13 (needs R11, still not started) and R29 (last, and itself needs a
-user answer on the one-rep-max formula). R11, R19, and R27 each stop for a user decision
-(see "Points where this plan stops and asks" below) — R13 is transitively blocked on R11.
+Status as of 2026-09-16 (R11, R19, R27, R29 all merged this session, on top of R17, R18, R20,
+R21, R22, R23, R24, R25, R26, R28 from the 2026-09-14 session and R4/R5/R9/R14 before that).
+"Done" means merged to `main` with a green post-merge CI run confirmed, per this plan's own
+CHECKPOINT step. **28/29 slices merged.** The user answered all four stopping questions this
+session (R11's supabase/config.toml scope, R19's accent treatment, R27's four packages, and
+R29's one-rep-max formula). **R13 is the only slice remaining** — it was blocked on R11, which
+is now merged, so it is unblocked.
+
+One caveat carried forward from R19: the plan's separate "GREEN part 1" fix (lightening the
+`dimmer`/`tabInactive`/`label` text tokens for 4.5:1 contrast) was never actually applied by an
+earlier slice, despite R19's own section implying it didn't need the user's input. This is
+tracked as an open follow-up, not blocking R13 or closing out the plan.
 
 | # | Slice | Package | Status | Notes |
 |---|---|---|---|---|
@@ -700,7 +706,7 @@ user answer on the one-rep-max formula). R11, R19, and R27 each stop for a user 
 | R8 | Bounded observation reads | api | ✅ Done (#155) | — |
 | R9 | helmet, env schema, ValidationPipe, compression | api | ✅ Done (#160) | — |
 | R10 | Contract bounds and array caps | contracts + domain | ✅ Done (#154) | — |
-| R11 | Low security and config batch | api + infra | Not started | **stops for the user** — supabase/config.toml question |
+| R11 | Low security and config batch | api + infra | ✅ Done (#176) | User confirmed the app's live signup already requires email confirmation and a strong password, so `supabase/config.toml` now matches: 8-char minimum, `lower_upper_letters_digits_symbols`, `enable_confirmations = true`; also fixed a CI break this slice introduced (a `ConfigService` mock missing `.get()`, and a `pnpm audit` override forcing an ESM-only transitive dep that broke mobile Jest parsing) and renumbered its ADR after colliding with R29's ADR-038 |
 | R12 | Conformance script and its own tests | scripts + CI | ✅ Done (#157) | prettier-in-CI deliberately deferred — see PR body, 403 files of pre-existing drift |
 | R13 | Coverage gates on all four packages | all | Not started | **blocked on R11** (user question below) |
 | R14 | `body/` unit tests | api | ✅ Done (#159) | no bug found; closed the coverage gap |
@@ -708,7 +714,7 @@ user answer on the one-rep-max formula). R11, R19, and R27 each stop for a user 
 | R16 | Eleven controller specs | api | ✅ Done (#153) | discovery found 13 controllers, not 11 (two added since the audit); all 13 covered |
 | R17 | De-flake the route-tree suites | mobile | ✅ Done (#164) | fixed a real bug (renderRouter's fake-timer leak) plus a testMatch gap; local flake-rate measurement was unreliable under this machine's concurrent-session load, CI's isolated runner confirmed green |
 | R18 | Timer and toast announcements | mobile | ✅ Done (#169) | — |
-| R19 | Contrast — **pauses for the user** | mobile | Not started | — |
+| R19 | Contrast, accent CTA background | mobile | ✅ Done (#177) | User chose Option A (darken fill to existing `accentDark` token, keep white text, 5.60:1) over the `#101011`-text alternative; applied at every white-on-accent primary CTA (Finish, Complete Set, Log In, Save Changes, and more found in the sweep). **Not yet done**: the plan's separate "GREEN part 1" text-token fix (`dimmer`/`tabInactive`/`label` lightened for 4.5:1) was never applied by an earlier slice as the status table implied — still outstanding, tracked as follow-up |
 | R20 | Catalogue conditional fetch | mobile + api | ✅ Done (#168) | needed a follow-up fix for a per-file 100% coverage gate on `exercises.service.ts` |
 | R21 | 1 Hz timers, SectionList | mobile | ✅ Done (#170) | found and fixed two real test-infra bugs along the way: Reanimated 4's own Jest mock crashes under `jest-expo` (replaced with a manual `__mocks__/react-native-reanimated.js`), and a `jest.mock('react-native', ...)` spread was triggering `DevMenu`'s native-only getter |
 | R22 | Block-type union, cross-field targets | domain + contracts | ✅ Done (#162) | — |
@@ -716,9 +722,9 @@ user answer on the one-rep-max formula). R11, R19, and R27 each stop for a user 
 | R24 | Validated raw SQL | api | ✅ Done (#163) | — |
 | R25 | SQLite schema versioning | mobile | ✅ Done (#165) | — |
 | R26 | Error states | mobile | ✅ Done (#166) | Home's per-section "honest empty" design was deliberately preserved; only the all-requests-failed case got a new error banner |
-| R27 | Compiler and lint parity | mobile + api | Not started | **stops for the user** — the four Expo packages question |
+| R27 | Compiler and lint parity | mobile + api | ✅ Done (#178) | User confirmed `expo-glass-effect` unneeded; `expo-device` and `@testing-library/jest-native` had no usage evidence and were removed; `expo-symbols` traced via `git log -S` to unused default Expo template boilerplate (not deliberate Phase 11 scaffolding) and removed too; `noUncheckedIndexedAccess` enabled with one real bug fixed (`edit-profile.tsx`'s `parseIsoDate`); needed a rebase onto `main` after R19 merged to fix a new indexed-access error R19's contrast test introduced |
 | R28 | Indexes and the nutrition N+1 | api + migrations | ✅ Done (#167) | — |
-| R29 | Documentation, the ADR, store metadata | docs | Not started | last |
+| R29 | Documentation, the ADR, store metadata | domain + docs | ✅ Done (#175) | 1RM formula corrected to standard Epley per user decision (~3% user-visible increase); RLS docs corrected, not implemented; ADR-038 records the pass and its three claimed-but-not-enforced findings; no real prod API URL exists yet for eas.json, left an explicit flagged placeholder citing roadmap Slice 12 / ADR-015 |
 
 **Deviation from the plan worth recording:** R6, R7, R8, R10, R15, R16 and R12 were done out of
 their listed order, in parallel (separate git worktrees, one PR per slice, merged sequentially
@@ -772,11 +778,17 @@ round-trip (ADR-037).
 
 ## Points where this plan stops and asks
 
-Three, all flagged above rather than guessed:
+All four answered on 2026-09-16:
 
-1. **R19** — the accent colour behind primary buttons, with rendered samples.
-2. **R11** — whether `supabase/config.toml` governs the hosted project.
+1. **R19** — the accent colour behind primary buttons, with rendered samples. **Answered:**
+   Option A — darken the fill to the existing `accentDark` token, keep white text (5.60:1).
+2. **R11** — whether `supabase/config.toml` governs the hosted project. **Answered:** the user
+   confirmed the app's live signup already requires email confirmation and a strong password,
+   so the file was brought in line with that (8-char minimum, symbols required, confirmations on).
 3. **R27** — whether the four apparently-unused Expo packages are deliberate iOS scaffolding.
-
-A fourth is likely: **R29**'s one-rep-max formula changes numbers users already see, so the choice
-between the documented Epley and the implemented variant goes to the user with both curves.
+   **Answered:** `expo-glass-effect` confirmed unneeded by the user; the other three were
+   investigated (roadmap/ADR search, `git log -S` history, test-import check) and found to have
+   no deliberate-use evidence — all four removed.
+4. **R29** — the one-rep-max formula changes numbers users already see. **Answered:** standard
+   Epley, matching the existing docblock — the implementation's `reps-1` variant was corrected
+   to match, a ~3% user-visible increase.
