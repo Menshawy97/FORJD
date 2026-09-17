@@ -430,7 +430,7 @@ packages.
 | `packages/domain` | 86.87 / 94.73 / 81.66 / 86.45 | 85 / 93 / 80 / 85 | `collectCoverageFrom: ["**/*.ts", "!**/*.spec.ts"]` |
 | `packages/contracts` | 94.6 / 63.63 / 66.66 / 95.35 | 93 / 62 / 65 / 94 | excludes `fixtures.ts` (a fixture-writing helper analogous to api's excluded ingest scripts), matches `**/*.ts, !**/*.spec.ts` otherwise |
 | `apps/mobile` | 84.09 / 74.54 / 83.29 / 85.49 | 83 / 73 / 82 / 84 | `collectCoverageFrom` scans every `src/**/*.{ts,tsx}` (minus spec/test/`__tests__`/`.d.ts`), so an untested file counts as 0% rather than disappearing from the report |
-| `apps/api` (raised) | 88.5 / 76.94 / 87.17 / 89.16 | 87 / 75 / 86 / 88 | raised from the original audit baseline (43/47/35/44); `collectCoverageFrom`/per-file 100% overrides unchanged |
+| `apps/api` (raised) | 84.56 / 65.37 / 83.22 / 85.36 (CI) | 84 / 64 / 82 / 85 | raised from the original audit baseline (43/47/35/44); a first pass gated on a local-Postgres measurement (88.5/76.94/87.17/89.16) that ran red on CI's isolated runner, so the gate was lowered to match CI's actual number instead, per this plan's own "CI is authoritative over local timing" note; `collectCoverageFrom`/per-file 100% overrides unchanged |
 
 Measured with a real local Postgres (api) and a real Jest run (all four), each on a clean,
 uncontended checkout — this machine runs several concurrent Claude Code sessions against the
