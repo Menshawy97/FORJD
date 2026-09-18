@@ -1,5 +1,5 @@
 {
-  "count": 530,
+  "count": 1221,
   "removed": [
     {
       "sourceId": "1104647",
@@ -18,6 +18,11 @@
       "name": "Bananas, ripe and slightly ripe, raw",
       "reason": "duplicate",
       "keptSourceId": "790991"
+    },
+    {
+      "sourceId": "167514",
+      "name": "Kraft Foods, Shake N Bake Original Recipe, Coating for Pork, dry",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "167657",
@@ -140,10 +145,580 @@
       "reason": "blocked: generic US restaurant dish"
     },
     {
+      "sourceId": "167685",
+      "name": "Bologna, beef and pork, low fat",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167694",
+      "name": "Sausage, turkey and pork, fresh, bulk, patty or link, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167698",
+      "name": "Pork sausage rice links, brown and serve, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167712",
+      "name": "Pork, cured, bacon, cooked, broiled, pan-fried or roasted, reduced sodium",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167723",
+      "name": "Alcoholic beverage, rice (sake)",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
       "sourceId": "167776",
       "name": "Pears, raw, bartlett (Includes foods for USDA's Food Distribution Program)",
       "reason": "duplicate",
       "keptSourceId": "332597"
+    },
+    {
+      "sourceId": "167810",
+      "name": "Pork, fresh, composite of trimmed leg, loin, shoulder, and spareribs, (includes cuts to be cured), separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167811",
+      "name": "Pork, fresh, backfat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167812",
+      "name": "Pork, fresh, belly, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167813",
+      "name": "Pork, fresh, separable fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167814",
+      "name": "Pork, fresh, leg (ham), rump half, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167815",
+      "name": "Pork, fresh, leg (ham), rump half, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167816",
+      "name": "Pork, fresh, leg (ham), rump half, separable lean only, raw (Includes foods for USDA's Food Distribution Program)",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167817",
+      "name": "Pork, fresh, leg (ham), rump half, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167818",
+      "name": "Pork, fresh, loin, whole, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167819",
+      "name": "Pork, fresh, loin, whole, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167820",
+      "name": "Pork, fresh, loin, whole, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167821",
+      "name": "Pork, fresh, loin, whole, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167822",
+      "name": "Pork, fresh, loin, blade (chops or roasts), bone-in, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167823",
+      "name": "Pork, fresh, loin, blade (chops), bone-in, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167824",
+      "name": "Pork, fresh, loin, blade (chops), bone-in, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167825",
+      "name": "Pork, fresh, loin, blade (roasts), bone-in, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167826",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167827",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167828",
+      "name": "Pork, fresh, loin, center loin (roasts), bone-in, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167829",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167830",
+      "name": "Pork, fresh, loin, center rib (chops), bone-in, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167831",
+      "name": "Pork, fresh, loin, center rib (chops), bone-in, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167832",
+      "name": "Pork, fresh, loin, center rib (roasts), bone-in, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167833",
+      "name": "Pork, fresh, loin, center rib (chops or roasts), bone-in, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167834",
+      "name": "Pork, fresh, loin, sirloin (chops), bone-in, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167835",
+      "name": "Pork, fresh, loin, sirloin (chops), bone-in, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167836",
+      "name": "Pork, fresh, loin, sirloin (roasts), bone-in, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167837",
+      "name": "Pork, fresh, loin, sirloin (chops or roasts), bone-in, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167838",
+      "name": "Pork, fresh, loin, sirloin (chops), bone-in, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167839",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167840",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167841",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167842",
+      "name": "Pork, fresh, loin, top loin (roasts), boneless, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167843",
+      "name": "Pork, fresh, shoulder, whole, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167844",
+      "name": "Pork, fresh, shoulder, whole, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167845",
+      "name": "Pork, fresh, shoulder, whole, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167846",
+      "name": "Pork, fresh, shoulder, whole, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167847",
+      "name": "Pork, fresh, shoulder, arm picnic, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167848",
+      "name": "Pork, fresh, shoulder, arm picnic, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167849",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167850",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167851",
+      "name": "Pork, fresh, shoulder, blade, boston (steaks), separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167852",
+      "name": "Pork, fresh, shoulder, blade, boston (roasts), separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167853",
+      "name": "Pork, fresh, spareribs, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167854",
+      "name": "Pork, fresh, spareribs, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167855",
+      "name": "Pork, fresh, composite of trimmed retail cuts (leg, loin, and shoulder), separable lean only, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167856",
+      "name": "Pork, fresh, variety meats and by-products, chitterlings, cooked, simmered",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167857",
+      "name": "Pork, fresh, variety meats and by-products, ears, frozen, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167858",
+      "name": "Pork, fresh, variety meats and by-products, ears, frozen, cooked, simmered",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167859",
+      "name": "Pork, fresh, variety meats and by-products, feet, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167860",
+      "name": "Pork, fresh, variety meats and by-products, kidneys, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167861",
+      "name": "Pork, fresh, variety meats and by-products, leaf fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167862",
+      "name": "Pork, fresh, variety meats and by-products, liver, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167863",
+      "name": "Pork, fresh, variety meats and by-products, liver, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167864",
+      "name": "Pork, fresh, variety meats and by-products, lungs, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167865",
+      "name": "Pork, fresh, variety meats and by-products, spleen, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167866",
+      "name": "Pork, fresh, variety meats and by-products, spleen, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167867",
+      "name": "Pork, fresh, variety meats and by-products, stomach, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167868",
+      "name": "Pork, fresh, loin, blade (chops), bone-in, separable lean only, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167870",
+      "name": "Pork, cured, feet, pickled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167871",
+      "name": "Pork, cured, ham, boneless, extra lean (approximately 5% fat), roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167872",
+      "name": "Pork, cured, ham, boneless, regular (approximately 11% fat), roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167873",
+      "name": "Pork, cured, ham, patties, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167874",
+      "name": "Pork, cured, ham, steak, boneless, extra lean, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167875",
+      "name": "Pork, cured, ham, whole, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167876",
+      "name": "Pork, cured, ham, whole, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167877",
+      "name": "Pork, cured, separable fat (from ham and arm picnic), unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167878",
+      "name": "Pork, cured, separable fat (from ham and arm picnic), roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167879",
+      "name": "Pork, cured, shoulder, arm picnic, separable lean and fat, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167880",
+      "name": "Pork, cured, shoulder, arm picnic, separable lean only, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167881",
+      "name": "Pork, fresh, variety meats and by-products, tail, cooked, simmered",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167882",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean only, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167883",
+      "name": "Pork, fresh, loin, center rib (chops), bone-in, separable lean only, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167884",
+      "name": "Pork, fresh, loin, blade (chops), bone-in, separable lean and fat, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167885",
+      "name": "Pork, cured, ham, extra lean and regular, canned, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167886",
+      "name": "Pork, cured, ham, extra lean and regular, canned, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167887",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167888",
+      "name": "Pork, fresh, composite of trimmed retail cuts (leg, loin, shoulder, and spareribs), separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167889",
+      "name": "Pork, fresh, loin, center rib (chops or roasts), boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167890",
+      "name": "Pork, fresh, loin, center rib (chops), boneless, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167891",
+      "name": "Pork, fresh, loin, center rib (chops), boneless, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167892",
+      "name": "Pork, fresh, loin, center rib (chops), boneless, separable lean and fat, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167893",
+      "name": "Pork, fresh, loin, center rib (chops), boneless, separable lean only, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167894",
+      "name": "Pork, fresh, loin, center rib (roasts), boneless, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167895",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167896",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167897",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean and fat, bone-in, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167898",
+      "name": "Pork, fresh, loin, sirloin (chops), boneless, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167899",
+      "name": "Pork, fresh, loin, sirloin (chops), boneless, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167900",
+      "name": "Pork, fresh, loin, sirloin (roasts), boneless, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167901",
+      "name": "Pork, fresh, loin, sirloin (chops or roasts), boneless, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167902",
+      "name": "Pork, fresh, ground, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167903",
+      "name": "Pork, fresh, ground, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167904",
+      "name": "Pork, fresh, loin, tenderloin, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167905",
+      "name": "Pork, fresh, loin, tenderloin, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167906",
+      "name": "Pork, fresh, composite of trimmed retail cuts (loin and shoulder blade), separable lean and fat, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167907",
+      "name": "Pork, fresh, composite of trimmed retail cuts (loin and shoulder blade), separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167908",
+      "name": "Pork, fresh, composite of trimmed retail cuts (loin and shoulder blade), separable lean only, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167910",
+      "name": "HORMEL ALWAYS TENDER, Pork Tenderloin, Teriyaki-Flavored",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167912",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean only, with added solution, cooked, pan-broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167913",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, with added solution, cooked, pan-broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167914",
+      "name": "Pork, cured, bacon, cooked, baked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167915",
+      "name": "Pork, cured, ham -- water added, rump, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167916",
+      "name": "Pork, cured, ham -- water added, rump, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167917",
+      "name": "Pork, cured, ham -- water added, shank, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167918",
+      "name": "Pork, cured, ham -- water added, slice, bone-in, separable lean only, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167919",
+      "name": "Pork, cured, ham with natural juices, rump, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167920",
+      "name": "Pork, cured, ham with natural juices, shank, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "167961",
+      "name": "Snacks, pork skins, plain",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "168062",
@@ -276,6 +851,836 @@
       "reason": "blocked: generic US restaurant dish"
     },
     {
+      "sourceId": "168110",
+      "name": "Pork, cured, ham, low sodium, lean and fat, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168111",
+      "name": "Pork, cured, ham, boneless, low sodium, extra lean (approximately 5% fat), roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168218",
+      "name": "Pork, fresh, composite of separable fat, with added solution, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168219",
+      "name": "Pork, fresh, carcass, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168220",
+      "name": "Pork, fresh, composite of trimmed retail cuts (leg, loin, shoulder), separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168221",
+      "name": "Pork, fresh, separable fat, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168222",
+      "name": "Pork, fresh, leg (ham), whole, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168223",
+      "name": "Pork, fresh, leg (ham), whole, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168224",
+      "name": "Pork, fresh, leg (ham), whole, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168225",
+      "name": "Pork, fresh, leg (ham), whole, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168226",
+      "name": "Pork, fresh, leg (ham), shank half, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168227",
+      "name": "Pork, fresh, leg (ham), shank half, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168228",
+      "name": "Pork, fresh, leg (ham), shank half, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168229",
+      "name": "Pork, fresh, leg (ham), shank half, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168230",
+      "name": "Pork, fresh, loin, whole, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168231",
+      "name": "Pork, fresh, loin, whole, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168232",
+      "name": "Pork, fresh, loin, whole, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168233",
+      "name": "Pork, fresh, loin, whole, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168234",
+      "name": "Pork, fresh, loin, blade (chops or roasts), bone-in, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168235",
+      "name": "Pork, fresh, loin, blade (chops), bone-in, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168236",
+      "name": "Pork, fresh, loin, blade (chops), bone-in, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168237",
+      "name": "Pork, fresh, loin, blade (roasts), bone-in, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168238",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168239",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168240",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168241",
+      "name": "Pork, fresh, loin, center loin (roasts), bone-in, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168242",
+      "name": "Pork, fresh, loin, center rib (chops or roasts), bone-in, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168243",
+      "name": "Pork, fresh, loin, center rib (chops), bone-in, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168244",
+      "name": "Pork, fresh, loin, center rib (chops), bone-in, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168245",
+      "name": "Pork, fresh, loin, center rib (roasts), bone-in, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168246",
+      "name": "Pork, fresh, loin, sirloin (chops or roasts), bone-in, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168247",
+      "name": "Pork, fresh, loin, sirloin (chops), bone-in, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168248",
+      "name": "Pork, fresh, loin, sirloin (roasts), bone-in, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168249",
+      "name": "Pork, fresh, loin, tenderloin, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168250",
+      "name": "Pork, fresh, loin, tenderloin, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168251",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168252",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168253",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168254",
+      "name": "Pork, fresh, loin, top loin (roasts), boneless, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168255",
+      "name": "Pork, fresh, shoulder, arm picnic, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168256",
+      "name": "Pork, fresh, shoulder, arm picnic, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168257",
+      "name": "Pork, fresh, shoulder, arm picnic, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168258",
+      "name": "Pork, fresh, shoulder, arm picnic, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168259",
+      "name": "Pork, fresh, shoulder, blade, boston (roasts), separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168260",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168261",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168262",
+      "name": "Pork, fresh, shoulder, blade, boston (steaks), separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168263",
+      "name": "Pork, fresh, loin, center loin (chops), boneless, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168264",
+      "name": "Pork, fresh, variety meats and by-products, brain, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168265",
+      "name": "Pork, fresh, variety meats and by-products, brain, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168266",
+      "name": "Pork, fresh, variety meats and by-products, chitterlings, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168267",
+      "name": "Pork, fresh, variety meats and by-products, heart, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168268",
+      "name": "Pork, fresh, variety meats and by-products, heart, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168269",
+      "name": "Pork, fresh, variety meats and by-products, jowl, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168270",
+      "name": "Pork, fresh, variety meats and by-products, kidneys, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168271",
+      "name": "Pork, fresh, variety meats and by-products, lungs, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168272",
+      "name": "Pork, fresh, variety meats and by-products, mechanically separated, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168273",
+      "name": "Pork, fresh, variety meats and by-products, pancreas, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168274",
+      "name": "Pork, fresh, variety meats and by-products, pancreas, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168275",
+      "name": "Pork, fresh, variety meats and by-products, tongue, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168276",
+      "name": "Pork, fresh, variety meats and by-products, tongue, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168277",
+      "name": "Pork, cured, bacon, unprepared",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168278",
+      "name": "Pork, cured, breakfast strips, raw or unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168279",
+      "name": "Pork, cured, ham, extra lean (approximately 4% fat), canned, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168280",
+      "name": "Pork, cured, ham, extra lean (approximately 4% fat), canned, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168281",
+      "name": "Pork, cured, ham, regular (approximately 13% fat), canned, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168282",
+      "name": "Pork, cured, ham, center slice, country-style, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168283",
+      "name": "Pork, cured, ham, center slice, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168284",
+      "name": "Pork, cured, ham, whole, separable lean only, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168285",
+      "name": "Pork, fresh, loin, center loin (chops), boneless, separable lean only, cooked, pan-broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168286",
+      "name": "Pork, fresh, loin, center loin (chops), boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168287",
+      "name": "Pork, cured, salt pork, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168288",
+      "name": "Pork, cured, shoulder, blade roll, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168289",
+      "name": "Pork, cured, shoulder, blade roll, separable lean and fat, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168290",
+      "name": "Pork, fresh, variety meats and by-products, feet, cooked, simmered",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168291",
+      "name": "Pork, fresh, variety meats and by-products, tail, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168292",
+      "name": "Pork, fresh, loin, center loin (chops), bone-in, separable lean and fat, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168293",
+      "name": "Pork, fresh, loin, center rib (chops), bone-in, separable lean and fat, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168294",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean only, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168295",
+      "name": "Pork, cured, ham, boneless, extra lean and regular, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168296",
+      "name": "Pork, cured, ham, boneless, extra lean and regular, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168297",
+      "name": "Pork, fresh, composite of trimmed retail cuts (leg, loin, shoulder, and spareribs), separable lean and fat, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168298",
+      "name": "Pork, fresh, loin, center loin (chops), boneless, separable lean and fat, cooked, pan-broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168299",
+      "name": "Pork, fresh, backribs, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168300",
+      "name": "Pork, fresh, backribs, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168301",
+      "name": "Pork, fresh, loin, center rib (roasts), boneless, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168302",
+      "name": "Pork, fresh, loin, center rib (chops or roasts), boneless, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168303",
+      "name": "Pork, fresh, loin, center rib (chops), boneless, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168304",
+      "name": "Pork, fresh, loin, center rib (chops), boneless, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168305",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168306",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168307",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean only, bone-in, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168308",
+      "name": "Pork, fresh, loin, sirloin (chops or roasts), boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168309",
+      "name": "Pork, fresh, loin, sirloin (chops), boneless, separable lean only, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168310",
+      "name": "Pork, fresh, loin, sirloin (chops), boneless, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168311",
+      "name": "Pork, fresh, loin, sirloin (roasts), boneless, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168312",
+      "name": "Pork, fresh, loin, tenderloin, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168313",
+      "name": "Pork, fresh, loin, tenderloin, separable lean only, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168314",
+      "name": "Pork, fresh, loin, top loin (roasts), boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168315",
+      "name": "Pork, fresh, loin, top loin (roasts), boneless, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168316",
+      "name": "Pork, fresh, composite of trimmed retail cuts (loin and shoulder blade), separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168317",
+      "name": "HORMEL ALWAYS TENDER, Pork Tenderloin, Peppercorn-Flavored",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168318",
+      "name": "HORMEL ALWAYS TENDER, Pork Loin Filets, Lemon Garlic-Flavored",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168319",
+      "name": "HORMEL ALWAYS TENDER, Center Cut Chops, Fresh Pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168320",
+      "name": "HORMEL ALWAYS TENDER, Boneless Pork Loin, Fresh Pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168321",
+      "name": "Pork, cured, bacon, cooked, microwaved",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168322",
+      "name": "Pork, cured, bacon, pre-sliced, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168323",
+      "name": "Pork, fresh, variety meats and by-products, stomach, cooked, simmered",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168324",
+      "name": "Pork, bacon, rendered fat, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168325",
+      "name": "Pork, cured, ham and water product, slice, bone-in, separable lean only, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168326",
+      "name": "Pork, cured, ham and water product, slice, boneless, separable lean only, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168327",
+      "name": "Pork, cured, ham and water product, whole, boneless, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168328",
+      "name": "Pork, cured, ham and water product, whole, boneless, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168329",
+      "name": "Pork, cured, ham -- water added, slice, boneless, separable lean only, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168330",
+      "name": "Pork, cured, ham with natural juices, slice, bone-in, separable lean only, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168331",
+      "name": "Pork, cured, ham with natural juices, spiral slice, meat only, boneless, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168332",
+      "name": "Pork, cured, ham and water product, rump, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168333",
+      "name": "Pork, cured, ham with natural juices, slice, boneless, separable lean only, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168334",
+      "name": "Pork, cured, ham with natural juices, whole, boneless, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168335",
+      "name": "Pork, cured, ham with natural juices, whole, boneless, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168336",
+      "name": "Pork, cured, ham -- water added, shank, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168337",
+      "name": "Pork, cured, ham with natural juices, rump, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168338",
+      "name": "Pork, cured, ham with natural juices, shank, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168339",
+      "name": "Pork, cured, ham with natural juices, slice, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168340",
+      "name": "Pork, cured, ham with natural juices, spiral slice, boneless, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168341",
+      "name": "Pork, cured, ham with natural juices, spiral slice, boneless, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168342",
+      "name": "Pork, cured, ham with natural juices, slice, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168343",
+      "name": "Pork, cured, ham with natural juices, shank, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168344",
+      "name": "Pork, cured, ham with natural juices, rump, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168345",
+      "name": "Pork, cured, ham -- water added, whole, boneless, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168346",
+      "name": "Pork, cured, ham -- water added, slice, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168347",
+      "name": "Pork, cured, ham -- water added, shank, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168348",
+      "name": "Pork, cured, ham -- water added, rump, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168349",
+      "name": "Pork, cured, ham -- water added, whole, boneless, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168350",
+      "name": "Pork, cured, ham and water product, rump, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168351",
+      "name": "Pork, cured, ham and water product, shank, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168352",
+      "name": "Pork, cured, ham and water product, slice, bone-in, separable lean and fat, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168353",
+      "name": "Pork, cured, ham with natural juices, slice, boneless, separable lean and fat, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168354",
+      "name": "Pork, cured, ham with natural juices, spiral slice, boneless, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168355",
+      "name": "Pork, cured, ham with natural juices, whole, boneless, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168356",
+      "name": "Pork, cured, ham, rump, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168357",
+      "name": "Pork, cured, ham, shank, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168358",
+      "name": "Pork, cured, ham, shank, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168359",
+      "name": "Pork, cured, ham, slice, bone-in, separable lean and fat, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168360",
+      "name": "Pork, cured, ham, slice, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168361",
+      "name": "Pork, fresh, enhanced, loin, tenderloin, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168362",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean only, with added solution cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168363",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean only, with added solution, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168364",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean only, with added solution, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168365",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean and fat,with added solution, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168366",
+      "name": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean and fat, with added solution, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168367",
+      "name": "Pork, cured, ham, rump, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168368",
+      "name": "Pork, loin, leg cap steak, boneless, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168369",
+      "name": "Pork, Shoulder petite tender, boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168370",
+      "name": "Pork, Leg sirloin tip roast, boneless, separable lean and fat, cooked, braised",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168371",
+      "name": "Pork, Leg sirloin tip roast, boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168372",
+      "name": "Pork, ground, 84% lean / 16% fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168373",
+      "name": "Pork, ground, 72% lean / 28% fat, cooked, pan-broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168374",
+      "name": "Pork, ground, 84% lean / 16% fat, cooked, pan-broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168375",
+      "name": "Pork, ground, 96% lean / 4% fat, cooked, pan-broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168376",
+      "name": "Pork loin, fresh, backribs, bone-in, raw, lean only",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168377",
+      "name": "Pork loin, fresh, backribs, bone-in, cooked-roasted, lean only",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168378",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean only, bone-in, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168379",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean only, boneless, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168380",
+      "name": "Pork, fresh, blade, (chops), boneless, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "168381",
+      "name": "Pork, fresh, loin, blade (chops or roasts), boneless, separable lean and fat only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "168421",
       "name": "Kale, raw",
       "reason": "duplicate",
@@ -304,6 +1709,51 @@
       "name": "Beef, short loin, porterhouse steak, separable lean only, trimmed to 1/8\"\" fat, select, raw",
       "reason": "duplicate",
       "keptSourceId": "335109"
+    },
+    {
+      "sourceId": "168746",
+      "name": "Alcoholic beverage, beer, regular, all",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "168747",
+      "name": "Alcoholic beverage, beer, regular, BUDWEISER",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "168748",
+      "name": "Alcoholic beverage, beer, light, BUDWEISER SELECT",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "168749",
+      "name": "Alcoholic beverage, beer, light",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "168750",
+      "name": "Alcoholic beverage, pina colada, canned",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "168752",
+      "name": "Alcoholic beverage, pina colada, prepared-from-recipe",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "168753",
+      "name": "Alcoholic beverage, tequila sunrise, canned",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "168851",
+      "name": "Snacks, pork skins, barbecue-flavor",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169007",
+      "name": "Tamales, masa and pork filling (Hopi)",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "169008",
@@ -446,6 +1896,21 @@
       "reason": "blocked: generic US restaurant dish"
     },
     {
+      "sourceId": "169070",
+      "name": "Alcoholic beverage, wine, cooking",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "169071",
+      "name": "Alcoholic beverage, wine, light",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "169082",
+      "name": "Pork, oriental style, dehydrated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "169092",
       "name": "Melons, cantaloupe, raw",
       "reason": "duplicate",
@@ -456,6 +1921,276 @@
       "name": "Beans, snap, green, canned, regular pack, drained solids",
       "reason": "duplicate",
       "keptSourceId": "321611"
+    },
+    {
+      "sourceId": "169148",
+      "name": "Pork, cured, ham -- water added, whole, boneless, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169149",
+      "name": "Pork, cured, ham -- water added, whole, boneless, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169150",
+      "name": "Pork, cured, ham and water product, shank, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169151",
+      "name": "Pork, cured, ham -- water added, slice, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169152",
+      "name": "Pork, cured, ham and water product, rump, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169153",
+      "name": "Pork, cured, ham and water product, slice, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169154",
+      "name": "Pork, cured, ham and water product, shank, bone-in, unheated, separable lean only",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169155",
+      "name": "Pork, cured, ham, separable fat, boneless, heated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169156",
+      "name": "Pork, cured, ham, separable fat, boneless, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169157",
+      "name": "Pork, pickled pork hocks",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169158",
+      "name": "Pork, cured, ham, slice, bone-in, separable lean only, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169159",
+      "name": "Pork, cured, ham with natural juices, whole, boneless, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169160",
+      "name": "Pork, cured, ham and water product, whole, boneless, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169161",
+      "name": "Pork, cured, ham and water product, slice, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169162",
+      "name": "Pork, cured, ham and water product, shank, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169163",
+      "name": "Pork, cured, ham and water product, rump, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169164",
+      "name": "Pork, cured, ham -- water added, rump, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169165",
+      "name": "Pork, cured, ham -- water added, shank, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169166",
+      "name": "Pork, cured, ham -- water added, slice, bone-in, separable lean and fat, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169167",
+      "name": "Pork, cured, ham -- water added, slice, boneless, separable lean and fat, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169168",
+      "name": "Pork, cured, ham and water product, slice, boneless, separable lean and fat, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169169",
+      "name": "Pork, cured, ham and water product, whole, boneless, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169170",
+      "name": "Pork, cured, ham with natural juices, rump, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169171",
+      "name": "Pork, cured, ham with natural juices, shank, bone-in, separable lean and fat, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169172",
+      "name": "Pork, cured, ham with natural juices, slice, bone-in, separable lean and fat, heated, pan-broil",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169173",
+      "name": "Pork, cured, ham, rump, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169174",
+      "name": "Pork, cured, ham, rump, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169175",
+      "name": "Pork, cured, ham, shank, bone-in, separable lean only, heated, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169176",
+      "name": "Pork, cured, ham, shank, bone-in, separable lean only, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169177",
+      "name": "Pork, cured, ham, slice, bone-in, separable lean and fat, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169178",
+      "name": "Pork, fresh, spareribs, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169179",
+      "name": "Pork, fresh, composite of separable fat, with added solution, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169180",
+      "name": "Pork, fresh, loin, tenderloin, separable lean only, with added solution, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169181",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean only, with added solution, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169182",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, with added solution, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169183",
+      "name": "Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, with added solution, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169184",
+      "name": "Pork, fresh, loin, tenderloin, separable lean and fat, with added solution, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169185",
+      "name": "Pork, fresh, loin, tenderloin, separable lean and fat, with added solution, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169186",
+      "name": "Pork, Leg Cap Steak, boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169187",
+      "name": "Pork, Shoulder breast, boneless, separable lean and fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169188",
+      "name": "Pork, Shoulder breast, boneless, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169189",
+      "name": "Pork, shoulder, petite tender, boneless, separable lean and fat, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169190",
+      "name": "Pork, ground, 96% lean / 4% fat, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169191",
+      "name": "Pork, ground, 72% lean / 28% fat, cooked, crumbles",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169192",
+      "name": "Pork, ground, 84% lean / 16% fat, cooked, crumbles",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169193",
+      "name": "Pork, ground, 96% lean / 4% fat, cooked, crumbles",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169194",
+      "name": "Pork, fresh, loin, blade (chops or roasts), boneless, separable lean only, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169195",
+      "name": "Pork, fresh, loin, blade (roasts), boneless, separable lean only, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169196",
+      "name": "Pork, fresh, loin, blade (chops), boneless, separable lean only, boneless, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169197",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean only, boneless, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169198",
+      "name": "Pork, fresh, loin, blade (roasts), boneless, separable lean and fat, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169199",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean and fat, boneless, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169200",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean and fat, bone-in, cooked, broiled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "169201",
+      "name": "Pork, fresh, loin, country-style ribs, separable lean and fat, boneless, cooked, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "169240",
@@ -482,10 +2217,35 @@
       "keptSourceId": "325524"
     },
     {
+      "sourceId": "169572",
+      "name": "Alcoholic beverage, beer, light, BUD LIGHT",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "169573",
+      "name": "Alcoholic beverage, daiquiri, canned",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "169574",
+      "name": "Alcoholic beverage, daiquiri, prepared-from-recipe",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "169575",
+      "name": "Alcoholic beverage, beer, light, low carb",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
       "sourceId": "169655",
       "name": "Sugars, granulated",
       "reason": "duplicate",
       "keptSourceId": "334247"
+    },
+    {
+      "sourceId": "169773",
+      "name": "Potsticker or wonton, pork and vegetable, frozen, unprepared",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "169831",
@@ -606,6 +2366,11 @@
       "sourceId": "169858",
       "name": "OLIVE GARDEN, chicken parmigiana without pasta",
       "reason": "blocked: Olive Garden (not in Egypt)"
+    },
+    {
+      "sourceId": "169906",
+      "name": "Pork, cured, ham, boneless, low sodium, extra lean and regular, roasted",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "169914",
@@ -1192,6 +2957,16 @@
       "keptSourceId": "331960"
     },
     {
+      "sourceId": "171142",
+      "name": "Soup, bean with pork, canned, condensed",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171173",
+      "name": "Gravy, pork, dry, powder",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "171192",
       "name": "Sauce, pasta, spaghetti/marinara, ready-to-serve",
       "reason": "duplicate",
@@ -1246,16 +3021,126 @@
       "keptSourceId": "330458"
     },
     {
+      "sourceId": "171601",
+      "name": "Barbecue loaf, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171616",
+      "name": "Beerwurst, beer salami, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171617",
+      "name": "Sausage, Berliner, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171619",
+      "name": "Bockwurst, pork, veal, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171620",
+      "name": "Bratwurst, pork, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171621",
+      "name": "Braunschweiger (a liver sausage), pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171622",
+      "name": "Bratwurst, pork, beef, link",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171623",
+      "name": "Cheesefurter, cheese smokie, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171630",
+      "name": "Headcheese, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171631",
+      "name": "Sausage, Italian, pork, mild, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171632",
+      "name": "Sausage, pork and turkey, pre-cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171635",
+      "name": "Pork sausage, link/patty, reduced fat, unprepared",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "171636",
+      "name": "Pork sausage, link/patty, reduced fat, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "171761",
       "name": "Beef, round, eye of round roast, boneless, separable lean only, trimmed to 0\"\" fat, select, raw",
       "reason": "duplicate",
       "keptSourceId": "334898"
     },
     {
+      "sourceId": "171872",
+      "name": "Alcoholic Beverage, wine, table, red, Gamay",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "171906",
+      "name": "Alcoholic beverages, beer, higher alcohol",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "171907",
+      "name": "Beverages, Malt liquor beverage",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "171908",
+      "name": "Alcoholic beverages, wine, rose",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "171919",
+      "name": "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 86 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "171920",
+      "name": "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 90 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "171925",
+      "name": "Alcoholic Beverage, wine, table, red, Merlot",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
       "sourceId": "171964",
       "name": "Fish, haddock, raw",
       "reason": "duplicate",
       "keptSourceId": "333374"
+    },
+    {
+      "sourceId": "172011",
+      "name": "Beerwurst, beer salami, pork and beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172013",
+      "name": "Bologna, beef and pork",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "172028",
@@ -1403,6 +3288,11 @@
       "reason": "blocked: Popeyes (removed by product decision)"
     },
     {
+      "sourceId": "172103",
+      "name": "Egg rolls, pork, refrigerated, heated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "172182",
       "name": "Cheese, cottage, lowfat, 2% milkfat",
       "reason": "duplicate",
@@ -1444,6 +3334,11 @@
       "reason": "zero-calorie"
     },
     {
+      "sourceId": "172246",
+      "name": "Babyfood, meat, pork, strained",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "172253",
       "name": "Babyfood, water, bottled, GERBER, without added fluoride",
       "reason": "zero-calorie"
@@ -1459,6 +3354,216 @@
       "name": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles",
       "reason": "duplicate",
       "keptSourceId": "330869"
+    },
+    {
+      "sourceId": "172904",
+      "name": "Soup, bean with pork, canned, prepared with equal volume water",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172926",
+      "name": "Olive loaf, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172931",
+      "name": "Luxury loaf, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172932",
+      "name": "Mother's loaf, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172933",
+      "name": "Picnic loaf, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172934",
+      "name": "Pork sausage, link/patty, unprepared",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172936",
+      "name": "Salami, cooked, beef and pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172938",
+      "name": "Salami, dry or hard, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172939",
+      "name": "Sausage, smoked link sausage, pork and beef (nonfat dry milk added)",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172940",
+      "name": "Thuringer, cervelat, summer sausage, beef, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172942",
+      "name": "Sausage, Vienna, canned, chicken, beef, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172948",
+      "name": "Sausage, turkey, pork, and beef, low fat, smoked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172949",
+      "name": "Frankfurter, beef, pork, and turkey, fat free",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172950",
+      "name": "Luncheon meat, pork, ham, and chicken, minced, canned, reduced sodium, added ascorbic acid, includes SPAM, 25% less sodium",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172951",
+      "name": "Luncheon meat, pork with ham, minced, canned, includes Spam (Hormel)",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172954",
+      "name": "Sausage, Polish, pork and beef, smoked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172955",
+      "name": "Sausage, pork and beef, with cheddar cheese, smoked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172956",
+      "name": "Bratwurst, beef and pork, smoked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172958",
+      "name": "Bratwurst, pork, beef and turkey, lite, smoked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172961",
+      "name": "Beerwurst, pork and beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172964",
+      "name": "Frankfurter, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172965",
+      "name": "Macaroni and cheese loaf, chicken, pork and beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172966",
+      "name": "Salami, Italian, pork and beef, dry, sliced, 50% less sodium",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172969",
+      "name": "Scrapple, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172970",
+      "name": "Bologna, chicken, turkey, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "172971",
+      "name": "Pork sausage, link/patty, fully cooked, microwaved",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173164",
+      "name": "Alcoholic beverage, whiskey sour, prepared with water, whiskey and powder mix",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173168",
+      "name": "Alcoholic beverage, creme de menthe, 72 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173176",
+      "name": "Alcoholic beverage, wine, dessert, sweet",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173185",
+      "name": "Alcoholic beverage, wine, table, all",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173190",
+      "name": "Alcoholic beverage, wine, table, red",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173191",
+      "name": "Alcoholic Beverage, wine, table, red, Barbera",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173192",
+      "name": "Alcoholic Beverage, wine, table, red, Zinfandel",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173193",
+      "name": "Alcoholic Beverage, wine, table, red, Petite Sirah",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173194",
+      "name": "Alcoholic Beverage, wine, table, red, Claret",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173195",
+      "name": "Alcoholic beverage, wine, table, white, Chenin Blanc",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173196",
+      "name": "Alcoholic beverage, wine, table, white, Fume Blanc",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173198",
+      "name": "Alcoholic beverage, wine, table, white, Muller Thurgau",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173200",
+      "name": "Alcoholic beverage, wine, table, white, Riesling",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173201",
+      "name": "Alcoholic beverage, wine, table, white, Sauvignon Blanc",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173202",
+      "name": "Alcoholic beverage, wine, table, white, late harvest",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173208",
+      "name": "Alcoholic Beverage, wine, table, red, Burgundy",
+      "reason": "blocked: alcoholic drink"
     },
     {
       "sourceId": "173266",
@@ -1596,6 +3701,11 @@
       "reason": "blocked: generic US fast food"
     },
     {
+      "sourceId": "173344",
+      "name": "Pulled pork in barbecue sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "173421",
       "name": "Egg, yolk, raw, frozen, pasteurized",
       "reason": "duplicate",
@@ -1613,6 +3723,56 @@
       "reason": "zero-calorie"
     },
     {
+      "sourceId": "173662",
+      "name": "Alcoholic beverage, whiskey sour",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173663",
+      "name": "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 94 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173664",
+      "name": "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 100 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173665",
+      "name": "Alcoholic beverage, liqueur, coffee, 63 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "173732",
+      "name": "Beans, baked, canned, with pork and sweet sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173733",
+      "name": "Beans, baked, canned, with pork and tomato sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173761",
+      "name": "Cowpeas, common (blackeyes, crowder, southern), mature seeds, canned with pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173856",
+      "name": "Bologna, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173859",
+      "name": "Sausage, pork, chorizo, link or ground, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173861",
+      "name": "Dutch brand loaf, chicken, pork and beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "173862",
       "name": "Frankfurter, beef, unheated",
       "reason": "duplicate",
@@ -1623,6 +3783,46 @@
       "name": "Ham, sliced, pre-packaged, deli meat (96%fat free, water added)",
       "reason": "duplicate",
       "keptSourceId": "332397"
+    },
+    {
+      "sourceId": "173867",
+      "name": "Knackwurst, knockwurst, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173869",
+      "name": "Liver cheese, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173870",
+      "name": "Liver sausage, liverwurst, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173872",
+      "name": "Bologna, chicken, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173873",
+      "name": "Bologna, chicken, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173876",
+      "name": "Pork sausage, link/patty, fully cooked, unheated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173882",
+      "name": "Pork sausage, reduced sodium, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "173883",
+      "name": "Sausage, pork, turkey, and beef, reduced sodium",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "173997",
@@ -1643,6 +3843,31 @@
       "keptSourceId": "334849"
     },
     {
+      "sourceId": "174109",
+      "name": "Alcoholic Beverage, wine, table, red, Mouvedre",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174110",
+      "name": "Alcoholic beverage, wine, table, white, Chardonnay",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174141",
+      "name": "Alcoholic beverage, malt beer, hard lemonade",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174145",
+      "name": "Alcoholic beverage, beer, light, higher alcohol",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174146",
+      "name": "Beverages, AMBER, hard cider",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
       "sourceId": "174289",
       "name": "Hummus, commercial",
       "reason": "duplicate",
@@ -1655,16 +3880,130 @@
       "keptSourceId": "324038"
     },
     {
+      "sourceId": "174571",
+      "name": "Luncheon meat, pork, canned",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174573",
+      "name": "Mortadella, beef, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174574",
+      "name": "Peppered loaf, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174575",
+      "name": "Pepperoni, beef and pork, sliced",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174576",
+      "name": "Pickle and pimiento loaf, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174577",
+      "name": "Polish sausage, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174578",
+      "name": "Pork sausage, link/patty, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174579",
+      "name": "Sausage, pork and beef, fresh, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174582",
+      "name": "Salami, dry or hard, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174583",
+      "name": "Sandwich spread, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174584",
+      "name": "Sausage, smoked link sausage, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174585",
+      "name": "Sausage, smoked link sausage, pork and beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "174586",
       "name": "Sausage, Italian, pork, mild, cooked, pan-fried",
-      "reason": "duplicate",
-      "keptSourceId": "325658"
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174587",
+      "name": "Luncheon sausage, pork and beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174588",
+      "name": "Sausage, New england brand, pork, beef",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174590",
+      "name": "Oscar Mayer, Smokies Sausage Little Cheese (pork, turkey)",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174594",
+      "name": "Luncheon meat, pork and chicken, minced, canned, includes Spam Lite",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174598",
+      "name": "Salami, pork, beef, less sodium",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174599",
+      "name": "Sausage, summer, pork and beef, sticks, with cheddar cheese",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "174600",
       "name": "Sausage, turkey, breakfast links, mild, raw",
       "reason": "duplicate",
       "keptSourceId": "325992"
+    },
+    {
+      "sourceId": "174601",
+      "name": "Swisswurst, pork and beef, with swiss cheese, smoked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174603",
+      "name": "Salami, Italian, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174605",
+      "name": "Sausage, chicken, beef, pork, skinless, smoked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174609",
+      "name": "Bologna, pork and turkey, lite",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "174610",
+      "name": "Bologna, pork, turkey and beef",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "174616",
@@ -1683,6 +4022,106 @@
       "name": "Grapefruit juice, white, canned or bottled, unsweetened",
       "reason": "duplicate",
       "keptSourceId": "325287"
+    },
+    {
+      "sourceId": "174810",
+      "name": "Alcoholic beverage, whiskey sour, canned",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174812",
+      "name": "Alcoholic beverage, whiskey sour, prepared from item 14028",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174815",
+      "name": "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 80 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174817",
+      "name": "Alcoholic beverage, distilled, rum, 80 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174818",
+      "name": "Alcoholic beverage, distilled, vodka, 80 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174819",
+      "name": "Alcoholic beverage, distilled, whiskey, 86 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174833",
+      "name": "Alcoholic Beverage, wine, table, red, Cabernet Sauvignon",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174834",
+      "name": "Alcoholic Beverage, wine, table, red, Cabernet Franc",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174835",
+      "name": "Alcoholic Beverage, wine, table, red, Pinot Noir",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174836",
+      "name": "Alcoholic Beverage, wine, table, red, Syrah",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174837",
+      "name": "Alcoholic beverage, wine, table, white",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174838",
+      "name": "Alcoholic Beverage, wine, table, red, Lemberger",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174839",
+      "name": "Alcoholic Beverage, wine, table, red, Sangiovese",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174840",
+      "name": "Alcoholic Beverage, wine, table, red, Carignane",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174841",
+      "name": "Alcoholic beverage, wine, table, white, Pinot Gris (Grigio)",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174843",
+      "name": "Alcoholic beverage, wine, table, white, Gewurztraminer",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174844",
+      "name": "Alcoholic beverage, wine, table, white, late harvest, Gewurztraminer",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174845",
+      "name": "Alcoholic beverage, wine, table, white, Semillon",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174848",
+      "name": "Alcoholic beverage, wine, table, white, Pinot Blanc",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "174849",
+      "name": "Alcoholic beverage, wine, table, white, Muscat",
+      "reason": "blocked: alcoholic drink"
     },
     {
       "sourceId": "1750339",
@@ -1718,6 +4157,26 @@
       "sourceId": "175040",
       "name": "Leavening agents, baking soda",
       "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "175097",
+      "name": "Alcoholic beverage, liqueur, coffee, 53 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "175098",
+      "name": "Alcoholic beverage, liqueur, coffee with cream, 34 proof",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "175112",
+      "name": "Alcoholic beverage, wine, dessert, dry",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "175185",
+      "name": "Beans, baked, canned, with pork",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "1999626",
@@ -1894,6 +4353,11 @@
       "keptSourceId": "174036"
     },
     {
+      "sourceId": "2514745",
+      "name": "Pork, ground, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "2515374",
       "name": "Nuts, cashew nuts, raw",
       "reason": "duplicate",
@@ -1910,6 +4374,16 @@
       "name": "Nuts, pistachio nuts, raw",
       "reason": "duplicate",
       "keptSourceId": "170184"
+    },
+    {
+      "sourceId": "2646168",
+      "name": "Pork, loin, boneless, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2646169",
+      "name": "Pork, loin, tenderloin, boneless, raw",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "2685570",
@@ -2140,6 +4614,166 @@
       "keptSourceId": "170896"
     },
     {
+      "sourceId": "2705862",
+      "name": "Pork, NFS",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705863",
+      "name": "Pork, ground",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705864",
+      "name": "Pork, carnitas",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705865",
+      "name": "Pork jerky",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705866",
+      "name": "Pork, chop, NS as to fat eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705867",
+      "name": "Pork, chop, lean and fat eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705868",
+      "name": "Pork, chop, lean only eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705869",
+      "name": "Pork, chop, coated, NS as to fat eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705870",
+      "name": "Pork, chop, coated, lean and fat eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705871",
+      "name": "Pork, chop, coated, lean only eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705872",
+      "name": "Pork, chop, stuffed",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705873",
+      "name": "Pork, steak, NS as to fat eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705874",
+      "name": "Pork, steak, lean and fat eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705875",
+      "name": "Pork, steak, lean only eaten",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705876",
+      "name": "Pork, steak, coated",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705877",
+      "name": "Pork, tenderloin",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705882",
+      "name": "Pork, roast",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705883",
+      "name": "Pork, roll",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705887",
+      "name": "Pork bacon, NS as to fresh, smoked or cured, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705888",
+      "name": "Pork bacon, NS as to fresh, smoked or cured, reduced sodium, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705889",
+      "name": "Pork bacon, smoked or cured, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705890",
+      "name": "Bacon or side pork, fresh, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705891",
+      "name": "Pork bacon, smoked or cured, reduced sodium, cooked",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705894",
+      "name": "Pork, ribs",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705895",
+      "name": "Pork, cracklings",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705896",
+      "name": "Pork, ears",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705897",
+      "name": "Pork, bones",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705898",
+      "name": "Pork, pig's feet",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705899",
+      "name": "Pork, pig's feet, pickled",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705900",
+      "name": "Pork, ham hocks",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705901",
+      "name": "Pork, belly",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2705902",
+      "name": "Pork skin rinds",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "2706095",
       "name": "Chicken nuggets, from school lunch",
       "reason": "blocked: US school lunch program"
@@ -2156,10 +4790,350 @@
       "keptSourceId": "171618"
     },
     {
+      "sourceId": "2706191",
+      "name": "Pork sausage",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706192",
+      "name": "Pork sausage, reduced fat",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706193",
+      "name": "Pork sausage, reduced sodium",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706194",
+      "name": "Pork and beef sausage",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706202",
+      "name": "Turkey or chicken and pork sausage",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "2706222",
       "name": "Ham salad spread",
       "reason": "duplicate",
       "keptSourceId": "173866"
+    },
+    {
+      "sourceId": "2706398",
+      "name": "Ham or pork with gravy",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706399",
+      "name": "Barbecue pork, with sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706400",
+      "name": "Barbecue pork, no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706401",
+      "name": "Sweet and sour pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706403",
+      "name": "Ham or pork with mushroom sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706404",
+      "name": "Ham or pork with tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706407",
+      "name": "Guisada, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706408",
+      "name": "Pork or ham with soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706411",
+      "name": "Pork with chili and tomatoes",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706412",
+      "name": "Stewed pork, Puerto Rican style",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706472",
+      "name": "Stewed, seasoned, ground beef and pork, Mexican style",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706507",
+      "name": "Ham or pork with stuffing",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706509",
+      "name": "Pork and rice with tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706515",
+      "name": "Ham or pork and rice, no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706516",
+      "name": "Ham or pork and potatoes with gravy",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706517",
+      "name": "Ham or pork and potatoes with cheese sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706519",
+      "name": "Stew, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706520",
+      "name": "Stew, pork, with pasta",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706581",
+      "name": "Meat loaf made with beef and pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706582",
+      "name": "Meat loaf made with beef, veal and pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706583",
+      "name": "Meat loaf made with beef and pork, with tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706586",
+      "name": "Stewed, seasoned, ground beef and pork with potatoes, Mexican style",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706634",
+      "name": "Ham or pork, noodles and vegetables excluding carrots, broccoli, and dark-green leafy; no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706635",
+      "name": "Ham or pork, noodles, and vegetables including carrots, broccoli, and/or dark-green leafy; no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706636",
+      "name": "Ham or pork, noodles and vegetables excluding carrots, broccoli, and dark-green leafy; cheese sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706637",
+      "name": "Pork, potatoes, and vegetables including carrots, broccoli, and/or dark-green leafy; no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706638",
+      "name": "Ham or pork, noodles, and vegetables including carrots, broccoli, and/or dark-green leafy; tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706641",
+      "name": "Pork, potatoes, and vegetables including carrots, broccoli, and/or dark-green leafy; tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706642",
+      "name": "Pork, potatoes, and vegetables excluding carrots, broccoli, and dark-green leafy; tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706645",
+      "name": "Pork, potatoes, and vegetables including carrots, broccoli, and/or dark-green leafy; gravy",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706646",
+      "name": "Pork, potatoes, and vegetables excluding carrots, broccoli, and dark-green leafy; gravy",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706647",
+      "name": "Pork, potatoes, and vegetables excluding carrots, broccoli, and dark-green leafy; no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706648",
+      "name": "Pork chow mein or chop suey with noodles",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706649",
+      "name": "Pork, rice, and vegetables including carrots, broccoli, and/or dark-green leafy; soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706650",
+      "name": "Pork, rice, and vegetables excluding carrots, broccoli, and dark-green leafy; soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706651",
+      "name": "Pork, rice, and vegetables including carrots, broccoli, and/or dark-green leafy; tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706652",
+      "name": "Pork, rice, and vegetables excluding carrots, broccoli, and dark-green leafy; tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706655",
+      "name": "Sweet and sour pork with rice",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706756",
+      "name": "Ham or pork salad",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706758",
+      "name": "Pork and vegetables including carrots, broccoli, and/or dark-green leafy; no potatoes, no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706759",
+      "name": "Greens with ham or pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706760",
+      "name": "Pork, tofu, and vegetables including carrots, broccoli, and/or dark-green leafy; no potatoes, soy-base sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706761",
+      "name": "Pork and vegetables, Hawaiian style",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706762",
+      "name": "Pork and watercress with soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706763",
+      "name": "Kung Pao pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706764",
+      "name": "Moo Shu pork, without Chinese pancake",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706765",
+      "name": "Pork and onions with soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706766",
+      "name": "Pork hash",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706769",
+      "name": "Pork and vegetables excluding carrots, broccoli, and dark-green leafy; no potatoes, no sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706770",
+      "name": "Pork, tofu, and vegetables, excluding carrots, broccoli, and dark-green leafy; no potatoes, soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706771",
+      "name": "Pork chow mein or chop suey, no noodles",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706772",
+      "name": "Pork and vegetables including carrots, broccoli, and/or dark-green leafy; no potatoes, tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706773",
+      "name": "Pork and vegetables excluding  carrots, broccoli, and dark-green leafy; no potatoes, tomato-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706777",
+      "name": "Pork and vegetables including carrots, broccoli, and/or dark-green leafy; no potatoes, soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706778",
+      "name": "Pork and vegetables excluding carrots, broccoli, and dark- green leafy; no potatoes, soy-based sauce",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706779",
+      "name": "Pork shish kabob with vegetables, excluding potatoes",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706975",
+      "name": "Barbecue pork sandwich, on white bun",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706976",
+      "name": "Barbecue pork sandwich, on wheat bun",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706977",
+      "name": "Pork sandwich",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2706978",
+      "name": "Pork sandwich, with cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2707131",
+      "name": "Soup, pork or ham",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2707195",
+      "name": "Pork egg foo yung",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2707406",
+      "name": "Pork and beans",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "2707439",
@@ -2335,6 +5309,106 @@
       "keptSourceId": "168914"
     },
     {
+      "sourceId": "2708517",
+      "name": "Taco, corn tortilla, pork, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708518",
+      "name": "Taco, corn tortilla, pork, with beans, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708524",
+      "name": "Taco, flour tortilla, pork, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708525",
+      "name": "Taco, flour tortilla, pork, with beans, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708539",
+      "name": "Burrito, pork, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708540",
+      "name": "Burrito, pork, with rice, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708541",
+      "name": "Burrito, pork, with beans, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708542",
+      "name": "Burrito, pork, with beans and rice, cheese",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708556",
+      "name": "Burrito bowl, beef or pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708557",
+      "name": "Burrito bowl, beef or pork, with rice",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708558",
+      "name": "Burrito bowl, beef or pork, with beans",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708559",
+      "name": "Burrito bowl, beef or pork, with beans and rice",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708567",
+      "name": "Enchilada, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708572",
+      "name": "Tamale, pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708578",
+      "name": "Nachos, beef or pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708579",
+      "name": "Nachos, beef or pork, with beans",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708592",
+      "name": "Quesadilla, beef or pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708595",
+      "name": "Quesadilla, beef or pork, with vegetables",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708600",
+      "name": "Taquito, beef or pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2708605",
+      "name": "Fajita, beef or pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "2708619",
       "name": "Pizza, cheese, from school lunch, medium crust",
       "reason": "blocked: US school lunch program"
@@ -2380,15 +5454,30 @@
       "reason": "blocked: US school lunch program"
     },
     {
+      "sourceId": "2708702",
+      "name": "Egg roll, with beef and/or pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "2708765",
       "name": "Ravioli, meat-filled, with tomato sauce or meat sauce, canned",
       "reason": "duplicate",
       "keptSourceId": "173329"
     },
     {
+      "sourceId": "2708801",
+      "name": "Lo mein, with pork",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "2708836",
       "name": "Pasta with sauce and meat, from school lunch",
       "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708954",
+      "name": "Rice, fried, with pork",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "2709270",
@@ -2651,6 +5740,346 @@
       "keptSourceId": "168771"
     },
     {
+      "sourceId": "2710616",
+      "name": "Beer",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710617",
+      "name": "Beer, light",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710618",
+      "name": "Beer, higher alcohol",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710619",
+      "name": "Alcoholic malt beverage, sweetened",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710620",
+      "name": "Alcoholic malt beverage",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710621",
+      "name": "Hard cider",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710623",
+      "name": "Liqueur",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710624",
+      "name": "Liqueur, cream",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710625",
+      "name": "Liqueur, coffee flavored",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710626",
+      "name": "Cocktail, NFS",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710627",
+      "name": "Brandy Alexander",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710628",
+      "name": "Bloody Mary",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710630",
+      "name": "Daiquiri",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710631",
+      "name": "Gelatin shot, alcoholic",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710633",
+      "name": "Gin and tonic",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710637",
+      "name": "Manhattan",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710638",
+      "name": "Margarita",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710639",
+      "name": "Martini",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710640",
+      "name": "Martini, flavored",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710642",
+      "name": "Mimosa",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710644",
+      "name": "Mojito",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710650",
+      "name": "Screwdriver",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710653",
+      "name": "Tom Collins",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710654",
+      "name": "Whiskey sour",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710655",
+      "name": "Whiskey and soda",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710656",
+      "name": "Whiskey and water",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710657",
+      "name": "Whiskey and cola",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710658",
+      "name": "Whiskey and diet cola",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710659",
+      "name": "Whiskey and ginger ale",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710660",
+      "name": "Rum and cola",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710661",
+      "name": "Rum and diet cola",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710662",
+      "name": "Pina Colada",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710663",
+      "name": "Brandy and cola",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710664",
+      "name": "Vodka and soda",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710665",
+      "name": "Vodka and lemonade",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710666",
+      "name": "Vodka and cola",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710667",
+      "name": "Vodka and diet cola",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710668",
+      "name": "Vodka and energy drink",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710669",
+      "name": "Vodka and water",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710670",
+      "name": "Vodka and tonic",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710671",
+      "name": "Sloe gin fizz",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710674",
+      "name": "Fruit punch, alcoholic",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710675",
+      "name": "Champagne punch",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710678",
+      "name": "Tequila Sunrise",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710681",
+      "name": "Alcoholic coffee drink",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710682",
+      "name": "Frozen daiquiri",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710683",
+      "name": "Frozen margarita",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710684",
+      "name": "Eggnog, alcoholic",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710685",
+      "name": "Gin fizz",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710686",
+      "name": "Rum, hot buttered",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710687",
+      "name": "Wine, sparkling",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710688",
+      "name": "Wine, red",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710689",
+      "name": "Wine, white",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710690",
+      "name": "Wine, rose",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710691",
+      "name": "Wine, rice",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710692",
+      "name": "Wine, dessert, sweet",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710693",
+      "name": "Wine, light",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710694",
+      "name": "Wine cooler",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710695",
+      "name": "Sangria, red",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710696",
+      "name": "Sangria, white",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710697",
+      "name": "Wine spritzer",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710699",
+      "name": "Brandy",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710700",
+      "name": "Whiskey",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710701",
+      "name": "Scotch",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710702",
+      "name": "Gin",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710703",
+      "name": "Rum",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710704",
+      "name": "Vodka",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
+      "sourceId": "2710705",
+      "name": "Tequila",
+      "reason": "blocked: alcoholic drink"
+    },
+    {
       "sourceId": "2710816",
       "name": "Melons, honeydew, raw",
       "reason": "duplicate",
@@ -2661,6 +6090,16 @@
       "name": "Lamb, ground, raw",
       "reason": "duplicate",
       "keptSourceId": "174370"
+    },
+    {
+      "sourceId": "2727575",
+      "name": "Pork, chop, center cut, raw",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
+      "sourceId": "2727576",
+      "name": "Pork, belly, with skin, raw",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "2747653",
@@ -2693,6 +6132,11 @@
       "keptSourceId": "170465"
     },
     {
+      "sourceId": "325658",
+      "name": "Sausage, Italian, pork, mild, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
+    },
+    {
       "sourceId": "326458",
       "name": "Carrots, frozen, unprepared (Includes foods for USDA's Food Distribution Program)",
       "reason": "duplicate",
@@ -2709,6 +6153,11 @@
       "name": "Strawberries, raw",
       "reason": "duplicate",
       "keptSourceId": "167762"
+    },
+    {
+      "sourceId": "332864",
+      "name": "Sausage, pork, chorizo, link or ground, cooked, pan-fried",
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "334462",
@@ -2845,14 +6294,12 @@
     {
       "sourceId": "746780",
       "name": "Sausage, Italian, pork, mild, cooked, pan-fried",
-      "reason": "duplicate",
-      "keptSourceId": "325658"
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "746781",
       "name": "Sausage, pork, chorizo, link or ground, cooked, pan-fried",
-      "reason": "duplicate",
-      "keptSourceId": "332864"
+      "reason": "blocked: pork (the word appears in the name)"
     },
     {
       "sourceId": "746782",
@@ -2889,6 +6336,11 @@
       "name": "Strawberries, raw",
       "reason": "duplicate",
       "keptSourceId": "167762"
+    },
+    {
+      "sourceId": "749420",
+      "name": "Pork, cured, bacon, cooked, restaurant",
+      "reason": "blocked: pork (the word appears in the name)"
     }
   ]
 }

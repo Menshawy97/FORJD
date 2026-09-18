@@ -1,4 +1,5 @@
 import { FOOD_NAME_EXCLUSIONS } from "./food-exclusions";
+import type { FoodCategory } from "@forjd/domain";
 import { curateCatalogue, CuratableFood, normalizeFoodName } from "./curate";
 
 function food(overrides: Partial<CuratableFood> & { sourceId: string }): CuratableFood {
@@ -110,6 +111,104 @@ describe("FOOD_NAME_EXCLUSIONS", () => {
       expect(rule.reason.length).toBeGreaterThan(0);
       expect(rule.pattern.flags).toContain("i");
     }
+  });
+});
+
+describe("the pork and alcohol rules (default exclusions)", () => {
+  function isRemoved(name: string, category: FoodCategory): boolean {
+    const { removed } = curateCatalogue([food({ sourceId: "1", name, category })]);
+    return removed.some((entry) => entry.reason.startsWith("blocked"));
+  }
+
+  it.each([
+    ["Pork, fresh, loin, cooked", "protein"],
+    ["Bratwurst, pork, cooked", "protein"],
+    ["Beerwurst, beer salami, pork", "protein"],
+    ["Pepperoni, beef and pork, sliced", "protein"],
+    ["Soup, bean with pork, canned, condensed", "snacks"],
+    ["Snacks, pork skins, plain", "snacks"],
+    ["Sausage, turkey and pork, fresh, bulk", "protein"],
+  ] as const)("removes %s because its name contains the word pork", (name, category) => {
+    expect(isRemoved(name, category)).toBe(true);
+  });
+
+  it.each([
+    ["Sausage, beef, cured, cooked, smoked", "protein"],
+    ["PIZZA HUT 14\"\" Pepperoni Pizza, THIN 'N CRISPY Crust", "grains"],
+    ["Pepperoni, beef, sliced", "protein"],
+    ["Ham, sliced, regular", "protein"],
+    ["Bacon, cooked", "protein"],
+    ["Hamburger, plain", "protein"],
+    ["Porkchop-style tofu", "protein"],
+  ] as const)("keeps %s: pork is only removed when the whole word appears in the name", (name, category) => {
+    expect(isRemoved(name, category)).toBe(false);
+  });
+
+  it.each([
+    "Alcoholic beverage, beer, regular, all",
+    "Alcoholic Beverage, wine, table, red, Merlot",
+    "Alcoholic beverage, distilled, vodka, 80 proof",
+    "Beer",
+    "Beer, light",
+    "Wine, red",
+    "Wine cooler",
+    "Whiskey",
+    "Whiskey and cola",
+    "Gin and tonic",
+    "Rum, hot buttered",
+    "Vodka",
+    "Tequila",
+    "Brandy",
+    "Liqueur, cream",
+    "Margarita",
+    "Frozen daiquiri",
+    "Pina Colada",
+    "Bloody Mary",
+    "Hard cider",
+    "Beverages, AMBER, hard cider",
+    "Beverages, Malt liquor beverage",
+    "Sangria, red",
+    "Eggnog, alcoholic",
+    "Gelatin shot, alcoholic",
+    "Alcoholic malt beverage",
+  ])("removes the alcoholic drink %s", (name) => {
+    expect(isRemoved(name, "beverages")).toBe(true);
+  });
+
+  it.each([
+    "Beer, nonalcoholic",
+    "Wine, nonalcoholic",
+    "Pina Colada, nonalcoholic",
+    "Margarita mix, nonalcoholic",
+    "Whiskey sour mix, bottled, with added potassium and sodium",
+    "Beverages, Wine, non-alcoholic",
+    "Malt beverage, includes non-alcoholic beer",
+    "Soft drink, root beer",
+    "Soft drink, ginger ale",
+    "Apple cider",
+    "Cranberry juice cocktail, bottled",
+    "Tomato juice cocktail",
+    "Ginger tea",
+  ])("keeps the non-alcoholic drink %s", (name) => {
+    expect(isRemoved(name, "beverages")).toBe(false);
+  });
+
+  it("only applies the drink rules to the beverages category, so a food or formula with a similar word stays", () => {
+    expect(isRemoved("Gin", "snacks")).toBe(false);
+    expect(isRemoved("Rum ball", "snacks")).toBe(false);
+    expect(isRemoved("Infant formula, MEAD JOHNSON, ENFAMIL, Premium", "snacks")).toBe(false);
+    expect(isRemoved("Vinegar, red wine", "snacks")).toBe(false);
+    expect(isRemoved("Fruit cocktail, canned, in syrup", "fruits")).toBe(false);
+    expect(isRemoved("Shrimp cocktail", "protein")).toBe(false);
+  });
+
+  it("supports a category-scoped rule", () => {
+    const rules = [{ pattern: /^Gin$/i, reason: "gin", category: "beverages" as const }];
+    const inBeverages = curateCatalogue([food({ sourceId: "1", name: "Gin", category: "beverages" })], rules);
+    const inSnacks = curateCatalogue([food({ sourceId: "2", name: "Gin", category: "snacks" })], rules);
+
+    expect(inBeverages.removed).toHaveLength(1);
+    expect(inSnacks.kept).toHaveLength(1);
   });
 });
 

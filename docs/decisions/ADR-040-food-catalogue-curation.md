@@ -64,3 +64,17 @@ entry restores the foods on the next load. A rule that matches nothing fails `cu
 - Survey foods replaced some Foundation/SR Legacy survivors in duplicate groups because they
   carry servings; this favours loggability over lab-grade precision and is the tie-break to
   revisit if that trade-off proves wrong.
+
+## Addendum 2026-09-18 — pork and alcohol
+
+Two dietary rules were added to `FOOD_NAME_EXCLUSIONS`:
+
+- **Pork:** a food is removed only when the whole word "pork" appears in its name (557 foods).
+  Pepperoni, sausage, ham, bacon and similar are deliberately kept: the name alone does not say
+  they are pork (beef and poultry versions exist) and the dataset has no ingredient lists. Hidden
+  pork (lard in a pastry, pork in an unnamed soup) cannot be detected and is not removed.
+- **Alcohol:** alcoholic drinks only (137): beer, wine, spirits, liqueurs, cocktails, hard cider.
+  The rule is scoped to the `beverages` category through the new optional `category` field on an
+  exclusion, so a word like "Gin" or "Rum" can never match a food, infant formula or vinegar.
+  Non-alcoholic versions and mixers stay, and so do foods that merely use alcohol (rum balls,
+  vodka sauce, cheese with wine).

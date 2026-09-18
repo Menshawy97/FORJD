@@ -63,7 +63,9 @@ export function curateCatalogue(
   const candidates: CuratableFood[] = [];
 
   for (const food of foods) {
-    const blockedBy = exclusions.find((rule) => rule.pattern.test(food.name));
+    const blockedBy = exclusions.find(
+      (rule) => (rule.category === undefined || rule.category === food.category) && rule.pattern.test(food.name),
+    );
     if (blockedBy) {
       removed.push({ sourceId: food.sourceId, name: food.name, reason: `blocked: ${blockedBy.reason}` });
     } else if (food.macrosPer100g.kcal <= 0 && food.category !== "beverages") {
