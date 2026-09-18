@@ -83,6 +83,7 @@ function fakeRepository(): jest.Mocked<NutritionRepository> {
   return {
     searchFoods: jest.fn(),
     findFoodById: jest.fn(),
+    findFoodByIdForDisplay: jest.fn(),
     createCustomFood: jest.fn(),
     softDeleteCustomFood: jest.fn(),
     getMacroGoals: jest.fn(),
@@ -130,7 +131,7 @@ describe("NutritionService", () => {
 
   describe("getFoodById", () => {
     it("returns a catalogue food to anyone", async () => {
-      repository.findFoodById.mockResolvedValue(catalogueFood());
+      repository.findFoodByIdForDisplay.mockResolvedValue(catalogueFood());
 
       const result = await service.getFoodById(stranger, catalogueFood().id);
 
@@ -138,7 +139,7 @@ describe("NutritionService", () => {
     });
 
     it("returns the owner's own custom food", async () => {
-      repository.findFoodById.mockResolvedValue(customFood(viewer.id));
+      repository.findFoodByIdForDisplay.mockResolvedValue(customFood(viewer.id));
 
       const result = await service.getFoodById(viewer, customFood(viewer.id).id);
 
@@ -146,13 +147,13 @@ describe("NutritionService", () => {
     });
 
     it("404s, never throws a different error, for another user's custom food", async () => {
-      repository.findFoodById.mockResolvedValue(customFood(viewer.id));
+      repository.findFoodByIdForDisplay.mockResolvedValue(customFood(viewer.id));
 
       await expect(service.getFoodById(stranger, customFood(viewer.id).id)).rejects.toThrow(NotFoundException);
     });
 
     it("404s for an id that resolves to nothing", async () => {
-      repository.findFoodById.mockResolvedValue(null);
+      repository.findFoodByIdForDisplay.mockResolvedValue(null);
 
       await expect(service.getFoodById(viewer, "does-not-exist")).rejects.toThrow(NotFoundException);
     });

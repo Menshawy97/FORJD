@@ -738,6 +738,8 @@ describe("NutritionRepository", () => {
       expect(result).toEqual({ deleted: 0, softDeleted: 1 });
       expect((await rowById(loggedId))?.deletedAt).not.toBeNull();
       expect(await repository.findFoodById(loggedId)).toBeNull();
+      // Still resolvable for display, so a diary or saved meal that mentions it keeps rendering.
+      expect((await repository.findFoodByIdForDisplay(loggedId))?.id).toBe(loggedId);
       const found = await repository.searchFoods(userId, "Test Banana logged", 50);
       expect(found.map((food) => food.id)).not.toContain(loggedId);
     });
@@ -807,6 +809,41 @@ describe("NutritionRepository", () => {
       await repository.bulkUpsertCatalogueFoods([{ ...catalogueInput("logged"), source }]);
 
       expect((await repository.findFoodById(loggedId))?.id).toBe(loggedId);
+    });
+  });
+
+  describe("pruneCatalogueFoods robustness", () => {
+    const rowById = async (id: string) => (await db.select().from(foods).where(inArray(foods.id, [id])))[0];
+
+    it("falls back to hiding the food when the DELETE loses a race with a new log entry (FK violation)", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      await repository.bulkUpsertCatalogueFoods(["keep", "raced"].map((id) => ({ ...catalogueInput(id), source })));
+      const rows = await db.select().from(foods).where(inArray(foods.source, [source]));
+      createdFoodIds.push(...rows.map((row) => row.id));
+      const racedId = rows.find((row) => row.sourceId === "raced")?.id ?? "";
+      const spy = jest.spyOn(db, "delete").mockImplementationOnce(() => {
+        throw Object.assign(new Error("update or delete violates foreign key constraint"), { code: "23503" });
+      });
+
+      const result = await repository.pruneCatalogueFoods(source, ["keep"]);
+
+      spy.mockRestore();
+      expect(result).toEqual({ deleted: 0, softDeleted: 1 });
+      expect((await rowById(racedId))?.deletedAt).not.toBeNull();
+    });
+
+    it("does not resolve a soft-deleted custom food for display", async () => {
+      const userId = await makeUser("prune-display");
+      const custom = await repository.createCustomFood(userId, {
+        name: `Custom ${randomUUID()}`,
+        category: "snacks",
+        macrosPer100g: { kcal: 100, protein: 1, carbs: 1, fat: 1 },
+        servings: [],
+      });
+      createdFoodIds.push(custom.id);
+      await repository.softDeleteCustomFood(custom.id, userId);
+
+      expect(await repository.findFoodByIdForDisplay(custom.id)).toBeNull();
     });
   });
 

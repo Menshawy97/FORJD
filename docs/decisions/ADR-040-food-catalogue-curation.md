@@ -43,7 +43,11 @@ edit to the data.
    deploy). Catalogue rows absent from the snapshot are deleted, or soft-deleted when a log
    entry or saved meal references them (`nutrition_log_entries.food_id` is `ON DELETE RESTRICT`
    and `saved_meal_items` cascades). Custom foods are never touched, and the prune refuses to run
-   if it would remove more than 20% of the catalogue.
+   if it would remove more than 20% of the catalogue. A hidden food still resolves by id through
+   `findFoodByIdForDisplay` (used by `GET /foods/:id`), because the diary, saved-meals and share
+   screens fetch every referenced food by id and one 404 would fail the whole screen; new logs
+   still use `findFoodById`, so a hidden food cannot be logged afresh. If a log entry lands while
+   the delete is running, the resulting foreign-key error is caught and the food is hidden instead.
 
 ## Removing more foods later (the recurring workflow)
 

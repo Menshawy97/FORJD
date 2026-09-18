@@ -47,7 +47,9 @@ export class NutritionService {
   }
 
   async getFoodById(viewer: User, id: string): Promise<FoodResponse> {
-    const food = await this.nutritionRepository.findFoodById(id);
+    // The display lookup, so a catalogue food pruned from search still resolves for the history
+    // screens that reference it by id (see `findFoodByIdForDisplay`).
+    const food = await this.nutritionRepository.findFoodByIdForDisplay(id);
     if (!food || this.isHiddenFrom(food, viewer)) {
       throw this.refuseFood();
     }

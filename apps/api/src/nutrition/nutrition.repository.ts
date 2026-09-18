@@ -33,6 +33,13 @@ function isUniqueViolation(error: unknown): boolean {
   return code === "23505" || causeCode === "23505";
 }
 
+/** Postgres foreign_key_violation (23503), checked the same two places as `isUniqueViolation`. */
+function isForeignKeyViolation(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  const causeCode = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
+  return code === "23503" || causeCode === "23503";
+}
+
 /** Narrows a `text` column back to the known vocabulary, defaulting to the first member -- see `keepKnownNullable` in exercises.repository.ts for the same pattern. */
 function keepCategory(value: string): FoodCategory {
   return (FOOD_CATEGORIES as readonly string[]).includes(value)
@@ -263,7 +270,8 @@ export class NutritionRepository {
    * `nutrition_log_entries.food_id` is `ON DELETE RESTRICT`, and `saved_meal_items.food_id`
    * cascades, which would silently erase items from a user's saved meal. A soft-deleted food is
    * hidden from search and `findFoodById`, but a saved meal that contains it still logs
-   * (`mustFindFoodRow` does not filter `deleted_at`). The upsert restores it if it reappears.
+   * (`mustFindFoodRow` does not filter `deleted_at`) and it still resolves through
+   * `findFoodByIdForDisplay`. The upsert restores it if it reappears.
    */
   async pruneCatalogueFoods(
     source: string,
@@ -283,18 +291,26 @@ export class NutritionRepository {
     for (let i = 0; i < staleIds.length; i += NutritionRepository.PRUNE_CHUNK_SIZE) {
       const chunk = staleIds.slice(i, i + NutritionRepository.PRUNE_CHUNK_SIZE);
 
-      // Unreferenced foods go for good (their servings cascade). Checked in the DELETE itself, not
-      // in JS beforehand, so a log entry created mid-prune can't slip between check and delete.
-      const removed = await this.db
-        .delete(foods)
-        .where(
-          and(
-            inArray(foods.id, chunk),
-            sql`not exists (select 1 from ${nutritionLogEntries} where ${nutritionLogEntries.foodId} = ${foods.id})`,
-            sql`not exists (select 1 from ${savedMealItems} where ${savedMealItems.foodId} = ${foods.id})`,
-          ),
-        )
-        .returning({ id: foods.id });
+      // Unreferenced foods go for good (their servings cascade). The reference check is inside the
+      // DELETE, not a JS pre-check. It still cannot see a log entry committed while the statement
+      // waits on a row lock: that surfaces as a foreign-key violation (the RESTRICT), which is
+      // caught here so the whole chunk is hidden instead -- a deploy must never fail, or delete a
+      // food a user just logged, over that race.
+      let removed: { id: string }[] = [];
+      try {
+        removed = await this.db
+          .delete(foods)
+          .where(
+            and(
+              inArray(foods.id, chunk),
+              sql`not exists (select 1 from ${nutritionLogEntries} where ${nutritionLogEntries.foodId} = ${foods.id})`,
+              sql`not exists (select 1 from ${savedMealItems} where ${savedMealItems.foodId} = ${foods.id})`,
+            ),
+          )
+          .returning({ id: foods.id });
+      } catch (error) {
+        if (!isForeignKeyViolation(error)) throw error;
+      }
       deleted += removed.length;
 
       // Whatever survived the delete is referenced: hide it instead.
@@ -335,6 +351,24 @@ export class NutritionRepository {
       }
       throw error;
     }
+  }
+
+  /**
+   * `findFoodById` for display: also resolves a catalogue food that pruning has hidden. History
+   * screens (the diary, saved meals, the share card) fetch every food a past log entry or saved
+   * meal references by id, and one 404 among them fails the whole screen -- so a food a user
+   * already logged must keep resolving after it leaves search. A soft-deleted *custom* food still
+   * returns null, unchanged. Logging a new entry keeps using `findFoodById`, so a hidden food
+   * cannot be logged afresh.
+   */
+  async findFoodByIdForDisplay(id: string): Promise<Food | null> {
+    const [row] = await this.db
+      .select()
+      .from(foods)
+      .where(and(eq(foods.id, id), or(isNull(foods.deletedAt), isNull(foods.ownerUserId))));
+    if (!row) return null;
+    const servings = await this.listServings(id);
+    return this.toFood(row, servings);
   }
 
   async findFoodById(id: string): Promise<Food | null> {
