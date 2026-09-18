@@ -91,3 +91,20 @@ it('passes a failed upload back rather than hiding it from a caller that wants t
 
   await expect(syncPendingSessions()).resolves.toEqual({ uploaded: [], failed: ['session-2'] });
 });
+
+it("clamps an out-of-range set in a queued payload before uploading it, so a workout stuck behind a 400 saves on the next retry", async () => {
+  (uploadWorkoutSession as jest.Mock).mockResolvedValue(undefined);
+  await syncPendingSessions();
+  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][1] as (body: unknown) => Promise<void>;
+
+  await injectedUploader({
+    id: "session-1",
+    exercises: [{ exerciseId: "e1", sets: [{ setIndex: 0, type: "working", isCompleted: true, durationSeconds: 606000 }] }],
+  });
+
+  expect(uploadWorkoutSession).toHaveBeenCalledWith(
+    expect.objectContaining({
+      exercises: [{ exerciseId: "e1", sets: [expect.objectContaining({ durationSeconds: 86400 })] }],
+    }),
+  );
+});

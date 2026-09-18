@@ -388,6 +388,85 @@ export function restoreSession(
 }
 
 /**
+ * The largest value the API accepts for each part of a set (`packages/contracts`'
+ * `workoutSetInputSchema`). Kept as literals rather than imported because the contract only
+ * exposes the schema, not the numbers -- `live-session.test.ts` pins them against the same values
+ * the API documents, so a change to the contract shows up as a failing test here.
+ */
+const SET_LIMITS = {
+  durationSeconds: 86_400,
+  reps: 500,
+  weightKg: 500,
+  distanceMeters: 200_000,
+} as const;
+
+/** Rounds if `integer`, then pins into `[0, max]`. */
+function clampSetValue(value: number, max: number, integer: boolean): number {
+  const rounded = integer ? Math.round(value) : value;
+  return Math.min(max, Math.max(0, rounded));
+}
+
+/**
+ * Pins every set value in an upload into the range the API accepts, rounding the integer fields.
+ *
+ * A finished workout is queued on the device and uploaded later; the API answers any out-of-range
+ * value with a 400, which the sync queue rightly treats as permanent. One mistyped number -- a
+ * 606,000-second plank was found live on a device -- therefore stranded the whole workout behind
+ * a "weren't saved" banner forever. Clamping keeps the workout and loses only the impossible part
+ * of one value. Applied both when a session is built (`toUploadRequest`) and when a *queued*
+ * payload is sent (`sync-sessions.ts`), so workouts already stuck with a bad value save on retry.
+ *
+ * Pure: returns a new request and leaves its argument alone. Fields the set omitted stay omitted.
+ */
+export function sanitizeUploadRequest(request: WorkoutSessionUploadRequest): WorkoutSessionUploadRequest {
+  // A queued payload is stored JSON and may predate the current shape; pass one without a
+  // usable `exercises` list through untouched and let the API judge it, rather than crash here.
+  if (!Array.isArray(request.exercises)) return request;
+  return {
+    ...request,
+    exercises: request.exercises.map((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) => ({
+        ...set,
+        ...(set.weightKg !== undefined ? { weightKg: clampSetValue(set.weightKg, SET_LIMITS.weightKg, false) } : {}),
+        ...(set.reps !== undefined ? { reps: clampSetValue(set.reps, SET_LIMITS.reps, true) } : {}),
+        ...(set.durationSeconds !== undefined
+          ? { durationSeconds: clampSetValue(set.durationSeconds, SET_LIMITS.durationSeconds, true) }
+          : {}),
+        ...(set.distanceMeters !== undefined
+          ? { distanceMeters: clampSetValue(set.distanceMeters, SET_LIMITS.distanceMeters, false) }
+          : {}),
+        ...(set.restSeconds !== undefined
+          ? { restSeconds: clampSetValue(set.restSeconds, SET_LIMITS.durationSeconds, true) }
+          : {}),
+      })),
+    })),
+  };
+}
+
+const MAX_SET_MINUTES = Math.floor(SET_LIMITS.durationSeconds / 60) - 1;
+
+function digitsToNumber(raw: string): number {
+  return parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0;
+}
+
+/**
+ * The timed-set editor shows minutes and seconds as two fields. These rebuild the total after one
+ * of them is edited; the other keeps its current value. The fields used to accept any number of
+ * digits, which is how 606,000 seconds got typed in at all.
+ */
+export function setDurationMinutes(currentSeconds: number | null, raw: string): number {
+  const seconds = (currentSeconds ?? 0) % 60;
+  return Math.min(digitsToNumber(raw), MAX_SET_MINUTES) * 60 + seconds;
+}
+
+/** Seconds are capped at 59: `90` typed here is not a hidden extra minute, it is a mistake. */
+export function setDurationSeconds(currentSeconds: number | null, raw: string): number {
+  const minutes = Math.floor((currentSeconds ?? 0) / 60);
+  return minutes * 60 + Math.min(digitsToNumber(raw), 59);
+}
+
+/**
  * Turns a finished session into the body `POST /workouts/sessions` expects (Phase I).
  *
  * Pure, and separate from the enqueue that follows it, so the mapping is testable without a
@@ -406,7 +485,7 @@ export function toUploadRequest(
   endedAt: Date,
   durationSeconds: number,
 ): WorkoutSessionUploadRequest {
-  return {
+  return sanitizeUploadRequest({
     id: session.id,
     templateId: session.templateId,
     name: session.name,
@@ -430,7 +509,7 @@ export function toUploadRequest(
           ...(set.distanceMeters !== null ? { distanceMeters: set.distanceMeters } : {}),
         })),
       })),
-  };
+  });
 }
 
 export function pauseSession(session: LiveSession, now: Date): LiveSessionChange {

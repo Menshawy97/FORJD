@@ -14,7 +14,7 @@ import {
 
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme/tokens';
-import type { LiveExercise, LiveSet } from '@/workouts/live-session';
+import { setDurationMinutes, setDurationSeconds, type LiveExercise, type LiveSet } from '@/workouts/live-session';
 
 const MEASURE_SUBTITLE: Record<string, string> = {
   weight: 'Weight',
@@ -253,10 +253,7 @@ export function LiveExerciseCard({
                       value={String(Math.floor((set.durationSeconds ?? 0) / 60))}
                       keyboardType="number-pad"
                       onChangeText={(raw) =>
-                        onUpdateSet(setIndex, {
-                          durationSeconds:
-                            (parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0) * 60 + ((set.durationSeconds ?? 0) % 60),
-                        })
+                        onUpdateSet(setIndex, { durationSeconds: setDurationMinutes(set.durationSeconds, raw) })
                       }
                       className="w-[26px] py-[1px] text-right font-archivo text-[14px] font-semibold"
                       style={{ color: numberColor }}
@@ -269,11 +266,7 @@ export function LiveExerciseCard({
                       value={String((set.durationSeconds ?? 0) % 60)}
                       keyboardType="number-pad"
                       onChangeText={(raw) =>
-                        onUpdateSet(setIndex, {
-                          durationSeconds:
-                            Math.floor((set.durationSeconds ?? 0) / 60) * 60 +
-                            (parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0),
-                        })
+                        onUpdateSet(setIndex, { durationSeconds: setDurationSeconds(set.durationSeconds, raw) })
                       }
                       className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
                       style={{ color: numberColor }}

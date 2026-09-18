@@ -19,9 +19,13 @@ import {
   removeSet,
   restoreSession,
   resumeSession,
+  sanitizeUploadRequest,
   sessionStats,
+  setDurationMinutes,
+  setDurationSeconds,
   setRestSeconds,
   startSession,
+  toUploadRequest,
   updateSet,
   type LiveSession,
 } from '../live-session';
@@ -328,5 +332,111 @@ describe('restoreSession', () => {
     const restored = restoreSession(session(), { status: 'in_progress', completedSetKeys: keys });
 
     expect(sessionStats(restored)).toMatchObject({ completedSetCount: 1, totalSetCount: 3, volumeKg: 640 });
+  });
+});
+
+// A finished workout is uploaded to an API that rejects any set value outside a sane range with
+// a 400 (`packages/contracts` `workoutSetInputSchema`: duration <= 86,400 s, reps <= 500, weight
+// <= 500 kg, distance <= 200,000 m). The sync queue treats a 4xx as permanent, so one mistyped
+// value -- a 606,000-second plank, found live on a device -- used to strand the whole workout
+// behind a "weren't saved" banner for good. The value is now clamped into range instead.
+describe('clamping set values into the range the API accepts', () => {
+  function upload(sets: Record<string, unknown>[]) {
+    return {
+      id: 'session-1',
+      templateId: null,
+      name: 'Plank day',
+      activity: 'strength' as const,
+      status: 'completed' as const,
+      startedAt: NOW.toISOString(),
+      endedAt: LATER.toISOString(),
+      durationSeconds: 60,
+      isLiveTracked: false,
+      exercises: [{ exerciseId: '229c6551-389c-4e15-9006-78b61ef45ac6', sets }],
+    };
+  }
+
+  it('caps an absurd duration at the 24-hour limit rather than dropping the workout', () => {
+    const result = sanitizeUploadRequest(
+      upload([{ setIndex: 0, type: 'working', isCompleted: true, durationSeconds: 606000 }]) as never,
+    );
+
+    expect(result.exercises[0]?.sets[0]?.durationSeconds).toBe(86400);
+  });
+
+  it('caps reps, weight and distance, and floors negatives at zero', () => {
+    const result = sanitizeUploadRequest(
+      upload([
+        { setIndex: 0, type: 'working', isCompleted: true, reps: 9000, weightKg: 1200, distanceMeters: 999999 },
+        { setIndex: 1, type: 'working', isCompleted: true, reps: -3, weightKg: -1, durationSeconds: -5 },
+      ]) as never,
+    );
+
+    expect(result.exercises[0]?.sets[0]).toMatchObject({ reps: 500, weightKg: 500, distanceMeters: 200000 });
+    expect(result.exercises[0]?.sets[1]).toMatchObject({ reps: 0, weightKg: 0, durationSeconds: 0 });
+  });
+
+  it('rounds fractional reps and durations, since the API requires integers', () => {
+    const result = sanitizeUploadRequest(
+      upload([{ setIndex: 0, type: 'working', isCompleted: true, reps: 8.6, durationSeconds: 44.4 }]) as never,
+    );
+
+    expect(result.exercises[0]?.sets[0]).toMatchObject({ reps: 9, durationSeconds: 44 });
+  });
+
+  it('leaves in-range values, omitted fields and the rest of the request untouched', () => {
+    const request = upload([{ setIndex: 0, type: 'working', isCompleted: false, reps: 10, weightKg: 60.5 }]);
+
+    const result = sanitizeUploadRequest(request as never);
+
+    expect(result).toEqual(request);
+    expect('durationSeconds' in (result.exercises[0]?.sets[0] ?? {})).toBe(false);
+  });
+
+  it('does not mutate the request it was given', () => {
+    const request = upload([{ setIndex: 0, type: 'working', isCompleted: true, durationSeconds: 606000 }]);
+
+    sanitizeUploadRequest(request as never);
+
+    expect(request.exercises[0]?.sets[0]?.durationSeconds).toBe(606000);
+  });
+
+  it('applies the clamp inside toUploadRequest, so a new upload can never carry an out-of-range set', () => {
+    const base = session();
+    const edited = updateSet(base, 0, 0, { durationSeconds: 606000, reps: 9000 });
+
+    const request = toUploadRequest(edited, LATER, 60);
+
+    expect(request.exercises[0]?.sets[0]?.durationSeconds).toBe(86400);
+    expect(request.exercises[0]?.sets[0]?.reps).toBe(500);
+  });
+});
+
+describe('editing a timed set as mm:ss', () => {
+  it('replaces the minutes and keeps the seconds', () => {
+    expect(setDurationMinutes(95, '3')).toBe(3 * 60 + 35);
+  });
+
+  it('replaces the seconds and keeps the minutes', () => {
+    expect(setDurationSeconds(95, '20')).toBe(60 + 20);
+  });
+
+  it('caps the seconds field at 59, so 90 typed into it cannot roll into the minutes unseen', () => {
+    expect(setDurationSeconds(60, '90')).toBe(60 + 59);
+  });
+
+  it('caps the minutes so a mistyped number cannot exceed what the API accepts', () => {
+    expect(setDurationMinutes(0, '10100')).toBe(1439 * 60);
+    expect(setDurationMinutes(59, '99999')).toBeLessThanOrEqual(86400);
+  });
+
+  it('treats an empty or non-numeric field as zero', () => {
+    expect(setDurationMinutes(125, '')).toBe(5);
+    expect(setDurationSeconds(125, 'abc')).toBe(120);
+  });
+
+  it('starts from zero when the set has no duration yet', () => {
+    expect(setDurationMinutes(null, '2')).toBe(120);
+    expect(setDurationSeconds(null, '30')).toBe(30);
   });
 });
