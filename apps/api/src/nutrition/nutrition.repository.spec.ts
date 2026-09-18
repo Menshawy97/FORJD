@@ -738,7 +738,8 @@ describe("NutritionRepository", () => {
       expect(result).toEqual({ deleted: 0, softDeleted: 1 });
       expect((await rowById(loggedId))?.deletedAt).not.toBeNull();
       expect(await repository.findFoodById(loggedId)).toBeNull();
-      expect(await repository.searchFoods(userId, "Test Banana logged", 5)).toEqual([]);
+      const found = await repository.searchFoods(userId, "Test Banana logged", 50);
+      expect(found.map((food) => food.id)).not.toContain(loggedId);
     });
 
     it("soft-deletes a food that a saved meal references, leaving the saved meal's item intact", async () => {
@@ -767,6 +768,7 @@ describe("NutritionRepository", () => {
         name: `Custom ${randomUUID()}`,
         category: "snacks",
         macrosPer100g: { kcal: 100, protein: 1, carbs: 1, fat: 1 },
+        servings: [],
       });
       createdFoodIds.push(custom.id);
 

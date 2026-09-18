@@ -141,6 +141,8 @@ export class NutritionRepository {
           proteinPer100g: input.macrosPer100g.protein.toString(),
           carbsPer100g: input.macrosPer100g.carbs.toString(),
           fatPer100g: input.macrosPer100g.fat.toString(),
+          // A food that was pruned (soft-deleted) and later reappears in the snapshot comes back.
+          deletedAt: null,
           updatedAt: sql`now()`,
         },
       })
@@ -202,6 +204,8 @@ export class NutritionRepository {
           proteinPer100g: sql`excluded.protein_per_100g`,
           carbsPer100g: sql`excluded.carbs_per_100g`,
           fatPer100g: sql`excluded.fat_per_100g`,
+          // See createCatalogueFood: a pruned food that reappears in the snapshot comes back.
+          deletedAt: null,
           updatedAt: sql`now()`,
         },
       })
@@ -234,6 +238,75 @@ export class NutritionRepository {
     if (servingRows.length > 0) {
       await this.db.insert(foodServings).values(servingRows);
     }
+  }
+
+  /** How many active (not soft-deleted) catalogue foods exist for `source`; the prune guard's denominator. */
+  async countCatalogueFoods(source: string): Promise<number> {
+    const [row] = await this.db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(foods)
+      .where(and(isNull(foods.ownerUserId), eq(foods.source, source), isNull(foods.deletedAt)));
+    return row?.total ?? 0;
+  }
+
+  private static readonly PRUNE_CHUNK_SIZE = 500;
+
+  /**
+   * Makes the catalogue match a snapshot: removes every active catalogue food of `source` whose
+   * `sourceId` is not in `keepSourceIds`, so a food dropped from the snapshot (a new curation rule,
+   * a re-vendor) leaves the database too -- the upsert alone never removes anything.
+   *
+   * Only `owner_user_id IS NULL` rows of this `source` are considered, so a user's custom foods and
+   * any other source are never touched.
+   *
+   * A food a log entry or saved meal still references is soft-deleted instead of deleted:
+   * `nutrition_log_entries.food_id` is `ON DELETE RESTRICT`, and `saved_meal_items.food_id`
+   * cascades, which would silently erase items from a user's saved meal. A soft-deleted food is
+   * hidden from search and `findFoodById`, but a saved meal that contains it still logs
+   * (`mustFindFoodRow` does not filter `deleted_at`). The upsert restores it if it reappears.
+   */
+  async pruneCatalogueFoods(
+    source: string,
+    keepSourceIds: readonly string[],
+  ): Promise<{ deleted: number; softDeleted: number }> {
+    const keep = new Set(keepSourceIds);
+    const active = await this.db
+      .select({ id: foods.id, sourceId: foods.sourceId })
+      .from(foods)
+      .where(and(isNull(foods.ownerUserId), eq(foods.source, source), isNull(foods.deletedAt)));
+    const staleIds = active
+      .filter((row) => row.sourceId !== null && !keep.has(row.sourceId))
+      .map((row) => row.id);
+
+    let deleted = 0;
+    let softDeleted = 0;
+    for (let i = 0; i < staleIds.length; i += NutritionRepository.PRUNE_CHUNK_SIZE) {
+      const chunk = staleIds.slice(i, i + NutritionRepository.PRUNE_CHUNK_SIZE);
+
+      // Unreferenced foods go for good (their servings cascade). Checked in the DELETE itself, not
+      // in JS beforehand, so a log entry created mid-prune can't slip between check and delete.
+      const removed = await this.db
+        .delete(foods)
+        .where(
+          and(
+            inArray(foods.id, chunk),
+            sql`not exists (select 1 from ${nutritionLogEntries} where ${nutritionLogEntries.foodId} = ${foods.id})`,
+            sql`not exists (select 1 from ${savedMealItems} where ${savedMealItems.foodId} = ${foods.id})`,
+          ),
+        )
+        .returning({ id: foods.id });
+      deleted += removed.length;
+
+      // Whatever survived the delete is referenced: hide it instead.
+      const hidden = await this.db
+        .update(foods)
+        .set({ deletedAt: sql`now()` })
+        .where(and(inArray(foods.id, chunk), isNull(foods.deletedAt)))
+        .returning({ id: foods.id });
+      softDeleted += hidden.length;
+    }
+
+    return { deleted, softDeleted };
   }
 
   async createCustomFood(ownerUserId: string, input: CreateCustomFoodInput): Promise<Food> {
