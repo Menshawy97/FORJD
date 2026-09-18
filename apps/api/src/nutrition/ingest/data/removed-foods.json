@@ -1,0 +1,2894 @@
+{
+  "count": 530,
+  "removed": [
+    {
+      "sourceId": "1104647",
+      "name": "Garlic, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169230"
+    },
+    {
+      "sourceId": "1105073",
+      "name": "Bananas, overripe, raw",
+      "reason": "duplicate",
+      "keptSourceId": "790774"
+    },
+    {
+      "sourceId": "1105314",
+      "name": "Bananas, ripe and slightly ripe, raw",
+      "reason": "duplicate",
+      "keptSourceId": "790991"
+    },
+    {
+      "sourceId": "167657",
+      "name": "ON THE BORDER, soft taco with ground beef, cheese and lettuce",
+      "reason": "blocked: On The Border (not in Egypt)"
+    },
+    {
+      "sourceId": "167658",
+      "name": "Restaurant, Mexican, soft taco with ground beef, cheese and lettuce",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167659",
+      "name": "Restaurant, Latino, chicken and rice, entree, prepared",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167660",
+      "name": "Restaurant, Latino, empanadas, beef, prepared",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167661",
+      "name": "Restaurant, Latino, pupusas con frijoles (pupusas, bean)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167662",
+      "name": "Restaurant, Latino, pupusas con queso (pupusas, cheese)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167663",
+      "name": "Restaurant, Latino, pupusas del cerdo (pupusas, pork)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167664",
+      "name": "Restaurant, Latino, tamale, corn",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167665",
+      "name": "Restaurant, Mexican, spanish rice",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167666",
+      "name": "Restaurant, Mexican, refried beans",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167667",
+      "name": "Restaurant, Chinese, egg rolls, assorted",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167668",
+      "name": "Restaurant, Chinese, fried rice, without meat",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167669",
+      "name": "CRACKER BARREL, steak fries",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "167670",
+      "name": "CRACKER BARREL, grilled sirloin steak",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "167671",
+      "name": "CRACKER BARREL, macaroni n' cheese plate, from kid's menu",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "167672",
+      "name": "DENNY'S, french fries",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "167673",
+      "name": "DENNY'S, top sirloin steak",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "167674",
+      "name": "Restaurant, Chinese, lemon chicken",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167675",
+      "name": "Restaurant, Chinese, general tso's chicken",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167676",
+      "name": "Restaurant, Chinese, kung pao chicken",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167677",
+      "name": "Restaurant, Chinese, vegetable lo mein, without meat",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167678",
+      "name": "Restaurant, Chinese, chicken and vegetables",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167679",
+      "name": "Restaurant, Chinese, orange chicken",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167680",
+      "name": "Restaurant, Italian, spaghetti with meat sauce",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "167776",
+      "name": "Pears, raw, bartlett (Includes foods for USDA's Food Distribution Program)",
+      "reason": "duplicate",
+      "keptSourceId": "332597"
+    },
+    {
+      "sourceId": "168062",
+      "name": "Restaurant, Italian, chicken parmesan without pasta",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168063",
+      "name": "Restaurant, Latino, arroz con leche (rice pudding)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168064",
+      "name": "Restaurant, Latino, Arroz con frijoles negros (rice and black beans)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168065",
+      "name": "Restaurant, Latino, Arroz con habichuelas colorados (Rice And Red Beans)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168066",
+      "name": "Restaurant, Latino, Arroz con grandules (rice and pigeonpeas)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168067",
+      "name": "Restaurant, Latino, tamale, pork",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168068",
+      "name": "Restaurant, Latino, black bean soup",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168069",
+      "name": "Restaurant, Latino, tripe soup",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168070",
+      "name": "Restaurant, Latino, arepa (unleavened cornmeal bread)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168071",
+      "name": "Restaurant, Latino, bunuelos (fried yeast bread)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168072",
+      "name": "Restaurant, Chinese, beef and vegetables",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168073",
+      "name": "CRACKER BARREL, chicken tenderloin platter, fried, from kid's menu",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "168074",
+      "name": "CRACKER BARREL, country fried shrimp platter",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "168075",
+      "name": "CRACKER BARREL, farm raised catfish platter",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "168076",
+      "name": "DENNY'S, mozzarella cheese sticks",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "168077",
+      "name": "DENNY'S, golden fried shrimp",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "168078",
+      "name": "DENNY'S, macaroni & cheese, from kid's menu",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "168079",
+      "name": "DENNY'S, chicken nuggets, star shaped, from kid's menu",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "168080",
+      "name": "Restaurant, Chinese, shrimp and vegetables",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168081",
+      "name": "Restaurant, Chinese, sweet and sour chicken",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168082",
+      "name": "Restaurant, Chinese, sweet and sour pork",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168083",
+      "name": "Restaurant, Chinese, chicken chow mein",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168084",
+      "name": "Restaurant, Chinese, vegetable chow mein, without meat or noodles",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168085",
+      "name": "OLIVE GARDEN, spaghetti with meat sauce",
+      "reason": "blocked: Olive Garden (not in Egypt)"
+    },
+    {
+      "sourceId": "168086",
+      "name": "CARRABBA'S ITALIAN GRILL, spaghetti with meat sauce",
+      "reason": "blocked: Carrabba's (not in Egypt)"
+    },
+    {
+      "sourceId": "168087",
+      "name": "Restaurant, Chinese, sesame chicken",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "168421",
+      "name": "Kale, raw",
+      "reason": "duplicate",
+      "keptSourceId": "323505"
+    },
+    {
+      "sourceId": "168558",
+      "name": "Pickles, cucumber, dill or kosher dill",
+      "reason": "duplicate",
+      "keptSourceId": "324653"
+    },
+    {
+      "sourceId": "168596",
+      "name": "Nuts, almonds, dry roasted, with salt added",
+      "reason": "duplicate",
+      "keptSourceId": "323294"
+    },
+    {
+      "sourceId": "168620",
+      "name": "Beef, short loin, t-bone steak, bone-in, separable lean only, trimmed to 1/8\"\" fat, choice, cooked, grilled",
+      "reason": "duplicate",
+      "keptSourceId": "335061"
+    },
+    {
+      "sourceId": "168640",
+      "name": "Beef, short loin, porterhouse steak, separable lean only, trimmed to 1/8\"\" fat, select, raw",
+      "reason": "duplicate",
+      "keptSourceId": "335109"
+    },
+    {
+      "sourceId": "169008",
+      "name": "APPLEBEE'S, Double Crunch Shrimp",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169009",
+      "name": "APPLEBEE'S, french fries",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169010",
+      "name": "APPLEBEE'S, KRAFT, Macaroni & Cheese, from kid's menu",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169011",
+      "name": "APPLEBEE'S, mozzarella sticks",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169012",
+      "name": "APPLEBEE'S, chicken tenders, from kids' menu",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169015",
+      "name": "Restaurant, family style, fried mozzarella sticks",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169016",
+      "name": "Restaurant, family style, sirloin steak",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169017",
+      "name": "APPLEBEE'S, fish, hand battered",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169018",
+      "name": "APPLEBEE'S, chili",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169020",
+      "name": "APPLEBEE'S, coleslaw",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169021",
+      "name": "CRACKER BARREL, onion rings, thick-cut",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "169022",
+      "name": "DENNY'S, chicken strips",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "169023",
+      "name": "DENNY'S, coleslaw",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "169024",
+      "name": "DENNY'S, fish fillet, battered or breaded, fried",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "169025",
+      "name": "DENNY'S, hash browns",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "169026",
+      "name": "Restaurant, family style, coleslaw",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169027",
+      "name": "Restaurant, family style, onion rings",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169028",
+      "name": "Restaurant, family style, chili with meat and beans",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169029",
+      "name": "Restaurant, family style, spaghetti and meatballs",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169030",
+      "name": "CARRABBA'S ITALIAN GRILL, lasagne",
+      "reason": "blocked: Carrabba's (not in Egypt)"
+    },
+    {
+      "sourceId": "169031",
+      "name": "ON THE BORDER, Mexican rice",
+      "reason": "blocked: On The Border (not in Egypt)"
+    },
+    {
+      "sourceId": "169032",
+      "name": "ON THE BORDER, refried beans",
+      "reason": "blocked: On The Border (not in Egypt)"
+    },
+    {
+      "sourceId": "169033",
+      "name": "Restaurant, Italian, spaghetti with pomodoro sauce (no meat)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169034",
+      "name": "ON THE BORDER, cheese quesadilla",
+      "reason": "blocked: On The Border (not in Egypt)"
+    },
+    {
+      "sourceId": "169035",
+      "name": "Restaurant, Mexican, cheese quesadilla",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169036",
+      "name": "CARRABBA'S ITALIAN GRILL, cheese ravioli with marinara sauce",
+      "reason": "blocked: Carrabba's (not in Egypt)"
+    },
+    {
+      "sourceId": "169037",
+      "name": "OLIVE GARDEN, cheese ravioli with marinara sauce",
+      "reason": "blocked: Olive Garden (not in Egypt)"
+    },
+    {
+      "sourceId": "169038",
+      "name": "Restaurant, Italian, cheese ravioli with marinara sauce",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169092",
+      "name": "Melons, cantaloupe, raw",
+      "reason": "duplicate",
+      "keptSourceId": "327198"
+    },
+    {
+      "sourceId": "169143",
+      "name": "Beans, snap, green, canned, regular pack, drained solids",
+      "reason": "duplicate",
+      "keptSourceId": "321611"
+    },
+    {
+      "sourceId": "169240",
+      "name": "Kale, frozen, cooked, boiled, drained, without salt",
+      "reason": "duplicate",
+      "keptSourceId": "326196"
+    },
+    {
+      "sourceId": "169247",
+      "name": "Lettuce, cos or romaine, raw",
+      "reason": "duplicate",
+      "keptSourceId": "327923"
+    },
+    {
+      "sourceId": "169404",
+      "name": "Broccoli, chinese, raw",
+      "reason": "duplicate",
+      "keptSourceId": "2709657"
+    },
+    {
+      "sourceId": "169418",
+      "name": "Seeds, sunflower seed kernels, dry roasted, with salt added",
+      "reason": "duplicate",
+      "keptSourceId": "325524"
+    },
+    {
+      "sourceId": "169655",
+      "name": "Sugars, granulated",
+      "reason": "duplicate",
+      "keptSourceId": "334247"
+    },
+    {
+      "sourceId": "169831",
+      "name": "APPLEBEE'S, 9 oz house sirloin steak",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169836",
+      "name": "Restaurant, family style, french fries",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169837",
+      "name": "Restaurant, family style, chicken fingers, from kid's menu",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169838",
+      "name": "Restaurant, family style, shrimp, breaded and fried",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169839",
+      "name": "Restaurant, family style, macaroni & cheese, from kids' menu",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169840",
+      "name": "APPLEBEE'S, crunchy onion rings",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169841",
+      "name": "APPLEBEE'S, chicken tenders platter",
+      "reason": "blocked: Applebee's (not in Egypt)"
+    },
+    {
+      "sourceId": "169842",
+      "name": "CRACKER BARREL, chicken tenderloin platter, fried",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "169843",
+      "name": "CRACKER BARREL, coleslaw",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "169844",
+      "name": "DENNY'S, onion rings",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "169845",
+      "name": "DENNY'S, spaghetti and meatballs",
+      "reason": "blocked: Denny's (not in Egypt)"
+    },
+    {
+      "sourceId": "169846",
+      "name": "Restaurant, family style, fish fillet, battered or breaded, fried",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169847",
+      "name": "Restaurant, family style, chicken tenders",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169848",
+      "name": "Restaurant, family style, hash browns",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169849",
+      "name": "CRACKER BARREL, macaroni n' cheese",
+      "reason": "blocked: Cracker Barrel (not in Egypt)"
+    },
+    {
+      "sourceId": "169850",
+      "name": "Restaurant, Italian, lasagna with meat",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169851",
+      "name": "OLIVE GARDEN, lasagna classico",
+      "reason": "blocked: Olive Garden (not in Egypt)"
+    },
+    {
+      "sourceId": "169852",
+      "name": "OLIVE GARDEN, spaghetti with pomodoro sauce",
+      "reason": "blocked: Olive Garden (not in Egypt)"
+    },
+    {
+      "sourceId": "169853",
+      "name": "CARRABBA'S ITALIAN GRILL, spaghetti with pomodoro sauce",
+      "reason": "blocked: Carrabba's (not in Egypt)"
+    },
+    {
+      "sourceId": "169854",
+      "name": "ON THE BORDER, cheese enchilada",
+      "reason": "blocked: On The Border (not in Egypt)"
+    },
+    {
+      "sourceId": "169855",
+      "name": "Restaurant, Mexican, cheese enchilada",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169856",
+      "name": "Restaurant, Mexican, cheese tamales",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "169857",
+      "name": "CARRABBA'S ITALIAN GRILL, chicken parmesan without cavatappi pasta",
+      "reason": "blocked: Carrabba's (not in Egypt)"
+    },
+    {
+      "sourceId": "169858",
+      "name": "OLIVE GARDEN, chicken parmigiana without pasta",
+      "reason": "blocked: Olive Garden (not in Egypt)"
+    },
+    {
+      "sourceId": "169914",
+      "name": "Nectarines, raw",
+      "reason": "duplicate",
+      "keptSourceId": "327357"
+    },
+    {
+      "sourceId": "169917",
+      "name": "Oranges, raw, navels (Includes foods for USDA's Food Distribution Program)",
+      "reason": "duplicate",
+      "keptSourceId": "327501"
+    },
+    {
+      "sourceId": "169928",
+      "name": "Peaches, yellow, raw",
+      "reason": "duplicate",
+      "keptSourceId": "325430"
+    },
+    {
+      "sourceId": "170291",
+      "name": "Fast foods, nachos, with cheese",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170292",
+      "name": "Fast foods, nachos, with cheese, beans, ground beef, and tomatoes",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170293",
+      "name": "Fast foods, cheeseburger, double, regular patty and bun, with condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170294",
+      "name": "Fast foods, cheeseburger; single, large patty; plain",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170295",
+      "name": "Fast foods, chicken fillet sandwich, plain with pickles",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170296",
+      "name": "Fast foods, fish sandwich, with tartar sauce",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170297",
+      "name": "Fast foods, fish sandwich, with tartar sauce and cheese",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170298",
+      "name": "Fast foods, submarine sandwich, roast beef on white bread with lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170299",
+      "name": "Fast foods, submarine sandwich, tuna on white bread with lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170300",
+      "name": "Fast foods, coleslaw",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170301",
+      "name": "Fast foods, hush puppies",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170302",
+      "name": "Fast food, biscuit",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170303",
+      "name": "CHICK-FIL-A, Chick-n-Strips",
+      "reason": "blocked: Chick-fil-A (not in Egypt)"
+    },
+    {
+      "sourceId": "170304",
+      "name": "CHICK-FIL-A, hash browns",
+      "reason": "blocked: Chick-fil-A (not in Egypt)"
+    },
+    {
+      "sourceId": "170305",
+      "name": "School Lunch, pizza, BIG DADDY'S LS 16\"\" 51% Whole Grain Rolled Edge Cheese Pizza, frozen",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170306",
+      "name": "Fast foods, submarine sandwich, sweet onion chicken teriyaki on white bread with lettuce, tomato and sweet onion sauce",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170308",
+      "name": "Fast foods, submarine sandwich, turkey, roast beef and ham on white bread with lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170309",
+      "name": "Fast foods, submarine sandwich, oven roasted chicken on white bread with lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170311",
+      "name": "Fast foods, submarine sandwich, steak and cheese on white bread with cheese, lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170313",
+      "name": "Fast foods, submarine sandwich, bacon, lettuce, and tomato on white bread",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170318",
+      "name": "Fast Foods, crispy chicken filet sandwich, with lettuce and mayonnaise",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170332",
+      "name": "TACO BELL, Original Taco with beef, cheese and lettuce",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170333",
+      "name": "TACO BELL, Soft Taco with beef, cheese and lettuce",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170334",
+      "name": "TACO BELL, BURRITO SUPREME with chicken",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170335",
+      "name": "TACO BELL, BURRITO SUPREME with steak",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170336",
+      "name": "TACO BELL, Nachos",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170337",
+      "name": "TACO BELL, Nachos Supreme",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170338",
+      "name": "POPEYES, Spicy Chicken Strips, analyzed 2006",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170350",
+      "name": "POPEYES, Fried Chicken, Mild, Skin and Breading",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170351",
+      "name": "POPEYES, Fried Chicken, Mild, Thigh, meat only, skin and breading removed",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170352",
+      "name": "POPEYES, Fried Chicken, Mild, Wing, meat only, skin and breading removed",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170353",
+      "name": "POPEYES, Fried Chicken, Mild, Breast, meat and skin with breading",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170354",
+      "name": "POPEYES, Fried Chicken, Mild, Drumstick, meat and skin with breading",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170356",
+      "name": "Fast Foods, Fried Chicken, Breast, meat only, skin and breading removed",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170357",
+      "name": "Fast Foods, Fried Chicken, Drumstick, meat only, skin and breading removed",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170358",
+      "name": "Fast Foods, Fried Chicken, Thigh, meat only, skin and breading removed",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170359",
+      "name": "Fast Foods, Fried Chicken, Thigh, meat and skin and breading",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170360",
+      "name": "Fast Foods, Fried Chicken, Wing, meat and skin and breading",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170361",
+      "name": "DIGIORNO Pizza, cheese topping, cheese stuffed crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170362",
+      "name": "DIGIORNO Pizza, cheese topping, rising crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170363",
+      "name": "DIGIORNO Pizza, supreme topping, rising crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170364",
+      "name": "DIGIORNO Pizza, supreme topping, thin crispy crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170365",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, sausage topping, thick crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170366",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, sausage topping, thin crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170367",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, sausage topping, regular crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170368",
+      "name": "Fast Foods, grilled chicken filet sandwich, with lettuce, tomato and spread",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170379",
+      "name": "Broccoli, raw",
+      "reason": "duplicate",
+      "keptSourceId": "321900"
+    },
+    {
+      "sourceId": "170415",
+      "name": "Onion rings, breaded, par fried, frozen, prepared, heated in oven",
+      "reason": "duplicate",
+      "keptSourceId": "324317"
+    },
+    {
+      "sourceId": "170679",
+      "name": "Sweetener, herbal extract powder from Stevia leaf",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "170689",
+      "name": "Fast foods, taco with beef, cheese and lettuce, hard shell",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170690",
+      "name": "Fast foods, cheeseburger; single, regular patty; plain",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170691",
+      "name": "Fast foods, cheeseburger; single, regular patty, with condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170692",
+      "name": "Fast foods, cheeseburger; single, regular patty, with condiments and vegetables",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170693",
+      "name": "Fast foods, hamburger; single, regular patty; plain",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170694",
+      "name": "Fast foods, hamburger; single, regular patty; with condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170695",
+      "name": "Fast foods, roast beef sandwich, plain",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170696",
+      "name": "Fast foods, submarine sandwich, cold cut on white bread with lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170697",
+      "name": "Fast foods, onion rings, breaded and fried",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170698",
+      "name": "Fast foods, potato, french fried in vegetable oil",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170699",
+      "name": "Fast foods, potato, mashed",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170701",
+      "name": "School Lunch, pizza, BIG DADDY'S LS 16\"\" 51% Whole Grain Rolled Edge Turkey Pepperoni Pizza, frozen",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170702",
+      "name": "School Lunch, pizza, TONY'S SMARTPIZZA Whole Grain 4x6 Cheese Pizza 50/50 Cheese, frozen",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170703",
+      "name": "School Lunch, pizza, TONY'S SMARTPIZZA Whole Grain 4x6 Pepperoni Pizza 50/50 Cheese, frozen",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170704",
+      "name": "School Lunch, pizza, TONY'S Breakfast Pizza Sausage, frozen",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170706",
+      "name": "Fast foods, submarine sandwich, turkey breast on white bread with lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170707",
+      "name": "Fast foods, submarine sandwich, ham on white bread with lettuce and tomato",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170709",
+      "name": "Fast foods, submarine sandwich, meatball marinara on white bread",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170710",
+      "name": "Fast foods, hamburger, large, single patty, with condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170718",
+      "name": "Fast foods, chicken, breaded and fried, boneless pieces, plain",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170732",
+      "name": "TACO BELL, Soft Taco with chicken, cheese and lettuce",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170733",
+      "name": "TACO BELL, Soft Taco with steak",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170734",
+      "name": "TACO BELL, Bean Burrito",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170735",
+      "name": "TACO BELL, BURRITO SUPREME with beef",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170736",
+      "name": "TACO BELL, Taco Salad",
+      "reason": "blocked: Taco Bell (not in Egypt)"
+    },
+    {
+      "sourceId": "170748",
+      "name": "POPEYES, Fried Chicken, Mild, Breast, meat only, skin and breading removed",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170749",
+      "name": "POPEYES, Fried Chicken, Mild, Drumstick, meat only, skin and breading removed",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170750",
+      "name": "POPEYES, Fried Chicken, Mild, Thigh, meat and skin with breading",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170751",
+      "name": "POPEYES, Fried Chicken, Mild, Wing, meat and skin with breading",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "170752",
+      "name": "Fast foods, grilled chicken, bacon and tomato club sandwich, with cheese, lettuce, and mayonnaise",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170753",
+      "name": "Fast foods, crispy chicken, bacon, and tomato club sandwich, with cheese, lettuce, and mayonnaise",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170754",
+      "name": "Fast Foods, Fried Chicken, Wing, meat only, skin and breading removed",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170755",
+      "name": "Fast Foods, Fried Chicken, Skin and breading from all pieces",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170756",
+      "name": "Fast Foods, Fried Chicken, Breast, meat and skin and breading",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170757",
+      "name": "Fast Foods, Fried Chicken, Drumstick, meat and skin with breading",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170758",
+      "name": "DIGIORNO Pizza, cheese topping, thin crispy crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170759",
+      "name": "DIGIORNO Pizza, pepperoni topping, cheese stuffed crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170760",
+      "name": "DIGIORNO Pizza, pepperoni topping, rising crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170761",
+      "name": "DIGIORNO Pizza, pepperoni topping, thin crispy crust, frozen, baked",
+      "reason": "blocked: DiGiorno frozen pizza (US supermarket brand)"
+    },
+    {
+      "sourceId": "170762",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, pepperoni topping, thin crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170763",
+      "name": "Fast foods, taco with beef, cheese and lettuce, soft",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170764",
+      "name": "Fast foods, taco with chicken, lettuce and cheese, soft",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170765",
+      "name": "Fast foods, quesadilla, with chicken",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170773",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, cheese topping, stuffed crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170775",
+      "name": "Fast foods, strawberry banana smoothie made with ice and low-fat yogurt",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170779",
+      "name": "School Lunch, pizza, cheese topping, thick crust, whole grain, frozen, cooked",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170780",
+      "name": "School Lunch, pizza, pepperoni topping, thin crust, whole grain, frozen, cooked",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170781",
+      "name": "School Lunch, pizza, pepperoni topping, thick crust, whole grain, frozen, cooked",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170782",
+      "name": "School Lunch, pizza, sausage topping, thin crust, whole grain, frozen, cooked",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170785",
+      "name": "Fast foods, crispy chicken in tortilla, with lettuce, cheese, and ranch sauce",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170786",
+      "name": "Fast foods, grilled chicken in tortilla, with lettuce, cheese, and ranch sauce",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170787",
+      "name": "Fast foods, breakfast burrito, with egg, cheese, and sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170788",
+      "name": "Fast foods, breadstick, soft, prepared with garlic and parmesan cheese",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "170790",
+      "name": "CHICK-FIL-A, chicken sandwich",
+      "reason": "blocked: Chick-fil-A (not in Egypt)"
+    },
+    {
+      "sourceId": "170791",
+      "name": "ARBY'S, roast beef sandwich, classic",
+      "reason": "blocked: Arby's (not in Egypt)"
+    },
+    {
+      "sourceId": "170792",
+      "name": "School Lunch, pizza, cheese topping, thin crust, whole grain, frozen, cooked",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170793",
+      "name": "School Lunch, pizza, sausage topping, thick crust, whole grain, frozen, cooked",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170794",
+      "name": "School Lunch, chicken patty, whole grain breaded",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170795",
+      "name": "School Lunch, chicken nuggets, whole grain breaded",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "170851",
+      "name": "Cheese, ricotta, whole milk",
+      "reason": "duplicate",
+      "keptSourceId": "323444"
+    },
+    {
+      "sourceId": "170872",
+      "name": "Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D",
+      "reason": "duplicate",
+      "keptSourceId": "322228"
+    },
+    {
+      "sourceId": "170901",
+      "name": "Yogurt, Greek, strawberry, nonfat",
+      "reason": "duplicate",
+      "keptSourceId": "330415"
+    },
+    {
+      "sourceId": "171140",
+      "name": "Chicken, broiler or fryers, breast, skinless, boneless, meat only, cooked, braised",
+      "reason": "duplicate",
+      "keptSourceId": "331960"
+    },
+    {
+      "sourceId": "171192",
+      "name": "Sauce, pasta, spaghetti/marinara, ready-to-serve",
+      "reason": "duplicate",
+      "keptSourceId": "332282"
+    },
+    {
+      "sourceId": "171244",
+      "name": "Cheese, mozzarella, low moisture, part-skim",
+      "reason": "duplicate",
+      "keptSourceId": "329370"
+    },
+    {
+      "sourceId": "171247",
+      "name": "Cheese, parmesan, grated",
+      "reason": "duplicate",
+      "keptSourceId": "325036"
+    },
+    {
+      "sourceId": "171251",
+      "name": "Cheese, swiss",
+      "reason": "duplicate",
+      "keptSourceId": "326135"
+    },
+    {
+      "sourceId": "171265",
+      "name": "Milk, whole, 3.25% milkfat, with added vitamin D",
+      "reason": "duplicate",
+      "keptSourceId": "322892"
+    },
+    {
+      "sourceId": "171267",
+      "name": "Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D",
+      "reason": "duplicate",
+      "keptSourceId": "321359"
+    },
+    {
+      "sourceId": "171269",
+      "name": "Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim)",
+      "reason": "duplicate",
+      "keptSourceId": "322559"
+    },
+    {
+      "sourceId": "171304",
+      "name": "Yogurt, Greek, plain, whole milk",
+      "reason": "duplicate",
+      "keptSourceId": "2259794"
+    },
+    {
+      "sourceId": "171412",
+      "name": "Oil, coconut",
+      "reason": "duplicate",
+      "keptSourceId": "330458"
+    },
+    {
+      "sourceId": "171761",
+      "name": "Beef, round, eye of round roast, boneless, separable lean only, trimmed to 0\"\" fat, select, raw",
+      "reason": "duplicate",
+      "keptSourceId": "334898"
+    },
+    {
+      "sourceId": "171964",
+      "name": "Fish, haddock, raw",
+      "reason": "duplicate",
+      "keptSourceId": "333374"
+    },
+    {
+      "sourceId": "172028",
+      "name": "Fast Foods, biscuit, with egg and sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172029",
+      "name": "Fast foods, biscuit, with egg, cheese, and bacon",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172030",
+      "name": "Fast foods, biscuit, with ham",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172031",
+      "name": "Fast foods, biscuit, with sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172032",
+      "name": "Fast foods, english muffin, with cheese and sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172033",
+      "name": "Fast foods, english muffin, with egg, cheese, and canadian bacon",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172034",
+      "name": "Fast foods, english muffin, with egg, cheese, and sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172035",
+      "name": "Fast foods, french toast sticks",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172036",
+      "name": "Fast foods, sundae, strawberry",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172037",
+      "name": "Fast foods, shrimp, breaded and fried",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172038",
+      "name": "Fast foods, burrito, with beans",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172039",
+      "name": "Fast foods, burrito, with beans and cheese",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172047",
+      "name": "LITTLE CAESARS 14\"\" Original Round Cheese Pizza, Regular Crust",
+      "reason": "blocked: Little Caesars (removed by product decision)"
+    },
+    {
+      "sourceId": "172048",
+      "name": "LITTLE CAESARS 14\"\" Original Round Pepperoni Pizza, Regular Crust",
+      "reason": "blocked: Little Caesars (removed by product decision)"
+    },
+    {
+      "sourceId": "172049",
+      "name": "LITTLE CAESARS 14\"\" Original Round Meat and Vegetable Pizza, Regular Crust",
+      "reason": "blocked: Little Caesars (removed by product decision)"
+    },
+    {
+      "sourceId": "172050",
+      "name": "LITTLE CAESARS 14\"\" Cheese Pizza, Large Deep Dish Crust",
+      "reason": "blocked: Little Caesars (removed by product decision)"
+    },
+    {
+      "sourceId": "172055",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, meat and vegetable topping, regular crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172056",
+      "name": "Fast foods, griddle cake sandwich, egg, cheese, and sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172057",
+      "name": "Fast foods, griddle cake sandwich, sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172058",
+      "name": "Fast foods, griddle cake sandwich, egg, cheese, and bacon",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172079",
+      "name": "Fast foods, miniature cinnamon rolls",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172080",
+      "name": "Fast foods, hamburger; double, large patty; with condiments, vegetables and mayonnaise",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172081",
+      "name": "Fast foods, cheeseburger; single, large patty; with condiments, vegetables and mayonnaise",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172082",
+      "name": "Fast foods, cheeseburger; single, large patty; with condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172083",
+      "name": "Fast Foods, cheeseburger; double, large patty; with condiments, vegetables and mayonnaise",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172084",
+      "name": "Fast foods, cheeseburger; double, regular patty; double decker bun with condiments and special sauce",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "172086",
+      "name": "POPEYES, biscuit",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "172087",
+      "name": "POPEYES, Coleslaw",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "172088",
+      "name": "POPEYES, Mild Chicken Strips, analyzed 2006",
+      "reason": "blocked: Popeyes (removed by product decision)"
+    },
+    {
+      "sourceId": "172182",
+      "name": "Cheese, cottage, lowfat, 2% milkfat",
+      "reason": "duplicate",
+      "keptSourceId": "328841"
+    },
+    {
+      "sourceId": "172188",
+      "name": "Egg, whole, dried",
+      "reason": "duplicate",
+      "keptSourceId": "329490"
+    },
+    {
+      "sourceId": "172203",
+      "name": "Egg, white, raw, frozen, pasteurized",
+      "reason": "duplicate",
+      "keptSourceId": "323697"
+    },
+    {
+      "sourceId": "172204",
+      "name": "Egg, white, dried",
+      "reason": "duplicate",
+      "keptSourceId": "323793"
+    },
+    {
+      "sourceId": "172222",
+      "name": "Cheese, dry white, queso seco",
+      "reason": "duplicate",
+      "keptSourceId": "329830"
+    },
+    {
+      "sourceId": "172234",
+      "name": "Mustard, prepared, yellow",
+      "reason": "duplicate",
+      "keptSourceId": "326698"
+    },
+    {
+      "sourceId": "172242",
+      "name": "Seasoning mix, dry, sazon, coriander & annatto",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "172253",
+      "name": "Babyfood, water, bottled, GERBER, without added fluoride",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "172688",
+      "name": "Bread, whole-wheat, commercially prepared",
+      "reason": "duplicate",
+      "keptSourceId": "335240"
+    },
+    {
+      "sourceId": "172851",
+      "name": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles",
+      "reason": "duplicate",
+      "keptSourceId": "330869"
+    },
+    {
+      "sourceId": "173266",
+      "name": "Fast foods, biscuit, with egg and bacon",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173267",
+      "name": "Fast foods, biscuit, with egg and ham",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173268",
+      "name": "Fast foods, biscuit, with crispy chicken fillet",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173269",
+      "name": "Fast foods, croissant, with egg, cheese, and bacon",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173270",
+      "name": "Fast foods, croissant, with egg, cheese, and ham",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173271",
+      "name": "Fast foods, croissant, with egg, cheese, and sausage",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173272",
+      "name": "Fast foods, egg, scrambled",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173273",
+      "name": "Fast foods, potatoes, hash browns, round pieces or patty",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173274",
+      "name": "Fast foods, vanilla, light, soft-serve ice cream, with cone",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173275",
+      "name": "Fast foods, sundae, caramel",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173276",
+      "name": "Fast foods, sundae, hot fudge",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173277",
+      "name": "Fast foods, burrito, with beans and beef",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173278",
+      "name": "Fast foods, burrito, with beans, cheese, and beef",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173288",
+      "name": "LITTLE CAESARS 14\"\" Pepperoni Pizza, Large Deep Dish Crust",
+      "reason": "blocked: Little Caesars (removed by product decision)"
+    },
+    {
+      "sourceId": "173289",
+      "name": "LITTLE CAESARS 14\"\" Cheese Pizza, Thin Crust",
+      "reason": "blocked: Little Caesars (removed by product decision)"
+    },
+    {
+      "sourceId": "173292",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, cheese topping, regular crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173293",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, cheese topping, thick crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173294",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, cheese topping, thin crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173295",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, pepperoni topping, regular crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173296",
+      "name": "Fast Food, Pizza Chain, 14\"\" pizza, pepperoni topping, thick crust",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173317",
+      "name": "Fast foods, hamburger; single, large patty; with condiments, vegetables and mayonnaise",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173318",
+      "name": "Fast foods, hamburger; single, regular patty; double decker bun with condiments and special sauce",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173319",
+      "name": "Fast foods, cheeseburger; double, regular patty; with condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173320",
+      "name": "Fast foods, cheeseburger; double, large patty; with condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173321",
+      "name": "Fast foods, chicken tenders",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173322",
+      "name": "Fast foods, bagel, with egg, sausage patty, cheese, and condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173323",
+      "name": "Fast foods, bagel, with breakfast steak, egg, cheese, and condiments",
+      "reason": "blocked: generic US fast food"
+    },
+    {
+      "sourceId": "173421",
+      "name": "Egg, yolk, raw, frozen, pasteurized",
+      "reason": "duplicate",
+      "keptSourceId": "329596"
+    },
+    {
+      "sourceId": "173428",
+      "name": "Egg, yolk, dried",
+      "reason": "duplicate",
+      "keptSourceId": "329716"
+    },
+    {
+      "sourceId": "173468",
+      "name": "Salt, table",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "173862",
+      "name": "Frankfurter, beef, unheated",
+      "reason": "duplicate",
+      "keptSourceId": "323121"
+    },
+    {
+      "sourceId": "173863",
+      "name": "Ham, sliced, pre-packaged, deli meat (96%fat free, water added)",
+      "reason": "duplicate",
+      "keptSourceId": "332397"
+    },
+    {
+      "sourceId": "173997",
+      "name": "Beef, round, top round roast, boneless, separable lean only, trimmed to 0\"\" fat, select, raw",
+      "reason": "duplicate",
+      "keptSourceId": "334963"
+    },
+    {
+      "sourceId": "174006",
+      "name": "Beef, loin, tenderloin roast, separable lean only, boneless, trimmed to 0\"\" fat, select, cooked, roasted",
+      "reason": "duplicate",
+      "keptSourceId": "334897"
+    },
+    {
+      "sourceId": "174010",
+      "name": "Beef, loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8\"\" fat, choice, raw",
+      "reason": "duplicate",
+      "keptSourceId": "334849"
+    },
+    {
+      "sourceId": "174289",
+      "name": "Hummus, commercial",
+      "reason": "duplicate",
+      "keptSourceId": "321358"
+    },
+    {
+      "sourceId": "174524",
+      "name": "Sauce, salsa, ready-to-serve",
+      "reason": "duplicate",
+      "keptSourceId": "324038"
+    },
+    {
+      "sourceId": "174586",
+      "name": "Sausage, Italian, pork, mild, cooked, pan-fried",
+      "reason": "duplicate",
+      "keptSourceId": "325658"
+    },
+    {
+      "sourceId": "174600",
+      "name": "Sausage, turkey, breakfast links, mild, raw",
+      "reason": "duplicate",
+      "keptSourceId": "325992"
+    },
+    {
+      "sourceId": "174616",
+      "name": "Sausage, breakfast sausage, beef, pre-cooked, unprepared",
+      "reason": "duplicate",
+      "keptSourceId": "324157"
+    },
+    {
+      "sourceId": "174665",
+      "name": "Figs, dried, uncooked",
+      "reason": "duplicate",
+      "keptSourceId": "326905"
+    },
+    {
+      "sourceId": "174678",
+      "name": "Grapefruit juice, white, canned or bottled, unsweetened",
+      "reason": "duplicate",
+      "keptSourceId": "325287"
+    },
+    {
+      "sourceId": "1750339",
+      "name": "Apples, red delicious, with skin, raw",
+      "reason": "duplicate",
+      "keptSourceId": "1105430"
+    },
+    {
+      "sourceId": "1750340",
+      "name": "Apples, fuji, with skin, raw",
+      "reason": "duplicate",
+      "keptSourceId": "1105897"
+    },
+    {
+      "sourceId": "1750341",
+      "name": "Apples, gala, with skin, raw",
+      "reason": "duplicate",
+      "keptSourceId": "1105781"
+    },
+    {
+      "sourceId": "1750342",
+      "name": "Apples, granny smith, with skin, raw",
+      "reason": "duplicate",
+      "keptSourceId": "1105664"
+    },
+    {
+      "sourceId": "1750343",
+      "name": "Apples, honeycrisp, with skin, raw",
+      "reason": "duplicate",
+      "keptSourceId": "1105547"
+    },
+    {
+      "sourceId": "175040",
+      "name": "Leavening agents, baking soda",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "1999626",
+      "name": "Mushroom, lion's mane",
+      "reason": "duplicate",
+      "keptSourceId": "1750344"
+    },
+    {
+      "sourceId": "1999627",
+      "name": "Mushroom, oyster",
+      "reason": "duplicate",
+      "keptSourceId": "1750345"
+    },
+    {
+      "sourceId": "1999628",
+      "name": "Mushrooms, shiitake",
+      "reason": "duplicate",
+      "keptSourceId": "1750346"
+    },
+    {
+      "sourceId": "1999629",
+      "name": "Mushrooms, white button",
+      "reason": "duplicate",
+      "keptSourceId": "1750347"
+    },
+    {
+      "sourceId": "1999630",
+      "name": "Soy milk, unsweetened, plain, shelf stable",
+      "reason": "duplicate",
+      "keptSourceId": "1750337"
+    },
+    {
+      "sourceId": "1999631",
+      "name": "Almond milk, unsweetened, plain, shelf stable",
+      "reason": "duplicate",
+      "keptSourceId": "1750338"
+    },
+    {
+      "sourceId": "1999632",
+      "name": "Spinach, baby",
+      "reason": "duplicate",
+      "keptSourceId": "1750352"
+    },
+    {
+      "sourceId": "1999633",
+      "name": "Spinach, mature",
+      "reason": "duplicate",
+      "keptSourceId": "1750353"
+    },
+    {
+      "sourceId": "1999634",
+      "name": "Tomato, roma",
+      "reason": "duplicate",
+      "keptSourceId": "1750354"
+    },
+    {
+      "sourceId": "2258587",
+      "name": "Carrots, baby, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168568"
+    },
+    {
+      "sourceId": "2259793",
+      "name": "Yogurt, plain, whole milk",
+      "reason": "duplicate",
+      "keptSourceId": "171284"
+    },
+    {
+      "sourceId": "2263887",
+      "name": "Strawberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167762"
+    },
+    {
+      "sourceId": "2263888",
+      "name": "Raspberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167755"
+    },
+    {
+      "sourceId": "2263889",
+      "name": "Blueberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "171711"
+    },
+    {
+      "sourceId": "2346386",
+      "name": "Cream, heavy",
+      "reason": "duplicate",
+      "keptSourceId": "2705597"
+    },
+    {
+      "sourceId": "2346398",
+      "name": "Pineapple, raw",
+      "reason": "duplicate",
+      "keptSourceId": "2709260"
+    },
+    {
+      "sourceId": "2346400",
+      "name": "Beans, snap, green, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169961"
+    },
+    {
+      "sourceId": "2346405",
+      "name": "Celery, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169988"
+    },
+    {
+      "sourceId": "2346406",
+      "name": "Cucumber, with peel, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168409"
+    },
+    {
+      "sourceId": "2346407",
+      "name": "Cabbage, green, raw",
+      "reason": "duplicate",
+      "keptSourceId": "2709773"
+    },
+    {
+      "sourceId": "2346408",
+      "name": "Cabbage, red, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169977"
+    },
+    {
+      "sourceId": "2346409",
+      "name": "Strawberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167762"
+    },
+    {
+      "sourceId": "2346410",
+      "name": "Raspberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167755"
+    },
+    {
+      "sourceId": "2346411",
+      "name": "Blueberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "171711"
+    },
+    {
+      "sourceId": "2346412",
+      "name": "Grapes, red, seedless, raw",
+      "reason": "duplicate",
+      "keptSourceId": "2263890"
+    },
+    {
+      "sourceId": "2346413",
+      "name": "Grapes, green, seedless, raw",
+      "reason": "duplicate",
+      "keptSourceId": "2263891"
+    },
+    {
+      "sourceId": "2346414",
+      "name": "Applesauce, unsweetened, with added vitamin C",
+      "reason": "duplicate",
+      "keptSourceId": "2263892"
+    },
+    {
+      "sourceId": "2514743",
+      "name": "Beef, ground, 90% lean meat / 10% fat, raw",
+      "reason": "duplicate",
+      "keptSourceId": "174030"
+    },
+    {
+      "sourceId": "2514744",
+      "name": "Beef, ground, 80% lean meat / 20% fat, raw",
+      "reason": "duplicate",
+      "keptSourceId": "174036"
+    },
+    {
+      "sourceId": "2515374",
+      "name": "Nuts, cashew nuts, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170162"
+    },
+    {
+      "sourceId": "2515378",
+      "name": "Nuts, macadamia nuts, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170178"
+    },
+    {
+      "sourceId": "2515379",
+      "name": "Nuts, pistachio nuts, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170184"
+    },
+    {
+      "sourceId": "2685570",
+      "name": "Squash, winter, butternut, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169295"
+    },
+    {
+      "sourceId": "2685571",
+      "name": "Squash, winter, acorn, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168472"
+    },
+    {
+      "sourceId": "2685573",
+      "name": "Cauliflower, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169986"
+    },
+    {
+      "sourceId": "2685574",
+      "name": "Collards, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170406"
+    },
+    {
+      "sourceId": "2685575",
+      "name": "Brussels sprouts, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170383"
+    },
+    {
+      "sourceId": "2685576",
+      "name": "Beets, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169145"
+    },
+    {
+      "sourceId": "2685577",
+      "name": "Eggplant, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169228"
+    },
+    {
+      "sourceId": "2685581",
+      "name": "Tomatoes, crushed, canned",
+      "reason": "duplicate",
+      "keptSourceId": "170501"
+    },
+    {
+      "sourceId": "2705502",
+      "name": "Eggnog",
+      "reason": "duplicate",
+      "keptSourceId": "171258"
+    },
+    {
+      "sourceId": "2705596",
+      "name": "Cream, half and half, fat free",
+      "reason": "duplicate",
+      "keptSourceId": "172212"
+    },
+    {
+      "sourceId": "2705615",
+      "name": "Sour cream, light",
+      "reason": "duplicate",
+      "keptSourceId": "173443"
+    },
+    {
+      "sourceId": "2705616",
+      "name": "Sour cream, fat free",
+      "reason": "duplicate",
+      "keptSourceId": "173444"
+    },
+    {
+      "sourceId": "2705635",
+      "name": "Ice cream, soft serve, chocolate",
+      "reason": "duplicate",
+      "keptSourceId": "173465"
+    },
+    {
+      "sourceId": "2705644",
+      "name": "Ice cream cookie sandwich",
+      "reason": "duplicate",
+      "keptSourceId": "172227"
+    },
+    {
+      "sourceId": "2705699",
+      "name": "Dulce de leche",
+      "reason": "duplicate",
+      "keptSourceId": "173461"
+    },
+    {
+      "sourceId": "2705706",
+      "name": "Cheese, Brick",
+      "reason": "duplicate",
+      "keptSourceId": "172176"
+    },
+    {
+      "sourceId": "2705707",
+      "name": "Cheese, Camembert",
+      "reason": "duplicate",
+      "keptSourceId": "172178"
+    },
+    {
+      "sourceId": "2705708",
+      "name": "Cheese, Brie",
+      "reason": "duplicate",
+      "keptSourceId": "172177"
+    },
+    {
+      "sourceId": "2705709",
+      "name": "Cheese, Cheddar",
+      "reason": "duplicate",
+      "keptSourceId": "328637"
+    },
+    {
+      "sourceId": "2705711",
+      "name": "Cheese, Cheddar, nonfat or fat free",
+      "reason": "duplicate",
+      "keptSourceId": "171295"
+    },
+    {
+      "sourceId": "2705712",
+      "name": "Cheese, Colby",
+      "reason": "duplicate",
+      "keptSourceId": "173416"
+    },
+    {
+      "sourceId": "2705714",
+      "name": "Cheese, Feta",
+      "reason": "duplicate",
+      "keptSourceId": "173420"
+    },
+    {
+      "sourceId": "2705715",
+      "name": "Cheese, Fontina",
+      "reason": "duplicate",
+      "keptSourceId": "170843"
+    },
+    {
+      "sourceId": "2705718",
+      "name": "Cheese, Gruyere",
+      "reason": "duplicate",
+      "keptSourceId": "171242"
+    },
+    {
+      "sourceId": "2705719",
+      "name": "Cheese, Limburger",
+      "reason": "duplicate",
+      "keptSourceId": "171243"
+    },
+    {
+      "sourceId": "2705720",
+      "name": "Cheese, Monterey",
+      "reason": "duplicate",
+      "keptSourceId": "170844"
+    },
+    {
+      "sourceId": "2705726",
+      "name": "Cheese, Muenster",
+      "reason": "duplicate",
+      "keptSourceId": "171245"
+    },
+    {
+      "sourceId": "2705729",
+      "name": "Cheese, Parmesan, dry grated, reduced fat",
+      "reason": "duplicate",
+      "keptSourceId": "173452"
+    },
+    {
+      "sourceId": "2705730",
+      "name": "Cheese, Parmesan, hard",
+      "reason": "duplicate",
+      "keptSourceId": "170848"
+    },
+    {
+      "sourceId": "2705733",
+      "name": "Cheese, Provolone",
+      "reason": "duplicate",
+      "keptSourceId": "170850"
+    },
+    {
+      "sourceId": "2705734",
+      "name": "Cheese, provolone, reduced fat",
+      "reason": "duplicate",
+      "keptSourceId": "172215"
+    },
+    {
+      "sourceId": "2705735",
+      "name": "Cheese, Swiss",
+      "reason": "duplicate",
+      "keptSourceId": "326135"
+    },
+    {
+      "sourceId": "2705738",
+      "name": "Cheese, Swiss, nonfat or fat free",
+      "reason": "duplicate",
+      "keptSourceId": "170897"
+    },
+    {
+      "sourceId": "2705741",
+      "name": "Cheese, Mexican blend",
+      "reason": "duplicate",
+      "keptSourceId": "171288"
+    },
+    {
+      "sourceId": "2705748",
+      "name": "Cheese, cottage, creamed, large or small curd",
+      "reason": "duplicate",
+      "keptSourceId": "172179"
+    },
+    {
+      "sourceId": "2705752",
+      "name": "Cheese, cottage, with vegetables",
+      "reason": "duplicate",
+      "keptSourceId": "169078"
+    },
+    {
+      "sourceId": "2705766",
+      "name": "Cheese, American, nonfat or fat free",
+      "reason": "duplicate",
+      "keptSourceId": "170863"
+    },
+    {
+      "sourceId": "2705768",
+      "name": "Cheese spread, American or Cheddar cheese base, reduced fat",
+      "reason": "duplicate",
+      "keptSourceId": "170896"
+    },
+    {
+      "sourceId": "2706095",
+      "name": "Chicken nuggets, from school lunch",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2706101",
+      "name": "Chicken tenders or strips, breaded, from school lunch",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2706173",
+      "name": "Blood sausage",
+      "reason": "duplicate",
+      "keptSourceId": "171618"
+    },
+    {
+      "sourceId": "2706222",
+      "name": "Ham salad spread",
+      "reason": "duplicate",
+      "keptSourceId": "173866"
+    },
+    {
+      "sourceId": "2707439",
+      "name": "Miso",
+      "reason": "duplicate",
+      "keptSourceId": "172442"
+    },
+    {
+      "sourceId": "2707440",
+      "name": "Natto",
+      "reason": "duplicate",
+      "keptSourceId": "172443"
+    },
+    {
+      "sourceId": "2707469",
+      "name": "Chicken, meatless, breaded, fried",
+      "reason": "duplicate",
+      "keptSourceId": "167719"
+    },
+    {
+      "sourceId": "2707618",
+      "name": "Bread, cheese",
+      "reason": "duplicate",
+      "keptSourceId": "167944"
+    },
+    {
+      "sourceId": "2707620",
+      "name": "Bread, cinnamon",
+      "reason": "duplicate",
+      "keptSourceId": "171849"
+    },
+    {
+      "sourceId": "2707642",
+      "name": "Bread, potato",
+      "reason": "duplicate",
+      "keptSourceId": "167943"
+    },
+    {
+      "sourceId": "2707728",
+      "name": "Bread, French or Vienna, whole wheat",
+      "reason": "duplicate",
+      "keptSourceId": "174091"
+    },
+    {
+      "sourceId": "2707755",
+      "name": "Bread, rye",
+      "reason": "duplicate",
+      "keptSourceId": "172684"
+    },
+    {
+      "sourceId": "2707756",
+      "name": "Bread, rye, toasted",
+      "reason": "duplicate",
+      "keptSourceId": "172685"
+    },
+    {
+      "sourceId": "2707760",
+      "name": "Bread, pumpernickel",
+      "reason": "duplicate",
+      "keptSourceId": "174918"
+    },
+    {
+      "sourceId": "2707768",
+      "name": "Bread, oatmeal",
+      "reason": "duplicate",
+      "keptSourceId": "172678"
+    },
+    {
+      "sourceId": "2707769",
+      "name": "Bread, oatmeal, toasted",
+      "reason": "duplicate",
+      "keptSourceId": "172679"
+    },
+    {
+      "sourceId": "2707770",
+      "name": "Bread, oat bran",
+      "reason": "duplicate",
+      "keptSourceId": "172676"
+    },
+    {
+      "sourceId": "2707771",
+      "name": "Bread, oat bran, toasted",
+      "reason": "duplicate",
+      "keptSourceId": "172677"
+    },
+    {
+      "sourceId": "2707918",
+      "name": "Cookie, chocolate, with icing or coating",
+      "reason": "duplicate",
+      "keptSourceId": "174080"
+    },
+    {
+      "sourceId": "2707956",
+      "name": "Cookie, with peanut butter filling, chocolate-coated",
+      "reason": "duplicate",
+      "keptSourceId": "171836"
+    },
+    {
+      "sourceId": "2707978",
+      "name": "Cookie, butter or sugar, with chocolate icing or filling",
+      "reason": "duplicate",
+      "keptSourceId": "174079"
+    },
+    {
+      "sourceId": "2707983",
+      "name": "Cookie, vanilla with caramel, coconut, and chocolate coating",
+      "reason": "duplicate",
+      "keptSourceId": "171835"
+    },
+    {
+      "sourceId": "2708002",
+      "name": "Pie, peach",
+      "reason": "duplicate",
+      "keptSourceId": "175020"
+    },
+    {
+      "sourceId": "2708031",
+      "name": "Cream puff, eclair, custard or cream filled, iced",
+      "reason": "duplicate",
+      "keptSourceId": "167534"
+    },
+    {
+      "sourceId": "2708039",
+      "name": "Strudel, apple",
+      "reason": "duplicate",
+      "keptSourceId": "175032"
+    },
+    {
+      "sourceId": "2708153",
+      "name": "Crackers, cheese, reduced fat",
+      "reason": "duplicate",
+      "keptSourceId": "167941"
+    },
+    {
+      "sourceId": "2708155",
+      "name": "Crackers, cheese, whole grain",
+      "reason": "duplicate",
+      "keptSourceId": "174084"
+    },
+    {
+      "sourceId": "2708159",
+      "name": "Crackers, milk",
+      "reason": "duplicate",
+      "keptSourceId": "174980"
+    },
+    {
+      "sourceId": "2708170",
+      "name": "Crackers, multigrain",
+      "reason": "duplicate",
+      "keptSourceId": "171838"
+    },
+    {
+      "sourceId": "2708187",
+      "name": "Crackers, wheat, reduced fat",
+      "reason": "duplicate",
+      "keptSourceId": "167934"
+    },
+    {
+      "sourceId": "2708285",
+      "name": "Pretzels, soft, from school lunch",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708305",
+      "name": "Pancakes, plain, reduced fat",
+      "reason": "duplicate",
+      "keptSourceId": "174086"
+    },
+    {
+      "sourceId": "2708356",
+      "name": "Rice noodles, cooked",
+      "reason": "duplicate",
+      "keptSourceId": "168914"
+    },
+    {
+      "sourceId": "2708619",
+      "name": "Pizza, cheese, from school lunch, medium crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708620",
+      "name": "Pizza, cheese, from school lunch, thin crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708621",
+      "name": "Pizza, cheese, from school lunch, thick crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708643",
+      "name": "Pizza with pepperoni, from school lunch, thin crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708644",
+      "name": "Pizza, with pepperoni, from school lunch, medium crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708645",
+      "name": "Pizza with pepperoni, from school lunch, thick crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708654",
+      "name": "Pizza, with meat other than pepperoni, from school lunch, medium crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708655",
+      "name": "Pizza, with meat other than pepperoni, from school lunch, thin crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708656",
+      "name": "Pizza, with meat other than pepperoni, from school lunch, thick crust",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2708765",
+      "name": "Ravioli, meat-filled, with tomato sauce or meat sauce, canned",
+      "reason": "duplicate",
+      "keptSourceId": "173329"
+    },
+    {
+      "sourceId": "2708836",
+      "name": "Pasta with sauce and meat, from school lunch",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2709270",
+      "name": "Watermelon, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167765"
+    },
+    {
+      "sourceId": "2709273",
+      "name": "Blackberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "173946"
+    },
+    {
+      "sourceId": "2709275",
+      "name": "Blueberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "171711"
+    },
+    {
+      "sourceId": "2709279",
+      "name": "Cranberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "171722"
+    },
+    {
+      "sourceId": "2709281",
+      "name": "Raspberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167755"
+    },
+    {
+      "sourceId": "2709283",
+      "name": "Strawberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167762"
+    },
+    {
+      "sourceId": "2709482",
+      "name": "Potato, hash brown, from school lunch",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2709502",
+      "name": "Potato, mashed, from school lunch",
+      "reason": "blocked: US school lunch program"
+    },
+    {
+      "sourceId": "2709570",
+      "name": "Beet greens, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170375"
+    },
+    {
+      "sourceId": "2709572",
+      "name": "Broccoli raab, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170381"
+    },
+    {
+      "sourceId": "2709573",
+      "name": "Broccoli raab, cooked",
+      "reason": "duplicate",
+      "keptSourceId": "170382"
+    },
+    {
+      "sourceId": "2709576",
+      "name": "Collards, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170406"
+    },
+    {
+      "sourceId": "2709588",
+      "name": "Dandelion greens, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169226"
+    },
+    {
+      "sourceId": "2709599",
+      "name": "Kale, raw",
+      "reason": "duplicate",
+      "keptSourceId": "323505"
+    },
+    {
+      "sourceId": "2709606",
+      "name": "Mustard greens, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169256"
+    },
+    {
+      "sourceId": "2709613",
+      "name": "Radicchio, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168564"
+    },
+    {
+      "sourceId": "2709614",
+      "name": "Spinach, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168462"
+    },
+    {
+      "sourceId": "2709629",
+      "name": "Spinach souffle",
+      "reason": "duplicate",
+      "keptSourceId": "170494"
+    },
+    {
+      "sourceId": "2709639",
+      "name": "Watercress, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170068"
+    },
+    {
+      "sourceId": "2709643",
+      "name": "Broccoli, raw",
+      "reason": "duplicate",
+      "keptSourceId": "321900"
+    },
+    {
+      "sourceId": "2709658",
+      "name": "Broccoli, Chinese, cooked",
+      "reason": "duplicate",
+      "keptSourceId": "169392"
+    },
+    {
+      "sourceId": "2709660",
+      "name": "Carrots, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170393"
+    },
+    {
+      "sourceId": "2709767",
+      "name": "Asparagus, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168389"
+    },
+    {
+      "sourceId": "2709770",
+      "name": "Beets, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169145"
+    },
+    {
+      "sourceId": "2709772",
+      "name": "Brussels sprouts, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170383"
+    },
+    {
+      "sourceId": "2709775",
+      "name": "Cabbage, red, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169977"
+    },
+    {
+      "sourceId": "2709777",
+      "name": "Cauliflower, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169986"
+    },
+    {
+      "sourceId": "2709778",
+      "name": "Celery, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169988"
+    },
+    {
+      "sourceId": "2709781",
+      "name": "Chives, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169994"
+    },
+    {
+      "sourceId": "2709785",
+      "name": "Eggplant, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169228"
+    },
+    {
+      "sourceId": "2709786",
+      "name": "Garlic, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169230"
+    },
+    {
+      "sourceId": "2709788",
+      "name": "Kohlrabi, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168424"
+    },
+    {
+      "sourceId": "2709795",
+      "name": "Onions, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170000"
+    },
+    {
+      "sourceId": "2709800",
+      "name": "Peppers, sweet, green, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170427"
+    },
+    {
+      "sourceId": "2709801",
+      "name": "Peppers, sweet, red, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170108"
+    },
+    {
+      "sourceId": "2710006",
+      "name": "Yeast extract spread",
+      "reason": "duplicate",
+      "keptSourceId": "167717"
+    },
+    {
+      "sourceId": "2710081",
+      "name": "Eggplant, pickled",
+      "reason": "duplicate",
+      "keptSourceId": "169892"
+    },
+    {
+      "sourceId": "2710166",
+      "name": "Lard",
+      "reason": "duplicate",
+      "keptSourceId": "171401"
+    },
+    {
+      "sourceId": "2710221",
+      "name": "Mayonnaise, reduced fat,  with olive oil",
+      "reason": "duplicate",
+      "keptSourceId": "171443"
+    },
+    {
+      "sourceId": "2710264",
+      "name": "Sugar substitute, stevia, powder",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "2710266",
+      "name": "Sugar substitute, monk fruit, powder",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "2710281",
+      "name": "Honey",
+      "reason": "duplicate",
+      "keptSourceId": "169640"
+    },
+    {
+      "sourceId": "2710283",
+      "name": "Molasses",
+      "reason": "duplicate",
+      "keptSourceId": "168820"
+    },
+    {
+      "sourceId": "2710371",
+      "name": "Chewing gum",
+      "reason": "duplicate",
+      "keptSourceId": "168771"
+    },
+    {
+      "sourceId": "2710816",
+      "name": "Melons, honeydew, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169911"
+    },
+    {
+      "sourceId": "2727570",
+      "name": "Lamb, ground, raw",
+      "reason": "duplicate",
+      "keptSourceId": "174370"
+    },
+    {
+      "sourceId": "2747653",
+      "name": "Beet greens, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170375"
+    },
+    {
+      "sourceId": "2747655",
+      "name": "Fennel, bulb, raw",
+      "reason": "duplicate",
+      "keptSourceId": "169385"
+    },
+    {
+      "sourceId": "2747659",
+      "name": "Parsnips, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170417"
+    },
+    {
+      "sourceId": "2747664",
+      "name": "Radicchio, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168564"
+    },
+    {
+      "sourceId": "2747674",
+      "name": "Turnips, raw",
+      "reason": "duplicate",
+      "keptSourceId": "170465"
+    },
+    {
+      "sourceId": "326458",
+      "name": "Carrots, frozen, unprepared (Includes foods for USDA's Food Distribution Program)",
+      "reason": "duplicate",
+      "keptSourceId": "169983"
+    },
+    {
+      "sourceId": "327046",
+      "name": "Kiwifruit, green, raw",
+      "reason": "duplicate",
+      "keptSourceId": "168153"
+    },
+    {
+      "sourceId": "327699",
+      "name": "Strawberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167762"
+    },
+    {
+      "sourceId": "334462",
+      "name": "Restaurant, Chinese, sweet and sour pork",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "334536",
+      "name": "Restaurant, Chinese, fried rice, without meat",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "334628",
+      "name": "Restaurant, Latino, tamale, pork",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "334720",
+      "name": "Restaurant, Latino, pupusas con frijoles (pupusas, bean)",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "746758",
+      "name": "Beef, loin, tenderloin roast, separable lean only, boneless, trimmed to 0\"\" fat, select, cooked, roasted",
+      "reason": "duplicate",
+      "keptSourceId": "334897"
+    },
+    {
+      "sourceId": "746759",
+      "name": "Beef, loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8\"\" fat, choice, raw",
+      "reason": "duplicate",
+      "keptSourceId": "334849"
+    },
+    {
+      "sourceId": "746760",
+      "name": "Beef, round, eye of round roast, boneless, separable lean only, trimmed to 0\"\" fat, select, raw",
+      "reason": "duplicate",
+      "keptSourceId": "334898"
+    },
+    {
+      "sourceId": "746761",
+      "name": "Beef, round, top round roast, boneless, separable lean only, trimmed to 0\"\" fat, select, raw",
+      "reason": "duplicate",
+      "keptSourceId": "334963"
+    },
+    {
+      "sourceId": "746762",
+      "name": "Beef, short loin, porterhouse steak, separable lean only, trimmed to 1/8\"\" fat, select, raw",
+      "reason": "duplicate",
+      "keptSourceId": "335109"
+    },
+    {
+      "sourceId": "746763",
+      "name": "Beef, short loin, t-bone steak, bone-in, separable lean only, trimmed to 1/8\"\" fat, choice, cooked, grilled",
+      "reason": "duplicate",
+      "keptSourceId": "335061"
+    },
+    {
+      "sourceId": "746765",
+      "name": "Cheese, dry white, queso seco",
+      "reason": "duplicate",
+      "keptSourceId": "329830"
+    },
+    {
+      "sourceId": "746766",
+      "name": "Cheese, ricotta, whole milk",
+      "reason": "duplicate",
+      "keptSourceId": "323444"
+    },
+    {
+      "sourceId": "746767",
+      "name": "Cheese, swiss",
+      "reason": "duplicate",
+      "keptSourceId": "326135"
+    },
+    {
+      "sourceId": "746768",
+      "name": "Figs, dried, uncooked",
+      "reason": "duplicate",
+      "keptSourceId": "326905"
+    },
+    {
+      "sourceId": "746769",
+      "name": "Lettuce, cos or romaine, raw",
+      "reason": "duplicate",
+      "keptSourceId": "327923"
+    },
+    {
+      "sourceId": "746770",
+      "name": "Melons, cantaloupe, raw",
+      "reason": "duplicate",
+      "keptSourceId": "327198"
+    },
+    {
+      "sourceId": "746772",
+      "name": "Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D",
+      "reason": "duplicate",
+      "keptSourceId": "322228"
+    },
+    {
+      "sourceId": "746774",
+      "name": "Restaurant, Chinese, sweet and sour pork",
+      "reason": "blocked: generic US restaurant dish"
+    },
+    {
+      "sourceId": "746775",
+      "name": "Salt, table, iodized",
+      "reason": "zero-calorie"
+    },
+    {
+      "sourceId": "746776",
+      "name": "Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim)",
+      "reason": "duplicate",
+      "keptSourceId": "322559"
+    },
+    {
+      "sourceId": "746777",
+      "name": "Sauce, salsa, ready-to-serve",
+      "reason": "duplicate",
+      "keptSourceId": "324038"
+    },
+    {
+      "sourceId": "746778",
+      "name": "Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D",
+      "reason": "duplicate",
+      "keptSourceId": "321359"
+    },
+    {
+      "sourceId": "746779",
+      "name": "Sausage, breakfast sausage, beef, pre-cooked, unprepared",
+      "reason": "duplicate",
+      "keptSourceId": "324157"
+    },
+    {
+      "sourceId": "746780",
+      "name": "Sausage, Italian, pork, mild, cooked, pan-fried",
+      "reason": "duplicate",
+      "keptSourceId": "325658"
+    },
+    {
+      "sourceId": "746781",
+      "name": "Sausage, pork, chorizo, link or ground, cooked, pan-fried",
+      "reason": "duplicate",
+      "keptSourceId": "332864"
+    },
+    {
+      "sourceId": "746782",
+      "name": "Milk, whole, 3.25% milkfat, with added vitamin D",
+      "reason": "duplicate",
+      "keptSourceId": "322892"
+    },
+    {
+      "sourceId": "746783",
+      "name": "Sausage, turkey, breakfast links, mild, raw",
+      "reason": "duplicate",
+      "keptSourceId": "325992"
+    },
+    {
+      "sourceId": "746784",
+      "name": "Sugars, granulated",
+      "reason": "duplicate",
+      "keptSourceId": "334247"
+    },
+    {
+      "sourceId": "746785",
+      "name": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles",
+      "reason": "duplicate",
+      "keptSourceId": "330869"
+    },
+    {
+      "sourceId": "747447",
+      "name": "Broccoli, raw",
+      "reason": "duplicate",
+      "keptSourceId": "321900"
+    },
+    {
+      "sourceId": "747448",
+      "name": "Strawberries, raw",
+      "reason": "duplicate",
+      "keptSourceId": "167762"
+    }
+  ]
+}

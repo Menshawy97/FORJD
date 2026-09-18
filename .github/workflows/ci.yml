@@ -165,6 +165,14 @@ jobs:
 
       - run: git diff --exit-code apps/api/src/exercises/ingest/data/normalized-exercises.json
 
+      # Same gate, for the food catalogue. Regenerating must be a no-op: the snapshot is the output
+      # of the adapter plus the curation rules (zero-calorie, duplicates, food-exclusions.ts), so a
+      # rule edit that was not regenerated -- or a snapshot edited by hand -- fails here, and the
+      # diff of removed-foods.json shows exactly which foods a rule change added or restored.
+      - run: pnpm --filter @forjd/api nutrition:normalize
+
+      - run: git diff --exit-code apps/api/src/nutrition/ingest/data/normalized-foods.json apps/api/src/nutrition/ingest/data/removed-foods.json
+
       # Same gate again, for the InBody vision-extraction prompt (CLAUDE.md rule 8, ADR-032).
       # Regenerating the golden prompt must be a no-op. When it is not, buildInBodyExtractionPrompt()
       # changed and the committed golden file is stale -- the diff is the review, since a

@@ -10,6 +10,15 @@ import { CreateCatalogueFoodInput } from "../nutrition.repository";
  */
 export type NormalizedFood = CreateCatalogueFoodInput;
 
+export type UsdaDataType = "foundation" | "sr_legacy" | "survey";
+
+/**
+ * A normalized food plus the USDA data type it came from. The data type exists only so curation
+ * (`curate.ts`) can rank duplicates; `normalize.ts` strips it before writing the snapshot, so
+ * the committed snapshot and the loader still see plain `NormalizedFood`.
+ */
+export type NormalizedFoodWithType = NormalizedFood & { readonly dataType: UsdaDataType };
+
 export interface UsdaFoodSourceAdapter {
   /** Stamped onto every record's `source`, and half of the `(source, sourceId)` upsert key. */
   readonly source: string;
@@ -20,5 +29,5 @@ export interface UsdaFoodSourceAdapter {
    * category or nutrient id that resolves against nothing in that release's own lookup table is
    * only detectable by looking, and throws rather than silently defaulting.
    */
-  normalizeAll(): NormalizedFood[];
+  normalizeAll(): NormalizedFoodWithType[];
 }

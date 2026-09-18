@@ -9,7 +9,7 @@ import {
   SR_LEGACY_CATEGORY_NAMES,
   WWEIA_CATEGORY_IDS,
 } from "./mappings";
-import { NormalizedFood, UsdaFoodSourceAdapter } from "./usda-food-source-adapter.interface";
+import { NormalizedFoodWithType, UsdaDataType, UsdaFoodSourceAdapter } from "./usda-food-source-adapter.interface";
 
 const SOURCE = "usda_fdc";
 
@@ -33,15 +33,31 @@ export interface UsdaReleaseInput {
   readonly measureUnit: CsvTable;
   readonly category: CsvTable;
   readonly categoryScheme: "sr_legacy" | "wweia";
+  /** Which USDA data type this release is; stamped onto each food so curation can rank duplicates by source quality. */
+  readonly dataType: UsdaDataType;
 }
 
-/** Resolves `nutrient.csv`'s `id` -> `name`, so `food_nutrient.csv`'s `nutrient_id` (which is release-local, see SOURCE.md's trap 1) can be read by name instead of by a hardcoded id. */
+/**
+ * Resolves both `nutrient.csv`'s `id` and its `nutrient_nbr` -> `name`, so `food_nutrient.csv`'s
+ * `nutrient_id` can be read by name instead of by a hardcoded id.
+ *
+ * That column means different things per release (SOURCE.md's trap 1): Foundation and SR Legacy
+ * carry `nutrient.id` values (Energy `1008`), Survey carries `nutrient.nbr` values (`208`) under the
+ * same column name. Indexing by both is what makes Survey's macros resolve at all -- before this,
+ * every Survey lookup missed and all 5,432 Survey foods normalized to 0 kcal/0 g. The two id
+ * spaces do not collide for the four wanted nutrients or the three energy variants.
+ */
 function buildNutrientNameById(nutrient: CsvTable): Map<string, string> {
   const idCol = col(nutrient.header, "id");
   const nameCol = col(nutrient.header, "name");
+  const nbrCol = nutrient.header.indexOf("nutrient_nbr");
   const map = new Map<string, string>();
   for (const row of nutrient.rows) {
-    map.set(row[idCol] ?? "", row[nameCol] ?? "");
+    const name = row[nameCol] ?? "";
+    map.set(row[idCol] ?? "", name);
+    // "208" and "208.0" both occur across releases; a nutrient_nbr never has a real fraction.
+    const nbr = nbrCol === -1 ? "" : (row[nbrCol] ?? "").replace(/.0$/, "");
+    if (nbr) map.set(nbr, name);
   }
   return map;
 }
@@ -126,8 +142,8 @@ export class UsdaFoodAdapter implements UsdaFoodSourceAdapter {
 
   constructor(private readonly releases: readonly UsdaReleaseInput[]) {}
 
-  normalizeAll(): NormalizedFood[] {
-    const results: NormalizedFood[] = [];
+  normalizeAll(): NormalizedFoodWithType[] {
+    const results: NormalizedFoodWithType[] = [];
 
     for (const release of this.releases) {
       results.push(...this.normalizeRelease(release));
@@ -136,7 +152,7 @@ export class UsdaFoodAdapter implements UsdaFoodSourceAdapter {
     return results;
   }
 
-  private normalizeRelease(release: UsdaReleaseInput): NormalizedFood[] {
+  private normalizeRelease(release: UsdaReleaseInput): NormalizedFoodWithType[] {
     const categoryById = resolveCategoryMap(release.category, release.categoryScheme);
     const nutrientNameById = buildNutrientNameById(release.nutrient);
     const measureUnitNameById = buildMeasureUnitNameById(release.measureUnit);
@@ -186,7 +202,7 @@ export class UsdaFoodAdapter implements UsdaFoodSourceAdapter {
       portionsByFdcId.set(fdcId, list);
     }
 
-    const foods: NormalizedFood[] = [];
+    const foods: NormalizedFoodWithType[] = [];
 
     for (const row of release.food.rows) {
       const fdcId = row[fdcIdCol] ?? "";
@@ -198,6 +214,9 @@ export class UsdaFoodAdapter implements UsdaFoodSourceAdapter {
 
       const macros = nutrientsByFdcId.get(fdcId) ?? new Map<string, number>();
       const kcalName = KCAL_NUTRIENT_PRECEDENCE.find((name) => macros.has(name));
+      // No energy value reported at all (many Foundation lab entries): excluded rather than
+      // shown as "0 kcal", which would claim a measurement USDA never made.
+      if (!kcalName) continue;
 
       foods.push({
         source: this.source,
@@ -205,12 +224,13 @@ export class UsdaFoodAdapter implements UsdaFoodSourceAdapter {
         name: row[descriptionCol] ?? "",
         category,
         macrosPer100g: {
-          kcal: kcalName ? (macros.get(kcalName) ?? 0) : 0,
+          kcal: macros.get(kcalName) ?? 0,
           protein: macros.get(PROTEIN_NUTRIENT_NAME) ?? 0,
           carbs: macros.get(CARBS_NUTRIENT_NAME) ?? 0,
           fat: macros.get(FAT_NUTRIENT_NAME) ?? 0,
         },
         servings: portionsByFdcId.get(fdcId) ?? [],
+        dataType: release.dataType,
       });
     }
 

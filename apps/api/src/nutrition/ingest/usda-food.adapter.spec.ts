@@ -64,6 +64,7 @@ function buildRelease(overrides: Partial<UsdaReleaseInput> = {}): UsdaReleaseInp
     measureUnit: MEASURE_UNIT_TABLE,
     category: SR_LEGACY_CATEGORY_TABLE,
     categoryScheme: "sr_legacy",
+    dataType: "foundation",
     ...overrides,
   };
 }
@@ -81,7 +82,45 @@ describe("UsdaFoodAdapter", () => {
       category: "fruits",
       macrosPer100g: { kcal: 89, protein: 1.1, carbs: 22.8, fat: 0.3 },
       servings: [{ label: "1 cup", grams: 118 }],
+      dataType: "foundation",
     });
+  });
+
+  it("reads Survey's food_nutrient rows, which carry nutrient_nbr (208/203/204/205) under the nutrient_id column", () => {
+    const surveyStyle = buildRelease({
+      foodNutrient: table(
+        ["fdc_id", "nutrient_id", "amount"],
+        [
+          ["100", "208", "52"],
+          ["100", "203", "0.3"],
+          ["100", "204", "0.2"],
+          ["100", "205", "13.8"],
+        ],
+      ),
+      dataType: "survey",
+    });
+
+    const [food] = new UsdaFoodAdapter([surveyStyle]).normalizeAll();
+
+    expect(food?.macrosPer100g).toEqual({ kcal: 52, protein: 0.3, carbs: 13.8, fat: 0.2 });
+    expect(food?.dataType).toBe("survey");
+  });
+
+  it("reads Atwater energy by nutrient_nbr too (957/958), keeping the precedence", () => {
+    const surveyAtwater = buildRelease({
+      foodNutrient: table(
+        ["fdc_id", "nutrient_id", "amount"],
+        [
+          ["100", "208", "100"],
+          ["100", "958", "95"],
+          ["100", "957", "90"],
+        ],
+      ),
+    });
+
+    const [food] = new UsdaFoodAdapter([surveyAtwater]).normalizeAll();
+
+    expect(food?.macrosPer100g.kcal).toBe(90);
   });
 
   it("prefers Atwater General over Atwater Specific over plain Energy for kcal", () => {
@@ -111,12 +150,12 @@ describe("UsdaFoodAdapter", () => {
     expect(food?.macrosPer100g.kcal).toBe(52);
   });
 
-  it("gives a food with no food_nutrient rows zero macros rather than throwing", () => {
-    const noNutrients = buildRelease({ foodNutrient: table(["fdc_id", "nutrient_id", "amount"], []) });
+  it("excludes a food with no energy value at all rather than presenting it as 0 kcal", () => {
+    const noEnergy = buildRelease({
+      foodNutrient: table(["fdc_id", "nutrient_id", "amount"], [["100", "1003", "5"]]),
+    });
 
-    const [food] = new UsdaFoodAdapter([noNutrients]).normalizeAll();
-
-    expect(food?.macrosPer100g).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    expect(new UsdaFoodAdapter([noEnergy]).normalizeAll()).toEqual([]);
   });
 
   it("normalizes with an empty servings list when food_portion has no rows for it -- gram-only, per the Phase A decision", () => {
@@ -151,6 +190,7 @@ describe("UsdaFoodAdapter", () => {
         ["fdc_id", "data_type", "description", "food_category_id", "publication_date"],
         [["200", "survey_fndds_food", "Milk, whole", "1002", "2020-01-01"]],
       ),
+      foodNutrient: table(["fdc_id", "nutrient_id", "amount"], [["200", "208", "61"]]),
       category: table(["wweia_food_category", "wweia_food_category_description"], [["1002", "Milk, whole"]]),
       categoryScheme: "wweia",
     });
