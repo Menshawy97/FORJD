@@ -26,6 +26,26 @@ export const SNAPSHOT_PATH = join(__dirname, "data", "normalized-foods.json");
 /** The slice of `NutritionRepository` the loader uses, named structurally for testing against a fake without a database. */
 export interface FoodCatalogueTarget {
   bulkUpsertCatalogueFoods(inputs: CreateCatalogueFoodInput[]): Promise<void>;
+  countCatalogueFoods(source: string): Promise<number>;
+  pruneCatalogueFoods(
+    source: string,
+    keepSourceIds: readonly string[],
+  ): Promise<{ deleted: number; softDeleted: number }>;
+}
+
+/**
+ * The largest share of the existing catalogue one load may prune. A curated snapshot removes a few
+ * percent (the first curation run removed about 3%); a wrong branch, a truncated file or a broken
+ * rule would remove most of it, and a deploy must not silently delete the food library. Above this
+ * the prune is skipped with a warning and the deploy carries on -- the upsert already succeeded.
+ */
+export const MAX_PRUNE_FRACTION = 0.2;
+
+export interface LoadResult {
+  loaded: number;
+  deleted: number;
+  softDeleted: number;
+  pruneSkipped: boolean;
 }
 
 interface SnapshotShape {
@@ -74,13 +94,37 @@ export function parseSnapshot(raw: unknown): NormalizedFood[] {
  * to `NutritionRepository.bulkUpsertCatalogueFoods` -- see that method's own docblock for why
  * this replaced a one-row-at-a-time loop (measured at ~1h40m in CI against a hosted Postgres,
  * versus ~90 round trips for the chunked version).
+ *
+ * Then prunes every catalogue food of the snapshot's source(s) that the snapshot no longer
+ * contains, so a curation rule or a re-vendor that drops a food removes it from the database too
+ * (see `pruneCatalogueFoods`). Runs after the upsert, never before, and never for an empty
+ * snapshot.
  */
-export async function loadCatalogue(
-  target: FoodCatalogueTarget,
-  foods: NormalizedFood[],
-): Promise<{ loaded: number }> {
+export async function loadCatalogue(target: FoodCatalogueTarget, foods: NormalizedFood[]): Promise<LoadResult> {
   await target.bulkUpsertCatalogueFoods(foods);
-  return { loaded: foods.length };
+
+  const idsBySource = new Map<string, string[]>();
+  for (const food of foods) {
+    idsBySource.set(food.source, [...(idsBySource.get(food.source) ?? []), food.sourceId]);
+  }
+
+  let deleted = 0;
+  let softDeleted = 0;
+  let pruneSkipped = foods.length === 0;
+  for (const [source, keepSourceIds] of idsBySource) {
+    // Every snapshot food was just upserted, so the stale rows are exactly the excess over the snapshot.
+    const total = await target.countCatalogueFoods(source);
+    const stale = total - keepSourceIds.length;
+    if (stale > total * MAX_PRUNE_FRACTION) {
+      pruneSkipped = true;
+      continue;
+    }
+    const result = await target.pruneCatalogueFoods(source, keepSourceIds);
+    deleted += result.deleted;
+    softDeleted += result.softDeleted;
+  }
+
+  return { loaded: foods.length, deleted, softDeleted, pruneSkipped };
 }
 
 async function main(): Promise<void> {
@@ -94,8 +138,14 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString });
   try {
     const repository = new NutritionRepository(drizzle(pool));
-    const { loaded } = await loadCatalogue(repository, foods);
-    process.stdout.write(`loaded ${loaded} catalogue foods\n`);
+    const { loaded, deleted, softDeleted, pruneSkipped } = await loadCatalogue(repository, foods);
+    process.stdout.write(`loaded ${loaded} catalogue foods, pruned ${deleted} and hid ${softDeleted} in-use ones\n`);
+    if (pruneSkipped) {
+      process.stderr.write(
+        `WARNING: prune skipped -- it would have removed more than ${MAX_PRUNE_FRACTION * 100}% of the existing ` +
+          "catalogue, or the snapshot was empty. Check the snapshot and food-exclusions.ts before the next deploy.\n",
+      );
+    }
   } finally {
     await pool.end();
   }

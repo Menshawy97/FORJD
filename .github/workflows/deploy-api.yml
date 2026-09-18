@@ -103,7 +103,11 @@ jobs:
         # catalogue. Neither is a migration because their content rows (873 exercises, ~13,700
         # foods) are not schema, and both are safe on every deploy because they are idempotent:
         # each upsert is keyed on `(source, source_id)` and backed by a partial unique index, so
-        # a re-run updates in place and cannot duplicate a row. Both read only their own
+        # a re-run updates in place and cannot duplicate a row. `nutrition:load` also PRUNES: it
+        # removes (or, when a log entry or saved meal still uses it, hides) catalogue foods that
+        # are no longer in the snapshot, so a curation rule in food-exclusions.ts reaches the
+        # database on the next deploy (ADR-040). It skips the prune, with a warning, rather than
+        # remove more than 20% of the catalogue. Both read only their own
         # committed snapshot, never the raw dataset — enforced by
         # scripts/ci/check-architecture-conformance.sh.
         #
