@@ -696,4 +696,130 @@ describe("NutritionRepository", () => {
       expect(elapsedMs).toBeLessThan(2000);
     }, 30000);
   });
+
+  describe("pruneCatalogueFoods", () => {
+    // A unique `source` per test keeps every prune away from the real usda_fdc catalogue rows that
+    // share this database -- the method's whole contract is "rows of THIS source not in THIS list".
+    const seed = async (source: string, sourceIds: string[]): Promise<Map<string, string>> => {
+      await repository.bulkUpsertCatalogueFoods(sourceIds.map((id) => ({ ...catalogueInput(id), source })));
+      const rows = await db.select().from(foods).where(inArray(foods.sourceId, sourceIds));
+      createdFoodIds.push(...rows.map((row) => row.id));
+      return new Map(rows.filter((row) => row.source === source).map((row) => [row.sourceId ?? "", row.id]));
+    };
+
+    const rowById = async (id: string) => (await db.select().from(foods).where(inArray(foods.id, [id])))[0];
+
+    it("hard-deletes an unreferenced catalogue food that is absent from the keep list, with its servings", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      const ids = await seed(source, ["keep", "drop"]);
+
+      const result = await repository.pruneCatalogueFoods(source, ["keep"]);
+
+      expect(result).toEqual({ deleted: 1, softDeleted: 0 });
+      expect(await rowById(ids.get("drop") ?? "")).toBeUndefined();
+      expect(await rowById(ids.get("keep") ?? "")).toBeDefined();
+    });
+
+    it("soft-deletes rather than deletes a food that a log entry references, hiding it from search", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      const ids = await seed(source, ["keep", "logged"]);
+      const loggedId = ids.get("logged") ?? "";
+      const userId = await makeUser("prune-logged");
+      await repository.logEntry(userId, {
+        foodId: loggedId,
+        slot: "breakfast",
+        loggedDate: "2026-09-01",
+        servingLabel: "100 g",
+        grams: 100,
+      });
+
+      const result = await repository.pruneCatalogueFoods(source, ["keep"]);
+
+      expect(result).toEqual({ deleted: 0, softDeleted: 1 });
+      expect((await rowById(loggedId))?.deletedAt).not.toBeNull();
+      expect(await repository.findFoodById(loggedId)).toBeNull();
+      expect(await repository.searchFoods(userId, "Test Banana logged", 5)).toEqual([]);
+    });
+
+    it("soft-deletes a food that a saved meal references, leaving the saved meal's item intact", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      const ids = await seed(source, ["keep", "in-meal"]);
+      const userId = await makeUser("prune-meal");
+      const meal = await repository.createSavedMeal(userId, `Prune meal ${randomUUID()}`, [
+        { foodId: ids.get("in-meal") ?? "", servingLabel: "100 g", grams: 100 },
+      ]);
+      createdSavedMealIds.push(meal.id);
+
+      const result = await repository.pruneCatalogueFoods(source, ["keep"]);
+
+      expect(result).toEqual({ deleted: 0, softDeleted: 1 });
+      const items = await db.select().from(savedMealItems).where(inArray(savedMealItems.savedMealId, [meal.id]));
+      expect(items).toHaveLength(1);
+    });
+
+    it("never touches another source or a user's custom food", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      const otherSource = `prune-test-other-${randomUUID()}`;
+      await seed(source, ["keep"]);
+      const other = await seed(otherSource, ["other-food"]);
+      const userId = await makeUser("prune-custom");
+      const custom = await repository.createCustomFood(userId, {
+        name: `Custom ${randomUUID()}`,
+        category: "snacks",
+        macrosPer100g: { kcal: 100, protein: 1, carbs: 1, fat: 1 },
+      });
+      createdFoodIds.push(custom.id);
+
+      const result = await repository.pruneCatalogueFoods(source, ["keep"]);
+
+      expect(result).toEqual({ deleted: 0, softDeleted: 0 });
+      expect(await rowById(other.get("other-food") ?? "")).toBeDefined();
+      expect(await rowById(custom.id)).toBeDefined();
+    });
+
+    it("is idempotent -- a second run finds nothing left to prune", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      await seed(source, ["keep", "drop"]);
+
+      await repository.pruneCatalogueFoods(source, ["keep"]);
+      const second = await repository.pruneCatalogueFoods(source, ["keep"]);
+
+      expect(second).toEqual({ deleted: 0, softDeleted: 0 });
+    });
+
+    it("restores a soft-deleted food when it reappears in a later load", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      const ids = await seed(source, ["keep", "logged"]);
+      const loggedId = ids.get("logged") ?? "";
+      const userId = await makeUser("prune-restore");
+      await repository.logEntry(userId, {
+        foodId: loggedId,
+        slot: "lunch",
+        loggedDate: "2026-09-01",
+        servingLabel: "100 g",
+        grams: 100,
+      });
+      await repository.pruneCatalogueFoods(source, ["keep"]);
+      expect(await repository.findFoodById(loggedId)).toBeNull();
+
+      await repository.bulkUpsertCatalogueFoods([{ ...catalogueInput("logged"), source }]);
+
+      expect((await repository.findFoodById(loggedId))?.id).toBe(loggedId);
+    });
+  });
+
+  describe("countCatalogueFoods", () => {
+    it("counts only the active catalogue foods of that source", async () => {
+      const source = `prune-test-${randomUUID()}`;
+      await repository.bulkUpsertCatalogueFoods(["a", "b", "c"].map((id) => ({ ...catalogueInput(id), source })));
+      const rows = await db.select().from(foods).where(inArray(foods.sourceId, ["a", "b", "c"]));
+      createdFoodIds.push(...rows.map((row) => row.id));
+
+      expect(await repository.countCatalogueFoods(source)).toBe(3);
+
+      await repository.pruneCatalogueFoods(source, ["a"]);
+
+      expect(await repository.countCatalogueFoods(source)).toBe(1);
+    });
+  });
 });
