@@ -56,7 +56,7 @@ function buildNutrientNameById(nutrient: CsvTable): Map<string, string> {
     const name = row[nameCol] ?? "";
     map.set(row[idCol] ?? "", name);
     // "208" and "208.0" both occur across releases; a nutrient_nbr never has a real fraction.
-    const nbr = nbrCol === -1 ? "" : (row[nbrCol] ?? "").replace(/.0$/, "");
+    const nbr = nbrCol === -1 ? "" : (row[nbrCol] ?? "").replace(/\.0+$/, "");
     if (nbr) map.set(nbr, name);
   }
   return map;

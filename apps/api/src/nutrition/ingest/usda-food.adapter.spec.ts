@@ -106,6 +106,31 @@ describe("UsdaFoodAdapter", () => {
     expect(food?.dataType).toBe("survey");
   });
 
+  it("matches a nutrient_nbr written as 203.0, and does not mangle a nutrient_nbr that ends in 0 (210)", () => {
+    const release = buildRelease({
+      nutrient: table(
+        ["id", "name", "unit_name", "nutrient_nbr", "rank"],
+        [
+          ["1008", "Energy", "KCAL", "208", "300"],
+          ["1003", "Protein", "G", "203.0", "600"],
+          ["1005", "Carbohydrate, by difference", "G", "210", "1110"],
+        ],
+      ),
+      foodNutrient: table(
+        ["fdc_id", "nutrient_id", "amount"],
+        [
+          ["100", "208", "50"],
+          ["100", "203", "2"],
+          ["100", "210", "9"],
+        ],
+      ),
+    });
+
+    const [food] = new UsdaFoodAdapter([release]).normalizeAll();
+
+    expect(food?.macrosPer100g).toEqual({ kcal: 50, protein: 2, carbs: 9, fat: 0 });
+  });
+
   it("reads Atwater energy by nutrient_nbr too (957/958), keeping the precedence", () => {
     const surveyAtwater = buildRelease({
       foodNutrient: table(
