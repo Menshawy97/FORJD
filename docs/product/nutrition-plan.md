@@ -951,3 +951,10 @@ and confirm Home's card matches the dashboard total.
 - [`../design/nutrition-screen-specs.md`](../design/nutrition-screen-specs.md) — the screens
 - [`../design/design-revision-2026-08-30.md`](../design/design-revision-2026-08-30.md) — what changed and why
 - [`phase-2-plan.md`](phase-2-plan.md) — the plan this one copies its shape and patterns from
+
+## Follow-up 2026-09-18 — catalogue clean-up
+
+Survey macros were all 0 (adapter ignored `nutrient_nbr`), 239 duplicate names, and US-only chains
+shipped. Fixed and made permanent in [ADR-040](../decisions/ADR-040-food-catalogue-curation.md):
+edit `apps/api/src/nutrition/ingest/food-exclusions.ts`, run `nutrition:normalize`, merge; deploy
+prunes the database to match.

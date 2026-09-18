@@ -107,3 +107,12 @@ this is the file a re-vendor will actually be read against.
 - **Never vendored, by design:** every other nutrient (fiber, sugar, sodium, vitamins,
   minerals — USDA ships ~80 per food). ADR-023 and this session's design-spec review confirmed
   no nutrition screen displays anything beyond kcal/protein/carbs/fat.
+
+## Update 2026-09-18 — trap 1 is now handled by the adapter, and the snapshot is curated
+
+`fetch-usda.ts` always resolved trap 1; the Phase D adapter did not, so every Survey food was
+normalized to 0 kcal. It now indexes both `nutrient.id` and `nutrient_nbr`. The normalize step also
+applies the curation rules in `ingest/curate.ts` and `ingest/food-exclusions.ts` — see
+ADR-040. Measured after the fix: 13,602 foods with an energy value (92 have none and are
+excluded), 13,072 shipped after removing 283 blocked, 8 zero-calorie and 239 duplicate foods.
+Every removed food and its reason is in `removed-foods.json`.

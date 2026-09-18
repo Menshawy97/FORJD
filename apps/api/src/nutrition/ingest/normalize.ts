@@ -2,7 +2,9 @@ import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
 import { parseCsv } from "./csv";
+import { curateCatalogue, toSnapshotFood } from "./curate";
 import { UsdaFoodAdapter, UsdaReleaseInput } from "./usda-food.adapter";
+import { UsdaDataType } from "./usda-food-source-adapter.interface";
 
 /**
  * `pnpm --filter @forjd/api nutrition:normalize`
@@ -21,11 +23,17 @@ import { UsdaFoodAdapter, UsdaReleaseInput } from "./usda-food.adapter";
 const INGEST_DIR = __dirname;
 const DATA_DIR = join(INGEST_DIR, "data");
 const SNAPSHOT_PATH = join(DATA_DIR, "normalized-foods.json");
+const REMOVED_PATH = join(DATA_DIR, "removed-foods.json");
 
-const RELEASES: readonly { dir: string; categoryFile: string; categoryScheme: "sr_legacy" | "wweia" }[] = [
-  { dir: "foundation", categoryFile: "food_category.csv", categoryScheme: "sr_legacy" },
-  { dir: "sr_legacy", categoryFile: "food_category.csv", categoryScheme: "sr_legacy" },
-  { dir: "survey", categoryFile: "wweia_food_category.csv", categoryScheme: "wweia" },
+const RELEASES: readonly {
+  dir: string;
+  dataType: UsdaDataType;
+  categoryFile: string;
+  categoryScheme: "sr_legacy" | "wweia";
+}[] = [
+  { dir: "foundation", dataType: "foundation", categoryFile: "food_category.csv", categoryScheme: "sr_legacy" },
+  { dir: "sr_legacy", dataType: "sr_legacy", categoryFile: "food_category.csv", categoryScheme: "sr_legacy" },
+  { dir: "survey", dataType: "survey", categoryFile: "wweia_food_category.csv", categoryScheme: "wweia" },
 ];
 
 function readCsv(dir: string, fileName: string) {
@@ -41,6 +49,7 @@ function readRelease(spec: (typeof RELEASES)[number]): UsdaReleaseInput {
     measureUnit: readCsv(spec.dir, "measure_unit.csv"),
     category: readCsv(spec.dir, spec.categoryFile),
     categoryScheme: spec.categoryScheme,
+    dataType: spec.dataType,
   };
 }
 
@@ -48,10 +57,13 @@ export function normalize(): void {
   const releases = RELEASES.map(readRelease);
   const adapter = new UsdaFoodAdapter(releases);
 
-  const foods = adapter
-    .normalizeAll()
-    // Sorted by sourceId so a re-vendor that merely reorders the upstream file produces no diff.
-    .sort((a, b) => (a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : 0));
+  const normalized = adapter.normalizeAll();
+  const { kept, removed } = curateCatalogue(normalized);
+  const bySourceId = (a: { sourceId: string }, b: { sourceId: string }): number =>
+    a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : 0;
+
+  // Sorted by sourceId so a re-vendor that merely reorders the upstream file produces no diff.
+  const foods = kept.map(toSnapshotFood).sort(bySourceId);
 
   const snapshot = {
     source: adapter.source,
@@ -75,9 +87,25 @@ export function normalize(): void {
 
   const noServings = foods.filter((food) => food.servings.length === 0).length;
 
+  // The audit trail: every food curation dropped and why, committed so a rule change shows up as a
+  // reviewable diff of exactly which foods it removed or restored.
+  const removedSorted = [...removed].sort(bySourceId);
+  writeFileSync(
+    REMOVED_PATH,
+    `${JSON.stringify({ count: removedSorted.length, removed: removedSorted }, null, 2)}\n`,
+    "utf8",
+  );
+
+  const removedByReason = removed.reduce<Record<string, number>>((counts, food) => {
+    const reason = food.reason.startsWith("blocked") ? "blocked" : food.reason;
+    counts[reason] = (counts[reason] ?? 0) + 1;
+    return counts;
+  }, {});
+
   process.stdout.write(
     [
-      `normalized ${foods.length} foods from ${adapter.source}`,
+      `normalized ${foods.length} foods from ${adapter.source} (${normalized.length} before curation)`,
+      `  removed by curation: ${removed.length} ${JSON.stringify(removedByReason)} -> ${REMOVED_PATH}`,
       `  category: ${tally()}`,
       `  foods with no servings (gram-only): ${noServings}`,
       `  -> ${SNAPSHOT_PATH}`,

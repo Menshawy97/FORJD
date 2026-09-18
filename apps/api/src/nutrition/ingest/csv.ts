@@ -23,7 +23,9 @@ function splitRow(line: string): string[] {
 }
 
 export function parseCsv(raw: string): CsvTable {
-  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  // `\r?\n`: a Windows checkout (autocrlf) turns the vendored files' LF into CRLF, and a stray
+  // `\r` would otherwise end up inside the last column's name.
+  const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
   const headerLine = lines[0];
   if (headerLine === undefined) {
     throw new Error("empty CSV: no header row");
