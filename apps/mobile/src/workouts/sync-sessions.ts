@@ -2,6 +2,7 @@ import type { AxiosError } from 'axios';
 
 import { uploadWorkoutSession } from '@/auth/apiClient';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
+import { sanitizeUploadRequest } from './live-session';
 import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb, UploadRejection } from '@/store/workout-session';
 
 /**
@@ -12,7 +13,9 @@ import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb, Uploa
  */
 async function uploadSession(body: WorkoutSessionUploadRequest): Promise<void> {
   try {
-    await uploadWorkoutSession(body);
+    // Sanitised here, not only when the session is built, because the queue holds payloads built
+    // by earlier versions: a workout stuck behind a 400 for one out-of-range value saves on retry.
+    await uploadWorkoutSession(sanitizeUploadRequest(body));
   } catch (error) {
     const status = (error as Partial<AxiosError>)?.isAxiosError
       ? (error as AxiosError).response?.status
