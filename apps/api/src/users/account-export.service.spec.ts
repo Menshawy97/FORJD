@@ -72,6 +72,21 @@ describe('AccountExportService', () => {
       ...((overrides.whoopConnections as object) ?? {}),
     };
 
+    const extrasRepository = {
+      getExtras: jest.fn().mockResolvedValue({
+        customExercises: [],
+        favouriteExerciseIds: [],
+        customFoods: [],
+        macroGoals: null,
+        savedMeals: [],
+        goals: [],
+        preferences: null,
+        healthConnections: [],
+        programEnrollmentHistory: [],
+        ...((overrides.extras as object) ?? {}),
+      }),
+    };
+
     const service = new AccountExportService(
       usersRepository as never,
       privacyService as never,
@@ -82,6 +97,7 @@ describe('AccountExportService', () => {
       workoutsRepository as never,
       programsRepository as never,
       whoopConnections as never,
+      extrasRepository as never,
     );
 
     return {
@@ -95,6 +111,7 @@ describe('AccountExportService', () => {
       workoutsRepository,
       programsRepository,
       whoopConnections,
+      extrasRepository,
     };
   }
 
@@ -114,6 +131,26 @@ describe('AccountExportService', () => {
     expect(deps.programsRepository.listForUser).toHaveBeenCalledWith({ userId, scope: 'mine' });
     expect(deps.programsRepository.findActiveEnrollment).toHaveBeenCalledWith(userId);
     expect(deps.whoopConnections.findByUserId).toHaveBeenCalledWith(userId);
+    expect(deps.extrasRepository.getExtras).toHaveBeenCalledWith(userId);
+  });
+
+  it('includes the previously missing sections (custom exercises and foods, goals, connections and more)', async () => {
+    const extras = {
+      customExercises: [{ id: 'e1', name: 'Curl' }],
+      favouriteExerciseIds: ['e1'],
+      customFoods: [{ id: 'f1', name: 'Bar' }],
+      macroGoals: { kcal: 2500, protein: 180, carbs: 250, fat: 70 },
+      savedMeals: [{ id: 'm1', name: 'Breakfast', items: [] }],
+      goals: [{ type: 'weight', targetValue: 80, targetDate: null, status: 'active' }],
+      preferences: { timezone: 'Africa/Cairo', locale: 'en', notificationsEnabled: true },
+      healthConnections: [{ source: 'health_connect', lastSuccessfulSyncAt: null }],
+      programEnrollmentHistory: [{ id: 'p1' }],
+    };
+    const { service } = build({ extras });
+
+    const result = await service.exportAccount(userId, email);
+
+    expect(result).toMatchObject(extras);
   });
 
   it('carries the account id/email and a version marker', async () => {

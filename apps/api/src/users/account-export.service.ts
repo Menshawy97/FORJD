@@ -38,6 +38,7 @@ import { NutritionLogEntry, NutritionRepository } from '../nutrition/nutrition.r
 import { PrivacyService } from '../privacy/privacy.service';
 import { ProgramsRepository } from '../programs/programs.repository';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { AccountExportExtrasRepository } from './account-export-extras.repository';
 import { UsersRepository } from './users.repository';
 import { WorkoutsRepository } from '../workouts/workouts.repository';
 
@@ -71,6 +72,7 @@ export class AccountExportService {
     private readonly workoutsRepository: WorkoutsRepository,
     private readonly programsRepository: ProgramsRepository,
     private readonly whoopConnections: WhoopConnectionRepository,
+    private readonly extrasRepository: AccountExportExtrasRepository,
   ) {}
 
   async exportAccount(userId: string, email: string): Promise<AccountExportResponse> {
@@ -86,6 +88,7 @@ export class AccountExportService {
       ownedPrograms,
       enrollment,
       whoopConnection,
+      extras,
     ] = await Promise.all([
       this.usersRepository.findProfile(userId),
       this.privacyService.get(userId),
@@ -98,6 +101,7 @@ export class AccountExportService {
       this.programsRepository.listForUser({ userId, scope: 'mine' }),
       this.programsRepository.findActiveEnrollment(userId),
       this.whoopConnections.findByUserId(userId),
+      this.extrasRepository.getExtras(userId),
     ]);
 
     return {
@@ -113,6 +117,7 @@ export class AccountExportService {
       workoutSessions,
       programs: this.toProgramsResponse(ownedPrograms, enrollment),
       externalConnections: whoopConnection ? [this.toConnectionResponse(whoopConnection)] : [],
+      ...extras,
     };
   }
 
