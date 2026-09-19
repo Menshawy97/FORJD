@@ -31,7 +31,11 @@ export class AccountController {
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMe(@Req() request: AuthenticatedRequest): Promise<void> {
-    await this.accountDeletionService.deleteAccount(request.user.id);
+    await this.accountDeletionService.deleteAccount({
+      userId: request.user.id,
+      email: request.user.email,
+      externalId: request.identity.externalId,
+    });
   }
 
   /**

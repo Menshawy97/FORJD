@@ -75,6 +75,17 @@ describe('JwtAuthGuard', () => {
     expect(context.switchToHttp().getRequest<{ user: User }>().user).toEqual(internalUser);
   });
 
+  it('attaches the verified identity too, so a handler can act on the login even if the local row is gone', async () => {
+    const identity: AuthIdentity = { externalId: 'ext-1', email: 'a@example.com', emailVerified: true };
+    authProvider.verifyAccessToken.mockResolvedValue(identity);
+    usersRepository.upsertFromIdentity.mockResolvedValue(internalUser);
+
+    const context = contextWith('Bearer good-token');
+    await guard.canActivate(context);
+
+    expect(context.switchToHttp().getRequest<{ identity: AuthIdentity }>().identity).toEqual(identity);
+  });
+
   it('accepts a lowercase bearer scheme', async () => {
     authProvider.verifyAccessToken.mockResolvedValue({
       externalId: 'ext-1',

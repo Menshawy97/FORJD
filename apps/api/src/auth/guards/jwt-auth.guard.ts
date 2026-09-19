@@ -9,11 +9,13 @@ import { User } from '@forjd/domain';
 import { Request } from 'express';
 
 import { UsersRepository } from '../../users/users.repository';
-import { AUTH_PROVIDER, AuthProvider } from '../providers/auth-provider.interface';
+import { AUTH_PROVIDER, AuthIdentity, AuthProvider } from '../providers/auth-provider.interface';
 import { IdentityCache } from './identity-cache';
 
 export interface AuthenticatedRequest extends Request {
   user: User;
+  /** The verified upstream identity behind `user`. Survives even if the local row was deleted. */
+  identity: AuthIdentity;
 }
 
 /**
@@ -41,6 +43,7 @@ export class JwtAuthGuard implements CanActivate {
     // now (ADR-012), which is what makes doing it every request affordable.
     const identity = await this.authProvider.verifyAccessToken(token);
 
+    request.identity = identity;
     request.user =
       this.identities.get(identity.externalId, identity.email) ??
       (await this.resolveAndCache(identity.externalId, identity.email));

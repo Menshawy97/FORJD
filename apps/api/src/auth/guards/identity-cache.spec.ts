@@ -24,6 +24,17 @@ describe('IdentityCache', () => {
     expect(cache.get('ext-1', 'a@example.com')).toEqual(user('user-1'));
   });
 
+  it('forgets one identity on eviction and leaves the others', () => {
+    const cache = new IdentityCache();
+    cache.set('ext-1', 'a@example.com', user('user-1'));
+    cache.set('ext-2', 'b@example.com', user('user-2'));
+
+    cache.evict('ext-1', 'a@example.com');
+
+    expect(cache.get('ext-1', 'a@example.com')).toBeUndefined();
+    expect(cache.get('ext-2', 'b@example.com')).toEqual(user('user-2'));
+  });
+
   it('misses when the same external id presents a different address', () => {
     const cache = new IdentityCache();
     cache.set('ext-1', 'old@example.com', user('user-1'));
