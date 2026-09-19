@@ -7,7 +7,26 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-09-02)
+## Current status (last updated 2026-09-19)
+
+**Phases 0-7 are complete and the 29-slice audit remediation is done (29/29 merged, ADR-038).**
+`main` is green; nothing is open on GitHub. Recent work outside the phase list: the food
+catalogue was curated and pruned ([ADR-040](../decisions/ADR-040-food-catalogue-curation.md),
+#180-#182) and set values are clamped so a mistyped number cannot strand a workout (#183).
+
+**Owed, and only the user can do them:** the Phase 6F Health Connect test on a physical Android
+phone (ADR-035), the live WHOOP OAuth round-trip (ADR-037), shortening the Supabase access-token
+lifetime to 900 s, hand-labelling Spike B, the dogfood gate, legal review, and the business/store
+accounts.
+
+**Phase 8 (privacy & beta prep) is in progress.** Plan: [`phase-8-plan.md`](phase-8-plan.md) --
+data inventory, real account deletion and complete export, a minimum age of 16, health-data
+consent, native Google sign-in (Apple built but shown "Coming soon"), and readable grey text.
+Update the plan's slice list as each merges.
+
+The text below is the earlier per-session history, kept as written.
+
+## Status as of 2026-09-02 (history)
 
 **Phases 0–2 are complete. Phase 2.5 (nutrition) is complete** — Phases A through J are done,
 and **Phase I (the "Nutrition Today" card) shipped as part of the Home dashboard**, exactly as
@@ -2367,8 +2386,8 @@ failure).
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
 | 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6F merged, readiness scoring (ADR-031, Accepted) and light-up-the-UI merged (#131, #132); 6F (`HealthConnectProvider`) is still **device-unverified** — merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md); a physical Android phone test is still owed before any UI screen calls `connect()`/`.sync()` on it (nothing does yet) |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **Complete** — [planned](phase-7-plan.md); 7A-7H done, [ADR-037](../decisions/ADR-037-whoop-integration-shape.md) records the closing shape. Owed: the live WHOOP OAuth round-trip (decision 1), the Phase 6F Health Connect device test (ADR-035, unrelated), decision E's readiness-baseline-crossover surfacing |
-| Audit remediation | — | Fix the 2026-09-10 whole-repo audit, test-first | **In progress** — [plan](audit-remediation-plan.md), status table there is the source of truth; 11 of 29 slices merged as of 2026-09-13 (all three critical findings — C1 account deletion, C2 AI consent, C3 lost workouts — closed), R4-R29 remaining. Pulls account deletion and data export forward out of Phase 8 |
-| 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | Not started — deletion and export land in the audit-remediation row above |
+| Audit remediation | — | Fix the 2026-09-10 whole-repo audit, test-first | **Complete** — [plan](audit-remediation-plan.md); 29 of 29 slices merged as of 2026-09-17. Pulled account deletion and data export forward out of Phase 8 |
+| 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | **In progress** — [planned](phase-8-plan.md); engineering-only parts (age gate, health consent, social sign-in, data inventory, real deletion/export); legal, Play Console and store accounts stay with the user |
 | Limited Android beta | 35 | 12+ testers | Not started |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | Not started |
