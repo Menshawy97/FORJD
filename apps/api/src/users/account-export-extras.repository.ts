@@ -16,6 +16,10 @@ import { programEnrollments } from '../database/schema/workouts.schema';
  * what account deletion removes. Every query is scoped by `userId` (or by an id that was
  * itself read under `userId`) -- there is no path here that reads another user's row.
  *
+ * Soft-deleted custom exercises and foods are included on purpose: the export is a copy of what
+ * FORJD still holds about the person, and a soft-deleted row is still held until account
+ * deletion. (The live screens hide them; the export must not.)
+ *
  * Unbounded on purpose, like the R4 reads: an export exists to be complete. Each of these
  * collections is small per user (custom rows a person typed by hand, one row per setting).
  */
