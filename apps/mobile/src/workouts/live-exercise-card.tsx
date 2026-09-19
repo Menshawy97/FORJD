@@ -92,7 +92,7 @@ export function LiveExerciseCard({
                 <Icon name="chevron" size={9} color={colors.accent} />
               </Pressable>
             ) : null}
-            <Text className="font-archivo text-[11.5px]" style={{ color: '#6E6E66' }}>
+            <Text className="font-archivo text-[11.5px]" style={{ color: '#8A8A82' }}>
               {`${MEASURE_SUBTITLE[exercise.measure] ?? 'Weight'} · ${exercise.sets.length} sets`}
             </Text>
           </View>
@@ -226,10 +226,10 @@ export function LiveExerciseCard({
                       className="w-[30px] py-[1px] text-center font-archivo text-[14px] font-semibold"
                       style={{ color: numberColor }}
                     />
-                    <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
+                    <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#8A8A82' }}>
                       {weightUnit}
                     </Text>
-                    <Text className="font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
+                    <Text className="font-archivo text-[11px]" style={{ color: '#8A8A82' }}>
                       ×
                     </Text>
                     <TextInput
@@ -258,7 +258,7 @@ export function LiveExerciseCard({
                       className="w-[26px] py-[1px] text-right font-archivo text-[14px] font-semibold"
                       style={{ color: numberColor }}
                     />
-                    <Text className="font-archivo text-[14px] font-bold" style={{ color: '#6E6E66' }}>
+                    <Text className="font-archivo text-[14px] font-bold" style={{ color: '#8A8A82' }}>
                       :
                     </Text>
                     <TextInput
@@ -304,7 +304,7 @@ export function LiveExerciseCard({
                       className="w-[44px] py-[1px] text-center font-archivo text-[14px] font-semibold"
                       style={{ color: numberColor }}
                     />
-                    <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
+                    <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#8A8A82' }}>
                       {distanceUnit}
                     </Text>
                   </>

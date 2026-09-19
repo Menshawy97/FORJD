@@ -66,7 +66,7 @@ export default function DeleteAccountScreen() {
           className="mb-[16px] rounded-[12px] px-4 py-3 font-archivo text-[14px] text-text"
           style={{ backgroundColor: 'rgba(255,255,255,.06)' }}
           placeholder={CONFIRM_PHRASE}
-          placeholderTextColor="#6e6e66"
+          placeholderTextColor="#8A8A82"
         />
 
         {error && (

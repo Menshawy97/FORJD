@@ -32,7 +32,7 @@ export function RestTimerCard({ restSeconds, onDecrease, onIncrease }: RestTimer
       </View>
       <View className="flex-1">
         <Text className="font-archivo text-[13px] font-semibold text-text">Rest timer</Text>
-        <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
+        <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#8A8A82' }}>
           Applies to every set in this workout
         </Text>
       </View>

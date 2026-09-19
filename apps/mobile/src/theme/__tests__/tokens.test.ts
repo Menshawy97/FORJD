@@ -126,3 +126,68 @@ describe('primary accent CTA contrast (R19, H13)', () => {
     expect(ratio).toBeCloseTo(5.6, 1);
   });
 });
+
+// Phase 8 / 8H (R19's unapplied "GREEN part 1"): `label`, `dimmer` and `tabInactive` measured
+// 3.1:1 to 4.4:1 on the app surfaces, below the 4.5:1 AA floor for small text. The user chose
+// option B from rendered samples: the three-step hierarchy is kept (label brightest, tab
+// dimmest) while every step clears 4.5:1 on all four surfaces text is actually painted on.
+describe('small-text greys clear AA on every surface (8H)', () => {
+  const surfaces = {
+    bg: colors.bg,
+    screenBg: colors.screenBg,
+    surface: colors.surface,
+    elevated2: colors.elevated2,
+  };
+
+  it.each(['label', 'dimmer', 'tabInactive'] as const)('%s clears 4.5:1 on every surface', (token) => {
+    for (const [name, background] of Object.entries(surfaces)) {
+      expect({ token, on: name, ratio: contrastRatio(colors[token], background) >= 4.5 }).toEqual({
+        token,
+        on: name,
+        ratio: true,
+      });
+    }
+  });
+
+  it('keeps the three-step hierarchy: label brighter than dimmer, dimmer brighter than tabInactive', () => {
+    const luminance = (hex: string) => relativeLuminance(hex);
+
+    expect(luminance(colors.label)).toBeGreaterThan(luminance(colors.dimmer));
+    expect(luminance(colors.dimmer)).toBeGreaterThan(luminance(colors.tabInactive));
+  });
+
+  it('uses the chosen option B values', () => {
+    expect([colors.label, colors.dimmer, colors.tabInactive].map((hex) => hex.toUpperCase())).toEqual([
+      '#94948B',
+      '#8A8A82',
+      '#85857C',
+    ]);
+  });
+});
+
+// The old faint greys were also typed straight into about twenty files as inline hex, so
+// changing the tokens alone would have left them behind. None of the retired values may survive
+// in shipped source.
+describe('retired faint greys are gone from source (8H)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('fs') as typeof import('fs');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const path = require('path') as typeof import('path');
+
+  function sourceFiles(dir: string): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        return entry.name === '__tests__' ? [] : sourceFiles(full);
+      }
+      return /\.(ts|tsx)$/.test(entry.name) ? [full] : [];
+    });
+  }
+
+  it('finds none of #77776F, #6E6E66 or #6B6B64 in apps/mobile/src or the tailwind config', () => {
+    const files = [...sourceFiles(path.join(__dirname, '..', '..')), path.join(__dirname, '..', '..', '..', 'tailwind.config.ts')];
+    const offenders = files.filter((file) => /#77776f|#6e6e66|#6b6b64/i.test(fs.readFileSync(file, 'utf8')));
+
+    expect(offenders.map((file) => path.relative(path.join(__dirname, '..', '..', '..'), file))).toEqual([]);
+  });
+});

@@ -171,7 +171,7 @@ export default function WorkoutShareScreen() {
       <ScreenBackground>
         <Header title="Share Workout" onBack={() => router.back()} />
         <View className="flex-1 items-center justify-center px-screen-x">
-          <Text className="text-center font-archivo text-[13px]" style={{ color: '#77776F' }}>
+          <Text className="text-center font-archivo text-[13px]" style={{ color: '#94948B' }}>
             Finish a workout to share it.
           </Text>
         </View>
@@ -240,7 +240,7 @@ export default function WorkoutShareScreen() {
                     </Text>
                     <Text
                       className="mt-[4px] font-archivo text-[10px] font-medium"
-                      style={{ color: '#77776F' }}>
+                      style={{ color: '#94948B' }}>
                       {label}
                     </Text>
                   </View>
@@ -303,7 +303,7 @@ export default function WorkoutShareScreen() {
 
         <Text
           className="mb-[10px] mt-[22px] font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-          style={{ color: '#77776F' }}>
+          style={{ color: '#94948B' }}>
           Choose a layout
         </Text>
 
@@ -339,7 +339,7 @@ export default function WorkoutShareScreen() {
                   style={{ color: isSelected ? colors.accent : colors.text }}>
                   {layout.label}
                 </Text>
-                <Text className="mt-[3px] font-archivo text-[10px]" style={{ color: '#6E6E66' }}>
+                <Text className="mt-[3px] font-archivo text-[10px]" style={{ color: '#8A8A82' }}>
                   {layout.desc}
                 </Text>
               </Pressable>

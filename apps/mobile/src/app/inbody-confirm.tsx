@@ -297,7 +297,7 @@ export default function InBodyConfirmScreen() {
             fontWeight: '600',
             letterSpacing: 0.1 * 9.5,
             textTransform: 'uppercase',
-            color: '#77776f',
+            color: '#94948B',
             marginBottom: 9,
           }}>
           Scan date & time
@@ -360,7 +360,7 @@ export default function InBodyConfirmScreen() {
             fontWeight: '600',
             letterSpacing: 0.1 * 9.5,
             textTransform: 'uppercase',
-            color: '#77776f',
+            color: '#94948B',
             marginTop: 24,
             marginBottom: 2,
           }}>
@@ -384,7 +384,7 @@ export default function InBodyConfirmScreen() {
             fontWeight: '600',
             letterSpacing: 0.1 * 9.5,
             textTransform: 'uppercase',
-            color: '#77776f',
+            color: '#94948B',
             marginTop: 26,
             marginBottom: 2,
           }}>

@@ -45,7 +45,7 @@ function StatTile({ label, value, unit, color }: StatTileProps) {
     <View
       className="flex-1 rounded-card px-[14px] py-[13px]"
       style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-      <Text className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]" style={{ color: '#77776F' }}>
+      <Text className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]" style={{ color: '#94948B' }}>
         {label}
       </Text>
       <View className="mt-[9px] flex-row items-baseline" style={{ gap: 4 }}>
@@ -56,7 +56,7 @@ function StatTile({ label, value, unit, color }: StatTileProps) {
           {value}
         </Text>
         {unit ? (
-          <Text className="font-archivo text-[11.5px] font-medium" style={{ color: '#6E6E66' }}>
+          <Text className="font-archivo text-[11.5px] font-medium" style={{ color: '#8A8A82' }}>
             {unit}
           </Text>
         ) : null}
@@ -171,9 +171,9 @@ export default function WorkoutDoneScreen() {
           training data was rejected in Phase J.
         */}
         <View className="mt-[8px] flex-row" style={{ gap: 8 }}>
-          <StatTile label="Avg HR" value="—" unit="bpm" color="#6E6E66" />
-          <StatTile label="Peak HR" value="—" unit="bpm" color="#6E6E66" />
-          <StatTile label="Calories" value="—" unit="kcal" color="#6E6E66" />
+          <StatTile label="Avg HR" value="—" unit="bpm" color="#8A8A82" />
+          <StatTile label="Peak HR" value="—" unit="bpm" color="#8A8A82" />
+          <StatTile label="Calories" value="—" unit="kcal" color="#8A8A82" />
         </View>
 
         <View
@@ -181,10 +181,10 @@ export default function WorkoutDoneScreen() {
           style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
           <Text
             className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-            style={{ color: '#77776F' }}>
+            style={{ color: '#94948B' }}>
             HR through the session
           </Text>
-          <Text className="mt-[12px] font-archivo text-[12px]" style={{ color: '#6E6E66' }}>
+          <Text className="mt-[12px] font-archivo text-[12px]" style={{ color: '#8A8A82' }}>
             Connect a watch to see your heart rate here.
           </Text>
         </View>
@@ -193,7 +193,7 @@ export default function WorkoutDoneScreen() {
           <View className="mt-[20px]">
             <Text
               className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-              style={{ color: '#77776F' }}>
+              style={{ color: '#94948B' }}>
               Muscles worked
             </Text>
             <View
@@ -220,7 +220,7 @@ export default function WorkoutDoneScreen() {
                       }}
                     />
                   </View>
-                  <Text className="font-archivo text-[11px] font-medium" style={{ color: '#6E6E66' }}>
+                  <Text className="font-archivo text-[11px] font-medium" style={{ color: '#8A8A82' }}>
                     {`${row.sets} ${row.sets === 1 ? 'set' : 'sets'}`}
                   </Text>
                 </View>

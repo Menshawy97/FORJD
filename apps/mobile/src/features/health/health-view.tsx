@@ -137,7 +137,7 @@ function MetricTile({
           fontWeight: '600',
           letterSpacing: 0.14 * 9,
           textTransform: 'uppercase',
-          color: '#77776F',
+          color: '#94948B',
         }}>
         {label}
       </Text>
@@ -246,7 +246,7 @@ export function HealthView({ series, readiness }: HealthViewProps) {
           fontWeight: '600',
           letterSpacing: 0.14 * 9.5,
           textTransform: 'uppercase',
-          color: '#77776F',
+          color: '#94948B',
           marginTop: 22,
           marginBottom: 10,
         }}>

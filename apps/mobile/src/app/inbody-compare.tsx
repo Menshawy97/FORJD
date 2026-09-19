@@ -121,7 +121,7 @@ export default function InBodyCompareScreen() {
                 borderWidth: 1,
                 borderColor: colors.border,
               }}>
-              <Text style={{ fontFamily: 'Archivo', fontSize: 9, fontWeight: '600', letterSpacing: 0.08 * 9, textTransform: 'uppercase', color: '#77776f' }}>
+              <Text style={{ fontFamily: 'Archivo', fontSize: 9, fontWeight: '600', letterSpacing: 0.08 * 9, textTransform: 'uppercase', color: '#94948B' }}>
                 {label as string}
               </Text>
               <Text style={{ marginTop: 6, fontFamily: 'Archivo', fontSize: 13.5, fontWeight: '700', color: colors.text }}>
@@ -153,7 +153,7 @@ export default function InBodyCompareScreen() {
                 padding: 14,
                 marginBottom: 8,
               }}>
-              <Text style={{ fontFamily: 'Archivo', fontSize: 9.5, fontWeight: '600', letterSpacing: 0.1 * 9.5, textTransform: 'uppercase', color: '#77776f', marginBottom: 9 }}>
+              <Text style={{ fontFamily: 'Archivo', fontSize: 9.5, fontWeight: '600', letterSpacing: 0.1 * 9.5, textTransform: 'uppercase', color: '#94948B', marginBottom: 9 }}>
                 {BODY_METRIC_DISPLAY_NAMES[metric]}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

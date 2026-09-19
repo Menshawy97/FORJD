@@ -121,7 +121,7 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
                   fontWeight: '600',
                   letterSpacing: 0.14 * 9.5,
                   textTransform: 'uppercase',
-                  color: '#77776F',
+                  color: '#94948B',
                 }}>
                 {label}
               </Text>
@@ -207,7 +207,7 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
           fontWeight: '600',
           letterSpacing: 0.14 * 9.5,
           textTransform: 'uppercase',
-          color: '#77776F',
+          color: '#94948B',
           marginTop: 22,
           marginBottom: 10,
         }}>
@@ -270,7 +270,7 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
           fontWeight: '600',
           letterSpacing: 0.14 * 9.5,
           textTransform: 'uppercase',
-          color: '#77776F',
+          color: '#94948B',
           marginTop: 22,
           marginBottom: 10,
         }}>
@@ -356,7 +356,7 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
           <Text style={{ fontFamily: 'Archivo', fontSize: 14.5, fontWeight: '600', color: colors.text }}>
             Import InBody Scan
           </Text>
-          <Text style={{ marginTop: 5, fontFamily: 'Archivo', fontSize: 11.5, color: '#6e6e66' }}>
+          <Text style={{ marginTop: 5, fontFamily: 'Archivo', fontSize: 11.5, color: '#8A8A82' }}>
             {hasAnyScan ? 'View history or add a new scan' : 'No scans yet'}
           </Text>
         </View>
