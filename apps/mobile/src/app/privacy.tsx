@@ -30,6 +30,8 @@ interface PrivacyFlags {
   aiFeaturesConsent: boolean;
   publicProfile: boolean;
   crashDiagnostics: boolean;
+  /** ADR-043. The only place consent can be withdrawn; it is given on the health-consent screen. */
+  healthDataConsent: boolean;
 }
 
 const TOGGLE_ROWS: ReadonlyArray<{ key: keyof PrivacyFlags; title: string; subtitle: string }> = [
@@ -58,6 +60,11 @@ const TOGGLE_ROWS: ReadonlyArray<{ key: keyof PrivacyFlags; title: string; subti
     title: 'Crash diagnostics',
     subtitle: 'Anonymous crash reports only — never health data.',
   },
+  {
+    key: 'healthDataConsent',
+    title: 'Health data',
+    subtitle: 'Let FORJD collect data from WHOOP and connected health apps.',
+  },
 ];
 
 const EMPTY_FLAGS: PrivacyFlags = {
@@ -66,6 +73,7 @@ const EMPTY_FLAGS: PrivacyFlags = {
   aiFeaturesConsent: false,
   publicProfile: false,
   crashDiagnostics: false,
+  healthDataConsent: false,
 };
 
 function toFlags(privacy: PrivacySettingsResponse): PrivacyFlags {
@@ -75,6 +83,7 @@ function toFlags(privacy: PrivacySettingsResponse): PrivacyFlags {
     aiFeaturesConsent: privacy.aiFeaturesConsent,
     publicProfile: privacy.publicProfile,
     crashDiagnostics: privacy.crashDiagnostics,
+    healthDataConsent: privacy.healthDataConsent,
   };
 }
 
