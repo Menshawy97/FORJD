@@ -58,6 +58,11 @@ const config: ExpoConfig = {
     // Required as a config plugin from SDK 57; it was implicit before. The app opens the WHOOP
     // OAuth flow and external links through it.
     'expo-web-browser',
+    // ADR-041: native Google sign-in. Android needs no plugin options; iOS needs the reversed
+    // client ID as a URL scheme, so it is added only when configured (iOS ships later, ADR-007).
+    process.env.GOOGLE_IOS_URL_SCHEME
+      ? ['@react-native-google-signin/google-signin', { iosUrlScheme: process.env.GOOGLE_IOS_URL_SCHEME }]
+      : '@react-native-google-signin/google-signin',
     '@react-native-community/datetimepicker',
     [
       'expo-splash-screen',
@@ -101,6 +106,14 @@ const config: ExpoConfig = {
     // OpenAI/WHOOP/Supabase secrets stay server-side; the mobile app only ever talks to
     // apps/api, never a third-party API directly.
     apiBaseUrl: process.env.API_BASE_URL ?? 'http://localhost:3000',
+    // ADR-041. The Google OAuth *web* client ID: public by design (it identifies the app to
+    // Google and is visible in every Google sign-in request), so it is not a secret and may
+    // ship in the bundle. The client secret lives only in the Supabase dashboard. Empty until
+    // Google Cloud is set up, in which case the button says the app build is needed.
+    googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
+    // Sign in with Apple is built but stays off until a paid Apple Developer account exists;
+    // flipping this to true (plus adding the entitlement plugin) turns it on with no code change.
+    appleSignInEnabled: process.env.APPLE_SIGN_IN_ENABLED === 'true',
     eas: {
       projectId: '971ed96d-2f88-42e2-bcbf-1643ba5d8fa2',
     },

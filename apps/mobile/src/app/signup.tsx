@@ -11,6 +11,7 @@ import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { SocialAuthRow } from '@/components/social-auth-row';
 import { Toast, useToast } from '@/components/toast';
+import { useSocialSignIn } from '@/auth/use-social-sign-in';
 import { colors } from '@/theme/tokens';
 
 // Copy and layout from the prototype's `s_signup()`; validation order from
@@ -84,6 +85,7 @@ export default function SignupScreen() {
   const [error, setError] = useState<SubmitError | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
+  const social = useSocialSignIn(toast.show);
 
   const clearErrorOnEdit = (setter: (value: string) => void) => (value: string) => {
     setter(value);
@@ -208,8 +210,9 @@ export default function SignupScreen() {
         </Pressable>
 
         <SocialAuthRow
-          onGooglePress={() => toast.show('Continuing with Google…')}
-          onApplePress={() => toast.show('Continuing with Apple…')}
+          onGooglePress={social.google}
+          onApplePress={social.apple}
+          appleEnabled={social.appleEnabled}
         />
 
         {/* `legal` is both a fontSize and a color token, so `text-legal` would collide as a

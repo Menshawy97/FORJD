@@ -204,6 +204,18 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# ADR-041 / CLAUDE.md rule 4: the native Google and Apple sign-in SDKs are implementation details
+# behind the adapters in apps/mobile/src/integrations/auth/. Same directory-prefix shape as the
+# react-native-health-connect rule above, and no test exemption for the same reason: the adapters
+# are loaded lazily precisely so a missing native module (Expo Go) degrades instead of crashing,
+# and one file owning both the import and that guard is what keeps it true.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' -E "['\"](@react-native-google-signin/google-signin|expo-apple-authentication)['\"]" apps/mobile/src     | grep -v '^apps/mobile/src/integrations/auth/' || true)
+  if [ -n "$hits" ]; then
+    report "a native social sign-in SDK (Google/Apple) imported outside apps/mobile/src/integrations/auth/" "$hits"
+  fi
+fi
+
 # Phase 7D-7F / CLAUDE.md rule 4: WHOOP's own hostname is the tell for code that actually
 # talks to WHOOP (as opposed to code that merely knows the provider name "whoop" as a
 # HealthSource string, which is legitimate everywhere -- e.g. HEALTH_SOURCE_PRIORITY in
