@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { consumeUnderageNotice } from '@/auth/account-notice';
 import { consumeSessionExpired } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { pressGhost, pressScale } from '@/components/press-feedback';
@@ -19,6 +20,9 @@ import { colors } from '@/theme/tokens';
  * so a later ordinary visit to /welcome (app launch, manual logout) never shows it.
  */
 const SESSION_EXPIRED_MESSAGE = 'Your session expired. Please log in again.';
+// ADR-042: shown once after the "Your Profile" step turned an under-16 away and removed the
+// account. Read-once, like the expired-session notice above.
+const UNDERAGE_MESSAGE = 'You must be at least 16 to use FORJD. Your account has been removed.';
 
 // Copy, layout and glyphs from the prototype's welcome screen (`isWelcome` branch of
 // `FORJD mobile app design/FORJD Mobile.dc.html`), cross-checked against
@@ -50,6 +54,7 @@ export default function WelcomeScreen() {
   // render -- a `useState(consumeSessionExpired())` call form would re-invoke it whenever
   // React re-renders this component for an unrelated reason before it re-mounts.
   const [sessionExpired] = useState(() => consumeSessionExpired());
+  const [underage] = useState(() => consumeUnderageNotice());
 
   return (
     <ScreenBackground>
@@ -99,6 +104,11 @@ export default function WelcomeScreen() {
         {sessionExpired && (
           <Text className="mb-3 font-archivo text-inline-error font-medium text-errorText">
             {SESSION_EXPIRED_MESSAGE}
+          </Text>
+        )}
+        {underage && (
+          <Text className="mb-3 font-archivo text-inline-error font-medium text-errorText">
+            {UNDERAGE_MESSAGE}
           </Text>
         )}
 

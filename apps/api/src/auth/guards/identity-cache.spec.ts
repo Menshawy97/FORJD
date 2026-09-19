@@ -35,6 +35,26 @@ describe('IdentityCache', () => {
     expect(cache.get('ext-2', 'b@example.com')).toEqual(user('user-2'));
   });
 
+  it('remembers that a date of birth was given, per identity, and forgets it with the entry', () => {
+    const cache = new IdentityCache();
+    cache.set('ext-1', 'a@example.com', user('user-1'));
+
+    expect(cache.hasDateOfBirth('ext-1', 'a@example.com')).toBe(false);
+    cache.markDateOfBirthSet('ext-1', 'a@example.com');
+    expect(cache.hasDateOfBirth('ext-1', 'a@example.com')).toBe(true);
+    expect(cache.hasDateOfBirth('ext-2', 'b@example.com')).toBe(false);
+
+    cache.evict('ext-1', 'a@example.com');
+    expect(cache.hasDateOfBirth('ext-1', 'a@example.com')).toBe(false);
+  });
+
+  it('ignores marking an identity that is not cached', () => {
+    const cache = new IdentityCache();
+
+    expect(() => cache.markDateOfBirthSet('ext-9', 'z@example.com')).not.toThrow();
+    expect(cache.hasDateOfBirth('ext-9', 'z@example.com')).toBe(false);
+  });
+
   it('misses when the same external id presents a different address', () => {
     const cache = new IdentityCache();
     cache.set('ext-1', 'old@example.com', user('user-1'));

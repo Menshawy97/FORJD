@@ -192,6 +192,17 @@ export class UsersRepository {
     return row ? this.toProfile(row) : null;
   }
 
+  /** Whether a date of birth is on file -- the age gate (ADR-042) reads only this, not the value. */
+  async hasDateOfBirth(userId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ dateOfBirth: profiles.dateOfBirth })
+      .from(profiles)
+      .where(eq(profiles.userId, userId))
+      .limit(1);
+
+    return row?.dateOfBirth != null;
+  }
+
   async updateProfile(userId: string, patch: ProfilePatch): Promise<Profile | null> {
     try {
       const [row] = await this.db

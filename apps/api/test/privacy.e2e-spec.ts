@@ -9,6 +9,7 @@ import { AUTH_PROVIDER } from '../src/auth/providers/auth-provider.interface';
 import { Database, DRIZZLE } from '../src/database/database.module';
 import { users } from '../src/database/schema/users.schema';
 import { FakeAuthProvider } from './support/fake-auth-provider';
+import { markAdult } from './support/adult';
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const testEmail = `e2e-privacy-${suiteId}@example.com`;
@@ -54,6 +55,7 @@ describe('Privacy settings (e2e)', () => {
       .post('/api/v1/auth/register')
       .send({ email: testEmail, password: 'Str0ngPass!' })
       .expect(201);
+    await markAdult(app, testEmail);
   });
 
   afterAll(async () => {

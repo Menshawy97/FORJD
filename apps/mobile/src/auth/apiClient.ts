@@ -76,6 +76,8 @@ import type {
 
 import type { CatalogueFetchResult } from '@/store/exercise-catalogue';
 
+import { requireDateOfBirth } from './date-of-birth-gate';
+import { apiErrorCode } from './failure';
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './secureStorage';
 
 const apiBaseUrl = (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ?? 'http://localhost:3000';
@@ -125,6 +127,12 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetriableConfig | undefined;
+
+    // ADR-042: the server refuses every feature route for an account with no date of birth.
+    // Raising the gate sends the person to the "Your Profile" step wherever they were.
+    if (error.response?.status === 403 && apiErrorCode(error) === 'date_of_birth_required') {
+      requireDateOfBirth();
+    }
 
     if (error.response?.status !== 401 || !originalRequest || originalRequest._retried) {
       return Promise.reject(error);
@@ -180,6 +188,14 @@ export async function login(input: LoginRequest): Promise<SessionResponse> {
 export async function getMe(): Promise<MeResponse> {
   const response = await apiClient.get<MeResponse>('/users/me');
   return response.data;
+}
+
+/**
+ * ADR-042: the one-time age check. Resolves when the date is stored; rejects 403 `underage`
+ * (the account has just been deleted server-side) or 409 (a date is already on file).
+ */
+export async function setDateOfBirth(dateOfBirth: string): Promise<void> {
+  await apiClient.put('/users/me/date-of-birth', { dateOfBirth });
 }
 
 export async function updateProfile(patch: UpdateProfileRequest): Promise<ProfileResponse> {

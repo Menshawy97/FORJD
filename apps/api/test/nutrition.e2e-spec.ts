@@ -18,6 +18,7 @@ import { Database, DRIZZLE } from '../src/database/database.module';
 import { foods } from '../src/database/schema/nutrition.schema';
 import { users } from '../src/database/schema/users.schema';
 import { FakeAuthProvider } from './support/fake-auth-provider';
+import { markAdult } from './support/adult';
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ownerEmail = `e2e-nutrition-owner-${suiteId}@example.com`;
@@ -65,10 +66,12 @@ describe('Nutrition (e2e)', () => {
       .post('/api/v1/auth/register')
       .send({ email: ownerEmail, password: 'Str0ngPass!' })
       .expect(201);
+    await markAdult(app, ownerEmail);
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({ email: strangerEmail, password: 'Str0ngPass!' })
       .expect(201);
+    await markAdult(app, strangerEmail);
 
     const [catalogueRow] = await db
       .insert(foods)

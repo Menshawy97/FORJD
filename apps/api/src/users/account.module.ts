@@ -12,6 +12,7 @@ import { AccountController } from './account.controller';
 import { AccountDeletionService } from './account-deletion.service';
 import { AccountExportExtrasRepository } from './account-export-extras.repository';
 import { AccountExportService } from './account-export.service';
+import { AgeGateService } from './age-gate.service';
 import { UsersModule } from './users.module';
 
 /**
@@ -38,6 +39,6 @@ import { UsersModule } from './users.module';
     ProgramsModule,
   ],
   controllers: [AccountController],
-  providers: [AccountDeletionService, AccountExportService, AccountExportExtrasRepository],
+  providers: [AccountDeletionService, AccountExportService, AccountExportExtrasRepository, AgeGateService],
 })
 export class AccountModule {}

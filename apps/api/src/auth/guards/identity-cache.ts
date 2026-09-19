@@ -24,7 +24,7 @@ export interface IdentityCacheOptions {
  */
 @Injectable()
 export class IdentityCache {
-  private readonly entries = new Map<string, { user: User; expiresAt: number }>();
+  private readonly entries = new Map<string, { user: User; expiresAt: number; hasDateOfBirth: boolean }>();
   private readonly ttlMs: number;
   private readonly maxEntries: number;
 
@@ -73,7 +73,25 @@ export class IdentityCache {
     this.entries.set(this.keyFor(externalId, email), {
       user,
       expiresAt: Date.now() + this.ttlMs,
+      hasDateOfBirth: false,
     });
+  }
+
+  /**
+   * Whether this identity is known to have given a date of birth (ADR-042). Only ever a
+   * positive memory: a date of birth cannot be cleared, so "yes" stays true, while "no" is
+   * never cached and is re-read the moment the person gives it.
+   */
+  hasDateOfBirth(externalId: string, email: string): boolean {
+    const hit = this.entries.get(this.keyFor(externalId, email));
+    return hit !== undefined && hit.expiresAt > Date.now() && hit.hasDateOfBirth;
+  }
+
+  markDateOfBirthSet(externalId: string, email: string): void {
+    const hit = this.entries.get(this.keyFor(externalId, email));
+    if (hit) {
+      hit.hasDateOfBirth = true;
+    }
   }
 
   /** Forget one identity -- used on account deletion so the next request cannot reuse a deleted user. */

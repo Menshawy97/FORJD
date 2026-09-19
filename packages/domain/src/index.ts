@@ -181,3 +181,4 @@ export * from "./health-insight";
 export * from "./external-connection-vocabulary";
 export * from "./health-provider";
 export * from "./health-provider-contract";
+export * from "./age";

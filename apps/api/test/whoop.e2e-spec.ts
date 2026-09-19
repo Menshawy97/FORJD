@@ -11,6 +11,7 @@ import { Database, DRIZZLE } from "../src/database/database.module";
 import { users } from "../src/database/schema/users.schema";
 import { WHOOP_CLIENT, type WhoopClient } from "../src/integrations/whoop/whoop-client";
 import { FakeAuthProvider } from "./support/fake-auth-provider";
+import { markAdult } from "./support/adult";
 import recoveryFixture from "../src/integrations/whoop/__fixtures__/recovery.json";
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -108,7 +109,9 @@ describe("WHOOP integration (e2e)", () => {
     db = app.get<Database>(DRIZZLE);
 
     await request(app.getHttpServer()).post("/api/v1/auth/register").send({ email: ownerEmail, password: "Str0ngPass!" }).expect(201);
+    await markAdult(app, ownerEmail);
     await request(app.getHttpServer()).post("/api/v1/auth/register").send({ email: otherEmail, password: "Str0ngPass!" }).expect(201);
+    await markAdult(app, otherEmail);
   });
 
   afterAll(async () => {

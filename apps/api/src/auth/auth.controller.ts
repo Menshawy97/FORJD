@@ -15,6 +15,7 @@ import {
 
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AuthService } from './auth.service';
+import { AllowWithoutDateOfBirth } from './guards/allow-without-date-of-birth.decorator';
 import { AuthenticatedRequest, JwtAuthGuard } from './guards/jwt-auth.guard';
 
 /**
@@ -73,6 +74,7 @@ export class AuthController {
    */
   @Post('logout')
   @UseGuards(JwtAuthGuard)
+  @AllowWithoutDateOfBirth()
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Req() request: AuthenticatedRequest): Promise<void> {
     const token = request.headers.authorization?.split(' ')[1];

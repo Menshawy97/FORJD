@@ -1,5 +1,7 @@
 import {
   ACTIVITIES,
+  isOldEnough,
+  MINIMUM_AGE_YEARS,
   DISTANCE_UNITS,
   ENERGY_UNITS,
   PLANS,
@@ -228,6 +230,32 @@ const httpUrlSchema = z
   .url()
   .refine((value) => /^https?:\/\//i.test(value), 'Must be an http(s) URL');
 
+const localTodayIso = (): string => {
+  const now = new Date();
+  const pad = (value: number) => value.toString().padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+/**
+ * ADR-042. A stored date of birth must make the holder at least `MINIMUM_AGE_YEARS` old, so
+ * editing a profile can never walk around the gate the sign-up flow enforces. `null` is not
+ * accepted either: a date of birth, once given, cannot be cleared.
+ */
+const adultDateOfBirthSchema = isoDateSchema.refine(
+  (value) => isOldEnough(value, new Date()),
+  `You must be at least ${MINIMUM_AGE_YEARS} years old to use FORJD.`,
+);
+
+/**
+ * `PUT /users/me/date-of-birth`: the one-time age check. Deliberately does not judge the age --
+ * an under-age answer must delete the account (a decision for the service, not a 400), so only
+ * a real, non-future calendar date is refused here.
+ */
+export const setDateOfBirthRequestSchema = z.object({
+  dateOfBirth: isoDateSchema.refine((value) => value <= localTodayIso(), 'Date of birth cannot be in the future'),
+});
+export type SetDateOfBirthRequest = z.infer<typeof setDateOfBirthRequestSchema>;
+
 export const updateProfileRequestSchema = z
   .object({
     displayName: z.string().min(1).max(80).nullable(),
@@ -238,7 +266,7 @@ export const updateProfileRequestSchema = z
      * uniqueness cannot be decided from the request body alone.
      */
     username: usernameSchema.nullable(),
-    dateOfBirth: isoDateSchema.nullable(),
+    dateOfBirth: adultDateOfBirthSchema,
     sex: sexSchema.nullable(),
     heightCm: z.number().positive().max(300).nullable(),
     /**

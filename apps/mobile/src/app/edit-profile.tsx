@@ -9,6 +9,7 @@ import type { Sex } from '@forjd/domain';
 import { getMe, updateProfile, uploadAvatar } from '@/auth/apiClient';
 import { classifyRequestFailure, isConflict, OFFLINE_MESSAGE } from '@/auth/failure';
 import { sanitizeUsername } from '@/auth/username';
+import { latestAllowedBirthDate } from '@/auth/date-of-birth';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
@@ -159,7 +160,8 @@ export default function EditProfileScreen() {
     const patch: UpdateProfileRequest = {
       displayName: displayName.length > 0 ? displayName : null,
       username: username.length > 0 ? username : null,
-      dateOfBirth,
+      // Never null: a date of birth, once given, cannot be cleared (ADR-042).
+      ...(dateOfBirth ? { dateOfBirth } : {}),
       sex,
       avatarUrl,
     };
@@ -300,6 +302,8 @@ export default function EditProfileScreen() {
                   // handler assumes. Not verified on a physical iPhone yet (ADR-007); spot
                   // check when one is available.
                   display={Platform.OS === 'ios' ? 'compact' : 'default'}
+                  // The API refuses a date that makes the holder younger than 16 (ADR-042).
+                  maximumDate={latestAllowedBirthDate(new Date())}
                   onChange={(_event, picked) => {
                     setPickerOpen(false);
                     if (picked) {

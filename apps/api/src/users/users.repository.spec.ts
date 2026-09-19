@@ -56,6 +56,16 @@ describe('UsersRepository', () => {
     });
   });
 
+  it('reports whether a date of birth is on file (the age gate reads only this)', async () => {
+    const user = await repository.upsertFromIdentity(crypto.randomUUID(), uniqueEmail('dob'));
+
+    await expect(repository.hasDateOfBirth(user.id)).resolves.toBe(false);
+
+    await repository.updateProfile(user.id, { dateOfBirth: '1990-01-01' });
+
+    await expect(repository.hasDateOfBirth(user.id)).resolves.toBe(true);
+  });
+
   it('is idempotent for a repeated login by the same identity', async () => {
     const email = uniqueEmail('idempotent');
     const externalId = crypto.randomUUID();

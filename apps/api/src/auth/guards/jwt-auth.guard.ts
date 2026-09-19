@@ -1,15 +1,18 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { User } from '@forjd/domain';
 import { Request } from 'express';
 
 import { UsersRepository } from '../../users/users.repository';
 import { AUTH_PROVIDER, AuthIdentity, AuthProvider } from '../providers/auth-provider.interface';
+import { ALLOW_WITHOUT_DATE_OF_BIRTH } from './allow-without-date-of-birth.decorator';
 import { IdentityCache } from './identity-cache';
 
 export interface AuthenticatedRequest extends Request {
@@ -28,6 +31,7 @@ export class JwtAuthGuard implements CanActivate {
     @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
     private readonly usersRepository: UsersRepository,
     private readonly identities: IdentityCache,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -48,7 +52,40 @@ export class JwtAuthGuard implements CanActivate {
       this.identities.get(identity.externalId, identity.email) ??
       (await this.resolveAndCache(identity.externalId, identity.email));
 
+    await this.requireDateOfBirth(context, identity);
+
     return true;
+  }
+
+  /**
+   * ADR-042 -- the age gate is enforced here, not only in the app (CLAUDE.md rule 12): an
+   * account with no date of birth on file may reach only the routes marked
+   * `@AllowWithoutDateOfBirth()`. A positive answer is remembered on the identity cache entry;
+   * a negative one never is, so the request right after the date is given already passes.
+   */
+  private async requireDateOfBirth(context: ExecutionContext, identity: AuthIdentity): Promise<void> {
+    const open = this.reflector.getAllAndOverride<boolean | undefined>(ALLOW_WITHOUT_DATE_OF_BIRTH, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (open) {
+      return;
+    }
+
+    if (this.identities.hasDateOfBirth(identity.externalId, identity.email)) {
+      return;
+    }
+
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    if (!(await this.usersRepository.hasDateOfBirth(request.user.id))) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'date_of_birth_required',
+        message: 'Enter your date of birth to continue.',
+      });
+    }
+
+    this.identities.markDateOfBirthSet(identity.externalId, identity.email);
   }
 
   private async resolveAndCache(externalId: string, email: string): Promise<User> {

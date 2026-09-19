@@ -10,6 +10,7 @@ import { AUTH_PROVIDER } from "../src/auth/providers/auth-provider.interface";
 import { Database, DRIZZLE } from "../src/database/database.module";
 import { users } from "../src/database/schema/users.schema";
 import { FakeAuthProvider } from "./support/fake-auth-provider";
+import { markAdult } from "./support/adult";
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ownerEmail = `e2e-health-data-owner-${suiteId}@example.com`;
@@ -71,10 +72,12 @@ describe("Health data (e2e)", () => {
       .post("/api/v1/auth/register")
       .send({ email: ownerEmail, password: "Str0ngPass!" })
       .expect(201);
+    await markAdult(app, ownerEmail);
     await request(app.getHttpServer())
       .post("/api/v1/auth/register")
       .send({ email: otherEmail, password: "Str0ngPass!" })
       .expect(201);
+    await markAdult(app, otherEmail);
   });
 
   afterAll(async () => {
