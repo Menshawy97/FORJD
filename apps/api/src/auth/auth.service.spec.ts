@@ -131,6 +131,15 @@ describe('AuthService', () => {
       expect(authProvider.signOut).toHaveBeenCalledWith(session.accessToken);
     });
 
+    it('does not disguise an unexpected database failure as a bad token, and does not revoke the session', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+      usersRepository.upsertFromIdentity.mockRejectedValue(new Error('connection refused'));
+
+      await expect(service.socialSignIn(request)).rejects.toThrow('connection refused');
+
+      expect(authProvider.signOut).not.toHaveBeenCalled();
+    });
+
     it('propagates a rejected token without touching the database', async () => {
       authProvider.signInWithIdToken.mockRejectedValue(new Error('invalid'));
 
