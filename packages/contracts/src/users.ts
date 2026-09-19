@@ -133,6 +133,9 @@ export const privacySettingsResponseSchema = z.object({
   aiFeaturesConsent: z.boolean(),
   /** When consent was granted; null whenever `aiFeaturesConsent` is false. */
   aiFeaturesConsentAt: z.string().datetime().nullable(),
+  healthDataConsent: z.boolean(),
+  /** When health-data consent was granted; null whenever `healthDataConsent` is false. */
+  healthDataConsentAt: z.string().datetime().nullable(),
   crashDiagnostics: z.boolean(),
 });
 export type PrivacySettingsResponse = z.infer<typeof privacySettingsResponseSchema>;
@@ -152,6 +155,7 @@ export const updatePrivacyRequestSchema = z
      */
     locationForLeaderboard: z.boolean(),
     aiFeaturesConsent: z.boolean(),
+    healthDataConsent: z.boolean(),
     crashDiagnostics: z.boolean(),
   })
   .partial()

@@ -115,6 +115,8 @@ describe('Home total-load-failure state (R26)', () => {
         locationForLeaderboard: false,
         aiFeaturesConsent: false,
         aiFeaturesConsentAt: null,
+        healthDataConsent: false,
+        healthDataConsentAt: null,
         crashDiagnostics: false,
       },
     });

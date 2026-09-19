@@ -43,12 +43,14 @@ const PRIVACY = {
   locationForLeaderboard: false,
   aiFeaturesConsent: false,
   aiFeaturesConsentAt: null,
+  healthDataConsent: false,
+  healthDataConsentAt: null,
   crashDiagnostics: false,
 };
 
 const ME = { id: 'u1', email: 'a@example.com', profile: null, privacy: PRIVACY };
 
-/** Row order on screen: leaderboard, location, ai, publicProfile, crashDiagnostics. */
+/** Row order on screen: leaderboard, location, ai, publicProfile, crashDiagnostics, healthDataConsent. */
 function checkedStates(rows: Array<{ props: Record<string, unknown> }>): boolean[] {
   return rows.map(
     (row) => (row.props.accessibilityState as { checked: boolean }).checked,
@@ -83,6 +85,36 @@ describe('PrivacyScreen', () => {
     expect(await findByText('Anonymous crash reports only — never health data.')).toBeTruthy();
   });
 
+  // ADR-043. The only place consent can be withdrawn; the explainer screen is where it is given.
+  // The screen may have loaded a stale "on"; a plain Save must never re-grant consent that was
+  // withdrawn elsewhere (it would also write a "granted" audit row nobody asked for).
+  it('does not re-send an unchanged health data consent on Save', async () => {
+    (getMe as jest.Mock).mockResolvedValue({ ...ME, privacy: { ...PRIVACY, healthDataConsent: true } });
+    const { findByText } = await render(<PrivacyScreen />);
+
+    fireEvent.press(await findByText('Crash diagnostics'));
+    fireEvent.press(await findByText('Save'));
+
+    await waitFor(() => expect(updatePrivacy).toHaveBeenCalled());
+    expect((updatePrivacy as jest.Mock).mock.calls[0]![0]).not.toHaveProperty('healthDataConsent');
+  });
+
+  it('shows the health data consent row, and Save sends it', async () => {
+    const { findByText } = await render(<PrivacyScreen />);
+
+    expect(await findByText('Health data')).toBeTruthy();
+    expect(
+      await findByText('Let FORJD collect data from WHOOP and connected health apps.'),
+    ).toBeTruthy();
+
+    fireEvent.press(await findByText('Health data'));
+    fireEvent.press(await findByText('Save'));
+
+    await waitFor(() =>
+      expect(updatePrivacy).toHaveBeenCalledWith(expect.objectContaining({ healthDataConsent: true })),
+    );
+  });
+
   it('renders all three permission rows — the handoff doc undercounts these', async () => {
     const { findByText } = await render(<PrivacyScreen />);
 
@@ -106,6 +138,7 @@ describe('PrivacyScreen', () => {
       true,
       false,
       true,
+      false,
     ]);
   });
 
@@ -136,7 +169,7 @@ describe('PrivacyScreen', () => {
     });
   });
 
-  it('Save sends all five flags, toasts, and navigates to the profile tab', async () => {
+  it('Save sends the five flags, leaving the health data consent out unless it was changed, toasts, and navigates to the profile tab', async () => {
     const { findByText } = await render(<PrivacyScreen />);
     fireEvent.press(await findByText('Crash diagnostics'));
     fireEvent.press(await findByText('Save'));

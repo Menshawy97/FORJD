@@ -69,6 +69,8 @@ const privacy = {
   locationForLeaderboard: false,
   aiFeaturesConsent: false,
   aiFeaturesConsentAt: null,
+  healthDataConsent: false,
+  healthDataConsentAt: null,
   crashDiagnostics: false,
 };
 

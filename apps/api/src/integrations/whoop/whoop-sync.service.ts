@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { WhoopConnectionRepository } from "./whoop-connection.repository";
 import { WhoopProviderFactory } from "./whoop-provider.factory";
 import { HealthDataRepository } from "../../health-data/health-data.repository";
+import { PrivacyService } from "../../privacy/privacy.service";
 
 export interface WhoopSyncResult {
   observationCount: number;
@@ -23,9 +24,12 @@ export class WhoopSyncService {
     private readonly connections: WhoopConnectionRepository,
     private readonly healthData: HealthDataRepository,
     private readonly providerFactory: WhoopProviderFactory,
+    private readonly privacy: PrivacyService,
   ) {}
 
   async syncUser(userId: string): Promise<WhoopSyncResult> {
+    // ADR-043: no health data is fetched from WHOOP without consent.
+    await this.privacy.requireHealthDataConsent(userId);
     const connection = await this.connections.findByUserId(userId);
     if (!connection) {
       throw new Error(`WHOOP is not connected for user ${userId}.`);

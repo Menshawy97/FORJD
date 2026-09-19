@@ -32,6 +32,7 @@ describe("WhoopWebhookService", () => {
     connections?: Partial<WhoopConnectionRepository>;
     client?: Partial<WhoopClient>;
     healthData?: Partial<HealthDataRepository>;
+    privacy?: { hasHealthDataConsent: jest.Mock };
   } = {}) {
     const connections = {
       findByExternalUserId: jest.fn().mockResolvedValue(connectedRow),
@@ -57,8 +58,28 @@ describe("WhoopWebhookService", () => {
       ...overrides.healthData,
     } as unknown as HealthDataRepository;
 
-    return { service: new WhoopWebhookService(connections, oauth, client, cipher, healthData), connections, client, healthData };
+    const privacy = {
+      hasHealthDataConsent: jest.fn().mockResolvedValue(true),
+      ...overrides.privacy,
+    };
+
+    return {
+      service: new WhoopWebhookService(connections, oauth, client, cipher, healthData, privacy as never),
+      connections,
+      client,
+      healthData,
+      privacy,
+    };
   }
+
+  it("acknowledges but ingests nothing for a user who has not given health data consent (ADR-043)", async () => {
+    const { service, client, healthData } = makeService({ privacy: { hasHealthDataConsent: jest.fn().mockResolvedValue(false) } });
+
+    await expect(service.processEvent({ type: "recovery.updated", user_id: 42, id: "r1" } as never)).resolves.toBeUndefined();
+
+    expect(client.getRecovery).not.toHaveBeenCalled();
+    expect(healthData.ingestObservations).not.toHaveBeenCalled();
+  });
 
   it("ignores an event for a WHOOP user id with no known connection", async () => {
     const { service, client, healthData } = makeService({

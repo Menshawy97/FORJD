@@ -14,9 +14,15 @@ import {
  * the audit row to write alongside them in the same transaction, if the change is one that
  * warrants a record.
  */
+export interface PrivacyAudit {
+  action: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface PrivacyDecision {
   patch: PrivacyPatch;
-  audit: { action: string; metadata?: Record<string, unknown> } | null;
+  /** One row, or several when one request changes more than one consent. */
+  audit: PrivacyAudit | PrivacyAudit[] | null;
 }
 
 export interface PrivacyPatch {
@@ -25,6 +31,8 @@ export interface PrivacyPatch {
   locationForLeaderboard?: boolean;
   aiFeaturesConsent?: boolean;
   aiFeaturesConsentAt?: Date | null;
+  healthDataConsent?: boolean;
+  healthDataConsentAt?: Date | null;
   crashDiagnostics?: boolean;
 }
 
@@ -124,11 +132,12 @@ export class PrivacyRepository {
         return null;
       }
 
-      if (audit) {
+      const auditRows = audit === null ? [] : Array.isArray(audit) ? audit : [audit];
+      for (const entry of auditRows) {
         await tx.insert(auditLogs).values({
           userId,
-          action: audit.action,
-          metadata: audit.metadata ?? null,
+          action: entry.action,
+          metadata: entry.metadata ?? null,
         });
       }
 
@@ -162,6 +171,8 @@ export class PrivacyRepository {
       locationForLeaderboard: row.locationForLeaderboard,
       aiFeaturesConsent: row.aiFeaturesConsent,
       aiFeaturesConsentAt: row.aiFeaturesConsentAt,
+      healthDataConsent: row.healthDataConsent,
+      healthDataConsentAt: row.healthDataConsentAt,
       crashDiagnostics: row.crashDiagnostics,
     };
   }

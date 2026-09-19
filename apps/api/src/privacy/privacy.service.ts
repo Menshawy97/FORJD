@@ -1,8 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { UpdatePrivacyRequest } from '@forjd/contracts';
 import { PrivacySettings } from '@forjd/domain';
 
-import { PrivacyPatch, PrivacyRepository } from './privacy.repository';
+import { PrivacyAudit, PrivacyPatch, PrivacyRepository } from './privacy.repository';
 
 /**
  * Every rule *about* consent lives here, and none of it lives in the repository or in SQL.
@@ -26,6 +31,26 @@ export class PrivacyService {
     return this.privacyRepository.findOrCreate(userId);
   }
 
+  /**
+   * ADR-043 -- health data is collected only once the person has said yes, and this is where
+   * that is enforced for every code path that fetches or stores it (WHOOP authorize, sync and
+   * webhook, health-observation ingest). Read live, never cached, so a withdrawal is true on
+   * the very next request.
+   */
+  async hasHealthDataConsent(userId: string): Promise<boolean> {
+    return (await this.get(userId)).healthDataConsent;
+  }
+
+  async requireHealthDataConsent(userId: string): Promise<void> {
+    if (!(await this.hasHealthDataConsent(userId))) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'health_data_consent_required',
+        message: 'Health data consent is required before FORJD can collect health data.',
+      });
+    }
+  }
+
   async update(userId: string, request: UpdatePrivacyRequest): Promise<PrivacySettings> {
     // Guarantees the row exists before the locking read, which cannot create one.
     await this.privacyRepository.findOrCreate(userId);
@@ -44,16 +69,17 @@ export class PrivacyService {
       const patch: PrivacyPatch = { ...request };
 
       this.applyLeaderboardDependency(current, request, patch);
-      const consentTransition = this.applyConsentTransition(current, request, patch);
+      const at = new Date().toISOString();
+      const audits: PrivacyAudit[] = this.applyConsentTransitions(current, request, patch).map(
+        (action) => ({ action, metadata: { at } }),
+      );
 
       return {
         patch,
         // Written inside the same transaction as the change it records, so the two cannot
         // come apart — a consent change whose audit row was lost would leave a trail that
         // reads as complete while being wrong.
-        audit: consentTransition
-          ? { action: consentTransition, metadata: { at: new Date().toISOString() } }
-          : null,
+        audit: audits.length === 0 ? null : audits.length === 1 ? audits[0]! : audits,
       };
     });
 
@@ -109,25 +135,25 @@ export class PrivacyService {
    *
    * @returns the audit action, or null when nothing changed.
    */
-  private applyConsentTransition(
+  private applyConsentTransitions(
     current: PrivacySettings,
     request: UpdatePrivacyRequest,
     patch: PrivacyPatch,
-  ): string | null {
-    if (request.aiFeaturesConsent === undefined) {
-      return null;
+  ): string[] {
+    const actions: string[] = [];
+
+    if (request.aiFeaturesConsent !== undefined && request.aiFeaturesConsent !== current.aiFeaturesConsent) {
+      patch.aiFeaturesConsentAt = request.aiFeaturesConsent ? new Date() : null;
+      actions.push(request.aiFeaturesConsent ? 'privacy.ai_consent_granted' : 'privacy.ai_consent_withdrawn');
     }
 
-    if (request.aiFeaturesConsent === current.aiFeaturesConsent) {
-      return null;
+    if (request.healthDataConsent !== undefined && request.healthDataConsent !== current.healthDataConsent) {
+      patch.healthDataConsentAt = request.healthDataConsent ? new Date() : null;
+      actions.push(
+        request.healthDataConsent ? 'privacy.health_consent_granted' : 'privacy.health_consent_withdrawn',
+      );
     }
 
-    if (request.aiFeaturesConsent) {
-      patch.aiFeaturesConsentAt = new Date();
-      return 'privacy.ai_consent_granted';
-    }
-
-    patch.aiFeaturesConsentAt = null;
-    return 'privacy.ai_consent_withdrawn';
+    return actions;
   }
 }

@@ -30,6 +30,8 @@ interface PrivacyFlags {
   aiFeaturesConsent: boolean;
   publicProfile: boolean;
   crashDiagnostics: boolean;
+  /** ADR-043. The only place consent can be withdrawn; it is given on the health-consent screen. */
+  healthDataConsent: boolean;
 }
 
 const TOGGLE_ROWS: ReadonlyArray<{ key: keyof PrivacyFlags; title: string; subtitle: string }> = [
@@ -58,6 +60,11 @@ const TOGGLE_ROWS: ReadonlyArray<{ key: keyof PrivacyFlags; title: string; subti
     title: 'Crash diagnostics',
     subtitle: 'Anonymous crash reports only — never health data.',
   },
+  {
+    key: 'healthDataConsent',
+    title: 'Health data',
+    subtitle: 'Let FORJD collect data from WHOOP and connected health apps.',
+  },
 ];
 
 const EMPTY_FLAGS: PrivacyFlags = {
@@ -66,6 +73,7 @@ const EMPTY_FLAGS: PrivacyFlags = {
   aiFeaturesConsent: false,
   publicProfile: false,
   crashDiagnostics: false,
+  healthDataConsent: false,
 };
 
 function toFlags(privacy: PrivacySettingsResponse): PrivacyFlags {
@@ -75,6 +83,7 @@ function toFlags(privacy: PrivacySettingsResponse): PrivacyFlags {
     aiFeaturesConsent: privacy.aiFeaturesConsent,
     publicProfile: privacy.publicProfile,
     crashDiagnostics: privacy.crashDiagnostics,
+    healthDataConsent: privacy.healthDataConsent,
   };
 }
 
@@ -113,6 +122,8 @@ function describeLoadFailure(error: unknown): string {
 export default function PrivacyScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [flags, setFlags] = useState<PrivacyFlags>(EMPTY_FLAGS);
+  // What the server said on load. Consent is sent on Save only if the person changed it.
+  const [loadedHealthConsent, setLoadedHealthConsent] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -127,6 +138,7 @@ export default function PrivacyScreen() {
         setUserId(me.id);
         if (me.privacy) {
           setFlags(toFlags(me.privacy));
+          setLoadedHealthConsent(me.privacy.healthDataConsent);
         }
         setLoaded(true);
       })
@@ -148,7 +160,10 @@ export default function PrivacyScreen() {
     setSaveError(null);
     setSaving(true);
     try {
-      await updatePrivacy(flags);
+      // ADR-043: a consent is granted or withdrawn by an explicit change, never by re-sending
+      // a value that may be stale (withdrawn on another device since this screen loaded).
+      const { healthDataConsent, ...rest } = flags;
+      await updatePrivacy(healthDataConsent === loadedHealthConsent ? rest : flags);
       toast.show('Privacy settings updated');
       goBack();
     } catch (cause) {

@@ -81,6 +81,8 @@ describe('Privacy settings (e2e)', () => {
       locationForLeaderboard: false,
       aiFeaturesConsent: false,
       aiFeaturesConsentAt: null,
+      healthDataConsent: false,
+      healthDataConsentAt: null,
       crashDiagnostics: false,
     });
   });

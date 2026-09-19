@@ -5,10 +5,14 @@ import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 jest.mock('expo-router', () => {
   const react = require('react');
   return {
-    router: { replace: (...args: unknown[]) => mockReplace(...args) },
+    router: {
+      replace: (...args: unknown[]) => mockReplace(...args),
+      push: (...args: unknown[]) => mockPush(...args),
+    },
     useFocusEffect: (callback: () => void) => {
       react.useEffect(() => callback(), []);
     },
@@ -24,6 +28,7 @@ jest.mock('@/auth/apiClient', () => ({
 }));
 
 import * as WebBrowser from 'expo-web-browser';
+import { AxiosError } from 'axios';
 import { connectWhoop, disconnectWhoop, getWhoopStatus } from '@/auth/apiClient';
 
 import ConnectScreen from '../connect';
@@ -76,6 +81,24 @@ describe('ConnectScreen', () => {
     ));
     await findByText('Disconnect');
     expect(getWhoopStatus).toHaveBeenCalledTimes(2);
+  });
+
+  // ADR-043: the server refuses to start WHOOP without health-data consent. The app answers by
+  // taking the person to the explainer where they can give it -- not by showing an error.
+  it('sends the person to the health data consent screen when the server asks for it', async () => {
+    (getWhoopStatus as jest.Mock).mockResolvedValue({ connected: false, lastSyncAt: null });
+    (connectWhoop as jest.Mock).mockRejectedValue(
+      new AxiosError('Forbidden', 'ERR_BAD_REQUEST', undefined, undefined, {
+        status: 403,
+        data: { code: 'health_data_consent_required' },
+      } as never),
+    );
+
+    const { findByText } = await render(<ConnectScreen />);
+    fireEvent.press(await findByText('Connect'));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/health-consent'));
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
   });
 
   it('tapping Disconnect calls the real endpoint and flips the card back to Connect', async () => {

@@ -31,6 +31,14 @@ export const privacySettings = pgTable('privacy_settings', {
   /** Set when consent is granted, nulled when withdrawn. Only real transitions write it. */
   aiFeaturesConsentAt: timestamp('ai_features_consent_at', { withTimezone: true }),
   /**
+   * Consent to collect health data -- connecting WHOOP, syncing Health Connect, storing health
+   * observations (ADR-043, Phase 8). Separate from every other consent, off by default, and
+   * enforced server-side before any health data is fetched or stored.
+   */
+  healthDataConsent: boolean('health_data_consent').notNull().default(false),
+  /** Set when consent is granted, nulled when withdrawn. Only real transitions write it. */
+  healthDataConsentAt: timestamp('health_data_consent_at', { withTimezone: true }),
+  /**
    * Off by default. Note this flag is not the enforcement mechanism for rule 15 — health data
    * must never reach a diagnostics SDK regardless of its position. It controls whether crash
    * reports are sent at all, and whether the user identifier is attached when they are.
