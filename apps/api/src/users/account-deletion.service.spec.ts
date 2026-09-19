@@ -1,4 +1,6 @@
 import { revokeAndClearWhoopConnection } from '../integrations/whoop/whoop-revoke';
+import { auditLogs } from '../database/schema/audit-logs.schema';
+import { users } from '../database/schema/users.schema';
 import { AccountDeletionService } from './account-deletion.service';
 
 jest.mock('../integrations/whoop/whoop-revoke', () => ({
@@ -18,7 +20,9 @@ jest.mock('../integrations/whoop/whoop-revoke', () => ({
 describe('AccountDeletionService', () => {
   const scanKeys = ['user-1/scan-a.webp', 'user-1/scan-b.webp'];
 
-  function build(overrides: { avatarUrl?: string | null; scans?: string[] } = {}) {
+  function build(
+    overrides: { avatarUrl?: string | null; scans?: string[]; userRow?: object | null } = {},
+  ) {
     const deleteCalls: unknown[] = [];
     const deleteResults = new Map<string, () => Promise<void>>();
 
@@ -34,22 +38,29 @@ describe('AccountDeletionService', () => {
       listScanPhotoKeysForUser: jest.fn().mockResolvedValue(overrides.scans ?? scanKeys),
     };
 
+    const userRow =
+      overrides.userRow === undefined
+        ? { id: 'user-1', email: 'a@example.com', supabaseUserId: 'ext-1' }
+        : overrides.userRow;
+    const profileRows =
+      'avatarUrl' in overrides
+        ? overrides.avatarUrl === null
+          ? []
+          : [{ avatarUrl: overrides.avatarUrl }]
+        : [{ avatarUrl: 'https://x.supabase.co/storage/v1/object/public/avatars/user-1/pic.webp' }];
+
     const db = {
       select: jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue(
-            'avatarUrl' in overrides
-              ? overrides.avatarUrl === null
-                ? []
-                : [{ avatarUrl: overrides.avatarUrl }]
-              : [{ avatarUrl: 'https://x.supabase.co/storage/v1/object/public/avatars/user-1/pic.webp' }],
-          ),
-        }),
+        from: jest.fn().mockImplementation((table: unknown) => ({
+          where: jest.fn().mockResolvedValue(table === users ? (userRow ? [userRow] : []) : profileRows),
+        })),
       }),
       delete: jest.fn().mockReturnValue({
         where: jest.fn().mockResolvedValue(undefined),
       }),
     };
+
+    const authProvider = { deleteUser: jest.fn().mockResolvedValue(undefined) };
 
     const service = new AccountDeletionService(
       db as never,
@@ -58,9 +69,10 @@ describe('AccountDeletionService', () => {
       {} as never, // WhoopConnectionRepository -- opaque here, revokeAndClearWhoopConnection is mocked whole
       {} as never, // WHOOP_CLIENT
       {} as never, // TOKEN_CIPHER
+      authProvider as never,
     );
 
-    return { service, storageProvider, bodyRepository, db, deleteResults };
+    return { service, storageProvider, bodyRepository, db, deleteResults, authProvider };
   }
 
   it('deletes every scan photo and the avatar from storage, using the exact keys', async () => {
@@ -99,7 +111,7 @@ describe('AccountDeletionService', () => {
     await service.deleteAccount('user-1');
 
     expect(revokeAndClearWhoopConnection).toHaveBeenCalledWith('user-1', {}, {}, {});
-    expect(order).toEqual(['whoop', 'delete-user']);
+    expect(order.indexOf('whoop')).toBeLessThan(order.indexOf('delete-user'));
   });
 
   it('does not abort when one storage delete fails -- the row deletion still runs', async () => {
@@ -112,9 +124,12 @@ describe('AccountDeletionService', () => {
     expect(db.delete).toHaveBeenCalled();
   });
 
-  it('deletes the user row last', async () => {
-    const { service, db, bodyRepository } = build();
+  it('deletes the user row after storage, and only then the auth-provider user', async () => {
+    const { service, db, bodyRepository, authProvider } = build();
     const order: string[] = [];
+    authProvider.deleteUser.mockImplementation(async () => {
+      order.push('delete-auth-user');
+    });
     bodyRepository.listScanPhotoKeysForUser.mockImplementation(async () => {
       order.push('list-scans');
       return scanKeys;
@@ -127,7 +142,9 @@ describe('AccountDeletionService', () => {
 
     await service.deleteAccount('user-1');
 
-    expect(order.indexOf('delete-user')).toBe(order.length - 1);
+    expect(order.indexOf('list-scans')).toBeLessThan(order.indexOf('delete-user'));
+    expect(order[order.length - 1]).toBe('delete-auth-user');
+    expect(order.indexOf('delete-user')).toBeLessThan(order.indexOf('delete-auth-user'));
   });
 
   it('is idempotent: a second call on an already-deleted user does not throw', async () => {
@@ -137,5 +154,40 @@ describe('AccountDeletionService', () => {
 
     await service.deleteAccount('user-1');
     await expect(service.deleteAccount('user-1')).resolves.toBeUndefined();
+  });
+  it('removes the Supabase auth user, so the account cannot sign back in', async () => {
+    const { service, authProvider } = build();
+
+    await service.deleteAccount('user-1');
+
+    expect(authProvider.deleteUser).toHaveBeenCalledWith('ext-1');
+  });
+
+  it('skips the auth-provider call when the user was never mapped to one', async () => {
+    const { service, authProvider } = build({ userRow: { id: 'user-1', email: 'a@example.com', supabaseUserId: null } });
+
+    await service.deleteAccount('user-1');
+
+    expect(authProvider.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('scrubs password-reset audit rows that hold the address, before deleting the user row', async () => {
+    const { service, db } = build();
+    const tables: unknown[] = [];
+    (db.delete as jest.Mock).mockImplementation((table: unknown) => {
+      tables.push(table);
+      return { where: jest.fn().mockResolvedValue(undefined) };
+    });
+
+    await service.deleteAccount('user-1');
+
+    expect(tables).toEqual([auditLogs, users]);
+  });
+
+  it('surfaces an auth-provider failure so the client can retry, rather than swallowing it', async () => {
+    const { service, authProvider } = build();
+    authProvider.deleteUser.mockRejectedValue(new Error('supabase down'));
+
+    await expect(service.deleteAccount('user-1')).rejects.toThrow('supabase down');
   });
 });

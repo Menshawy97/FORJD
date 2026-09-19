@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
+import { AUTH_PROVIDER, AuthProvider } from '../auth/providers/auth-provider.interface';
 import { Database, DRIZZLE } from '../database/database.module';
+import { auditLogs } from '../database/schema/audit-logs.schema';
 import { profiles } from '../database/schema/profiles.schema';
 import { users } from '../database/schema/users.schema';
 import { STORAGE_PROVIDER, StorageProvider } from '../storage/providers/storage-provider.interface';
@@ -37,12 +39,43 @@ export class AccountDeletionService {
     private readonly whoopConnections: WhoopConnectionRepository,
     @Inject(WHOOP_CLIENT) private readonly whoopClient: WhoopClient,
     @Inject(TOKEN_CIPHER) private readonly cipher: TokenCipher,
+    @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
   ) {}
 
+  /**
+   * The auth-provider user goes last and its failure propagates: the local rows are already
+   * gone, so the client sees an error and retries (the JWT guard lazily recreates the local
+   * row, and the retry deletes it again). Swallowing that error would report success while the
+   * login survived -- an account that could sign back in after "deletion".
+   */
   async deleteAccount(userId: string): Promise<void> {
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId));
+
     await this.deleteStorageObjects(userId);
     await revokeAndClearWhoopConnection(userId, this.whoopConnections, this.whoopClient, this.cipher);
+    if (user) {
+      await this.scrubEmailFromAuditTrail(user.email);
+    }
     await this.db.delete(users).where(eq(users.id, userId));
+    if (user?.supabaseUserId) {
+      await this.authProvider.deleteUser(user.supabaseUserId);
+    }
+  }
+
+  /**
+   * Password-reset requests are audited with a null user id (so latency cannot reveal whether
+   * the address exists), which means the `ON DELETE SET NULL` cascade never links them to the
+   * account and the plain address would otherwise outlive it.
+   */
+  private async scrubEmailFromAuditTrail(email: string): Promise<void> {
+    await this.db
+      .delete(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.action, 'auth.password_reset_requested'),
+          sql`${auditLogs.metadata}->>'email' = ${email}`,
+        ),
+      );
   }
 
   private async deleteStorageObjects(userId: string): Promise<void> {

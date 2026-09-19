@@ -43,6 +43,7 @@ export class FakeAuthProvider implements AuthProvider {
   emailConfirmationRequired: boolean;
   revokedTokens: string[] = [];
   resetRequests: string[] = [];
+  deletedExternalIds: string[] = [];
 
   private readonly passwords = new Map<string, string>();
   private readonly tokenOwners = new Map<string, string>();
@@ -119,6 +120,10 @@ export class FakeAuthProvider implements AuthProvider {
    */
   async requestPasswordReset(email: string): Promise<void> {
     this.resetRequests.push(email);
+  }
+
+  async deleteUser(externalId: string): Promise<void> {
+    this.deletedExternalIds.push(externalId);
   }
 
   async verifyAccessToken(accessToken: string): Promise<AuthIdentity> {

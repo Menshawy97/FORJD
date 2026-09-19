@@ -31,6 +31,11 @@ import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
 
 const DATABASE_NAME = 'forjd-workout-sessions.db';
 
+/** Removes the whole database file -- used when the account is deleted (see `local-data.ts`). */
+export async function deleteWorkoutSessionDb(): Promise<void> {
+  await SQLite.deleteDatabaseAsync(DATABASE_NAME);
+}
+
 /** The only call in this module that reaches the real native module -- see ADR-022's own precedent for why that line is left for a device walk, not Jest, to prove. */
 export async function openWorkoutSessionDb(): Promise<SqliteConnection> {
   return SQLite.openDatabaseAsync(DATABASE_NAME);
