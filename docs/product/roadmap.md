@@ -19,10 +19,16 @@ phone (ADR-035), the live WHOOP OAuth round-trip (ADR-037), shortening the Supab
 lifetime to 900 s, hand-labelling Spike B, the dogfood gate, legal review, and the business/store
 accounts.
 
-**Phase 8 (privacy & beta prep) is in progress.** Plan: [`phase-8-plan.md`](phase-8-plan.md) --
-data inventory, real account deletion and complete export, a minimum age of 16, health-data
-consent, native Google sign-in (Apple built but shown "Coming soon"), and readable grey text.
-Update the plan's slice list as each merges.
+**Phase 8 (privacy & beta prep): all the engineering is merged** (#184-#191). Plan and status:
+[`phase-8-plan.md`](phase-8-plan.md). Shipped: the data inventory
+([`data-inventory.md`](../architecture/data-inventory.md)), account deletion that also removes the
+auth login, a complete export, a server-enforced minimum age of 16 asked on the "Your Profile"
+step ([ADR-042](../decisions/ADR-042-minimum-age-16.md)), health-data consent enforced on WHOOP
+and ingestion ([ADR-043](../decisions/ADR-043-health-data-consent.md)), native Google sign-in
+with Apple built but "Coming soon" ([ADR-041](../decisions/ADR-041-social-sign-in-via-native-id-token.md)),
+and readable small-text greys. **Still the user's:** Google Cloud + Supabase Google setup and the
+live round trip (needs a dev-client rebuild), the Apple Developer account, the lawyer, Play
+Console, and the older owed items above.
 
 The text below is the earlier per-session history, kept as written.
 
@@ -2387,7 +2393,7 @@ failure).
 | 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6F merged, readiness scoring (ADR-031, Accepted) and light-up-the-UI merged (#131, #132); 6F (`HealthConnectProvider`) is still **device-unverified** — merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md); a physical Android phone test is still owed before any UI screen calls `connect()`/`.sync()` on it (nothing does yet) |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **Complete** — [planned](phase-7-plan.md); 7A-7H done, [ADR-037](../decisions/ADR-037-whoop-integration-shape.md) records the closing shape. Owed: the live WHOOP OAuth round-trip (decision 1), the Phase 6F Health Connect device test (ADR-035, unrelated), decision E's readiness-baseline-crossover surfacing |
 | Audit remediation | — | Fix the 2026-09-10 whole-repo audit, test-first | **Complete** — [plan](audit-remediation-plan.md); 29 of 29 slices merged as of 2026-09-17. Pulled account deletion and data export forward out of Phase 8 |
-| 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | **In progress** — [planned](phase-8-plan.md); engineering-only parts (age gate, health consent, social sign-in, data inventory, real deletion/export); legal, Play Console and store accounts stay with the user |
+| 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | **Engineering complete** — [planned](phase-8-plan.md); engineering-only parts (age gate, health consent, social sign-in, data inventory, real deletion/export); legal, Play Console and store accounts stay with the user |
 | Limited Android beta | 35 | 12+ testers | Not started |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | Not started |

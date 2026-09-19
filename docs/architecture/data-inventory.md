@@ -25,11 +25,11 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 |---|---|---|---|---|---|
 | Email, auth ID | Sign-up, sign-in | `users`; Supabase Auth; device SecureStore | Platform default | Yes | `users` row yes; Supabase Auth user removed from 8B onward |
 | Session tokens | Sign-in | Device SecureStore (Keychain/Keystore) | Yes (OS) | n/a | Cleared on device |
-| Name, username, date of birth, sex, height, units, goals | Onboarding, edit profile | `profiles` | No | Yes | Yes (cascade) |
+| Name, username, date of birth (required, age 16+), sex, height, units, goals | Onboarding, edit profile | `profiles` | No | Yes | Yes (cascade) |
 | City (coarse text only, no coordinates) | Location screen | `profiles.city`, `workout_sessions.city` | No | Yes | Yes |
 | Avatar image | Profile photo | Storage bucket `avatars` (public URL) | Storage default | URL only | Yes (explicit delete) |
 | InBody photo and body composition | InBody scan | Bucket `inbody` (private), `body_scans`, `body_measurements` | Storage default | Measurements yes; photo file no | Yes |
-| Health metrics (heart rate, HRV, sleep, steps, active energy, weight, VO2 max, respiratory rate and others) | Health Connect, WHOOP | `health_observations`, `health_connections` | No | Observations yes; connection rows added in 8C | Yes |
+| Health metrics (heart rate, HRV, sleep, steps, active energy, weight, VO2 max, respiratory rate and others), only after health-data consent | Health Connect, WHOOP | `health_observations`, `health_connections` | No | Observations yes; connection rows added in 8C | Yes |
 | WHOOP tokens | WHOOP connect | `external_connections` | Yes, AES-256-GCM (ADR-036) | Status only | Revoked at WHOOP, then deleted |
 | Workouts (templates, sessions, sets) | Train, live session | `workout_*` tables | No | Yes | Yes |
 | Offline workout log and queue | Live session | Device SQLite `forjd-workout-sessions.db` | No | n/a | Cleared on device from 8B onward |
@@ -62,5 +62,7 @@ Derived from the table. Confirm against the final build and the lawyer's privacy
 - `security.md` says "encrypted DB fields where appropriate", but only WHOOP tokens are
   encrypted at the application layer.
 - No data retention periods are defined anywhere yet. The privacy policy needs one.
-- Consent for health-data collection is added by slice 8E; until then no consent gate exists for
-  WHOOP or health ingestion.
+- Health-data collection is gated by the separate health-data consent (ADR-043); Health Connect's
+  on-device connect flow, when built, must use the same check.
+- Date of birth is required of every account (minimum age 16, ADR-042) and is collected on the
+  "Your Profile" step for email and Google/Apple sign-ups alike.

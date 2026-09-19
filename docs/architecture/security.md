@@ -143,10 +143,13 @@ source for the Play Data safety form. Keep it current.
   legal turnaround is the one dependency not under engineering control.
 - Explicit consent screens before requesting HealthKit/Health
   Connect/WHOOP permissions, separate from generic app permissions.
-- Account data export.
+  **Done for WHOOP (ADR-043, enforced server-side); Health Connect/HealthKit reuse it when their
+  connect flows are built.**
+- Account data export. **Done (R4, completed by Phase 8 slice 8C).**
 - Account + data deletion — actually removed, not soft-hidden. Required by
-  both stores for any app with signup.
-- Age gating — minimum age decided and enforced.
+  both stores for any app with signup. **Done (R3; Phase 8 slice 8B also removes the auth login,
+  email-bearing audit rows and on-device data).**
+- Age gating — minimum age decided and enforced. **Done: 16, server-enforced (ADR-042).**
 - App Store health-data justification written before submission, per
   HealthKit data type requested.
 - Google Play Data Safety section must exactly match actual data

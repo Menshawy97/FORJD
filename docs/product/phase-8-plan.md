@@ -1,3 +1,12 @@
+> **Status (2026-09-19): every engineering slice is merged and green on `main`** -- S0 (#184),
+> 8A (#185), 8B (#186), 8C (#187), 8D (#188), 8E (#189), 8F/8G (#190), 8H (#191), 8I (this PR).
+> ADRs: [041](../decisions/ADR-041-social-sign-in-via-native-id-token.md),
+> [042](../decisions/ADR-042-minimum-age-16.md), [043](../decisions/ADR-043-health-data-consent.md).
+> **Owed by the user:** the Google Cloud / Supabase setup below (then the live Google round trip on
+> a dev-client build), the Apple Developer account (turns Apple on), the lawyer, and the Play
+> Console. Follow-ups noticed: Express `trust proxy` for rate limits behind Cloud Run; the
+> `crash_diagnostics` flag only strips the user id. See `data-inventory.md`.
+
 # Session plan — Phase 8 (privacy & beta prep), Google/Apple sign-in, roadmap refresh, text contrast
 
 ## Context
