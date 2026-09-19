@@ -18,8 +18,10 @@ export interface AccountTarget {
  * their own account, so nothing is left behind -- and the caller is told why.
  *
  * Two safety rules keep this from becoming a way to hurt an existing account: once a date of
- * birth is on file it is never changed here (a different date is a 409), and it is never the
- * trigger for deleting an account that already passed the check.
+ * birth is on file this route never changes it (a different date is a 409), and it is never the
+ * trigger for deleting an account that already passed the check. (A person can still correct
+ * their own date to another adult date from Edit Profile; the profile contract refuses
+ * anything under 16 or a cleared date.)
  */
 @Injectable()
 export class AgeGateService {
@@ -48,7 +50,12 @@ export class AgeGateService {
       });
     }
 
-    await this.usersRepository.updateProfile(target.userId, { dateOfBirth });
+    const updated = await this.usersRepository.updateProfile(target.userId, { dateOfBirth });
+    if (!updated) {
+      // The account vanished under this request -- a concurrent under-age answer deleted it.
+      // Nothing left to record or unlock.
+      return;
+    }
     // The date itself is personal data; the audit trail records only that it was given.
     await this.usersRepository.recordAudit(target.userId, 'profile.date_of_birth_set');
     if (target.externalId) {

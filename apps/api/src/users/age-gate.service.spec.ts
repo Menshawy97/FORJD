@@ -68,6 +68,16 @@ describe('AgeGateService', () => {
     expect(deletion.deleteAccount).not.toHaveBeenCalled();
   });
 
+  it('does nothing further if the account vanished mid-request (a concurrent under-age answer deleted it)', async () => {
+    const { service, usersRepository, identities } = build();
+    usersRepository.updateProfile.mockResolvedValue(null);
+
+    await expect(service.setDateOfBirth(target, '1990-01-01', today)).resolves.toBeUndefined();
+
+    expect(usersRepository.recordAudit).not.toHaveBeenCalled();
+    expect(identities.markDateOfBirthSet).not.toHaveBeenCalled();
+  });
+
   it('is a no-op when the same date is sent again (a retry after a later step failed)', async () => {
     const { service, usersRepository, deletion } = build('1990-01-01');
 
