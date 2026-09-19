@@ -132,7 +132,7 @@ export default function ProgramsScreen() {
           so rather than showing a spinner that never resolves. `null` is "still loading".
         */}
         {!error && programs !== null && programs.length === 0 ? (
-          <Text className="font-archivo text-[13px]" style={{ color: '#77776F' }}>
+          <Text className="font-archivo text-[13px]" style={{ color: '#94948B' }}>
             No programs in this category yet.
           </Text>
         ) : null}
@@ -178,7 +178,7 @@ export default function ProgramsScreen() {
               {program.description ? (
                 <Text
                   className="mt-[9px] font-archivo text-[12px]"
-                  style={{ color: '#6E6E66', lineHeight: 17 }}>
+                  style={{ color: '#8A8A82', lineHeight: 17 }}>
                   {program.description}
                 </Text>
               ) : null}

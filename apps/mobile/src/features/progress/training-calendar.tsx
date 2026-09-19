@@ -73,7 +73,7 @@ export function TrainingCalendar({ data, today }: TrainingCalendarProps) {
             fontWeight: '600',
             letterSpacing: 0.14 * 9.5,
             textTransform: 'uppercase',
-            color: '#77776F',
+            color: '#94948B',
           }}>
           {`Training calendar — ${MONTH_NAMES[monthIndex]}`}
         </Text>
@@ -129,7 +129,7 @@ export function TrainingCalendar({ data, today }: TrainingCalendarProps) {
             const background =
               activity === 'strength' ? '#E9712F' : activity === 'run' ? '#79B98A' : '#1A1B1D';
             const color =
-              activity === 'strength' ? '#FFFFFF' : activity === 'run' ? '#101011' : '#77776F';
+              activity === 'strength' ? '#FFFFFF' : activity === 'run' ? '#101011' : '#94948B';
 
             return (
               <View
@@ -186,7 +186,7 @@ export function TrainingCalendar({ data, today }: TrainingCalendarProps) {
         ].map((legend) => (
           <View key={legend.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 9, height: 9, borderRadius: 3, backgroundColor: legend.color }} />
-            <Text style={{ fontFamily: 'Archivo', fontSize: 10.5, fontWeight: '500', color: '#77776F' }}>
+            <Text style={{ fontFamily: 'Archivo', fontSize: 10.5, fontWeight: '500', color: '#94948B' }}>
               {legend.label}
             </Text>
           </View>

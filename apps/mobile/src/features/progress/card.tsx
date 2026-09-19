@@ -33,7 +33,7 @@ export function Card({ title, children }: CardProps) {
             fontWeight: '600',
             letterSpacing: 0.14 * 9.5,
             textTransform: 'uppercase',
-            color: '#77776F',
+            color: '#94948B',
             marginBottom: 14,
           }}>
           {title}

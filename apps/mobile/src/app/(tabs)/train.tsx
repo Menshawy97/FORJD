@@ -335,7 +335,7 @@ export default function TrainScreen() {
           <>
             <Text
               className="mb-[10px] mt-6 font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-              style={{ color: '#77776F' }}>
+              style={{ color: '#94948B' }}>
               My programs
             </Text>
             <View style={{ gap: 8 }}>
@@ -365,7 +365,7 @@ export default function TrainScreen() {
                       style={{ color: colors.text }}>
                       {program.name}
                     </Text>
-                    <Text className="mt-[6px] font-archivo text-[11.5px]" style={{ color: '#6E6E66' }}>
+                    <Text className="mt-[6px] font-archivo text-[11.5px]" style={{ color: '#8A8A82' }}>
                       {`${program.daysPerWeek} days · ${program.durationWeeks} weeks`}
                     </Text>
                   </View>
@@ -380,7 +380,7 @@ export default function TrainScreen() {
           <>
             <Text
               className="mb-[10px] mt-6 font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-              style={{ color: '#77776F' }}>
+              style={{ color: '#94948B' }}>
               Previous workout
             </Text>
             <PreviousWorkoutCard
@@ -422,7 +422,7 @@ export default function TrainScreen() {
         <View className="mt-6 flex-row items-center justify-between">
           <Text
             className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-            style={{ color: '#77776F' }}>
+            style={{ color: '#94948B' }}>
             My workouts
           </Text>
           <Pressable
@@ -464,7 +464,7 @@ export default function TrainScreen() {
                         }
                       />
                     </View>
-                    <Text className="mt-[8px] font-archivo text-[11.5px]" style={{ color: '#6E6E66' }}>
+                    <Text className="mt-[8px] font-archivo text-[11.5px]" style={{ color: '#8A8A82' }}>
                       {`${template.exerciseCount} exercises${
                         template.estimatedDurationMinutes ? ` · ~${template.estimatedDurationMinutes} min` : ''
                       }`}

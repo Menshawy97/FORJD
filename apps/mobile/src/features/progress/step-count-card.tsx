@@ -24,7 +24,7 @@ export function StepCountCard({ stepsToday }: StepCountCardProps) {
           fontFamily: 'Archivo',
           fontSize: 11.5,
           fontWeight: '500',
-          color: '#6E6E66',
+          color: '#8A8A82',
         }}>
         {stepsToday === null ? 'Connect Health Connect or Apple Health to see your steps.' : 'Steps today'}
       </Text>

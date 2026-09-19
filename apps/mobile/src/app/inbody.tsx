@@ -157,7 +157,7 @@ export default function InBodyScreen() {
               fontWeight: '600',
               letterSpacing: 0.1 * 9.5,
               textTransform: 'uppercase',
-              color: '#77776f',
+              color: '#94948B',
             }}>
             Scan history
           </Text>

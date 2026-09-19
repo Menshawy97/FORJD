@@ -98,7 +98,7 @@ export function LiveSessionHeader({
         <Text className="font-archivo text-[11px] font-semibold" style={{ color: '#9A9A92' }}>
           {`${stats.completedSetCount}/${stats.totalSetCount} sets`}
         </Text>
-        <Text className="font-archivo text-[11px] font-semibold" style={{ color: '#6E6E66' }}>
+        <Text className="font-archivo text-[11px] font-semibold" style={{ color: '#8A8A82' }}>
           {`${stats.volumeKg.toLocaleString()} kg`}
         </Text>
       </View>
@@ -113,14 +113,14 @@ export function LiveSessionHeader({
       <View
         className="mt-[12px] flex-row items-center rounded-[11px] px-[13px] py-[10px]"
         style={{ backgroundColor: '#141517', borderWidth: 1, borderColor: colors.border, gap: 9 }}>
-        <View className="h-[8px] w-[8px] rounded-[5px]" style={{ backgroundColor: '#6E6E66' }} />
+        <View className="h-[8px] w-[8px] rounded-[5px]" style={{ backgroundColor: '#8A8A82' }} />
         <Text
           className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.12em]"
-          style={{ color: '#77776F' }}>
+          style={{ color: '#94948B' }}>
           Watch
         </Text>
         <View className="flex-1" />
-        <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#6E6E66' }}>
+        <Text className="font-archivo text-[10.5px] font-medium" style={{ color: '#8A8A82' }}>
           No watch connected
         </Text>
       </View>

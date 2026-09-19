@@ -136,7 +136,7 @@ export default function ProgramOverviewScreen() {
       <ScreenBackground>
         <Header title="Program" onBack={() => router.back()} />
         <View className="flex-1 items-center justify-center px-screen-x">
-          <Text className="text-center font-archivo text-[13px]" style={{ color: '#77776F' }}>
+          <Text className="text-center font-archivo text-[13px]" style={{ color: '#94948B' }}>
             {error ?? 'Loading…'}
           </Text>
         </View>
@@ -183,7 +183,7 @@ export default function ProgramOverviewScreen() {
 
         <Text
           className="mb-[10px] font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-          style={{ color: '#77776F' }}>
+          style={{ color: '#94948B' }}>
           Workouts
         </Text>
 
@@ -244,7 +244,7 @@ export default function ProgramOverviewScreen() {
                   style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,.06)' }}>
                   <Text
                     className="font-archivo text-[11.5px]"
-                    style={{ color: '#6E6E66', lineHeight: 17 }}>
+                    style={{ color: '#8A8A82', lineHeight: 17 }}>
                     {workout.exerciseNames.join(' · ')}
                   </Text>
                 </View>

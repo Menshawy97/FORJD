@@ -655,7 +655,7 @@ export default function LiveScreen() {
             style={{ backgroundColor: '#17181A', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,.09)' }}>
             <Text
               className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
-              style={{ color: '#77776F' }}>
+              style={{ color: '#94948B' }}>
               Training goal
             </Text>
             <Text className="mt-[9px] font-archivo text-[18px] font-bold" style={{ color: colors.text }}>
@@ -683,7 +683,7 @@ export default function LiveScreen() {
                       style={{ color: isSelected ? colors.accent : colors.text }}>
                       {EXERCISE_GOAL_DISPLAY_NAMES[row.goal]}
                     </Text>
-                    <Text className="mt-[3px] font-archivo text-[11.5px]" style={{ color: '#77776F' }}>
+                    <Text className="mt-[3px] font-archivo text-[11.5px]" style={{ color: '#94948B' }}>
                       {`${row.load} · ${row.reps}`}
                     </Text>
                   </Pressable>

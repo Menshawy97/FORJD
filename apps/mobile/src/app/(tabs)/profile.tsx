@@ -15,7 +15,7 @@ import { colors } from '@/theme/tokens';
 // Structure, copy and geometry from the prototype's `isProfile` branch of
 // `FORJD mobile app design/FORJD Mobile.dc.html`, rendered through the shared `row()` shape:
 //   row: gap 14 · padding '15px 2px' · borderBottom 1px rgba(255,255,255,.05)
-//        leading glyph 22 (#8b8b83) · title 600 14.5/1.25 · subtitle 400 12/1.3 (#6e6e66)
+//        leading glyph 22 (#8b8b83) · title 600 14.5/1.25 · subtitle 400 12/1.3 (#8A8A82)
 //        trailing chevron 18 at opacity .5
 //
 // Phase J: the identity block and the Goals/Units subtitles below now read from real

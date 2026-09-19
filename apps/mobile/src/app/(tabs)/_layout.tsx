@@ -10,7 +10,7 @@ import { colors } from '@/theme/tokens';
 //
 //   height 76 · borderTop 1px rgba(255,255,255,.07) · background rgba(14,14,15,.96)
 //   padding '10px 6px 0' · per-item column, gap 5 · icon 22 · label (600|500) 10/1
-//   color = active ? #e9712f : #6b6b64
+//   color = active ? #e9712f : #85857C
 //
 // Colors are driven from the design-token module (raw strings) rather than NativeWind
 // classNames, because react-navigation's tabBarStyle and react-native-svg's `stroke` both

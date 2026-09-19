@@ -37,7 +37,7 @@ export function TrainingGuideCard({ guideOpen, guideSubtitle, currentGoal, onTog
         </View>
         <View className="flex-1">
           <Text className="font-archivo text-[13px] font-semibold text-text">How to train this</Text>
-          <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#6E6E66' }}>
+          <Text className="mt-[4px] font-archivo text-[11px]" style={{ color: '#8A8A82' }}>
             {guideSubtitle}
           </Text>
         </View>

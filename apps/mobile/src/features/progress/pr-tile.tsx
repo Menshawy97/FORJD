@@ -40,7 +40,7 @@ export function PrTile({ record }: PrTileProps) {
           fontWeight: '600',
           letterSpacing: 0.14 * 9.5,
           textTransform: 'uppercase',
-          color: '#77776F',
+          color: '#94948B',
           marginBottom: 9,
         }}>
         {record === null ? 'PR' : `${record.exerciseName} PR`}
@@ -52,13 +52,13 @@ export function PrTile({ record }: PrTileProps) {
             fontSize: 25,
             fontWeight: '700',
             letterSpacing: -0.02 * 25,
-            color: record === null ? '#6E6E66' : '#F6F5F3',
+            color: record === null ? '#8A8A82' : '#F6F5F3',
             fontVariant: ['tabular-nums'],
           }}>
           {record === null ? '—' : Math.round(record.weightKg)}
         </Text>
         {record !== null ? (
-          <Text style={{ fontFamily: 'Archivo', fontSize: 11.5, fontWeight: '500', color: '#6E6E66' }}>
+          <Text style={{ fontFamily: 'Archivo', fontSize: 11.5, fontWeight: '500', color: '#8A8A82' }}>
             kg
           </Text>
         ) : null}
@@ -69,7 +69,7 @@ export function PrTile({ record }: PrTileProps) {
           fontFamily: 'Archivo',
           fontSize: 11,
           fontWeight: '500',
-          color: record === null ? '#6E6E66' : delta !== null && delta >= 0 ? '#79B98A' : '#C9503C',
+          color: record === null ? '#8A8A82' : delta !== null && delta >= 0 ? '#79B98A' : '#C9503C',
         }}>
         {record === null
           ? 'Log a workout to set one'
