@@ -1,3 +1,4 @@
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { User } from '@forjd/domain';
 
 import { UsersRepository } from '../users/users.repository';
@@ -103,6 +104,31 @@ describe('AuthService', () => {
         provider: 'google',
         isNewUser: true,
       });
+    });
+
+    // Security review of 8F: linking to an existing email account is only safe if the provider
+    // vouches for the address. An unverified address must never yield a session.
+    it('refuses, and revokes the session it just got, when the provider does not vouch for the email', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity: { ...identity, emailVerified: false }, session });
+      authProvider.signOut.mockResolvedValue(undefined);
+
+      await expect(service.socialSignIn(request)).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(authProvider.signOut).toHaveBeenCalledWith(session.accessToken);
+      expect(usersRepository.upsertFromIdentity).not.toHaveBeenCalled();
+    });
+
+    // An address already held by a different local account: the provider has issued a session by
+    // now, so it must be revoked, and the caller gets the same constant 401 as any bad token
+    // (a 409 would confirm the address is registered).
+    it('revokes the session and answers a constant 401 when the address belongs to a different account', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+      authProvider.signOut.mockResolvedValue(undefined);
+      usersRepository.upsertFromIdentity.mockRejectedValue(new ConflictException('different account'));
+
+      await expect(service.socialSignIn(request)).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+
+      expect(authProvider.signOut).toHaveBeenCalledWith(session.accessToken);
     });
 
     it('propagates a rejected token without touching the database', async () => {
