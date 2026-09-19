@@ -46,6 +46,8 @@ describe('UsersService', () => {
     locationForLeaderboard: false,
     aiFeaturesConsent: false,
     aiFeaturesConsentAt: null,
+    healthDataConsent: false,
+    healthDataConsentAt: null,
     crashDiagnostics: false,
   };
 
@@ -105,6 +107,8 @@ describe('UsersService', () => {
           locationForLeaderboard: false,
           aiFeaturesConsent: false,
           aiFeaturesConsentAt: null,
+          healthDataConsent: false,
+          healthDataConsentAt: null,
           crashDiagnostics: false,
         },
       });
@@ -167,6 +171,8 @@ describe('UsersService', () => {
         locationForLeaderboard: false,
         aiFeaturesConsent: false,
         aiFeaturesConsentAt: null,
+        healthDataConsent: false,
+        healthDataConsentAt: null,
         crashDiagnostics: false,
       });
     });

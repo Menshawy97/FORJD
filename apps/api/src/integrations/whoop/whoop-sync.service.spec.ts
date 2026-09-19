@@ -54,8 +54,25 @@ describe("WhoopSyncService", () => {
     const providerFactory = { forUser: jest.fn().mockReturnValue(provider) } as unknown as WhoopProviderFactory;
     const healthData = { ingestObservations: jest.fn().mockResolvedValue(undefined) } as unknown as HealthDataRepository;
 
-    return { service: new WhoopSyncService(connections, healthData, providerFactory), connections, provider, healthData };
+    const privacy = { requireHealthDataConsent: jest.fn().mockResolvedValue(undefined) };
+
+    return {
+      service: new WhoopSyncService(connections, healthData, providerFactory, privacy as never),
+      connections,
+      provider,
+      healthData,
+      privacy,
+    };
   }
+
+  it("refuses to sync without health data consent (ADR-043) and never asks WHOOP for anything", async () => {
+    const { service, privacy, healthData } = makeService();
+    privacy.requireHealthDataConsent.mockRejectedValue(new Error("consent required"));
+
+    await expect(service.syncUser("user-1")).rejects.toThrow("consent required");
+
+    expect(healthData.ingestObservations).not.toHaveBeenCalled();
+  });
 
   it("throws when the user has no WHOOP connection", async () => {
     const { service } = makeService({ connections: { findByUserId: jest.fn().mockResolvedValue(null) } });

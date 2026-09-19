@@ -8,6 +8,7 @@ import { ensureUsableWhoopAccessToken } from "./whoop-token-access";
 import { mapRecoveryToObservations, mapSleepToObservations, mapWorkoutToObservations } from "./whoop-record-mapping";
 import { TOKEN_CIPHER, type TokenCipher } from "../../common/crypto/token-cipher.provider";
 import { HealthDataRepository } from "../../health-data/health-data.repository";
+import { PrivacyService } from "../../privacy/privacy.service";
 
 /** WHOOP's own documented webhook payload -- an event notification, not the data itself
  *  (`docs/product/phase-7-plan.md` decision B): only an id, which must be fetched. */
@@ -39,6 +40,7 @@ export class WhoopWebhookService {
     @Inject(WHOOP_CLIENT) private readonly client: WhoopClient,
     @Inject(TOKEN_CIPHER) private readonly cipher: TokenCipher,
     private readonly healthData: HealthDataRepository,
+    private readonly privacy: PrivacyService,
   ) {}
 
   async processEvent(event: WhoopWebhookEvent): Promise<void> {
@@ -50,6 +52,12 @@ export class WhoopWebhookService {
     if (!connection) {
       // A webhook for a WHOOP account this API has never connected (or has since
       // disconnected) -- nothing to do, and not an error on WHOOP's side or ours.
+      return;
+    }
+
+    // ADR-043: a webhook is acknowledged either way (so WHOOP does not retry), but nothing is
+    // fetched or stored for someone who has not given -- or has since withdrawn -- consent.
+    if (!(await this.privacy.hasHealthDataConsent(connection.userId))) {
       return;
     }
 

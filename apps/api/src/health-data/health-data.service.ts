@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+
+import { PrivacyService } from "../privacy/privacy.service";
 import {
   computeReadiness,
   resolveByPriority,
@@ -45,11 +47,16 @@ const READINESS_OBSERVATION_LIMIT = 5000;
 
 @Injectable()
 export class HealthDataService {
-  constructor(private readonly healthDataRepository: HealthDataRepository) {}
+  constructor(
+    private readonly healthDataRepository: HealthDataRepository,
+    private readonly privacy: PrivacyService,
+  ) {}
 
   /** Idempotent: re-posting an overlapping sync window upserts in place, via the partial
    *  unique index the repository's `ingestObservations` targets -- see its own docblock. */
   async ingestBatch(user: User, request: BatchIngestHealthObservationsRequest): Promise<void> {
+    // ADR-043: nothing health-related is stored until the person has said yes.
+    await this.privacy.requireHealthDataConsent(user.id);
     await this.healthDataRepository.ingestObservations(
       user.id,
       request.observations.map((o) => ({

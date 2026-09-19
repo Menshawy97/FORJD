@@ -1,0 +1,2 @@
+ALTER TABLE "privacy_settings" ADD COLUMN "health_data_consent" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "privacy_settings" ADD COLUMN "health_data_consent_at" timestamp with time zone;

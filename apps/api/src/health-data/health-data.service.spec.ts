@@ -39,10 +39,36 @@ describe("HealthDataService", () => {
       getObservationsForUser: jest.fn().mockResolvedValue(rows),
       getConnectionsForUser: jest.fn().mockResolvedValue(connections),
     } as unknown as HealthDataRepository;
-    return { service: new HealthDataService(repository), repository };
+    const privacy = {
+      requireHealthDataConsent: jest.fn().mockResolvedValue(undefined),
+    };
+    return { service: new HealthDataService(repository, privacy as never), repository, privacy };
   };
 
   describe("ingestBatch", () => {
+    it("refuses to store health data without consent (ADR-043), and stores nothing", async () => {
+      const { service, repository, privacy } = makeService();
+      privacy.requireHealthDataConsent.mockRejectedValue(new Error("consent required"));
+
+      await expect(
+        service.ingestBatch(viewer, {
+          observations: [
+            {
+              metricType: "hrv",
+              value: 55,
+              unit: "ms",
+              startTime: "2026-09-07T00:00:00.000Z",
+              endTime: "2026-09-07T00:05:00.000Z",
+              source: "health_connect",
+            },
+          ],
+        }),
+      ).rejects.toThrow("consent required");
+
+      expect(privacy.requireHealthDataConsent).toHaveBeenCalledWith(viewer.id);
+      expect(repository.ingestObservations).not.toHaveBeenCalled();
+    });
+
     it("scopes the write to the caller's own id", async () => {
       const { service, repository } = makeService();
 

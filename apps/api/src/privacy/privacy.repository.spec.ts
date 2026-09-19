@@ -63,6 +63,8 @@ describe('PrivacyRepository', () => {
       locationForLeaderboard: false,
       aiFeaturesConsent: false,
       aiFeaturesConsentAt: null,
+      healthDataConsent: false,
+      healthDataConsentAt: null,
       crashDiagnostics: false,
     });
   });
@@ -188,6 +190,35 @@ describe('PrivacyRepository', () => {
 
       const logs = await db.select().from(auditLogs).where(eq(auditLogs.userId, user.id));
       expect(logs.map((log) => log.action)).toContain('privacy.ai_consent_granted');
+    });
+
+    it('writes one audit row per entry when a request changes more than one consent', async () => {
+      const user = await newUser('locked-audit-many');
+      await repository.findOrCreate(user.id);
+
+      await repository.updateLocked(user.id, () => ({
+        patch: { aiFeaturesConsent: true, healthDataConsent: true },
+        audit: [
+          { action: 'privacy.ai_consent_granted', metadata: { at: 'now' } },
+          { action: 'privacy.health_consent_granted', metadata: { at: 'now' } },
+        ],
+      }));
+
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.userId, user.id));
+      expect(logs.map((log) => log.action).sort()).toEqual([
+        'privacy.ai_consent_granted',
+        'privacy.health_consent_granted',
+      ]);
+    });
+
+    it('stores and returns the health-data consent and its date', async () => {
+      const user = await newUser('health-consent');
+      await repository.findOrCreate(user.id);
+      const at = new Date('2026-09-19T10:00:00.000Z');
+
+      const granted = await repository.update(user.id, { healthDataConsent: true, healthDataConsentAt: at });
+
+      expect(granted).toMatchObject({ healthDataConsent: true, healthDataConsentAt: at });
     });
 
     /**

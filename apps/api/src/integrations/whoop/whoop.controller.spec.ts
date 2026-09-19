@@ -27,6 +27,8 @@ describe("WhoopController", () => {
   let config: { getOrThrow: jest.Mock; get: jest.Mock };
   let controller: WhoopController;
 
+  let privacy: { requireHealthDataConsent: jest.Mock };
+
   beforeEach(() => {
     oauthService = { buildAuthorizeUrl: jest.fn().mockReturnValue("https://whoop.example/authorize") } as never;
     connections = {
@@ -43,6 +45,7 @@ describe("WhoopController", () => {
       get: jest.fn().mockReturnValue(WEBHOOK_SECRET),
     };
 
+    privacy = { requireHealthDataConsent: jest.fn().mockResolvedValue(undefined) };
     controller = new WhoopController(
       oauthService,
       connections,
@@ -51,7 +54,17 @@ describe("WhoopController", () => {
       providerFactory,
       webhookService,
       config as never,
+      privacy as never,
     );
+  });
+
+  it("authorize refuses without health data consent (ADR-043): no state is stored and no URL is issued", async () => {
+    privacy.requireHealthDataConsent.mockRejectedValue(new Error("consent required"));
+
+    await expect(controller.authorize(fakeAuthenticatedRequest())).rejects.toThrow("consent required");
+
+    expect(connections.setPendingState).not.toHaveBeenCalled();
+    expect(oauthService.buildAuthorizeUrl).not.toHaveBeenCalled();
   });
 
   it("carries no class-level guard -- guarding is opted into per-route", () => {

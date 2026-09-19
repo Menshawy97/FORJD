@@ -28,6 +28,8 @@ describe('AccountExportService', () => {
         locationForLeaderboard: false,
         aiFeaturesConsent: false,
         aiFeaturesConsentAt: null,
+        healthDataConsent: false,
+        healthDataConsentAt: null,
         crashDiagnostics: false,
       }),
       ...((overrides.privacyService as object) ?? {}),

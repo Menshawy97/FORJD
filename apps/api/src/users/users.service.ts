@@ -26,6 +26,8 @@ function toPrivacyResponse(settings: PrivacySettings): PrivacySettingsResponse {
     locationForLeaderboard: settings.locationForLeaderboard,
     aiFeaturesConsent: settings.aiFeaturesConsent,
     aiFeaturesConsentAt: settings.aiFeaturesConsentAt?.toISOString() ?? null,
+    healthDataConsent: settings.healthDataConsent,
+    healthDataConsentAt: settings.healthDataConsentAt?.toISOString() ?? null,
     crashDiagnostics: settings.crashDiagnostics,
   };
 }

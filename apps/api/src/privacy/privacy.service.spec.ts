@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrivacySettings } from '@forjd/domain';
 
 import { PrivacyDecision, PrivacyPatch, PrivacyRepository } from './privacy.repository';
@@ -19,6 +19,8 @@ describe('PrivacyService', () => {
     locationForLeaderboard: false,
     aiFeaturesConsent: false,
     aiFeaturesConsentAt: null,
+    healthDataConsent: false,
+    healthDataConsentAt: null,
     crashDiagnostics: false,
   };
 
@@ -62,6 +64,71 @@ describe('PrivacyService', () => {
     it('creates an all-off row rather than failing when none exists', async () => {
       await expect(service.get(userId)).resolves.toEqual(allOff);
       expect(privacyRepository.findOrCreate).toHaveBeenCalledWith(userId);
+    });
+  });
+
+  // ADR-043. Health data is collected only after an explicit yes, with the same transition
+  // discipline as the AI consent: a date only on a real change, an audit row only on a real
+  // change, and never a record manufactured by a no-op save.
+  describe('health data consent', () => {
+    it('stamps the date and audits a grant', async () => {
+      given({ healthDataConsent: false });
+
+      await service.update(userId, { healthDataConsent: true });
+
+      expect(lastPatch().healthDataConsentAt).toBeInstanceOf(Date);
+      expect(lastAudit()).toMatchObject({ action: 'privacy.health_consent_granted' });
+    });
+
+    it('clears the date and audits a withdrawal', async () => {
+      given({ healthDataConsent: true, healthDataConsentAt: new Date('2026-01-01T00:00:00Z') });
+
+      await service.update(userId, { healthDataConsent: false });
+
+      expect(lastPatch().healthDataConsentAt).toBeNull();
+      expect(lastAudit()).toMatchObject({ action: 'privacy.health_consent_withdrawn' });
+    });
+
+    it('does nothing when the value is re-sent unchanged (the Save button re-sends every toggle)', async () => {
+      const originalDate = new Date('2026-01-01T00:00:00Z');
+      given({ healthDataConsent: true, healthDataConsentAt: originalDate });
+
+      await service.update(userId, { healthDataConsent: true });
+
+      expect(lastPatch().healthDataConsentAt).toBeUndefined();
+      expect(lastAudit()).toBeNull();
+    });
+
+    it('writes one audit row per consent when a request changes both at once', async () => {
+      await service.update(userId, { aiFeaturesConsent: true, healthDataConsent: true });
+
+      expect(lastAudit()).toEqual([
+        expect.objectContaining({ action: 'privacy.ai_consent_granted' }),
+        expect.objectContaining({ action: 'privacy.health_consent_granted' }),
+      ]);
+    });
+
+    it('reports consent from the live row, never a cached one', async () => {
+      given({ healthDataConsent: true });
+      await expect(service.hasHealthDataConsent(userId)).resolves.toBe(true);
+
+      given({ healthDataConsent: false });
+      await expect(service.hasHealthDataConsent(userId)).resolves.toBe(false);
+    });
+
+    it('requireHealthDataConsent passes when consent is on', async () => {
+      given({ healthDataConsent: true });
+
+      await expect(service.requireHealthDataConsent(userId)).resolves.toBeUndefined();
+    });
+
+    it('requireHealthDataConsent refuses with a code the app acts on when it is off', async () => {
+      given({ healthDataConsent: false });
+
+      const attempt = service.requireHealthDataConsent(userId);
+
+      await expect(attempt).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(attempt).rejects.toMatchObject({ response: { code: 'health_data_consent_required' } });
     });
   });
 

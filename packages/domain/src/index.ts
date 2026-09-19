@@ -168,6 +168,9 @@ export interface PrivacySettings {
   locationForLeaderboard: boolean;
   aiFeaturesConsent: boolean;
   aiFeaturesConsentAt: Date | null;
+  /** Consent to collect health data (ADR-043). Same transition rules as the AI consent. */
+  healthDataConsent: boolean;
+  healthDataConsentAt: Date | null;
   crashDiagnostics: boolean;
 }
 export * from './training-calculations';

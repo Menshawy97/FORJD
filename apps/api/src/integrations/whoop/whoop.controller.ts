@@ -22,6 +22,7 @@ import { z } from "zod";
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
+import { PrivacyService } from "../../privacy/privacy.service";
 import { WhoopCallbackService } from "./whoop-callback.service";
 import { WhoopConnectionRepository } from "./whoop-connection.repository";
 import { WhoopOAuthService } from "./whoop-oauth.service";
@@ -62,6 +63,7 @@ export class WhoopController {
     private readonly providerFactory: WhoopProviderFactory,
     private readonly webhookService: WhoopWebhookService,
     private readonly config: ConfigService,
+    private readonly privacy: PrivacyService,
   ) {}
 
   /**
@@ -83,6 +85,8 @@ export class WhoopController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async authorize(@Req() request: AuthenticatedRequest): Promise<{ authorizeUrl: string }> {
+    // ADR-043: connecting WHOOP is the moment health data starts flowing, so consent comes first.
+    await this.privacy.requireHealthDataConsent(request.user.id);
     const state = randomBytes(OAUTH_STATE_BYTES).toString("base64url");
     await this.connections.setPendingState(request.user.id, state, new Date(Date.now() + OAUTH_STATE_TTL_MS));
     return { authorizeUrl: this.oauthService.buildAuthorizeUrl(state) };
