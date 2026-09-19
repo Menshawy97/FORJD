@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AUTH_PROVIDER } from '../src/auth/providers/auth-provider.interface';
 import { Database, DRIZZLE } from '../src/database/database.module';
 import { users } from '../src/database/schema/users.schema';
+import { markAdult } from './support/adult';
 import { FakeAuthProvider } from './support/fake-auth-provider';
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -68,6 +69,9 @@ describe('Auth and profile (e2e)', () => {
       .post('/api/v1/auth/register')
       .send({ email: testEmail, password: 'Str0ng!Pass' })
       .expect(201);
+
+    // The profile-editing test below needs an account past the age gate (ADR-042).
+    await markAdult(app, testEmail);
 
     expect(response.body.email).toBe(testEmail);
     expect(response.body.session.accessToken).toBe('access-token');

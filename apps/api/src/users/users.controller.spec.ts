@@ -1,5 +1,6 @@
 import { updatePrivacyRequestSchema, updateProfileRequestSchema } from "@forjd/contracts";
 
+import { ALLOW_WITHOUT_DATE_OF_BIRTH } from "../auth/guards/allow-without-date-of-birth.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { getBodySchema, getClassGuards } from "../test-support/controller-metadata";
 import { fakeAuthenticatedRequest } from "../test-support/fake-authenticated-request";
@@ -20,6 +21,18 @@ describe("UsersController", () => {
     } as unknown as jest.Mocked<UsersService>;
     avatarUploadService = { upload: jest.fn() } as unknown as jest.Mocked<AvatarUploadService>;
     controller = new UsersController(usersService, avatarUploadService);
+  });
+
+  it.each(["getMe", "uploadAvatar"] as const)(
+    "%s stays reachable for an account with no date of birth yet (ADR-042)",
+    (method) => {
+      expect(Reflect.getMetadata(ALLOW_WITHOUT_DATE_OF_BIRTH, UsersController.prototype[method])).toBe(true);
+    },
+  );
+
+  it("does not exempt profile or privacy updates from the age gate", () => {
+    expect(Reflect.getMetadata(ALLOW_WITHOUT_DATE_OF_BIRTH, UsersController.prototype.updateProfile)).toBeUndefined();
+    expect(Reflect.getMetadata(ALLOW_WITHOUT_DATE_OF_BIRTH, UsersController.prototype.updatePrivacy)).toBeUndefined();
   });
 
   it("carries JwtAuthGuard at the class level", () => {

@@ -16,6 +16,7 @@ import { VISION_PROVIDER } from "../src/ai/providers/vision-provider.interface";
 import { STORAGE_PROVIDER } from "../src/storage/providers/storage-provider.interface";
 import { INBODY_BUCKET } from "../src/body/body.service";
 import { FakeAuthProvider } from "./support/fake-auth-provider";
+import { markAdult } from "./support/adult";
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ownerEmail = `e2e-body-owner-${suiteId}@example.com`;
@@ -132,10 +133,12 @@ describe("Body scans (e2e)", () => {
       .post("/api/v1/auth/register")
       .send({ email: ownerEmail, password: "Str0ngPass!" })
       .expect(201);
+    await markAdult(app, ownerEmail);
     await request(app.getHttpServer())
       .post("/api/v1/auth/register")
       .send({ email: noConsentEmail, password: "Str0ngPass!" })
       .expect(201);
+    await markAdult(app, noConsentEmail);
 
     // C2: extract/confirm are gated on aiFeaturesConsent, which defaults to false. The rest
     // of this suite is about the scan pipeline, not consent, so the owner opts in once here;
@@ -280,6 +283,7 @@ describe("Body scans -- vision route throttle (e2e)", () => {
       .post("/api/v1/auth/register")
       .send({ email: throttleEmail, password: "Str0ngPass!" })
       .expect(201);
+    await markAdult(app, throttleEmail);
     await request(app.getHttpServer())
       .patch("/api/v1/users/me/privacy")
       .set("Authorization", "Bearer throttle-token")
@@ -430,6 +434,7 @@ describe("Body scans -- transaction integrity on a forced measurement-insert fai
       .post("/api/v1/auth/register")
       .send({ email: txEmail, password: "Str0ngPass!" })
       .expect(201);
+    await markAdult(app, txEmail);
     await request(app.getHttpServer())
       .patch("/api/v1/users/me/privacy")
       .set("Authorization", "Bearer tx-token")

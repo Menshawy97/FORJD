@@ -1,7 +1,11 @@
-import { Controller, Delete, Get, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common';
-import type { AccountExportResponse } from '@forjd/contracts';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Put, Req, UseGuards } from '@nestjs/common';
+import { setDateOfBirthRequestSchema } from '@forjd/contracts';
+import type { AccountExportResponse, SetDateOfBirthRequest } from '@forjd/contracts';
 
+import { AllowWithoutDateOfBirth } from '../auth/guards/allow-without-date-of-birth.decorator';
 import { AuthenticatedRequest, JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { AgeGateService } from './age-gate.service';
 import { AccountDeletionService } from './account-deletion.service';
 import { AccountExportService } from './account-export.service';
 
@@ -21,7 +25,25 @@ export class AccountController {
   constructor(
     private readonly accountDeletionService: AccountDeletionService,
     private readonly accountExportService: AccountExportService,
+    private readonly ageGate: AgeGateService,
   ) {}
+
+  /**
+   * ADR-042: the one-time age check. Reachable without a date of birth on file, since giving
+   * it is the whole point. An under-16 answer deletes the account and returns 403 `underage`.
+   */
+  @Put('me/date-of-birth')
+  @AllowWithoutDateOfBirth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async setDateOfBirth(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(setDateOfBirthRequestSchema)) body: SetDateOfBirthRequest,
+  ): Promise<void> {
+    await this.ageGate.setDateOfBirth(
+      { userId: request.user.id, email: request.user.email, externalId: request.identity.externalId },
+      body.dateOfBirth,
+    );
+  }
 
   /**
    * C1: erases the authenticated user's account -- every storage object, the WHOOP grant and
@@ -29,6 +51,7 @@ export class AccountController {
    * `AccountDeletionService`'s own docblock for why that order.
    */
   @Delete('me')
+  @AllowWithoutDateOfBirth()
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMe(@Req() request: AuthenticatedRequest): Promise<void> {
     await this.accountDeletionService.deleteAccount({
@@ -44,6 +67,7 @@ export class AccountController {
    * discipline `deleteMe` holds above.
    */
   @Get('me/export')
+  @AllowWithoutDateOfBirth()
   async exportMe(@Req() request: AuthenticatedRequest): Promise<AccountExportResponse> {
     return this.accountExportService.exportAccount(request.user.id, request.user.email);
   }

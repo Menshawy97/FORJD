@@ -23,6 +23,7 @@ import {
 
 import { AuthenticatedRequest, JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { AllowWithoutDateOfBirth } from '../auth/guards/allow-without-date-of-birth.decorator';
 import { AvatarUploadService, MAX_AVATAR_BYTES, UploadedAvatarFile } from './avatar-upload.service';
 import { UsersService } from './users.service';
 
@@ -35,6 +36,7 @@ export class UsersController {
   ) {}
 
   @Get('me')
+  @AllowWithoutDateOfBirth()
   getMe(@Req() request: AuthenticatedRequest): Promise<MeResponse> {
     return this.usersService.getMe(request.user);
   }
@@ -54,6 +56,7 @@ export class UsersController {
    * would mean the whole oversized body was already buffered by the time it's rejected.
    */
   @Post('me/avatar')
+  @AllowWithoutDateOfBirth()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_AVATAR_BYTES } }))
   uploadAvatar(
     @Req() request: AuthenticatedRequest,

@@ -9,6 +9,7 @@ import { getBodySchema, getClassGuards, getMethodGuards } from "../test-support/
 import { fakeAuthenticatedRequest } from "../test-support/fake-authenticated-request";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
+import { ALLOW_WITHOUT_DATE_OF_BIRTH } from "./guards/allow-without-date-of-birth.decorator";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 
 describe("AuthController", () => {
@@ -35,7 +36,11 @@ describe("AuthController", () => {
       expect(getMethodGuards(AuthController, "logout")).toContain(JwtAuthGuard);
     });
 
-    it("does not guard register/login/refresh/forgotPassword", () => {
+    it("logout stays reachable for an account with no date of birth yet (ADR-042)", () => {
+    expect(Reflect.getMetadata(ALLOW_WITHOUT_DATE_OF_BIRTH, AuthController.prototype.logout)).toBe(true);
+  });
+
+  it("does not guard register/login/refresh/forgotPassword", () => {
       expect(getMethodGuards(AuthController, "register")).not.toContain(JwtAuthGuard);
       expect(getMethodGuards(AuthController, "login")).not.toContain(JwtAuthGuard);
       expect(getMethodGuards(AuthController, "refresh")).not.toContain(JwtAuthGuard);

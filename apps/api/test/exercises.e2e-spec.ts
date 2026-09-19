@@ -11,6 +11,7 @@ import { Database, DRIZZLE } from '../src/database/database.module';
 import { exerciseFavourites, exercises } from '../src/database/schema/exercises.schema';
 import { users } from '../src/database/schema/users.schema';
 import { FakeAuthProvider } from './support/fake-auth-provider';
+import { markAdult } from './support/adult';
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ownerEmail = `e2e-exercises-owner-${suiteId}@example.com`;
@@ -120,12 +121,14 @@ describe('Exercise library (e2e)', () => {
       .post('/api/v1/auth/register')
       .send({ email: ownerEmail, password: 'Str0ngPass!' })
       .expect(201);
+    await markAdult(app, ownerEmail);
     ownerId = owner.body.userId;
 
     const stranger = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({ email: strangerEmail, password: 'Str0ngPass!' })
       .expect(201);
+    await markAdult(app, strangerEmail);
 
     alphaId = await seed({ name: 'Alpha', imageKeys: ['Test_Exercise/0.jpg'] });
     await seed({ name: 'Bravo', category: 'mobility', equipment: ['kettlebell'] });

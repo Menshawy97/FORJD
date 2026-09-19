@@ -24,6 +24,7 @@ import {
   workoutTemplates,
 } from '../src/database/schema/workouts.schema';
 import { FakeAuthProvider } from './support/fake-auth-provider';
+import { markAdult } from './support/adult';
 
 const suiteId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ownerEmail = `e2e-programs-owner-${suiteId}@example.com`;
@@ -164,10 +165,12 @@ describe('Programs (e2e)', () => {
       .post('/api/v1/auth/register')
       .send({ email: ownerEmail, password: 'Str0ngPass!' })
       .expect(201);
+    await markAdult(app, ownerEmail);
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({ email: strangerEmail, password: 'Str0ngPass!' })
       .expect(201);
+    await markAdult(app, strangerEmail);
 
     const ownerId = await userIdFor(ownerEmail);
     const strangerId = await userIdFor(strangerEmail);
