@@ -15,6 +15,7 @@ jest.mock('axios', () => {
     post: jest.Mock;
     get: jest.Mock;
     patch: jest.Mock;
+    put: jest.Mock;
     delete: jest.Mock;
     request: jest.Mock;
     defaults: { baseURL: string };
@@ -39,6 +40,7 @@ jest.mock('axios', () => {
       post: jest.fn(),
       get: jest.fn(),
       patch: jest.fn(),
+      put: jest.fn(),
       delete: jest.fn(),
       request: jest.fn(),
       defaults: { baseURL: 'http://test.local/api/v1' },
@@ -63,6 +65,8 @@ jest.mock('../secureStorage', () => ({
   clearSession: jest.fn(),
 }));
 
+jest.mock('../date-of-birth-gate', () => ({ requireDateOfBirth: jest.fn() }));
+
 jest.mock('expo-constants', () => ({
   __esModule: true,
   default: { expoConfig: { extra: { apiBaseUrl: 'http://test.local' } } },
@@ -70,6 +74,7 @@ jest.mock('expo-constants', () => ({
 
 import axios from 'axios';
 
+import { requireDateOfBirth } from '../date-of-birth-gate';
 import * as secureStorage from '../secureStorage';
 
 // The mocked axios.create() above returns a plain recording object shaped nothing like the
@@ -241,6 +246,31 @@ describe('apiClient - what a failure on the retry path is allowed to destroy', (
     };
   }
 
+  // ADR-042: the server refuses every feature route for an account with no date of birth.
+  it('raises the date-of-birth gate on a 403 date_of_birth_required, and still rejects with that error', async () => {
+    const { onRejected } = loadWithInstances();
+    const refused = {
+      response: { status: 403, data: { code: 'date_of_birth_required' } },
+      config: { url: '/workouts/templates', headers: {} },
+    };
+
+    await expect(onRejected(refused)).rejects.toBe(refused);
+
+    expect(requireDateOfBirth).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the gate alone for any other 403', async () => {
+    const { onRejected } = loadWithInstances();
+    const refused = {
+      response: { status: 403, data: { code: 'underage' } },
+      config: { url: '/users/me/date-of-birth', headers: {} },
+    };
+
+    await expect(onRejected(refused)).rejects.toBe(refused);
+
+    expect(requireDateOfBirth).not.toHaveBeenCalled();
+  });
+
   it('clears the session and propagates the original error when the refresh itself fails', async () => {
     (secureStorage.getRefreshToken as jest.Mock).mockResolvedValue('refresh-abc');
     (secureStorage.clearSession as jest.Mock).mockResolvedValue(undefined);
@@ -302,6 +332,16 @@ describe('apiClient - profile reads and writes', () => {
     // Construction order in apiClient.ts: public, refresh, api, replay.
     return instances[2] as unknown as { get: jest.Mock; patch: jest.Mock };
   }
+
+  it('setDateOfBirth sends PUT /users/me/date-of-birth with just the date', async () => {
+    const { setDateOfBirth } = loadApiClient();
+    const instance = apiClientInstance() as unknown as { put: jest.Mock };
+    instance.put.mockResolvedValue({ data: undefined });
+
+    await setDateOfBirth('1998-04-12');
+
+    expect(instance.put).toHaveBeenCalledWith('/users/me/date-of-birth', { dateOfBirth: '1998-04-12' });
+  });
 
   it('getMe reads GET /users/me through the authenticated client', async () => {
     const { getMe } = loadApiClient();

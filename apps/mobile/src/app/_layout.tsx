@@ -12,6 +12,13 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { getMe } from '@/auth/apiClient';
+import {
+  getDateOfBirthNeeded,
+  requireDateOfBirth,
+  resetDateOfBirthGate,
+  subscribeToDateOfBirthGate,
+} from '@/auth/date-of-birth-gate';
 import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secureStorage';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
@@ -150,6 +157,9 @@ const PUBLIC_ROUTES = new Set(['welcome', 'login', 'signup']);
  * changes) is scoped to this tiny component rather than the whole layout tree. */
 function AuthGate() {
   const segments = useSegments();
+  // A signed-out app has no account to gate; the next sign-in must not inherit the last
+  // one's "still owes a date of birth" state (ADR-042).
+  useEffect(() => resetDateOfBirthGate(), []);
   // Cast to string: the typed-routes union for useSegments() is generated from the app's
   // route tree and does not reliably include every segment name — this check is a runtime
   // string comparison regardless of what TS infers here.
@@ -180,9 +190,44 @@ function AuthGate() {
  */
 const AUTHENTICATED_REDIRECT_ROUTES = new Set(['welcome', 'login']);
 
+/** The step every new account passes through: username, photo and the age check (ADR-042). */
+const DATE_OF_BIRTH_ROUTE = 'pick-username';
+
 function AuthenticatedGate() {
   const segments = useSegments();
   const firstSegment = segments[0] as string | undefined;
+  const needsDateOfBirth = useSyncExternalStore(
+    subscribeToDateOfBirthGate,
+    getDateOfBirthNeeded,
+    getDateOfBirthNeeded,
+  );
+
+  // Ask the server once per signed-in launch. This is what catches an account that reached the
+  // app without ever giving a date of birth -- one created before the age check existed, or a
+  // sign-up interrupted before that step, or a first Google/Apple sign-in. The server enforces
+  // it independently (403 `date_of_birth_required`, raised into the same store by apiClient);
+  // this read just gets the person to the right screen without waiting for a refused request.
+  // A failed read is deliberately not a reason to trap anyone.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await getMe();
+        if (!cancelled && me.profile && me.profile.dateOfBirth === null) {
+          requireDateOfBirth();
+        }
+      } catch {
+        // See above: the server's own refusal is the backstop.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (needsDateOfBirth && firstSegment !== DATE_OF_BIRTH_ROUTE) {
+    return <Redirect href="/pick-username" />;
+  }
 
   if (firstSegment === undefined || !AUTHENTICATED_REDIRECT_ROUTES.has(firstSegment)) {
     return null;

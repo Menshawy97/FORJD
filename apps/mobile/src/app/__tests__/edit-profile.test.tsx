@@ -215,6 +215,21 @@ describe('EditProfileScreen', () => {
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/profile'));
   });
 
+  // ADR-042: a date of birth cannot be cleared, so the API rejects null. An account that has
+  // none yet (it is about to be asked for one) must save its other fields without sending it.
+  it('omits the date of birth from the save when none is on file, rather than sending null', async () => {
+    (getMe as jest.Mock).mockResolvedValue({ ...ME, profile: { ...PROFILE, dateOfBirth: null } });
+    (updateProfile as jest.Mock).mockResolvedValue({ ...PROFILE, dateOfBirth: null });
+
+    const { findByText } = await render(<EditProfileScreen />);
+    fireEvent.press(await findByText('Save Changes'));
+
+    await waitFor(() => expect(updateProfile).toHaveBeenCalled());
+    expect(updateProfile).toHaveBeenCalledWith(
+      expect.not.objectContaining({ dateOfBirth: expect.anything() }),
+    );
+  });
+
   it('shows the toast before navigating away', async () => {
     (getMe as jest.Mock).mockResolvedValue(ME);
     (updateProfile as jest.Mock).mockResolvedValue(PROFILE);

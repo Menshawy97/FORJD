@@ -9,7 +9,7 @@
 // password" is not a thing signup can say), so the wording stays at the call site.
 import { AxiosError, AxiosHeaders } from 'axios';
 
-import { actionableServerMessage, classifyRequestFailure, isConflict } from '../failure';
+import { actionableServerMessage, apiErrorCode, classifyRequestFailure, isConflict } from '../failure';
 
 /** A rejection shaped the way axios shapes one, for a response that did arrive. */
 function withStatus(status: number, data: unknown = {}): AxiosError {
@@ -112,6 +112,20 @@ describe('actionableServerMessage', () => {
     expect(actionableServerMessage(withStatus(429, { message: 42 }))).toBeUndefined();
     expect(actionableServerMessage(new AxiosError('Network Error'))).toBeUndefined();
     expect(actionableServerMessage(undefined)).toBeUndefined();
+  });
+});
+
+describe('apiErrorCode', () => {
+  it('reads the machine-readable code the API attaches to a refusal', () => {
+    expect(apiErrorCode(withStatus(403, { code: 'underage', message: 'x' }))).toBe('underage');
+  });
+
+  it('is undefined when there is no code, or it is not a string', () => {
+    expect(apiErrorCode(withStatus(403, { message: 'x' }))).toBeUndefined();
+    expect(apiErrorCode(withStatus(403, { code: 7 }))).toBeUndefined();
+    expect(apiErrorCode(new AxiosError('Network Error'))).toBeUndefined();
+    expect(apiErrorCode(undefined)).toBeUndefined();
+    expect(apiErrorCode('boom')).toBeUndefined();
   });
 });
 

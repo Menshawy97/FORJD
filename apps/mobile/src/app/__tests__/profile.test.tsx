@@ -41,7 +41,7 @@ import { clearSession } from '@/auth/secureStorage';
 const PROFILE = {
   userId: 'u1',
   displayName: 'Ada Lovelace',
-  dateOfBirth: null,
+  dateOfBirth: '1990-07-04', // ADR-042: an account with none is sent to the age step
   sex: null,
   heightCm: null,
   unitSystem: 'metric' as const,

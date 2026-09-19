@@ -12,3 +12,12 @@
 const { configure } = require('@testing-library/react-native');
 
 configure({ asyncUtilTimeout: 10000 });
+
+// Phase 8 / 8B: `src/store/local-data.ts` (wiping on-device data when an account is deleted or
+// an under-age sign-up is turned away) imports AsyncStorage, and `pick-username.tsx` now
+// imports that -- so every route-tree test that loads the app's routes reaches the native
+// module. This is the library's own documented Jest mock; suites that mock AsyncStorage
+// themselves (the store tests) override it with their own factory as before.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);

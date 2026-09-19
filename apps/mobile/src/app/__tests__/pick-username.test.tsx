@@ -22,7 +22,24 @@ jest.mock('expo-router', () => ({ router: { replace: (...args: unknown[]) => moc
 jest.mock('@/auth/apiClient', () => ({
   updateProfile: jest.fn(),
   uploadAvatar: jest.fn(),
+  setDateOfBirth: jest.fn(),
 }));
+
+jest.mock('@/auth/secureStorage', () => ({ clearSession: jest.fn() }));
+jest.mock('@/store/local-data', () => ({ clearLocalUserData: jest.fn() }));
+
+// A native module with nothing meaningful to render in Jest. This stand-in is a button that
+// "picks" whatever date the test set, by invoking onChange the way the real picker does.
+const mockPicked: { date: Date } = { date: new Date(1990, 0, 15) };
+jest.mock('@react-native-community/datetimepicker', () => {
+  const { Pressable } = jest.requireActual('react-native');
+  return {
+    __esModule: true,
+    default: (props: { onChange: (event: unknown, date: Date) => void }) => (
+      <Pressable testID="date-picker" onPress={() => props.onChange({}, mockPicked.date)} />
+    ),
+  };
+});
 
 jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(),
@@ -44,8 +61,22 @@ jest.mock('expo-image-manipulator', () => ({
 
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator } from 'expo-image-manipulator';
-import { updateProfile, uploadAvatar } from '@/auth/apiClient';
+import { consumeUnderageNotice } from '@/auth/account-notice';
+import { setDateOfBirth, updateProfile, uploadAvatar } from '@/auth/apiClient';
+import { getDateOfBirthNeeded, requireDateOfBirth } from '@/auth/date-of-birth-gate';
+import { clearSession } from '@/auth/secureStorage';
+import { clearLocalUserData } from '@/store/local-data';
 import PickUsernameScreen from '../pick-username';
+
+/** Picks a birthday through the (mocked) date picker, the way a person would. */
+async function chooseBirthday(
+  screen: { findByLabelText: (label: string) => Promise<never>; findByTestId: (id: string) => Promise<never> },
+  date: Date,
+) {
+  mockPicked.date = date;
+  fireEvent.press(await screen.findByLabelText('Date of birth'));
+  fireEvent.press(await screen.findByTestId('date-picker'));
+}
 
 const mockManipulate = ImageManipulator.manipulate as jest.Mock;
 
@@ -58,6 +89,11 @@ describe('PickUsernameScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockManipulate.mockReturnValue(mockManipulationContext);
+    (setDateOfBirth as jest.Mock).mockResolvedValue(undefined);
+    (clearSession as jest.Mock).mockResolvedValue(undefined);
+    (clearLocalUserData as jest.Mock).mockResolvedValue(undefined);
+    consumeUnderageNotice();
+    requireDateOfBirth();
     mockResize.mockReturnValue(mockManipulationContext);
     mockRenderAsync.mockResolvedValue({ saveAsync: mockSaveAsync });
     mockSaveAsync.mockResolvedValue({
@@ -78,6 +114,100 @@ describe('PickUsernameScreen', () => {
     await findByPlaceholderText('e.g. jsmith');
     await findByText('3–20 characters: letters, numbers, underscores.');
     await findByLabelText('Continue');
+  });
+
+  // signuppage2.png -- the field sits under the username hint, before Continue.
+  it('shows the design date of birth field, its placeholder and the age rule', async () => {
+    const { findByText, findByLabelText } = await render(<PickUsernameScreen />);
+
+    await findByText('Date of birth');
+    expect(await findByLabelText('Date of birth')).toBeTruthy();
+    await findByText('mm/dd/yyyy');
+    await findByText('You must be at least 16 years old to use FORJD.');
+  });
+
+  it('shows the chosen birthday as mm/dd/yyyy', async () => {
+    const screen = await render(<PickUsernameScreen />);
+
+    await chooseBirthday(screen as never, new Date(1998, 3, 12));
+
+    expect(await screen.findByText('04/12/1998')).toBeTruthy();
+  });
+
+  it('asks for a date of birth and touches the server not at all when none is chosen', async () => {
+    const { findByLabelText, findByText } = await render(<PickUsernameScreen />);
+
+    fireEvent.changeText(await findByLabelText('Username'), 'jsmith');
+    fireEvent.press(await findByLabelText('Continue'));
+
+    expect(await findByText('Enter your date of birth.')).toBeTruthy();
+    expect(setDateOfBirth).not.toHaveBeenCalled();
+    expect(updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('sends the date of birth first, then the profile, then lifts the age gate and moves on', async () => {
+    (updateProfile as jest.Mock).mockResolvedValue({});
+    const screen = await render(<PickUsernameScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText('Username'), 'jsmith');
+    await chooseBirthday(screen as never, new Date(1998, 3, 12));
+    fireEvent.press(await screen.findByLabelText('Continue'));
+
+    await waitFor(() => expect(setDateOfBirth).toHaveBeenCalledWith('1998-04-12'));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ username: 'jsmith' }));
+    expect((setDateOfBirth as jest.Mock).mock.invocationCallOrder[0]!).toBeLessThan(
+      (updateProfile as jest.Mock).mock.invocationCallOrder[0]!,
+    );
+    expect(getDateOfBirthNeeded()).toBe(false);
+    expect(mockReplace).toHaveBeenCalledWith('/goals?returnTo=newAccount');
+  });
+
+  it('turns an under-16 away: the account is gone, so sign out, wipe the device and say why', async () => {
+    (setDateOfBirth as jest.Mock).mockRejectedValue(
+      new AxiosError('Forbidden', 'ERR_BAD_REQUEST', undefined, undefined, {
+        status: 403,
+        data: { code: 'underage' },
+      } as never),
+    );
+    const screen = await render(<PickUsernameScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText('Username'), 'jsmith');
+    await chooseBirthday(screen as never, new Date(new Date().getFullYear() - 12, 0, 1));
+    fireEvent.press(await screen.findByLabelText('Continue'));
+
+    await waitFor(() => expect(clearSession).toHaveBeenCalledTimes(1));
+    expect(clearLocalUserData).toHaveBeenCalledTimes(1);
+    expect(consumeUnderageNotice()).toBe(true);
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalledWith('/goals?returnTo=newAccount');
+  });
+
+  it('treats "a date is already on file" (409) as done, so a retry after a failed username save works', async () => {
+    (setDateOfBirth as jest.Mock).mockRejectedValue(
+      new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, { status: 409 } as never),
+    );
+    (updateProfile as jest.Mock).mockResolvedValue({});
+    const screen = await render(<PickUsernameScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText('Username'), 'jsmith');
+    await chooseBirthday(screen as never, new Date(1998, 3, 12));
+    fireEvent.press(await screen.findByLabelText('Continue'));
+
+    await waitFor(() => expect(updateProfile).toHaveBeenCalled());
+    expect(mockReplace).toHaveBeenCalledWith('/goals?returnTo=newAccount');
+  });
+
+  it('does not lift the age gate when the date could not be saved', async () => {
+    (setDateOfBirth as jest.Mock).mockRejectedValue(new Error('offline'));
+    const screen = await render(<PickUsernameScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText('Username'), 'jsmith');
+    await chooseBirthday(screen as never, new Date(1998, 3, 12));
+    fireEvent.press(await screen.findByLabelText('Continue'));
+
+    await waitFor(() => expect(setDateOfBirth).toHaveBeenCalled());
+    expect(getDateOfBirthNeeded()).toBe(true);
+    expect(updateProfile).not.toHaveBeenCalled();
   });
 
   // The prototype's own sanitizer, verbatim: `toLowerCase().replace(/[^a-z0-9_]/g,'')`.
@@ -103,10 +233,11 @@ describe('PickUsernameScreen', () => {
   it('navigates to goals as a first-run once the username is accepted', async () => {
     (updateProfile as jest.Mock).mockResolvedValue({});
 
-    const { findByLabelText } = await render(<PickUsernameScreen />);
+    const screen = await render(<PickUsernameScreen />);
 
-    fireEvent.changeText(await findByLabelText('Username'), 'jsmith');
-    fireEvent.press(await findByLabelText('Continue'));
+    fireEvent.changeText(await screen.findByLabelText('Username'), 'jsmith');
+    await chooseBirthday(screen as never, new Date(1998, 3, 12));
+    fireEvent.press(await screen.findByLabelText('Continue'));
 
     await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ username: 'jsmith' }));
     expect(mockReplace).toHaveBeenCalledWith('/goals?returnTo=newAccount');
@@ -119,12 +250,13 @@ describe('PickUsernameScreen', () => {
       } as never),
     );
 
-    const { findByLabelText, findByText } = await render(<PickUsernameScreen />);
+    const screen = await render(<PickUsernameScreen />);
 
-    fireEvent.changeText(await findByLabelText('Username'), 'jmitch');
-    fireEvent.press(await findByLabelText('Continue'));
+    fireEvent.changeText(await screen.findByLabelText('Username'), 'jmitch');
+    await chooseBirthday(screen as never, new Date(1998, 3, 12));
+    fireEvent.press(await screen.findByLabelText('Continue'));
 
-    expect(await findByText('That username is taken.')).toBeTruthy();
+    expect(await screen.findByText('That username is taken.')).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -141,7 +273,8 @@ describe('PickUsernameScreen', () => {
     });
     (updateProfile as jest.Mock).mockResolvedValue({});
 
-    const { findByLabelText } = await render(<PickUsernameScreen />);
+    const screen = await render(<PickUsernameScreen />);
+    const { findByLabelText } = screen;
 
     fireEvent.press(await findByLabelText('Add photo'));
     // ADR-024: the raw picker URI is resized/re-encoded client-side first -- `uploadAvatar`
@@ -150,6 +283,7 @@ describe('PickUsernameScreen', () => {
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith('file:///tmp/resized.webp'));
 
     fireEvent.changeText(await findByLabelText('Username'), 'jsmith');
+    await chooseBirthday(screen as never, new Date(1998, 3, 12));
     fireEvent.press(await findByLabelText('Continue'));
 
     await waitFor(() =>

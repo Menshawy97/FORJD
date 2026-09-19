@@ -23,6 +23,27 @@ function responseStatus(error: unknown): number | undefined {
 }
 
 /**
+ * The machine-readable `code` the API attaches to a refusal it wants the app to act on
+ * (`date_of_birth_required`, `underage` -- ADR-042), as opposed to a message for a person.
+ */
+export function apiErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  const response = (error as { response?: unknown }).response;
+  if (typeof response !== 'object' || response === null) {
+    return undefined;
+  }
+  const data = (response as { data?: unknown }).data;
+  if (typeof data !== 'object' || data === null) {
+    return undefined;
+  }
+  const code = (data as { code?: unknown }).code;
+
+  return typeof code === 'string' ? code : undefined;
+}
+
+/**
  * The one wording for "the request never reached us", shared by every screen.
  *
  * `05-interactions.md` lists network failure among the states the design does not draw:

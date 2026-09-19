@@ -203,6 +203,17 @@ const GLYPHS = {
    * white stroke regardless of `color`, matching the prototype's hardcoded `stroke:'#fff'` on
    * that one shape (every other circle glyph in this file takes the caller's color).
    */
+  /**
+   * The date field's trailing glyph in `signuppage2.png`. The prototype's own glyph set has no
+   * calendar (its date input relies on the browser's native indicator), so this is drawn to
+   * match the same 1.6-weight outline style as its neighbours.
+   */
+  calendar: {
+    viewBox: '0 0 24 24',
+    shapes: [
+      path('M6 5.6h12a1.4 1.4 0 0 1 1.4 1.4v11a1.4 1.4 0 0 1-1.4 1.4H6A1.4 1.4 0 0 1 4.6 18V7A1.4 1.4 0 0 1 6 5.6zM4.6 10h14.8M8.6 3.8v3.4M15.4 3.8v3.4'),
+    ],
+  },
   camera: {
     viewBox: '0 0 24 24',
     shapes: [
