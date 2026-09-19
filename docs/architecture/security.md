@@ -135,6 +135,9 @@ and export/deletion can each be reasoned about per category.
 
 ## Store-readiness checklist (Phase 8, but tracked from Phase 0)
 
+What is collected, and where it goes, is in [`data-inventory.md`](data-inventory.md) -- the
+source for the Play Data safety form. Keep it current.
+
 - Privacy policy + ToS, reviewed by a lawyer before any public beta —
   engaged in week 1 (see `docs/product/roadmap.md`), not Phase 8, because
   legal turnaround is the one dependency not under engineering control.
