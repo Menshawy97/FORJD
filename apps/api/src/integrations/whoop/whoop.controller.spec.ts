@@ -27,7 +27,7 @@ describe("WhoopController", () => {
   let config: { getOrThrow: jest.Mock; get: jest.Mock };
   let controller: WhoopController;
 
-  let privacy: { requireHealthDataConsent: jest.Mock };
+  let privacy: { requireHealthDataConsent: jest.Mock; hasHealthDataConsent: jest.Mock };
 
   beforeEach(() => {
     oauthService = { buildAuthorizeUrl: jest.fn().mockReturnValue("https://whoop.example/authorize") } as never;
@@ -45,7 +45,10 @@ describe("WhoopController", () => {
       get: jest.fn().mockReturnValue(WEBHOOK_SECRET),
     };
 
-    privacy = { requireHealthDataConsent: jest.fn().mockResolvedValue(undefined) };
+    privacy = {
+      requireHealthDataConsent: jest.fn().mockResolvedValue(undefined),
+      hasHealthDataConsent: jest.fn().mockResolvedValue(true),
+    };
     controller = new WhoopController(
       oauthService,
       connections,
@@ -90,6 +93,23 @@ describe("WhoopController", () => {
     await controller.status(request);
 
     expect(connections.findByUserId).toHaveBeenCalledWith(request.user.id);
+  });
+
+  // ADR-043: a connection made before consent existed (or kept after consent was withdrawn)
+  // collects nothing, so it must not read as "connected" -- the Connect button then walks the
+  // person through consent and re-authorizes, instead of leaving a live-looking dead connection.
+  it("status reports a connection without health data consent as not connected", async () => {
+    connections.findByUserId.mockResolvedValue({ status: "connected", lastSyncAt: null } as never);
+    privacy.hasHealthDataConsent.mockResolvedValue(false);
+
+    await expect(controller.status(fakeAuthenticatedRequest())).resolves.toMatchObject({ connected: false });
+  });
+
+  it("status reports a consented connection as connected", async () => {
+    connections.findByUserId.mockResolvedValue({ status: "connected", lastSyncAt: null } as never);
+    privacy.hasHealthDataConsent.mockResolvedValue(true);
+
+    await expect(controller.status(fakeAuthenticatedRequest())).resolves.toMatchObject({ connected: true });
   });
 
   it("authorize sets pending state under request.user.id, never a client-supplied id", async () => {

@@ -86,6 +86,19 @@ describe('PrivacyScreen', () => {
   });
 
   // ADR-043. The only place consent can be withdrawn; the explainer screen is where it is given.
+  // The screen may have loaded a stale "on"; a plain Save must never re-grant consent that was
+  // withdrawn elsewhere (it would also write a "granted" audit row nobody asked for).
+  it('does not re-send an unchanged health data consent on Save', async () => {
+    (getMe as jest.Mock).mockResolvedValue({ ...ME, privacy: { ...PRIVACY, healthDataConsent: true } });
+    const { findByText } = await render(<PrivacyScreen />);
+
+    fireEvent.press(await findByText('Crash diagnostics'));
+    fireEvent.press(await findByText('Save'));
+
+    await waitFor(() => expect(updatePrivacy).toHaveBeenCalled());
+    expect((updatePrivacy as jest.Mock).mock.calls[0]![0]).not.toHaveProperty('healthDataConsent');
+  });
+
   it('shows the health data consent row, and Save sends it', async () => {
     const { findByText } = await render(<PrivacyScreen />);
 
@@ -156,7 +169,7 @@ describe('PrivacyScreen', () => {
     });
   });
 
-  it('Save sends all six flags, toasts, and navigates to the profile tab', async () => {
+  it('Save sends the five flags, leaving the health data consent out unless it was changed, toasts, and navigates to the profile tab', async () => {
     const { findByText } = await render(<PrivacyScreen />);
     fireEvent.press(await findByText('Crash diagnostics'));
     fireEvent.press(await findByText('Save'));
@@ -168,7 +181,6 @@ describe('PrivacyScreen', () => {
         locationForLeaderboard: false,
         aiFeaturesConsent: false,
         crashDiagnostics: true,
-        healthDataConsent: false,
       });
     });
     expect(await findByText('Privacy settings updated')).toBeTruthy();

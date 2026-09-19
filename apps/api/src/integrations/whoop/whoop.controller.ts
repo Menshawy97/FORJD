@@ -75,8 +75,11 @@ export class WhoopController {
   @UseGuards(JwtAuthGuard)
   async status(@Req() request: AuthenticatedRequest): Promise<{ connected: boolean; lastSyncAt: string | null }> {
     const connection = await this.connections.findByUserId(request.user.id);
+    // ADR-043: without consent nothing is collected, so the connection does not read as live.
+    const connected =
+      connection?.status === "connected" && (await this.privacy.hasHealthDataConsent(request.user.id));
     return {
-      connected: connection?.status === "connected",
+      connected,
       lastSyncAt: connection?.lastSyncAt?.toISOString() ?? null,
     };
   }
