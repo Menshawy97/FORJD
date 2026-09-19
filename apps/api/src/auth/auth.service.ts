@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
+  SocialSignInRequest,
+  SocialSignInResponse,
   LoginRequest,
   RegisterRequest,
   RegisterResponse,
@@ -46,6 +48,28 @@ export class AuthService {
     await this.usersRepository.recordAudit(user.id, 'auth.login');
 
     return this.toSessionResponse(session);
+  }
+
+  /**
+   * ADR-041. The provider verifies the ID token; from here it is an ordinary login. `isNewUser`
+   * is read before the upsert, since the upsert is what creates the account.
+   */
+  async socialSignIn(request: SocialSignInRequest): Promise<SocialSignInResponse> {
+    const { identity, session } = await this.authProvider.signInWithIdToken({
+      provider: request.provider,
+      idToken: request.idToken,
+      ...(request.nonce ? { nonce: request.nonce } : {}),
+    });
+    const existing = await this.usersRepository.findByExternalId(identity.externalId);
+    const user = await this.usersRepository.upsertFromIdentity(identity.externalId, identity.email);
+    const isNewUser = existing === null;
+
+    await this.usersRepository.recordAudit(user.id, 'auth.social_sign_in', {
+      provider: request.provider,
+      isNewUser,
+    });
+
+    return { ...this.toSessionResponse(session), isNewUser };
   }
 
   async refresh(refreshToken: string): Promise<SessionResponse> {

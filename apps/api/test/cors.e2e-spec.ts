@@ -28,6 +28,9 @@ class NoopAuthProvider implements AuthProvider {
   async signIn(): Promise<AuthResult> {
     throw new Error('not used by this suite');
   }
+  async signInWithIdToken(): Promise<AuthResult> {
+    throw new Error('not used by this suite');
+  }
   async refreshSession(): Promise<AuthSession> {
     throw new Error('not used by this suite');
   }

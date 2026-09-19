@@ -3,6 +3,7 @@ import {
   loginRequestSchema,
   refreshRequestSchema,
   registerRequestSchema,
+  socialSignInRequestSchema,
 } from "@forjd/contracts";
 
 import { getBodySchema, getClassGuards, getMethodGuards } from "../test-support/controller-metadata";
@@ -23,8 +24,26 @@ describe("AuthController", () => {
       refresh: jest.fn(),
       requestPasswordReset: jest.fn(),
       logout: jest.fn(),
+      socialSignIn: jest.fn(),
     } as unknown as jest.Mocked<AuthService>;
     controller = new AuthController(service);
+  });
+
+  describe("social sign-in (ADR-041)", () => {
+    it("binds the body to socialSignInRequestSchema and hands it to the service", async () => {
+      expect(getBodySchema(AuthController, "socialSignIn")).toBe(socialSignInRequestSchema);
+      const body = { provider: "google" as const, idToken: "id-token-id-token-id-token" };
+      const session = { accessToken: "a", refreshToken: "r", expiresAt: "2026-01-01T00:00:00.000Z", isNewUser: true };
+      service.socialSignIn.mockResolvedValue(session);
+
+      await expect(controller.socialSignIn(body)).resolves.toBe(session);
+
+      expect(service.socialSignIn).toHaveBeenCalledWith(body);
+    });
+
+    it("is public -- it is how a person gets a session -- so it carries no guard", () => {
+      expect(getMethodGuards(AuthController, "socialSignIn")).toEqual([]);
+    });
   });
 
   describe("guarding", () => {

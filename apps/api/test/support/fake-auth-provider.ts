@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 
 import {
+  IdTokenCredentials,
   AuthCredentials,
   AuthIdentity,
   AuthProvider,
@@ -92,6 +93,23 @@ export class FakeAuthProvider implements AuthProvider {
       identity: this.identity(credentials.email),
       session: this.session(credentials.email),
     };
+  }
+
+  /**
+   * ADR-041. A token shaped `valid:<email>` is accepted for that configured account; anything
+   * else is refused, as the real provider refuses a token it cannot verify. Records the
+   * providers used so a suite can assert the exchange happened.
+   */
+  socialSignIns: Array<{ provider: string; nonce?: string }> = [];
+
+  async signInWithIdToken(credentials: IdTokenCredentials): Promise<AuthResult> {
+    const email = credentials.idToken.startsWith('valid:') ? credentials.idToken.slice('valid:'.length) : null;
+    if (!email || !this.primaryTokens.has(email)) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    this.socialSignIns.push({ provider: credentials.provider, nonce: credentials.nonce });
+
+    return { identity: this.identity(email), session: this.session(email) };
   }
 
   async refreshSession(refreshToken: string): Promise<AuthSession> {

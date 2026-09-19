@@ -1,3 +1,5 @@
+import type { SocialAuthProvider } from '@forjd/domain';
+
 export interface AuthCredentials {
   email: string;
   password: string;
@@ -32,11 +34,25 @@ export interface SignUpResult {
   session: AuthSession | null;
 }
 
+export interface IdTokenCredentials {
+  provider: SocialAuthProvider;
+  /** The ID token the phone got from Google or Apple. Verified upstream, never here. */
+  idToken: string;
+  /** The raw nonce the token was requested with; required for Apple. */
+  nonce?: string;
+}
+
 export const AUTH_PROVIDER = Symbol('AUTH_PROVIDER');
 
 export interface AuthProvider {
   signUp(credentials: AuthCredentials): Promise<SignUpResult>;
   signIn(credentials: AuthCredentials): Promise<AuthResult>;
+  /**
+   * Exchanges a Google or Apple ID token for a session (ADR-041). The identity provider
+   * verifies the token; an account that shares a verified email with an existing one is linked
+   * to it, so a person who signed up by email keeps their data when they later use Google.
+   */
+  signInWithIdToken(credentials: IdTokenCredentials): Promise<AuthResult>;
   refreshSession(refreshToken: string): Promise<AuthSession>;
   signOut(accessToken: string): Promise<void>;
   /**

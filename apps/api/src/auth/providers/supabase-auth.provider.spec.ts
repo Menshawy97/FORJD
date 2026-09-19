@@ -28,6 +28,7 @@ interface AuthStub {
   resetPasswordForEmail: jest.Mock;
   getUser: jest.Mock;
   admin: { signOut: jest.Mock; deleteUser: jest.Mock };
+  signInWithIdToken: jest.Mock;
 }
 
 describe('SupabaseAuthProvider', () => {
@@ -42,6 +43,7 @@ describe('SupabaseAuthProvider', () => {
       resetPasswordForEmail: jest.fn(),
       getUser: jest.fn(),
       admin: { signOut: jest.fn(), deleteUser: jest.fn() },
+      signInWithIdToken: jest.fn(),
     };
 
     provider = new SupabaseAuthProvider(
@@ -174,6 +176,48 @@ describe('SupabaseAuthProvider', () => {
       await expect(
         provider.signIn({ email: 'a@example.com', password: 'Str0ng!Pass1' }),
       ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+    });
+  });
+
+  // ADR-041. The phone gets an ID token from Google/Apple; the API exchanges it with Supabase,
+  // which verifies it against the identity provider. No password ever passes through FORJD.
+  describe('signInWithIdToken', () => {
+    it('exchanges the ID token and returns the identity and session', async () => {
+      auth.signInWithIdToken.mockResolvedValue({
+        data: {
+          user: { id: 'ext-9', email: 'g@example.com', email_confirmed_at: '2026-01-01T00:00:00Z' },
+          session: { access_token: 'a', refresh_token: 'r', expires_at: 1_800_000_000 },
+        },
+        error: null,
+      });
+
+      const result = await provider.signInWithIdToken({ provider: 'google', idToken: 'id-token', nonce: 'n' });
+
+      expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'google', token: 'id-token', nonce: 'n' });
+      expect(result.identity).toEqual({ externalId: 'ext-9', email: 'g@example.com', emailVerified: true });
+      expect(result.session.accessToken).toBe('a');
+    });
+
+    it('omits the nonce when there is none', async () => {
+      auth.signInWithIdToken.mockResolvedValue({
+        data: {
+          user: { id: 'ext-9', email: 'g@example.com', email_confirmed_at: '2026-01-01T00:00:00Z' },
+          session: { access_token: 'a', refresh_token: 'r', expires_at: 1_800_000_000 },
+        },
+        error: null,
+      });
+
+      await provider.signInWithIdToken({ provider: 'google', idToken: 'id-token' });
+
+      expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'google', token: 'id-token' });
+    });
+
+    it('rejects a token the provider refuses with the same constant message as a bad password', async () => {
+      auth.signInWithIdToken.mockResolvedValue({ data: { user: null, session: null }, error: authError('Invalid token') });
+
+      await expect(provider.signInWithIdToken({ provider: 'apple', idToken: 'bad', nonce: 'n' })).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
   });
 

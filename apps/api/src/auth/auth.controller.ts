@@ -5,12 +5,15 @@ import {
   loginRequestSchema,
   refreshRequestSchema,
   registerRequestSchema,
+  socialSignInRequestSchema,
   type ForgotPasswordRequest,
   type LoginRequest,
   type RefreshRequest,
   type RegisterRequest,
   type RegisterResponse,
   type SessionResponse,
+  type SocialSignInRequest,
+  type SocialSignInResponse,
 } from '@forjd/contracts';
 
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -41,6 +44,15 @@ export class AuthController {
     @Body(new ZodValidationPipe(loginRequestSchema)) body: LoginRequest,
   ): Promise<SessionResponse> {
     return this.authService.login(body);
+  }
+
+  /** ADR-041. Public, like login: it is how a person gets a session, and shares its rate limit. */
+  @Post('social')
+  @HttpCode(HttpStatus.OK)
+  socialSignIn(
+    @Body(new ZodValidationPipe(socialSignInRequestSchema)) body: SocialSignInRequest,
+  ): Promise<SocialSignInResponse> {
+    return this.authService.socialSignIn(body);
   }
 
   @Post('refresh')
