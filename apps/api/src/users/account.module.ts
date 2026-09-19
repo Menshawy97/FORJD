@@ -10,6 +10,7 @@ import { ProgramsModule } from '../programs/programs.module';
 import { WorkoutsModule } from '../workouts/workouts.module';
 import { AccountController } from './account.controller';
 import { AccountDeletionService } from './account-deletion.service';
+import { AccountExportExtrasRepository } from './account-export-extras.repository';
 import { AccountExportService } from './account-export.service';
 import { UsersModule } from './users.module';
 
@@ -37,6 +38,6 @@ import { UsersModule } from './users.module';
     ProgramsModule,
   ],
   controllers: [AccountController],
-  providers: [AccountDeletionService, AccountExportService],
+  providers: [AccountDeletionService, AccountExportService, AccountExportExtrasRepository],
 })
 export class AccountModule {}

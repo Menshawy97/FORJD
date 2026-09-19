@@ -44,6 +44,91 @@ export const accountExportProgramsSchema = z.object({
 export type AccountExportPrograms = z.infer<typeof accountExportProgramsSchema>;
 
 /**
+ * Phase 8 / 8C: the tables the first export (R4) left out. Deliberately plain scalar shapes
+ * built for a human-readable copy of the user's own data -- not the live read endpoints'
+ * shapes, which are paginated and enriched for screens. Numeric columns are numbers here
+ * (Postgres `numeric` arrives as a string), dates are ISO-8601 strings.
+ */
+export const accountExportCustomExerciseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  slug: z.string(),
+  category: z.string(),
+  goal: z.string(),
+  measure: z.string(),
+  primaryMuscles: z.array(z.string()),
+  secondaryMuscles: z.array(z.string()),
+  equipment: z.array(z.string()),
+  instructions: z.array(z.string()),
+  description: z.string().nullable(),
+});
+export type AccountExportCustomExercise = z.infer<typeof accountExportCustomExerciseSchema>;
+
+export const accountExportCustomFoodSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  category: z.string(),
+  kcalPer100g: z.number(),
+  proteinPer100g: z.number(),
+  carbsPer100g: z.number(),
+  fatPer100g: z.number(),
+  servings: z.array(z.object({ label: z.string(), grams: z.number() })),
+});
+export type AccountExportCustomFood = z.infer<typeof accountExportCustomFoodSchema>;
+
+export const accountExportSavedMealSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  items: z.array(z.object({ foodId: z.string().uuid(), servingLabel: z.string(), grams: z.number() })),
+});
+export type AccountExportSavedMeal = z.infer<typeof accountExportSavedMealSchema>;
+
+export const accountExportGoalSchema = z.object({
+  type: z.string(),
+  targetValue: z.number().nullable(),
+  targetDate: z.string().nullable(),
+  status: z.string(),
+});
+export type AccountExportGoal = z.infer<typeof accountExportGoalSchema>;
+
+export const accountExportHealthConnectionSchema = z.object({
+  source: z.string(),
+  lastSuccessfulSyncAt: z.string().datetime().nullable(),
+});
+export type AccountExportHealthConnection = z.infer<typeof accountExportHealthConnectionSchema>;
+
+export const accountExportEnrollmentHistorySchema = z.object({
+  id: z.string().uuid(),
+  programId: z.string().uuid(),
+  programVersion: z.number().int(),
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().nullable(),
+});
+export type AccountExportEnrollmentHistory = z.infer<typeof accountExportEnrollmentHistorySchema>;
+
+/** Everything in the export that comes from `AccountExportExtrasRepository` (8C). */
+export const accountExportExtrasSchema = z.object({
+  customExercises: z.array(accountExportCustomExerciseSchema),
+  favouriteExerciseIds: z.array(z.string().uuid()),
+  customFoods: z.array(accountExportCustomFoodSchema),
+  macroGoals: z
+    .object({ kcal: z.number(), protein: z.number(), carbs: z.number(), fat: z.number() })
+    .nullable(),
+  savedMeals: z.array(accountExportSavedMealSchema),
+  goals: z.array(accountExportGoalSchema),
+  preferences: z
+    .object({
+      timezone: z.string().nullable(),
+      locale: z.string().nullable(),
+      notificationsEnabled: z.boolean(),
+    })
+    .nullable(),
+  healthConnections: z.array(accountExportHealthConnectionSchema),
+  programEnrollmentHistory: z.array(accountExportEnrollmentHistorySchema),
+});
+export type AccountExportExtras = z.infer<typeof accountExportExtrasSchema>;
+
+/**
  * `GET /users/me/export` -- a full, single-file copy of everything FORJD holds about the
  * authenticated caller, across every table the audit's account-deletion orphan check
  * (`users-deletion.e2e-spec.ts`) also walks. Composed entirely from schemas this file already
@@ -62,7 +147,7 @@ export type AccountExportPrograms = z.infer<typeof accountExportProgramsSchema>;
  * "every read is bounded" rule (see `HealthDataRepository.getAllObservationsForExport`'s own
  * docblock). An export exists specifically to be complete; a paginated export would not be one.
  */
-export const accountExportSchema = z.object({
+export const accountExportSchema = accountExportExtrasSchema.extend({
   version: z.literal(1),
   exportedAt: z.string().datetime(),
   account: z.object({
