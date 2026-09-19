@@ -46,4 +46,10 @@ export interface AuthProvider {
    */
   requestPasswordReset(email: string): Promise<void>;
   verifyAccessToken(accessToken: string): Promise<AuthIdentity>;
+  /**
+   * Removes the upstream login itself (email, password hash, linked identities). Without it,
+   * deleting our own rows leaves an account that can still sign in, and the next login would
+   * lazily recreate an empty user. An already-absent user is success, so a retry can finish.
+   */
+  deleteUser(externalId: string): Promise<void>;
 }

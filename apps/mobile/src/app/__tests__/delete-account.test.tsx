@@ -18,8 +18,13 @@ jest.mock('@/auth/secureStorage', () => ({
   clearSession: jest.fn(),
 }));
 
+jest.mock('@/store/local-data', () => ({
+  clearLocalUserData: jest.fn(),
+}));
+
 import { deleteAccount } from '@/auth/apiClient';
 import { clearSession } from '@/auth/secureStorage';
+import { clearLocalUserData } from '@/store/local-data';
 
 import DeleteAccountScreen from '../delete-account';
 
@@ -36,6 +41,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   (deleteAccount as jest.Mock).mockResolvedValue(undefined);
   (clearSession as jest.Mock).mockResolvedValue(undefined);
+  (clearLocalUserData as jest.Mock).mockResolvedValue(undefined);
 });
 
 describe('DeleteAccountScreen', () => {
@@ -67,6 +73,15 @@ describe('DeleteAccountScreen', () => {
     await waitFor(() => expect(clearSession).toHaveBeenCalledTimes(1));
   });
 
+  it('wipes the on-device data once the server has deleted the account', async () => {
+    const { getByLabelText, getByText } = await render(<DeleteAccountScreen />);
+
+    await fireEvent.changeText(getByLabelText('Type DELETE to confirm'), 'DELETE');
+    await fireEvent.press(getByText('Delete my account'));
+
+    await waitFor(() => expect(clearLocalUserData).toHaveBeenCalledTimes(1));
+  });
+
   it('shows an error and does not clear the session when deletion fails', async () => {
     (deleteAccount as jest.Mock).mockRejectedValue(new Error('network error'));
     const { getByLabelText, getByText, findByText } = await render(<DeleteAccountScreen />);
@@ -76,5 +91,6 @@ describe('DeleteAccountScreen', () => {
 
     expect(await findByText(/could not delete/i)).toBeTruthy();
     expect(clearSession).not.toHaveBeenCalled();
+    expect(clearLocalUserData).not.toHaveBeenCalled();
   });
 });

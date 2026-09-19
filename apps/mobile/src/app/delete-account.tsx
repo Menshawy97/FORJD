@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, TextInput } from 'react-native';
 import { deleteAccount } from '@/auth/apiClient';
 import { clearSession } from '@/auth/secureStorage';
 import { Header } from '@/components/header';
+import { clearLocalUserData } from '@/store/local-data';
 import { ScreenBackground } from '@/components/screen-background';
 import { colors } from '@/theme/tokens';
 
@@ -30,6 +31,7 @@ export default function DeleteAccountScreen() {
     setIsDeleting(true);
     try {
       await deleteAccount();
+      await clearLocalUserData();
       // Same seam `profile.tsx`'s logout uses: clearing the session notifies the root
       // layout's session listener, which redirects out of the app on its own. No parallel
       // navigation call here for the same reason that screen gives (ADR-011).

@@ -25,7 +25,11 @@ describe("AccountController", () => {
 
     await controller.deleteMe(request);
 
-    expect(deletionService.deleteAccount).toHaveBeenCalledWith(request.user.id);
+    expect(deletionService.deleteAccount).toHaveBeenCalledWith({
+      userId: request.user.id,
+      email: request.user.email,
+      externalId: request.identity.externalId,
+    });
     expect(deletionService.deleteAccount).toHaveBeenCalledTimes(1);
   });
 

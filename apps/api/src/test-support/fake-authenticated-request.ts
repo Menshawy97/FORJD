@@ -21,6 +21,7 @@ export function fakeUser(overrides: Partial<User> = {}): User {
 export function fakeAuthenticatedRequest(overrides: Partial<User> = {}): AuthenticatedRequest {
   return {
     user: fakeUser(overrides),
+    identity: { externalId: "22222222-2222-4222-8222-222222222222", email: "athlete@example.com", emailVerified: true },
     headers: {},
   } as unknown as AuthenticatedRequest;
 }

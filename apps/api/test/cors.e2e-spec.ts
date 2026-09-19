@@ -33,6 +33,7 @@ class NoopAuthProvider implements AuthProvider {
   }
   async signOut(): Promise<void> {}
   async requestPasswordReset(): Promise<void> {}
+  async deleteUser(): Promise<void> {}
   async verifyAccessToken(): Promise<AuthIdentity> {
     throw new Error('not used by this suite');
   }

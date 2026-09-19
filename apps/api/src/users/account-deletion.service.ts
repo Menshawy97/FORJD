@@ -1,7 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
+import { IdentityCache } from '../auth/guards/identity-cache';
+import { AUTH_PROVIDER, AuthProvider } from '../auth/providers/auth-provider.interface';
 import { Database, DRIZZLE } from '../database/database.module';
+import { auditLogs } from '../database/schema/audit-logs.schema';
 import { profiles } from '../database/schema/profiles.schema';
 import { users } from '../database/schema/users.schema';
 import { STORAGE_PROVIDER, StorageProvider } from '../storage/providers/storage-provider.interface';
@@ -37,12 +40,46 @@ export class AccountDeletionService {
     private readonly whoopConnections: WhoopConnectionRepository,
     @Inject(WHOOP_CLIENT) private readonly whoopClient: WhoopClient,
     @Inject(TOKEN_CIPHER) private readonly cipher: TokenCipher,
+    @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
+    private readonly identities: IdentityCache,
   ) {}
 
-  async deleteAccount(userId: string): Promise<void> {
+  /**
+   * The auth-provider user goes last and its failure propagates: the local rows are already
+   * gone, so the client sees an error and retries. The retry must still finish the job even
+   * though the local row no longer exists, which is why the caller supplies the verified
+   * external id from the token rather than this method reading it off the (deleted) row -- and
+   * why the identity cache entry is evicted, so a retry inside its window cannot resolve to
+   * the stale user. Swallowing the provider error would report success while the login
+   * survived: an account that could sign back in after "deletion".
+   */
+  async deleteAccount(target: { userId: string; email: string; externalId: string | null }): Promise<void> {
+    const { userId, email, externalId } = target;
+
     await this.deleteStorageObjects(userId);
     await revokeAndClearWhoopConnection(userId, this.whoopConnections, this.whoopClient, this.cipher);
+    await this.scrubEmailFromAuditTrail(email);
     await this.db.delete(users).where(eq(users.id, userId));
+    if (externalId) {
+      this.identities.evict(externalId, email);
+      await this.authProvider.deleteUser(externalId);
+    }
+  }
+
+  /**
+   * Password-reset requests are audited with a null user id (so latency cannot reveal whether
+   * the address exists), which means the `ON DELETE SET NULL` cascade never links them to the
+   * account and the plain address would otherwise outlive it.
+   */
+  private async scrubEmailFromAuditTrail(email: string): Promise<void> {
+    await this.db
+      .delete(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.action, 'auth.password_reset_requested'),
+          sql`lower(${auditLogs.metadata}->>'email') = lower(${email})`,
+        ),
+      );
   }
 
   private async deleteStorageObjects(userId: string): Promise<void> {

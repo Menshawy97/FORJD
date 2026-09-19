@@ -34,6 +34,7 @@ describe('AuthService', () => {
       signOut: jest.fn(),
       requestPasswordReset: jest.fn(),
       verifyAccessToken: jest.fn(),
+      deleteUser: jest.fn(),
     };
     usersRepository = {
       upsertFromIdentity: jest.fn().mockResolvedValue(user),

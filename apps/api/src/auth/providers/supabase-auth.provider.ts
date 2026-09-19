@@ -167,6 +167,15 @@ export class SupabaseAuthProvider implements AuthProvider {
     }
   }
 
+  async deleteUser(externalId: string): Promise<void> {
+    const { error } = await this.client.auth.admin.deleteUser(externalId);
+
+    if (error && error.status !== 404 && error.code !== 'user_not_found') {
+      this.logger.error(`deleteUser failed: ${error.message}`);
+      throw new Error(error.message);
+    }
+  }
+
   /**
    * Deliberately does not go through `reject()`. GoTrue reports "user not found" and its own
    * per-address rate-limit errors here; turning either into a non-2xx would tell a caller

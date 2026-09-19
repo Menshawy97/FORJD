@@ -27,7 +27,7 @@ interface AuthStub {
   refreshSession: jest.Mock;
   resetPasswordForEmail: jest.Mock;
   getUser: jest.Mock;
-  admin: { signOut: jest.Mock };
+  admin: { signOut: jest.Mock; deleteUser: jest.Mock };
 }
 
 describe('SupabaseAuthProvider', () => {
@@ -41,7 +41,7 @@ describe('SupabaseAuthProvider', () => {
       refreshSession: jest.fn(),
       resetPasswordForEmail: jest.fn(),
       getUser: jest.fn(),
-      admin: { signOut: jest.fn() },
+      admin: { signOut: jest.fn(), deleteUser: jest.fn() },
     };
 
     provider = new SupabaseAuthProvider(
@@ -174,6 +174,34 @@ describe('SupabaseAuthProvider', () => {
       await expect(
         provider.signIn({ email: 'a@example.com', password: 'Str0ng!Pass1' }),
       ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+    });
+  });
+
+  describe('deleteUser', () => {
+    it('deletes the upstream user by external id', async () => {
+      auth.admin.deleteUser.mockResolvedValue({ data: {}, error: null });
+
+      await provider.deleteUser('ext-1');
+
+      expect(auth.admin.deleteUser).toHaveBeenCalledWith('ext-1');
+    });
+
+    it('treats an already-deleted user as success so a retry can finish', async () => {
+      auth.admin.deleteUser.mockResolvedValue({
+        data: null,
+        error: { message: 'User not found', status: 404, code: 'user_not_found' },
+      });
+
+      await expect(provider.deleteUser('ext-1')).resolves.toBeUndefined();
+    });
+
+    it('throws on any other failure so the caller does not report a finished deletion', async () => {
+      auth.admin.deleteUser.mockResolvedValue({
+        data: null,
+        error: { message: 'boom', status: 500, code: 'unexpected_failure' },
+      });
+
+      await expect(provider.deleteUser('ext-1')).rejects.toThrow('boom');
     });
   });
 

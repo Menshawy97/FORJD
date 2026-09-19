@@ -8,6 +8,8 @@ import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { AUTH_PROVIDER } from "../src/auth/providers/auth-provider.interface";
 import { Database, DRIZZLE } from "../src/database/database.module";
+import { sql } from "drizzle-orm";
+import { auditLogs } from "../src/database/schema/audit-logs.schema";
 import { users } from "../src/database/schema/users.schema";
 import { profiles } from "../src/database/schema/profiles.schema";
 import { privacySettings } from "../src/database/schema/privacy-settings.schema";
@@ -34,20 +36,20 @@ const otherExternalId = randomUUID();
 describe("Account deletion (e2e)", () => {
   let app: INestApplication;
   let db: Database;
+  let fakeAuth: FakeAuthProvider;
   const deletedStorageRefs: Array<{ bucket: string; key: string }> = [];
 
   beforeAll(async () => {
+    fakeAuth = new FakeAuthProvider({
+      accounts: [
+        { email: ownerEmail, externalId: ownerExternalId, tokens: ["owner-token"] },
+        { email: otherEmail, externalId: otherExternalId, tokens: ["other-token"] },
+      ],
+      signIn: "disabled",
+    });
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(AUTH_PROVIDER)
-      .useValue(
-        new FakeAuthProvider({
-          accounts: [
-            { email: ownerEmail, externalId: ownerExternalId, tokens: ["owner-token"] },
-            { email: otherEmail, externalId: otherExternalId, tokens: ["other-token"] },
-          ],
-          signIn: "disabled",
-        }),
-      )
+      .useValue(fakeAuth)
       .overrideProvider(STORAGE_PROVIDER)
       .useValue({
         delete: async (ref: { bucket: string; key: string }) => {
@@ -178,6 +180,12 @@ describe("Account deletion (e2e)", () => {
 
     await seedFor(ownerId, "owner");
     await seedFor(otherId, "other");
+    // A password-reset request is audited with a null user id and the plain address, so the
+    // cascade never reaches it -- deletion has to scrub it explicitly.
+    await db.insert(auditLogs).values([
+      { userId: null, action: "auth.password_reset_requested", metadata: { email: ownerEmail } },
+      { userId: null, action: "auth.password_reset_requested", metadata: { email: otherEmail } },
+    ]);
 
     await request(app.getHttpServer()).delete("/api/v1/users/me").set("Authorization", "Bearer owner-token").expect(204);
 
@@ -215,10 +223,31 @@ describe("Account deletion (e2e)", () => {
     const [otherStillExists] = await db.select().from(users).where(eq(users.id, otherId));
     expect(otherStillExists).toBeDefined();
 
+    // The upstream login is removed too, otherwise the deleted account could still sign in.
+    expect(fakeAuth.deletedExternalIds).toEqual([ownerExternalId]);
+
+    const resetRows = await db.select().from(auditLogs).where(eq(auditLogs.action, "auth.password_reset_requested"));
+    const resetEmails = resetRows.map((row) => (row.metadata as { email: string }).email);
+    expect(resetEmails).not.toContain(ownerEmail);
+    expect(resetEmails).toContain(otherEmail);
+    await db.delete(auditLogs).where(eq(auditLogs.action, "auth.password_reset_requested"));
+
     // Storage cleanup: the scan photo and (implicitly, no avatar set here) nothing else.
     expect(deletedStorageRefs.some((ref) => ref.bucket === "inbody" && ref.key === `${ownerId}/scan.webp`)).toBe(true);
 
     await db.delete(users).where(eq(users.id, otherId));
+  });
+
+  it("every foreign key onto users cascades or nulls, so a newly added table cannot block deletion", async () => {
+    const result = await db.execute(sql`
+      select conrelid::regclass::text as child, confdeltype as rule
+      from pg_constraint
+      where contype = 'f' and confrelid = 'users'::regclass
+    `);
+    const rows = (result as unknown as { rows?: Array<{ child: string; rule: string }> }).rows ?? (result as unknown as Array<{ child: string; rule: string }>);
+    expect(rows.length).toBeGreaterThan(10);
+    const blocking = rows.filter((row) => row.rule !== "c" && row.rule !== "n");
+    expect(blocking).toEqual([]);
   });
 
   it("is idempotent -- deleting an already-deleted account does not 500", async () => {

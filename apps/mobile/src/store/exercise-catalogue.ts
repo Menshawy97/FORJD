@@ -38,6 +38,11 @@ export interface SqliteConnection {
 const DATABASE_NAME = 'forjd-exercise-catalogue.db';
 const VERSION_KEY = 'catalogueVersion';
 
+/** Removes the whole database file -- used when the account is deleted (see `local-data.ts`). */
+export async function deleteExerciseCatalogueDb(): Promise<void> {
+  await SQLite.deleteDatabaseAsync(DATABASE_NAME);
+}
+
 /** The only call in this module that reaches the real native module. */
 export async function openExerciseCatalogueDb(): Promise<SqliteConnection> {
   return SQLite.openDatabaseAsync(DATABASE_NAME);

@@ -76,6 +76,11 @@ export class IdentityCache {
     });
   }
 
+  /** Forget one identity -- used on account deletion so the next request cannot reuse a deleted user. */
+  evict(externalId: string, email: string): void {
+    this.entries.delete(this.keyFor(externalId, email));
+  }
+
   clear(): void {
     this.entries.clear();
   }
