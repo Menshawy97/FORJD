@@ -1,3 +1,4 @@
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { User } from '@forjd/domain';
 
 import { UsersRepository } from '../users/users.repository';
@@ -22,7 +23,7 @@ const identity = { externalId: 'ext-1', email: 'a@example.com', emailVerified: t
 describe('AuthService', () => {
   let authProvider: jest.Mocked<AuthProvider>;
   let usersRepository: jest.Mocked<
-    Pick<UsersRepository, 'upsertFromIdentity' | 'recordAudit' | 'updateProfile'>
+    Pick<UsersRepository, 'upsertFromIdentity' | 'recordAudit' | 'updateProfile' | 'findByExternalId'>
   >;
   let service: AuthService;
 
@@ -35,13 +36,117 @@ describe('AuthService', () => {
       requestPasswordReset: jest.fn(),
       verifyAccessToken: jest.fn(),
       deleteUser: jest.fn(),
+      signInWithIdToken: jest.fn(),
     };
     usersRepository = {
       upsertFromIdentity: jest.fn().mockResolvedValue(user),
       recordAudit: jest.fn().mockResolvedValue(undefined),
       updateProfile: jest.fn().mockResolvedValue(null),
+      findByExternalId: jest.fn().mockResolvedValue(user),
     };
     service = new AuthService(authProvider, usersRepository as unknown as UsersRepository);
+  });
+
+  // ADR-041. Google/Apple sign-in: the same session shape as a password login, plus whether
+  // this was the account's first sight of FORJD. The date-of-birth step follows for new
+  // accounts (ADR-042), enforced by the guard rather than trusted to this flag.
+  describe('socialSignIn', () => {
+    const request = { provider: 'google' as const, idToken: 'id-token-id-token-id-token' };
+
+    it('returns the session and marks a first sign-in as new', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+      usersRepository.findByExternalId.mockResolvedValue(null);
+
+      const result = await service.socialSignIn(request);
+
+      expect(result).toEqual({
+        accessToken: 'access-1',
+        refreshToken: 'refresh-1',
+        expiresAt: '2026-01-01T01:00:00.000Z',
+        isNewUser: true,
+      });
+    });
+
+    it('marks a returning account as not new', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+      usersRepository.findByExternalId.mockResolvedValue(user);
+
+      await expect(service.socialSignIn(request)).resolves.toMatchObject({ isNewUser: false });
+    });
+
+    it('creates the local user, profile and privacy rows through the same path as every login', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+
+      await service.socialSignIn(request);
+
+      expect(usersRepository.upsertFromIdentity).toHaveBeenCalledWith(identity.externalId, identity.email);
+    });
+
+    it('passes the nonce through to the provider when there is one', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+
+      await service.socialSignIn({ provider: 'apple', idToken: 'id-token-id-token-id-token', nonce: 'raw-nonce-1' });
+
+      expect(authProvider.signInWithIdToken).toHaveBeenCalledWith({
+        provider: 'apple',
+        idToken: 'id-token-id-token-id-token',
+        nonce: 'raw-nonce-1',
+      });
+    });
+
+    it('records which provider was used and whether the account is new, and nothing else', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+      usersRepository.findByExternalId.mockResolvedValue(null);
+
+      await service.socialSignIn(request);
+
+      expect(usersRepository.recordAudit).toHaveBeenCalledWith('user-1', 'auth.social_sign_in', {
+        provider: 'google',
+        isNewUser: true,
+      });
+    });
+
+    // Security review of 8F: linking to an existing email account is only safe if the provider
+    // vouches for the address. An unverified address must never yield a session.
+    it('refuses, and revokes the session it just got, when the provider does not vouch for the email', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity: { ...identity, emailVerified: false }, session });
+      authProvider.signOut.mockResolvedValue(undefined);
+
+      await expect(service.socialSignIn(request)).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(authProvider.signOut).toHaveBeenCalledWith(session.accessToken);
+      expect(usersRepository.upsertFromIdentity).not.toHaveBeenCalled();
+    });
+
+    // An address already held by a different local account: the provider has issued a session by
+    // now, so it must be revoked, and the caller gets the same constant 401 as any bad token
+    // (a 409 would confirm the address is registered).
+    it('revokes the session and answers a constant 401 when the address belongs to a different account', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+      authProvider.signOut.mockResolvedValue(undefined);
+      usersRepository.upsertFromIdentity.mockRejectedValue(new ConflictException('different account'));
+
+      await expect(service.socialSignIn(request)).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+
+      expect(authProvider.signOut).toHaveBeenCalledWith(session.accessToken);
+    });
+
+    it('does not disguise an unexpected database failure as a bad token, and does not revoke the session', async () => {
+      authProvider.signInWithIdToken.mockResolvedValue({ identity, session });
+      usersRepository.upsertFromIdentity.mockRejectedValue(new Error('connection refused'));
+
+      await expect(service.socialSignIn(request)).rejects.toThrow('connection refused');
+
+      expect(authProvider.signOut).not.toHaveBeenCalled();
+    });
+
+    it('propagates a rejected token without touching the database', async () => {
+      authProvider.signInWithIdToken.mockRejectedValue(new Error('invalid'));
+
+      await expect(service.socialSignIn(request)).rejects.toThrow('invalid');
+
+      expect(usersRepository.upsertFromIdentity).not.toHaveBeenCalled();
+    });
   });
 
   describe('register', () => {

@@ -17,6 +17,39 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { SocialAuthRow } from '../social-auth-row';
 import { colors } from '@/theme/tokens';
 
+describe('SocialAuthRow - Apple "coming soon" (ADR-041)', () => {
+  // Apple sign-in is built but off until a paid Apple Developer account exists. The button stays
+  // visible, reads as unavailable to a screen reader, and still answers a tap (with the toast).
+  it('marks Apple as coming soon for assistive tech when it is not enabled', async () => {
+    const { findByLabelText } = await render(
+      <SocialAuthRow onGooglePress={jest.fn()} onApplePress={jest.fn()} appleEnabled={false} />,
+    );
+
+    const apple = await findByLabelText('Continue with Apple');
+
+    expect(apple.props.accessibilityHint).toBe('Coming soon');
+  });
+
+  it('still calls onApplePress when it is not enabled, so the screen can explain', async () => {
+    const onApplePress = jest.fn();
+    const { findByText } = await render(
+      <SocialAuthRow onGooglePress={jest.fn()} onApplePress={onApplePress} appleEnabled={false} />,
+    );
+
+    fireEvent.press(await findByText('Apple'));
+
+    expect(onApplePress).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives Apple no coming-soon hint when it is enabled', async () => {
+    const { findByLabelText } = await render(
+      <SocialAuthRow onGooglePress={jest.fn()} onApplePress={jest.fn()} appleEnabled />,
+    );
+
+    expect((await findByLabelText('Continue with Apple')).props.accessibilityHint).toBeUndefined();
+  });
+});
+
 describe('SocialAuthRow', () => {
   it('renders the divider copy and both buttons, Google before Apple', async () => {
     const { findByText } = await render(

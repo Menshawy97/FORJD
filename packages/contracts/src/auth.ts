@@ -1,3 +1,4 @@
+import { SOCIAL_AUTH_PROVIDERS } from '@forjd/domain';
 import { z } from 'zod';
 
 /**
@@ -56,12 +57,37 @@ export const forgotPasswordRequestSchema = z.object({
 });
 export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
 
+/**
+ * ADR-041: sign in with a Google or Apple ID token, obtained natively on the phone. The token
+ * is verified by the identity provider (through Supabase), never by this app or by us, and no
+ * password is involved. Apple binds its token to a nonce, so the raw nonce is required there;
+ * Google's native SDK does not use one. The size bounds are a sanity floor and a ceiling on
+ * what a public endpoint will read, not a claim about token length.
+ */
+export const socialSignInRequestSchema = z
+  .object({
+    provider: z.enum(SOCIAL_AUTH_PROVIDERS),
+    idToken: z.string().min(20).max(8192),
+    nonce: z.string().min(8).max(256).optional(),
+  })
+  .refine((value) => value.provider !== 'apple' || value.nonce !== undefined, {
+    message: 'Apple sign-in requires the nonce the token was requested with',
+    path: ['nonce'],
+  });
+export type SocialSignInRequest = z.infer<typeof socialSignInRequestSchema>;
+
 export const sessionResponseSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
   expiresAt: z.string().datetime(),
 });
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
+
+/** The password-login session, plus whether this was the account's first sight of FORJD. */
+export const socialSignInResponseSchema = sessionResponseSchema.extend({
+  isNewUser: z.boolean(),
+});
+export type SocialSignInResponse = z.infer<typeof socialSignInResponseSchema>;
 
 /**
  * Registration does not always yield a session: when the Supabase project requires email

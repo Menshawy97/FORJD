@@ -45,6 +45,8 @@ import type {
   SavedMealListResponse,
   SavedMealResponse,
   SessionResponse,
+  SocialSignInRequest,
+  SocialSignInResponse,
   SetMacroGoalsRequest,
   UpdateExerciseRequest,
   UpdatePrivacyRequest,
@@ -182,6 +184,12 @@ export async function signup(input: RegisterRequest): Promise<RegisterResponse> 
 
 export async function login(input: LoginRequest): Promise<SessionResponse> {
   const response = await publicClient.post<SessionResponse>('/auth/login', input);
+  return response.data;
+}
+
+/** ADR-041: exchange a Google or Apple ID token (from the native sheet) for a session. */
+export async function socialSignIn(input: SocialSignInRequest): Promise<SocialSignInResponse> {
+  const response = await publicClient.post<SocialSignInResponse>('/auth/social', input);
   return response.data;
 }
 

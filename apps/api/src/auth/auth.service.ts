@@ -1,5 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type {
+  SocialSignInRequest,
+  SocialSignInResponse,
   LoginRequest,
   RegisterRequest,
   RegisterResponse,
@@ -46,6 +48,48 @@ export class AuthService {
     await this.usersRepository.recordAudit(user.id, 'auth.login');
 
     return this.toSessionResponse(session);
+  }
+
+  /**
+   * ADR-041. The provider verifies the ID token; from here it is an ordinary login. `isNewUser`
+   * is read before the upsert, since the upsert is what creates the account.
+   */
+  async socialSignIn(request: SocialSignInRequest): Promise<SocialSignInResponse> {
+    const { identity, session } = await this.authProvider.signInWithIdToken({
+      provider: request.provider,
+      idToken: request.idToken,
+      ...(request.nonce ? { nonce: request.nonce } : {}),
+    });
+    // Linking to an existing email account is only safe if the provider vouches for the
+    // address. Google and Apple do; anything else must not yield a session, or someone could
+    // pre-register a victim's address and inherit the account when the victim signs in later.
+    if (!identity.emailVerified) {
+      await this.authProvider.signOut(session.accessToken);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const existing = await this.usersRepository.findByExternalId(identity.externalId);
+    let user;
+    try {
+      user = await this.usersRepository.upsertFromIdentity(identity.externalId, identity.email);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        // The address belongs to a different local account. The provider has already issued a
+        // session, so revoke it, and answer as for any bad token -- a 409 would confirm the
+        // address is registered.
+        await this.authProvider.signOut(session.accessToken);
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      throw error;
+    }
+    const isNewUser = existing === null;
+
+    await this.usersRepository.recordAudit(user.id, 'auth.social_sign_in', {
+      provider: request.provider,
+      isNewUser,
+    });
+
+    return { ...this.toSessionResponse(session), isNewUser };
   }
 
   async refresh(refreshToken: string): Promise<SessionResponse> {

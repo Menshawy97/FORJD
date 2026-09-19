@@ -214,6 +214,21 @@ setup_everything_clean() {
     "import { z } from 'zod';"
 }
 
+# ADR-041: the native social sign-in SDKs are implementation details behind the adapters in
+# apps/mobile/src/integrations/auth/ (CLAUDE.md rule 4). A screen importing one directly would
+# put the SDK -- and, in Expo Go, a startup crash -- outside the file built to contain both.
+setup_google_sdk_outside_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/mobile/src/app/login.tsx"     "import { GoogleSignin } from '@react-native-google-signin/google-signin';"
+}
+
+setup_apple_sdk_outside_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/mobile/src/app/signup.tsx"     "import * as AppleAuthentication from 'expo-apple-authentication';"
+}
+
 # =========================================================================================
 # Run all cases
 # =========================================================================================
@@ -226,6 +241,8 @@ run_case "subpath-imports"             fail setup_subpath_imports
 run_case "domain-missing-modules"      fail setup_domain_missing_modules
 run_case "mobile-analytics-sdk"        fail setup_mobile_analytics_sdk
 run_case "missing-guarded-directory"   fail setup_missing_guarded_directory
+run_case "google-sdk-outside-adapter"   fail setup_google_sdk_outside_adapter
+run_case "apple-sdk-outside-adapter"    fail setup_apple_sdk_outside_adapter
 run_case "everything-clean"            pass setup_everything_clean
 
 echo ""

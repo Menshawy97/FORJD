@@ -17,9 +17,15 @@ import { colors } from '@/theme/tokens';
 interface SocialAuthRowProps {
   onGooglePress: () => void;
   onApplePress: () => void;
+  /**
+   * Apple sign-in is built but stays off until a paid Apple Developer account exists (ADR-041).
+   * When false the button is dimmed and announced as "Coming soon", but still tappable so the
+   * screen can say so. Defaults to true so existing callers are unchanged.
+   */
+  appleEnabled?: boolean;
 }
 
-export function SocialAuthRow({ onGooglePress, onApplePress }: SocialAuthRowProps) {
+export function SocialAuthRow({ onGooglePress, onApplePress, appleEnabled = true }: SocialAuthRowProps) {
   return (
     <View style={{ marginTop: 22, gap: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -50,6 +56,7 @@ export function SocialAuthRow({ onGooglePress, onApplePress }: SocialAuthRowProp
           accessibilityLabel="Continue with Apple"
           onPress={onApplePress}
           icon={<AppleMark />}
+          comingSoon={!appleEnabled}
         />
       </View>
     </View>
@@ -61,15 +68,20 @@ interface SocialButtonProps {
   accessibilityLabel: string;
   onPress: () => void;
   icon: React.ReactNode;
+  comingSoon?: boolean;
 }
 
-function SocialButton({ label, accessibilityLabel, onPress, icon }: SocialButtonProps) {
+function SocialButton({ label, accessibilityLabel, onPress, icon, comingSoon = false }: SocialButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={comingSoon ? 'Coming soon' : undefined}
       onPress={onPress}
-      style={({ pressed }) => ({ backgroundColor: pressed ? colors.elevated2 : colors.fieldBg })}
+      style={({ pressed }) => ({
+        backgroundColor: pressed ? colors.elevated2 : colors.fieldBg,
+        opacity: comingSoon ? 0.5 : 1,
+      })}
       className="h-[52px] flex-1 flex-row items-center justify-center gap-[9px] rounded-button border border-border">
       {icon}
       <Text

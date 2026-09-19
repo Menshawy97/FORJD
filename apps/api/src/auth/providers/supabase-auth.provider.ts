@@ -20,6 +20,7 @@ import {
   AuthResult,
   AuthSession,
   SignUpResult,
+  IdTokenCredentials,
 } from './auth-provider.interface';
 
 /**
@@ -140,6 +141,20 @@ export class SupabaseAuthProvider implements AuthProvider {
 
   async signIn(credentials: AuthCredentials): Promise<AuthResult> {
     const { data, error } = await this.client.auth.signInWithPassword(credentials);
+
+    if (error || !data.user || !data.session) {
+      this.reject('signIn', error?.message);
+    }
+
+    return { identity: this.toIdentity(data.user), session: this.toSession(data.session) };
+  }
+
+  async signInWithIdToken(credentials: IdTokenCredentials): Promise<AuthResult> {
+    const { data, error } = await this.client.auth.signInWithIdToken({
+      provider: credentials.provider,
+      token: credentials.idToken,
+      ...(credentials.nonce ? { nonce: credentials.nonce } : {}),
+    });
 
     if (error || !data.user || !data.session) {
       this.reject('signIn', error?.message);
