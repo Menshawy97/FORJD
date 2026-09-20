@@ -279,3 +279,36 @@ End to end (auth):
 - Calling a workout route with a null-DOB token returns 403 `date_of_birth_required`.
 - Google sign-in on the emulator dev build creates a user, lands on "Your Profile", and a second
   sign-in goes straight home.
+
+## Where we stopped (2026-09-20)
+
+**Shipped and green on `main`:** every engineering slice above (PRs #184-#193), the trust-proxy fix
+(#192), the "Check your email" screen for a sign-up that returns no session (#194), the "Resend
+email" button with `POST /auth/resend-confirmation` (#195), the countdown-on-arrival and resend
+outcome logging (#196), and the domain and custom-SMTP notes (#197, #198). Email sign-up,
+confirmation, log-in and the "Your Profile" date-of-birth step were walked through on an iPhone in
+Expo Go against staging, and the confirmation email now comes from `no-reply@getforjd.com`.
+
+**Not yet run for real:**
+- Google sign-in has never run against Google. It needs an EAS dev-client build (Expo Go cannot
+  run it) and the Supabase Google provider set up (Web client ID and secret, "Skip nonce checks").
+  The Web client ID is already in `apps/mobile/eas.json`. Test on Android first: iOS needs the
+  Apple Developer account and a Google iOS client ID.
+- The new "Your Profile" date-of-birth field was matched to `signuppage2.png` by numbers, not by
+  eye on a device.
+- The health-data consent screen has no design and its wording is a draft for the lawyer.
+
+**Owed by the user:** Apple Developer account (turns Apple sign-in on), lawyer (privacy policy,
+terms, consent wording), Play Console, Supabase access-token lifetime 900 s, the Health Connect
+phone test (ADR-035), live WHOOP OAuth, Spike B, the dogfood gate, and on the new domain: the
+Google consent screen's authorized domain plus a support email and privacy-policy URL for the
+store listings.
+
+**Small open items:** the "Contact Us" and "Privacy Policy" rows are still placeholders (they need
+the support address and a policy URL); repeat the custom-SMTP setting on the production Supabase
+project when it exists; `crash_diagnostics` only strips the user id (see the data inventory).
+`FORJD mobile app design/screenshots/signuppage2.png` is still untracked (the user's asset).
+
+**Working notes for the next session:** start Expo Go with
+`API_BASE_URL=<staging url> npx expo start --go --clear` from `apps/mobile`; the staging API
+redeploys after every merge to `main`; local Postgres specs need `DATABASE_URL` with `127.0.0.1`.
