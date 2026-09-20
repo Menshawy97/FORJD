@@ -44,6 +44,15 @@ trigger" — likely alongside Phase 6's health-observation volume and the
 BullMQ/Redis infrastructure Phase 5 is expected to bring in). Until then,
 don't read the rule's silence as unenforced; read it as unneeded.
 
+## City leaderboards are derived too (Phase 10)
+
+Leaderboard standings follow the same rule as every other aggregate: computed from the
+raw sessions, never stored and patched. The board is computed on read, with eligibility
+joined live so a withdrawal is immediate, and the only stored copy is the weekly rank
+snapshot, which is replaced wholesale in a transaction, never updated. The Activity score is a
+plain calculation against published WHO targets, a participation metric rather than a
+fitness assessment, and is never described as AI or an insight. See ADR-046 and ADR-047.
+
 ## Progress engine
 
 Input: workout history, health data, body composition, goals. Output:

@@ -2396,7 +2396,7 @@ failure).
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | **Engineering complete** — [planned](phase-8-plan.md); engineering-only parts (age gate, health consent, social sign-in, data inventory, real deletion/export); legal, Play Console and store accounts stay with the user |
 | Limited Android beta | 35 | 12+ testers | Not started |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
-| 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | Not started |
+| 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
 | 11 — iOS track (parallel with 10) | 40-46 | AppleHealthProvider, Codemagic, TestFlight → App Store | Not started |
 | Dual-platform public launch | ~47 | Both stores | Not started |
 
