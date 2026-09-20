@@ -119,6 +119,20 @@ describe('RankScreen', () => {
       expect(getByText('Lena K.')).toBeTruthy();
     });
 
+    it("shows each athlete's @username under the name, and nothing for one with no username", async () => {
+      mockGet.mockResolvedValue({
+        ...RANKED,
+        rows: [...RANKED.rows.slice(0, 4), { ...RANKED.rows[4]!, username: null }],
+      });
+      const { findByText, getByText, queryByText } = await render(<RankScreen />);
+
+      await findByText('Cairo');
+      expect(getByText('@ath45')).toBeTruthy();
+      expect(getByText('@ath47')).toBeTruthy();
+      expect(queryByText('@null')).toBeNull();
+      expect(queryByText('@')).toBeNull();
+    });
+
     it('draws the movement arrows: up, down and flat, and nothing where there is no baseline', async () => {
       const { findByText, getByText, queryByText } = await render(<RankScreen />);
 
@@ -151,7 +165,7 @@ describe('RankScreen', () => {
     it('opens another athlete with a public profile, telling the athlete screen to come back here', async () => {
       const { findByLabelText } = await render(<RankScreen />);
 
-      await fireEvent.press(await findByLabelText('Rank 48, Lena K., score 92.3'));
+      await fireEvent.press(await findByLabelText('Rank 48, Lena K., @ath48, score 92.3'));
 
       expect(mockPush).toHaveBeenCalledWith({
         pathname: '/athlete/[userId]',
@@ -162,7 +176,7 @@ describe('RankScreen', () => {
     it("sends the caller's own row to their profile", async () => {
       const { findByLabelText } = await render(<RankScreen />);
 
-      await fireEvent.press(await findByLabelText('Rank 47, James M. (you), score 92.7'));
+      await fireEvent.press(await findByLabelText('Rank 47, James M. (you), @ath47, score 92.7'));
 
       expect(mockPush).toHaveBeenCalledWith('/profile');
     });

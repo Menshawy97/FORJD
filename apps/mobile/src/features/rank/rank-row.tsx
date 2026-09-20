@@ -19,6 +19,9 @@ import { deltaView, formatScore, rowName, type DeltaTone } from './rank-format';
  * The prototype paints the rank number and the other rows' avatar glyph in a faint grey. That grey
  * was retired for readability in 8H, so they take `dimmer` (`#8A8A82`) instead.
  *
+ * Under the name sits the `@username` (`400 11px/1`, `marginTop:4`). The screenshot shows the name
+ * alone; the username was added on request.
+ *
  * A row is tappable only when `onPress` is given: a private profile (decision D10) shows its name
  * and username but cannot be opened, so it renders as a plain row with no button semantics.
  * Avatars are the design's person glyph, not the athlete's photo, exactly as the screenshot draws
@@ -60,19 +63,35 @@ export function RankRow({ row, onPress }: RankRowProps) {
         }`}>
         <Icon name="profile" size={17} color={numberColor} />
       </View>
-      <Text
-        numberOfLines={1}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontFamily: 'Archivo',
-          fontSize: 14,
-          lineHeight: 14,
-          fontWeight: self ? '700' : '500',
-          color: self ? colors.accent : colors.text,
-        }}>
-        {rowName(row)}
-      </Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontFamily: 'Archivo',
+            fontSize: 14,
+            lineHeight: 14,
+            fontWeight: self ? '700' : '500',
+            color: self ? colors.accent : colors.text,
+          }}>
+          {rowName(row)}
+        </Text>
+        {/* Not in the screenshot: added on request, so athletes can tell apart two people who
+            share a first name and initial. Absent for an account with no username yet. */}
+        {row.username ? (
+          <Text
+            numberOfLines={1}
+            style={{
+              marginTop: 4,
+              fontFamily: 'Archivo',
+              fontSize: 11,
+              lineHeight: 11,
+              fontWeight: '400',
+              color: colors.dimmer,
+            }}>
+            {`@${row.username}`}
+          </Text>
+        ) : null}
+      </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text
           style={{
@@ -114,7 +133,7 @@ export function RankRow({ row, onPress }: RankRowProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Rank ${row.rank}, ${rowName(row)}, score ${formatScore(row.score)}`}
+      accessibilityLabel={`Rank ${row.rank}, ${rowName(row)}${row.username ? `, @${row.username}` : ''}, score ${formatScore(row.score)}`}
       onPress={onPress}
       className={className}>
       {content}
