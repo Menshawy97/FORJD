@@ -146,6 +146,13 @@ function buildGroups(
       },
       { icon: 'scale', title: 'InBody History', subtitle: 'Last scan 8 days ago' },
       { icon: 'clock', title: 'Workout History', subtitle: '147 sessions logged' },
+      {
+        icon: 'pin',
+        title: 'Data sources',
+        subtitle: 'Where the city data comes from',
+        // Phase 10L: GeoNames is CC BY 4.0, so its attribution must be visible in the app.
+        onPress: () => router.replace('/data-sources'),
+      },
     ],
   },
   {
