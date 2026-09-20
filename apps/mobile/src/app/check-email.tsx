@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { resendConfirmation } from '@/auth/apiClient';
@@ -30,6 +30,14 @@ export default function CheckEmailScreen() {
   const toast = useToast();
   const cooldown = useResendCooldown(RESEND_COOLDOWN_SECONDS);
   const [sending, setSending] = useState(false);
+
+  // The sign-up that led here has just sent an email, and Supabase keeps about a minute between
+  // emails to one address -- a resend tapped straight away would be accepted and silently
+  // dropped. Nothing was just sent when the address is unknown (a bare deep link), so no wait.
+  const { start: startCooldown } = cooldown;
+  useEffect(() => {
+    if (email !== undefined) startCooldown();
+  }, [email, startCooldown]);
 
   const canResend = !sending && cooldown.secondsLeft === 0;
   const resendLabel =
