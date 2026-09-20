@@ -160,14 +160,27 @@ source for the Play Data safety form. Keep it current.
 
 ## Leaderboard/location privacy (Phase 10)
 
-Location is captured only during an active, leaderboard-opted-in workout —
-"when in use," never background tracking. Leaderboard participation is a
-separate opt-in from general app usage. A user can hide from leaderboards
-or delete location history independent of deleting their whole account.
-Location lives on `WorkoutSession`, never on the user record — this is what
-makes "the leaderboard doesn't follow you when you relocate" true by
-construction rather than by a rule someone has to remember to enforce.
+Location is a coarse position read once, when an opted-in athlete's workout starts —
+"when in use," never background tracking (ADR-048). The app asks for the permission
+exactly once, on the Location screen, and declares coarse location only. The position
+is sent to our own server, which resolves it to a city from a vendored dataset
+(ADR-045) and **discards the coordinates: no latitude or longitude column exists
+anywhere**. Only the city and its slug are stored, on the `WorkoutSession`, never on
+the user record — this is what makes "the leaderboard doesn't follow you when you
+relocate" true by construction rather than by a rule someone has to remember to
+enforce. The client's own `city`/`citySlug` are ignored, because the slug is the
+ranking key and a client-chosen one would let anyone join any city's board.
 
-Anti-cheat: only live-tracked sessions (real start/end timestamps, location
-captured at start) count toward `leaderboard_eligible`. Manually logged or
-backdated workouts never qualify.
+Leaderboard participation is a separate opt-in from general app usage, and
+withdrawing it takes effect on the very next request: eligibility is read live and
+joined inside the query, with no cache (ADR-047). A board below five athletes is
+never shown. A private profile still shows name and username on the board but cannot
+be opened, and its photo is withheld from everyone but its owner.
+
+Anti-cheat: only sessions run through the live runner (`isLiveTracked`, ADR-044)
+count. Manually logged or backdated workouts never qualify. That is a speed bump, not
+attestation: a rooted device can forge a request body. Each session also counts for at
+most two hours (ADR-046).
+
+A public profile shows a rank only for an athlete who is on the leaderboard, and never
+carries health data (sleep, HRV, body composition, InBody).
