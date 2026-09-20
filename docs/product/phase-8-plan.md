@@ -230,11 +230,20 @@ owed, the same way WHOOP was handled.
    - OAuth consent screen.
    - Web client ID and secret. The secret goes into the **Supabase dashboard** Google provider,
      never the repo.
-   - Android client ID using the EAS signing SHA-1 (from `eas credentials`).
-   - Later, an iOS client ID.
-2. **Supabase (forjd-dev / staging)**: enable Google, and add the Android/Web client IDs to its
-   authorized client IDs.
-3. The owed items that remain as they were: the Apple Developer account (turns Apple on), the
+   - Android client ID: package `com.forjd.app` plus the SHA-1 of the keystore the installed
+     build is signed with (`eas credentials`, for the build profile you install -- each profile
+     can have its own keystore, and each needs its own Android client). Google checks these on
+     its side; **the Android client ID is not copied anywhere**.
+   - Later, an iOS client ID (`GOOGLE_IOS_URL_SCHEME`, see `app.config.ts`). iOS also needs the
+     Apple Developer account, so the first live test is on Android.
+2. **Supabase (forjd-dev / staging)**: enable Google and paste the **Web** client ID and secret.
+   The native sheet sends no nonce (ADR-041), so turn on "Skip nonce checks" if the dashboard
+   shows it. Only the Web client ID is needed here.
+3. **The app**: the same Web client ID is `GOOGLE_WEB_CLIENT_ID` in each build profile's `env` in
+   `apps/mobile/eas.json` (public by design; set for `development` and `staging`). It cannot run
+   in Expo Go -- Google needs the app's own package name and signing key, and the native module
+   is not in Expo Go -- so test on an EAS dev-client build.
+4. The owed items that remain as they were: the Apple Developer account (turns Apple on), the
    token lifetime to 900 s, the 6F Android device test, the live WHOOP round-trip, the lawyer,
    and the Play Console.
 

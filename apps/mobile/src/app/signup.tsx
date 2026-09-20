@@ -5,7 +5,7 @@ import { registerRequestSchema } from '@forjd/contracts';
 
 import { signup } from '@/auth/apiClient';
 import { actionableServerMessage, classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
-import { saveSession } from '@/auth/secureStorage';
+import { clearSession, saveSession } from '@/auth/secureStorage';
 import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
@@ -121,9 +121,16 @@ export default function SignupScreen() {
     setSubmitting(true);
     try {
       const result = await signup({ email, password, displayName: name.trim() });
-      if (result.session) {
-        await saveSession(result.session);
+      if (!result.session) {
+        // Email confirmation is on, so the account exists but cannot sign in yet. Drop any
+        // login the phone still holds from an earlier account -- carrying on with it made the
+        // app treat this sign-up as signed in and bounce to welcome with "session expired" --
+        // and send the person to open the link instead.
+        await clearSession();
+        router.replace(`/check-email?email=${encodeURIComponent(email)}`);
+        return;
       }
+      await saveSession(result.session);
       // `welcome` was pushed under this screen and never popped by a bare `replace`, so the
       // swipe-back gesture always had a phantom entry to land on (see
       // ui-remediation-and-phase-i-plan.md §1.1). Dismiss everything below this screen before
