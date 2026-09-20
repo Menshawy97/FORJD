@@ -173,6 +173,13 @@ jobs:
 
       - run: git diff --exit-code apps/api/src/nutrition/ingest/data/normalized-foods.json apps/api/src/nutrition/ingest/data/removed-foods.json
 
+      # Same gate, for the city snapshot (ADR-045). Regenerating from the committed cities.tsv must
+      # be a no-op, so an edit to the slug or district rules that was not regenerated -- or a
+      # snapshot edited by hand -- fails here, and the diff shows which cities changed slug.
+      - run: pnpm --filter @forjd/api cities:normalize
+
+      - run: git diff --exit-code apps/api/src/cities/ingest/data/normalized-cities.json
+
       # Same gate again, for the InBody vision-extraction prompt (CLAUDE.md rule 8, ADR-032).
       # Regenerating the golden prompt must be a no-op. When it is not, buildInBodyExtractionPrompt()
       # changed and the committed golden file is stale -- the diff is the review, since a

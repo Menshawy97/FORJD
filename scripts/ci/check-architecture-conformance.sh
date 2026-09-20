@@ -188,6 +188,19 @@ if [ -d apps/api/src ]; then
   fi
 fi
 
+# ADR-045 / Phase 10C: the vendored GeoNames extract (cities.tsv) is readable only by the
+# normalizer, mirroring the free-exercise-db and USDA rules above. A second reader would be a
+# second, untested copy of the district-exclusion and slug rules that the committed snapshot and
+# its CI diff already cover. `fetch-geonames.ts` is exempt because it writes the file.
+if [ -d apps/api/src ]; then
+  hits=$(grep -rln --include='*.ts' 'cities\.tsv' apps/api/src \
+    | grep -v '^apps/api/src/cities/ingest/fetch-geonames\.ts$' \
+    | grep -v '^apps/api/src/cities/ingest/normalize\.ts$' || true)
+  if [ -n "$hits" ]; then
+    report "the vendored GeoNames extract is read outside the normalizer (apps/api/src/cities/ingest/normalize.ts)" "$hits"
+  fi
+fi
+
 # Phase 6E / ADR-034 / CLAUDE.md rule 17: react-native-health-connect is an implementation
 # detail behind HealthProvider, same reasoning as the expo-secure-store/expo-sqlite/openai
 # rules above -- one place owns the vendor SDK, so a future provider swap (or the eventual

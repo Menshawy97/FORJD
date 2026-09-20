@@ -1,0 +1,3 @@
+# Vendored data and generated snapshots are byte-compared in CI (git diff --exit-code), so
+# they must not pick up CRLF on a Windows checkout.
+apps/api/src/cities/ingest/data/* text eol=lf
