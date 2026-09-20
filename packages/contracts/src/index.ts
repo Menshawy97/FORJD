@@ -32,3 +32,4 @@ export * from './body';
 export * from './health';
 export * from './integrations';
 export * from './account-export';
+export * from './leaderboards';

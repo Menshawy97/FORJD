@@ -31,6 +31,7 @@ import {
   whoopStatusResponseSchema,
   whoopAuthorizeResponseSchema,
   readinessResponseSchema,
+  leaderboardResponseSchema,
 } from './index';
 
 /**
@@ -1059,6 +1060,62 @@ export const responseFixtures = {
           endedAt: '2026-02-01T00:00:00.000Z',
         },
       ],
+    },
+  },
+
+  /** A ranked Alexandria board, seven rows with the caller (47th of 588) in the middle. */
+  'leaderboard-response-ranked': {
+    schema: leaderboardResponseSchema,
+    sample: {
+      status: 'ranked',
+      metric: 'activity',
+      period: 'month',
+      city: { name: 'Alexandria', slug: 'alexandria-eg' },
+      periodLabel: 'Sep 2026',
+      cohortSize: 588,
+      minCohortSize: 5,
+      me: { rank: 47, score: 92.7, topPercent: 8, delta: 3 },
+      rows: [
+        { rank: 44, userId: '00000000-0000-4000-8000-000000000044', displayName: 'Karim A.', username: 'karima', avatarUrl: null, score: 94.2, delta: 2, isSelf: false, isPublicProfile: true },
+        { rank: 45, userId: '00000000-0000-4000-8000-000000000045', displayName: 'Sofia M.', username: 'sofiam', avatarUrl: null, score: 93.8, delta: 1, isSelf: false, isPublicProfile: true },
+        { rank: 46, userId: '00000000-0000-4000-8000-000000000046', displayName: 'Daniel H.', username: 'danielh', avatarUrl: null, score: 93.1, delta: null, isSelf: false, isPublicProfile: false },
+        { rank: 47, userId: '00000000-0000-4000-8000-000000000047', displayName: 'James M.', username: 'jamesm', avatarUrl: null, score: 92.7, delta: 3, isSelf: true, isPublicProfile: true },
+        { rank: 48, userId: '00000000-0000-4000-8000-000000000048', displayName: 'Lena K.', username: 'lenak', avatarUrl: null, score: 92.3, delta: -1, isSelf: false, isPublicProfile: true },
+        { rank: 49, userId: '00000000-0000-4000-8000-000000000049', displayName: 'Marcus T.', username: 'marcust', avatarUrl: null, score: 91.9, delta: 2, isSelf: false, isPublicProfile: true },
+        { rank: 50, userId: '00000000-0000-4000-8000-000000000050', displayName: 'Yara S.', username: 'yaras', avatarUrl: null, score: 91.4, delta: null, isSelf: false, isPublicProfile: true },
+      ],
+    },
+  },
+
+  /** The Strength chip before it has a score: a real state with no number to fabricate. */
+  'leaderboard-response-coming-soon': {
+    schema: leaderboardResponseSchema,
+    sample: {
+      status: 'coming_soon',
+      metric: 'strength',
+      period: 'month',
+      city: { name: 'Alexandria', slug: 'alexandria-eg' },
+      periodLabel: 'Sep 2026',
+      cohortSize: 0,
+      minCohortSize: 5,
+      me: null,
+      rows: [],
+    },
+  },
+
+  /** A city under the floor: the true count is shown, never a board. */
+  'leaderboard-response-cohort-too-small': {
+    schema: leaderboardResponseSchema,
+    sample: {
+      status: 'cohort_too_small',
+      metric: 'activity',
+      period: 'month',
+      city: { name: 'Alexandria', slug: 'alexandria-eg' },
+      periodLabel: 'Sep 2026',
+      cohortSize: 4,
+      minCohortSize: 5,
+      me: null,
+      rows: [],
     },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;

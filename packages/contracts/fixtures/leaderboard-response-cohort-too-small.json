@@ -1,0 +1,14 @@
+{
+  "status": "cohort_too_small",
+  "metric": "activity",
+  "period": "month",
+  "city": {
+    "name": "Alexandria",
+    "slug": "alexandria-eg"
+  },
+  "periodLabel": "Sep 2026",
+  "cohortSize": 4,
+  "minCohortSize": 5,
+  "me": null,
+  "rows": []
+}
