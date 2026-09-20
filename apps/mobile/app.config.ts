@@ -42,6 +42,13 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // ADR-048: city leaderboards need a city, not a fix, and never a background one. The
+    // expo-location plugin declares fine and background location by default; both are blocked so
+    // the manifest asks for coarse location alone, which is what the app says it does.
+    blockedPermissions: [
+      'android.permission.ACCESS_FINE_LOCATION',
+      'android.permission.ACCESS_BACKGROUND_LOCATION',
+    ],
   },
   web: {
     output: 'static',
@@ -64,6 +71,25 @@ const config: ExpoConfig = {
       ? ['@react-native-google-signin/google-signin', { iosUrlScheme: process.env.GOOGLE_IOS_URL_SCHEME }]
       : '@react-native-google-signin/google-signin',
     '@react-native-community/datetimepicker',
+    // ADR-048: one coarse position at the start of a workout, to place the athlete on a city
+    // leaderboard. Foreground only; the Android fine and background permissions are blocked
+    // above. The purpose string is what the system dialog shows, so it says exactly what the app
+    // does with the position.
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission:
+          'FORJD uses your approximate location once, at the start of a workout, to place you on your city leaderboard. Your precise location is never stored or shared.',
+        isAndroidBackgroundLocationEnabled: false,
+        isAndroidForegroundServiceEnabled: false,
+        // The plugin adds the iOS "Always" and motion purpose strings by default even with
+        // background location off. `false` deletes the key, so the app does not claim a use it
+        // does not have (iOS ships later, ADR-007, but the config should already be right).
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
+        motionUsagePermission: false,
+      },
+    ],
     [
       'expo-splash-screen',
       {

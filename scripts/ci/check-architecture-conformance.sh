@@ -229,6 +229,20 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# ADR-048 / CLAUDE.md rule 4: expo-location is an implementation detail behind the adapter in
+# apps/mobile/src/integrations/location/. Same directory-prefix shape as the health-connect and
+# social sign-in rules above, and no test exemption for the same reason: the adapter is loaded
+# lazily so a missing native module degrades instead of crashing, it is the only place that may
+# prompt for permission (so nothing can prompt mid-workout), and it rounds the position before it
+# leaves the file. One file owning all three is what keeps them true.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' -E "(from|import|require\()[[:space:]]*\(?[[:space:]]*['\"]expo-location['\"]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/integrations/location/' || true)
+  if [ -n "$hits" ]; then
+    report "expo-location imported outside apps/mobile/src/integrations/location/" "$hits"
+  fi
+fi
+
 # Phase 7D-7F / CLAUDE.md rule 4: WHOOP's own hostname is the tell for code that actually
 # talks to WHOOP (as opposed to code that merely knows the provider name "whoop" as a
 # HealthSource string, which is legitimate everywhere -- e.g. HEALTH_SOURCE_PRIORITY in
