@@ -23,7 +23,8 @@
     "cities:fetch-geonames": "ts-node src/cities/ingest/fetch-geonames.ts",
     "cities:normalize": "ts-node src/cities/ingest/normalize.ts",
     "programs:seed": "ts-node src/programs/seed/seed.ts",
-    "prompt:golden": "ts-node scripts/write-inbody-prompt-golden.ts"
+    "prompt:golden": "ts-node scripts/write-inbody-prompt-golden.ts",
+    "leaderboard:snapshot": "ts-node src/leaderboards/snapshot/snapshot.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",
@@ -277,6 +278,18 @@
         "lines": 100
       },
       "./src/integrations/whoop/whoop-sync.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/leaderboards/activity-inputs.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/leaderboards/leaderboard-snapshot.service.ts": {
         "statements": 100,
         "branches": 100,
         "functions": 100,

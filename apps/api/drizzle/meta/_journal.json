@@ -148,6 +148,13 @@
       "when": 1789930039564,
       "tag": "0020_add-workout-sessions-city-index",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789940315021,
+      "tag": "0021_add-leaderboard-rank-snapshots",
+      "breakpoints": true
     }
   ]
 }

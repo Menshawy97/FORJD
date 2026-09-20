@@ -3,6 +3,7 @@ import { MIN_COHORT_SIZE, PrivacySettings, User } from '@forjd/domain';
 
 import type { CityResolverService } from '../cities/city-resolver.service';
 import type { PrivacyService } from '../privacy/privacy.service';
+import type { LeaderboardSnapshotRepository } from './leaderboard-snapshot.repository';
 import { CityAthleteRow, LeaderboardsRepository } from './leaderboards.repository';
 import { LeaderboardsService } from './leaderboards.service';
 
@@ -47,6 +48,7 @@ describe('LeaderboardsService', () => {
       latest?: { citySlug: string; city: string | null } | null;
       athletes?: CityAthleteRow[];
       city?: { name: string; slug: string; countryCode: string; timezone: string } | null;
+      baseline?: Map<string, number>;
     } = {},
   ) => {
     const privacyCalls: string[] = [];
@@ -70,12 +72,15 @@ describe('LeaderboardsService', () => {
       ),
     };
 
+    const snapshots = { baselineRanks: jest.fn().mockResolvedValue(options.baseline ?? new Map<string, number>()) };
+
     const service = new LeaderboardsService(
       repository as unknown as LeaderboardsRepository,
       privacy,
       cities as unknown as CityResolverService,
+      snapshots as unknown as LeaderboardSnapshotRepository,
     );
-    return { service, repository, cities, privacyCalls };
+    return { service, repository, cities, snapshots, privacyCalls };
   };
 
   const get = (service: LeaderboardsService, over: Partial<LeaderboardQuery> = {}) => service.get(viewer, query(over), NOW);
@@ -150,13 +155,59 @@ describe('LeaderboardsService', () => {
       expect((await get(service)).rows).toHaveLength(6);
     });
 
-    it('has no weekly movement yet: every delta is null until snapshots exist', async () => {
+    it('has no weekly movement when nothing was captured yet: every delta is null', async () => {
       const { service } = build({ athletes: cohort(10, 5) });
 
       const result = await get(service);
 
       expect(result.me?.delta).toBeNull();
       expect(result.rows.every((r) => r.delta === null)).toBe(true);
+    });
+
+    describe('weekly movement', () => {
+      // Athlete n is ranked 11 - n of 10, so the viewer (number 5) is 6th.
+      const baseline = new Map<string, number>([
+        [viewer.id, 9], // was 9th, is 6th: up 3
+        [idOf(10), 1], // was and is 1st: unchanged
+        [idOf(9), 1], // was 1st, is 2nd: down 1
+      ]);
+
+      it('is previous rank minus current rank: positive means moved up', async () => {
+        const { service } = build({ athletes: cohort(10, 5), baseline });
+
+        const result = await get(service, { window: 10 });
+
+        expect(result.me?.delta).toBe(3);
+        const byId = new Map(result.rows.map((r) => [r.userId, r.delta]));
+        expect(byId.get(viewer.id)).toBe(3);
+        expect(byId.get(idOf(10))).toBe(0);
+        expect(byId.get(idOf(9))).toBe(-1);
+      });
+
+      it('is null for an athlete the baseline has no rank for, such as someone who has just joined', async () => {
+        const { service } = build({ athletes: cohort(10, 5), baseline });
+
+        const result = await get(service, { window: 10 });
+
+        expect(result.rows.find((r) => r.userId === idOf(3))?.delta).toBeNull();
+      });
+
+      it("reads the baseline of the caller's city, metric and period, for the Monday in the city's own calendar", async () => {
+        const { service, snapshots } = build({ athletes: cohort(10, 5), baseline });
+
+        await get(service);
+
+        // Tuesday 22 September in Cairo: the week began on Monday 21st.
+        expect(snapshots.baselineRanks).toHaveBeenCalledWith(SLUG, 'activity', 'month', '2026-09-21', '2026-09-01');
+      });
+
+      it('does not read baselines for a board that is not ranked', async () => {
+        const { service, snapshots } = build({ athletes: cohort(3, 2) });
+
+        await get(service);
+
+        expect(snapshots.baselineRanks).not.toHaveBeenCalled();
+      });
     });
 
     it('shows name and username for everyone, and marks private profiles so the row is not opened', async () => {

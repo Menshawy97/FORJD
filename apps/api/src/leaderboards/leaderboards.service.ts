@@ -4,17 +4,17 @@ import {
   LIVE_METRICS,
   MIN_COHORT_SIZE,
   rankWindow,
-  scoreCohort,
   topPercent,
   User,
-  type AthleteActivityInput,
   type LeaderboardStatus,
   type RankedAthlete,
 } from '@forjd/domain';
 
 import { CityResolverService } from '../cities/city-resolver.service';
 import { PrivacyService } from '../privacy/privacy.service';
-import { allTimeWeeks, monthBounds, monthWeeks, periodLabel } from './city-time';
+import { rankCity } from './activity-inputs';
+import { baselineNotBefore, comparisonWeekStart, monthBounds, periodLabel } from './city-time';
+import { LeaderboardSnapshotRepository } from './leaderboard-snapshot.repository';
 import { CityAthleteRow, LeaderboardsRepository } from './leaderboards.repository';
 
 /** Used to date a board that has no city to date it by: not opted in, or no city yet. */
@@ -53,6 +53,7 @@ export class LeaderboardsService {
     private readonly repository: LeaderboardsRepository,
     private readonly privacyService: PrivacyService,
     private readonly cityResolver: CityResolverService,
+    private readonly snapshots: LeaderboardSnapshotRepository,
   ) {}
 
   async get(viewer: User, query: LeaderboardQuery, now: Date = new Date()): Promise<LeaderboardResponse> {
@@ -79,22 +80,16 @@ export class LeaderboardsService {
     if (!athletes.some(isCaller)) return this.empty('no_eligible_sessions', query, city, now, athletes.length);
     if (athletes.length < MIN_COHORT_SIZE) return this.empty('cohort_too_small', query, city, now, athletes.length);
 
-    const weeksFor = (athlete: CityAthleteRow): number =>
-      window ? monthWeeks(window, now) : allTimeWeeks(athlete.firstStartedAt, now);
-    const inputs: AthleteActivityInput[] = athletes.map((athlete) => ({
-      userId: athlete.userId,
-      workingMinutes: athlete.workingSeconds / 60,
-      strengthDays: athlete.strengthDays,
-      volumeKg: athlete.volumeKg,
-      distanceKm: athlete.distanceKm,
-      weeks: weeksFor(athlete),
-      firstStartedAtMs: athlete.firstStartedAt.getTime(),
-    }));
-
-    const ranked = scoreCohort(inputs);
+    const ranked = rankCity(athletes, window, now);
     const me = ranked.find((entry) => entry.userId === viewer.id) as RankedAthlete;
     const { from, to } = rankWindow(me.rank, ranked.length, query.window);
     const byId = new Map(athletes.map((athlete) => [athlete.userId, athlete]));
+    const baseline = await this.snapshots.baselineRanks(city.slug, metric, period, comparisonWeekStart(now, city.timeZone), baselineNotBefore(period, now, city.timeZone));
+    // Positive means moved up: last week's rank minus this week's. Null when there is nothing to compare.
+    const deltaOf = (entry: RankedAthlete): number | null => {
+      const before = baseline.get(entry.userId);
+      return before === undefined ? null : before - entry.rank;
+    };
 
     return {
       status: 'ranked',
@@ -104,9 +99,8 @@ export class LeaderboardsService {
       periodLabel: periodLabel(period, now, city.timeZone),
       cohortSize: ranked.length,
       minCohortSize: MIN_COHORT_SIZE,
-      // No weekly movement yet: `delta` is null until the snapshot job has written a prior week.
-      me: { rank: me.rank, score: me.score, topPercent: topPercent(me.rank, ranked.length), delta: null },
-      rows: ranked.slice(from - 1, to).map((entry) => this.toRow(entry, byId.get(entry.userId) as CityAthleteRow, viewer.id)),
+      me: { rank: me.rank, score: me.score, topPercent: topPercent(me.rank, ranked.length), delta: deltaOf(me) },
+      rows: ranked.slice(from - 1, to).map((entry) => this.toRow(entry, byId.get(entry.userId) as CityAthleteRow, viewer.id, deltaOf(entry))),
     };
   }
 
@@ -145,7 +139,7 @@ export class LeaderboardsService {
     };
   }
 
-  private toRow(entry: RankedAthlete, athlete: CityAthleteRow, viewerId: string): LeaderboardRow {
+  private toRow(entry: RankedAthlete, athlete: CityAthleteRow, viewerId: string, delta: number | null): LeaderboardRow {
     return {
       rank: entry.rank,
       userId: entry.userId,
@@ -157,7 +151,7 @@ export class LeaderboardsService {
       // and username only), so it is withheld from everyone but the person it belongs to.
       avatarUrl: athlete.isPublicProfile || entry.userId === viewerId ? athlete.avatarUrl : null,
       score: entry.score,
-      delta: null,
+      delta,
       isSelf: entry.userId === viewerId,
       isPublicProfile: athlete.isPublicProfile,
     };
