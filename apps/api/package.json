@@ -20,6 +20,8 @@
     "nutrition:fetch-usda": "ts-node src/nutrition/ingest/fetch-usda.ts",
     "nutrition:normalize": "ts-node src/nutrition/ingest/normalize.ts",
     "nutrition:load": "ts-node src/nutrition/ingest/load.ts",
+    "cities:fetch-geonames": "ts-node src/cities/ingest/fetch-geonames.ts",
+    "cities:normalize": "ts-node src/cities/ingest/normalize.ts",
     "programs:seed": "ts-node src/programs/seed/seed.ts",
     "prompt:golden": "ts-node scripts/write-inbody-prompt-golden.ts"
   },
@@ -87,7 +89,9 @@
       "!**/*.module.ts",
       "!database/schema/**",
       "!**/*.interface.ts",
-      "!exercises/ingest/normalize.ts"
+      "!exercises/ingest/normalize.ts",
+      "!cities/ingest/normalize.ts",
+      "!cities/ingest/fetch-geonames.ts"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
