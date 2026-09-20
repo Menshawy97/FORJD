@@ -182,6 +182,14 @@ export async function signup(input: RegisterRequest): Promise<RegisterResponse> 
   return response.data;
 }
 
+/**
+ * The "Resend email" button. Answers 202 for any address (registered or not), so a resolved
+ * call says nothing about whether the account exists.
+ */
+export async function resendConfirmation(email: string): Promise<void> {
+  await publicClient.post('/auth/resend-confirmation', { email });
+}
+
 export async function login(input: LoginRequest): Promise<SessionResponse> {
   const response = await publicClient.post<SessionResponse>('/auth/login', input);
   return response.data;

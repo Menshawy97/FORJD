@@ -34,6 +34,7 @@ describe('AuthService', () => {
       refreshSession: jest.fn(),
       signOut: jest.fn(),
       requestPasswordReset: jest.fn(),
+      resendConfirmation: jest.fn(),
       verifyAccessToken: jest.fn(),
       deleteUser: jest.fn(),
       signInWithIdToken: jest.fn(),
@@ -260,6 +261,24 @@ describe('AuthService', () => {
 
     expect(authProvider.refreshSession).toHaveBeenCalledWith('refresh-1');
     expect(result.expiresAt).toBe('2026-01-01T01:00:00.000Z');
+  });
+
+  describe('resendConfirmation', () => {
+    it('delegates to the provider without resolving a user or writing the address anywhere', async () => {
+      authProvider.resendConfirmation.mockResolvedValue(undefined);
+
+      await service.resendConfirmation('a@example.com');
+
+      expect(authProvider.resendConfirmation).toHaveBeenCalledWith('a@example.com');
+      expect(usersRepository.upsertFromIdentity).not.toHaveBeenCalled();
+      expect(usersRepository.recordAudit).not.toHaveBeenCalled();
+    });
+
+    it('resolves for an address with no account, so callers cannot tell the difference', async () => {
+      authProvider.resendConfirmation.mockResolvedValue(undefined);
+
+      await expect(service.resendConfirmation('nobody@example.com')).resolves.toBeUndefined();
+    });
   });
 
   describe('requestPasswordReset', () => {

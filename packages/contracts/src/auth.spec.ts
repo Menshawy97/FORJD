@@ -1,4 +1,15 @@
-import { socialSignInRequestSchema, socialSignInResponseSchema } from "./auth";
+import { resendConfirmationRequestSchema, socialSignInRequestSchema, socialSignInResponseSchema } from "./auth";
+
+describe("resendConfirmationRequestSchema", () => {
+  it("accepts an email address", () => {
+    expect(resendConfirmationRequestSchema.safeParse({ email: "a@example.com" }).success).toBe(true);
+  });
+
+  it("rejects a missing or malformed address", () => {
+    expect(resendConfirmationRequestSchema.safeParse({}).success).toBe(false);
+    expect(resendConfirmationRequestSchema.safeParse({ email: "not-an-email" }).success).toBe(false);
+  });
+});
 
 const idToken = "eyJhbGciOiJSUzI1NiJ9.payload.signature-signature";
 

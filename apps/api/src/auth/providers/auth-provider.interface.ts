@@ -61,6 +61,12 @@ export interface AuthProvider {
    * enumeration oracle out of it even by accident.
    */
   requestPasswordReset(email: string): Promise<void>;
+  /**
+   * Sends the sign-up confirmation email again. Fire-and-forget by the same contract as
+   * `requestPasswordReset`: it must not signal whether the address has an account, or whether
+   * it is already confirmed.
+   */
+  resendConfirmation(email: string): Promise<void>;
   verifyAccessToken(accessToken: string): Promise<AuthIdentity>;
   /**
    * Removes the upstream login itself (email, password hash, linked identities). Without it,
