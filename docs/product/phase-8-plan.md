@@ -244,10 +244,11 @@ owed, the same way WHOOP was handled.
    in Expo Go -- Google needs the app's own package name and signing key, and the native module
    is not in Expo Go -- so test on an EAS dev-client build.
 4. **The domain `getforjd.com` (registered 2026-09-20).** It unblocks several owed items, none
-   of which is done yet:
-   - **Custom SMTP for Supabase** (required before beta, see the roadmap): send auth email from
-     an address on this domain through a real mail provider, so the built-in mailer's small
-     hourly cap stops swallowing sign-up confirmations and "Resend email".
+   of which is done yet except the first:
+   - **Custom SMTP for Supabase: done (2026-09-20).** Auth email, including the sign-up
+     confirmation link, now comes from `no-reply@getforjd.com` instead of Supabase's built-in
+     mailer, whose small hourly cap was swallowing confirmations and "Resend email". Confirmed on
+     the staging project; repeat the same setting on the production project when it exists.
    - **Google OAuth consent screen:** add it as an authorized domain, with the privacy policy
      and terms URLs once they exist.
    - **Store listings:** a support email and a privacy-policy URL on the domain (Apple and Play
