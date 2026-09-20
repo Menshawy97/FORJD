@@ -18,6 +18,7 @@ import {
   getWorkoutStats,
   listNutritionLog,
 } from '@/auth/apiClient';
+import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { ScreenBackground } from '@/components/screen-background';
 import { formatHomeDate } from '@/features/home/date';
@@ -106,6 +107,13 @@ export default function HomeScreen() {
       ]);
 
     if (generation !== loadGeneration.current) return;
+
+    // ADR-048: this answer also says whether the person allowed location for leaderboards. Keep the
+    // device's copy true, so a workout can decide locally, with no network, whether to read a
+    // position. Nothing is written when the server could not be reached or has no settings yet.
+    if (meResult.status === 'fulfilled' && meResult.value.privacy) {
+      void rememberLocationConsent(meResult.value.privacy.locationForLeaderboard);
+    }
 
     // R26: distinguishes "no network reachable at all" from an ordinary new account, without
     // touching the per-section honest-empty fallback below for a partial failure.

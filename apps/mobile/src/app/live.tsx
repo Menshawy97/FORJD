@@ -41,6 +41,7 @@ import {
   type DisplayUnit,
   type ExerciseUnitMap,
 } from '@/store/exercise-unit-preferences';
+import { captureStartLocation } from '@/workouts/capture-start-location';
 import { toLiveExercise } from '@/workouts/start-session';
 import {
   addExercise,
@@ -146,6 +147,8 @@ export default function LiveScreen() {
    * promise instead makes every write queue behind the open rather than race it.
    */
   const dbRef = useRef<Promise<Awaited<ReturnType<typeof openWorkoutSessionDb>> | null> | null>(null);
+  /** Set once Finish is pressed. A start position that arrives after that is dropped (ADR-048). */
+  const finishPressed = useRef(false);
 
   /**
    * Start a handed-over session, or **resume one a crash interrupted**.
@@ -185,7 +188,29 @@ export default function LiveScreen() {
           // athlete is actively, successfully running.
         }
       })();
-      return;
+
+      // ADR-048: one coarse position for the leaderboard, read AFTER the workout has started and
+      // never awaited by it (rule 6: the network, and here the GPS, is never in the critical
+      // path). It answers null when the person has not allowed location, and never prompts. When
+      // it does arrive it joins the session and is written into the snapshot once more, so a
+      // force-kill keeps it. A resumed workout never gets here: the position it had is already in
+      // its snapshot, and a fresh read would describe where the phone is now, not where it began.
+      void (async () => {
+        const position = await captureStartLocation().catch(() => null);
+        if (!position || cancelled || finishPressed.current) return;
+        setSession((current) => (current && current.id === started.id ? { ...current, startLocation: position } : current));
+        try {
+          const db = await dbRef.current;
+          if (!db || cancelled || finishPressed.current) return;
+          await saveSessionSnapshot(db, started.id, { ...started, startLocation: position } as unknown as Record<string, unknown>, started.startedAt.toISOString());
+        } catch {
+          // Degraded, not lost: the position is still on the in-memory session and goes up with
+          // the workout; only crash recovery of it is missed.
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
 
     void (async () => {
@@ -476,6 +501,9 @@ export default function LiveScreen() {
    * with a warning instead of discarding the workout.
    */
   const handleFinish = () => {
+    // From here a late start position is ignored: Finish clears the snapshot, and a position that
+    // arrived afterwards must not write it back for a workout that is already in the upload queue.
+    finishPressed.current = true;
     const endedAt = new Date();
     const change = finishSession(session, endedAt);
     apply(change);

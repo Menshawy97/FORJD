@@ -24,7 +24,14 @@ jest.mock('@/auth/apiClient', () => ({
   updatePrivacy: jest.fn(),
 }));
 
+// ADR-048: the device keeps a copy of the location consent so a workout can decide, offline and at
+// its start, whether to read a position. This screen learns the truth, so it keeps the copy true.
+jest.mock('@/store/leaderboard-consent', () => ({
+  rememberLocationConsent: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { getMe, updatePrivacy } from '@/auth/apiClient';
+import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import PrivacyScreen from '../privacy';
 
 const METRICS = {
@@ -185,6 +192,57 @@ describe('PrivacyScreen', () => {
     });
     expect(await findByText('Privacy settings updated')).toBeTruthy();
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/profile'));
+  });
+
+  describe('the on-device copy of the location consent (ADR-048)', () => {
+    it('is refreshed from what the server reports when the screen loads', async () => {
+      (getMe as jest.Mock).mockResolvedValue({
+        ...ME,
+        privacy: { ...PRIVACY, leaderboardOptIn: true, locationForLeaderboard: true },
+      });
+
+      await render(<PrivacyScreen />);
+
+      await waitFor(() => expect(rememberLocationConsent).toHaveBeenCalledWith(true));
+    });
+
+    it('records a withdrawal the server reports, so a workout stops reading a position', async () => {
+      await render(<PrivacyScreen />);
+
+      await waitFor(() => expect(rememberLocationConsent).toHaveBeenCalledWith(false));
+    });
+
+    it('follows a change once Save succeeds', async () => {
+      const { findByText } = await render(<PrivacyScreen />);
+      await waitFor(() => expect(rememberLocationConsent).toHaveBeenCalledTimes(1));
+
+      fireEvent.press(await findByText('Use approximate location'));
+      fireEvent.press(await findByText('Save'));
+
+      await waitFor(() => expect(rememberLocationConsent).toHaveBeenLastCalledWith(true));
+    });
+
+    it('is not changed by a Save that failed', async () => {
+      (updatePrivacy as jest.Mock).mockRejectedValue(new Error('boom'));
+      const { findByText } = await render(<PrivacyScreen />);
+      await waitFor(() => expect(rememberLocationConsent).toHaveBeenCalledTimes(1));
+
+      fireEvent.press(await findByText('Use approximate location'));
+      fireEvent.press(await findByText('Save'));
+      await findByText('Could not update your privacy settings. Please try again.');
+
+      expect(rememberLocationConsent).toHaveBeenCalledTimes(1);
+      expect(rememberLocationConsent).not.toHaveBeenCalledWith(true);
+    });
+
+    it('is not written when the load fails, because nothing is known', async () => {
+      (getMe as jest.Mock).mockRejectedValue(new Error('offline'));
+
+      await render(<PrivacyScreen />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(rememberLocationConsent).not.toHaveBeenCalled();
+    });
   });
 
   it('shows an inline error and does not navigate when saving fails', async () => {

@@ -10,6 +10,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TabBar, type TabId } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
 import { requestCoarsePermission } from '@/integrations/location/location-provider';
+import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { colors } from '@/theme/tokens';
 
 // docs/design/slice2-screen-specs.md §7. The one screen of the six with a bottom rule under
@@ -101,6 +102,10 @@ export default function LocationScreen() {
       }
 
       await updatePrivacy({ leaderboardOptIn: true, locationForLeaderboard: true });
+      // The device's copy of the consent, so a workout can decide at its start, offline, whether
+      // to read a position. Written only once the server has it, and even if the person has since
+      // left: the consent was recorded either way.
+      await rememberLocationConsent(true);
       if (left.current) return;
       toast.show('Location allowed');
       goBack();

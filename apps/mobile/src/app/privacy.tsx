@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { PrivacySettingsResponse } from '@forjd/contracts';
 
 import { getMe, updatePrivacy } from '@/auth/apiClient';
+import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon, type IconName } from '@/components/icon';
@@ -139,6 +140,9 @@ export default function PrivacyScreen() {
         if (me.privacy) {
           setFlags(toFlags(me.privacy));
           setLoadedHealthConsent(me.privacy.healthDataConsent);
+          // ADR-048: the device's copy of the location consent, refreshed from the server's own
+          // answer, which is what lets a workout decide offline whether to read a position.
+          void rememberLocationConsent(me.privacy.locationForLeaderboard);
         }
         setLoaded(true);
       })
@@ -164,6 +168,8 @@ export default function PrivacyScreen() {
       // a value that may be stale (withdrawn on another device since this screen loaded).
       const { healthDataConsent, ...rest } = flags;
       await updatePrivacy(healthDataConsent === loadedHealthConsent ? rest : flags);
+      // Only after the server has accepted it, so the copy never runs ahead of the truth.
+      await rememberLocationConsent(flags.locationForLeaderboard);
       toast.show('Privacy settings updated');
       goBack();
     } catch (cause) {
