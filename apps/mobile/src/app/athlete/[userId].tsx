@@ -11,10 +11,9 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { colors } from '@/theme/tokens';
 
-// Ports the prototype's `s_athlete()`. Reached today only from `privacy.tsx`'s "Preview my
-// public profile" row (self-view) — `rank` has no real leaderboard rows to tap yet (Phase
-// 10) — but the screen and `getAthlete()` both take any userId, so it already works for a
-// future stranger-view entry point without changes here.
+// Ports the prototype's `s_athlete()`. Reached from `privacy.tsx`'s "Preview my public profile"
+// row (self-view) and from a public-profile row on the Rank tab (a stranger-view, with
+// `from=rank` so Back returns there). `getAthlete()` takes any userId.
 //
 // Two deliberate divergences from the prototype, both forced by the real backend
 // (apps/api/src/athletes/athletes.service.ts):
@@ -42,7 +41,7 @@ import { colors } from '@/theme/tokens';
 // comment), so the current `publicProfile` value has to travel as a query param from
 // `privacy.tsx`, which already holds it in state at the moment the row is tapped.
 export default function AthleteScreen() {
-  const params = useLocalSearchParams<{ userId: string; publicProfile?: string }>();
+  const params = useLocalSearchParams<{ userId: string; publicProfile?: string; from?: string }>();
   // Expo Router's actual runtime type for a route param is `string | string[]` — the generic
   // above only asserts, it does not validate (react-native/patterns.md's Navigation section
   // calls for exactly this guard on any deep-link-reachable param). A `string[]` here would
@@ -99,7 +98,10 @@ export default function AthleteScreen() {
     };
   }, [userId]);
 
-  const goBack = () => router.replace('/privacy');
+  // Back goes to where the athlete came from: the leaderboard passes `from=rank` (the prototype's
+  // `athleteReturnTo`); the self-view from Privacy carries no `from`.
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
+  const goBack = () => router.replace(from === 'rank' ? '/rank' : '/privacy');
 
   // Self always gets data back regardless of the privacy flag, so this reads the value
   // carried from privacy.tsx rather than anything the response itself says.

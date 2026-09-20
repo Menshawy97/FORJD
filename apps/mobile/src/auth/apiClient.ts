@@ -70,6 +70,8 @@ import type {
   ConfirmBodyScanRequest,
   ExtractBodyScanResponse,
   HealthConnectionListResponse,
+  LeaderboardQuery,
+  LeaderboardResponse,
   HealthObservationSeriesResponse,
   ReadinessResponse,
   WhoopAuthorizeResponse,
@@ -256,6 +258,17 @@ export async function updatePrivacy(
 
 export async function getAthlete(userId: string): Promise<PublicProfileResponse> {
   const response = await apiClient.get<PublicProfileResponse>(`/athletes/${userId}`);
+  return response.data;
+}
+
+/**
+ * The city leaderboard (Phase 10). The server answers every state the Rank screen draws with a
+ * 200 (a designed status, never an error), and defaults the window to the design's seven rows.
+ */
+export async function getLeaderboard(
+  query: Pick<LeaderboardQuery, 'metric' | 'period'>,
+): Promise<LeaderboardResponse> {
+  const response = await apiClient.get<LeaderboardResponse>('/leaderboards', { params: query });
   return response.data;
 }
 

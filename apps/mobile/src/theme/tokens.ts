@@ -159,6 +159,17 @@ export const colors = {
   // Text on the accent CTA. The one place the app paints pure white -- `text` (#F6F5F3) is
   // the off-white used everywhere else, and the prototype is explicit about `#fff` here.
   onAccent: '#FFFFFF',
+
+  // The Rank tab (prototype `isRank` branch, `rankVals()`): the your-rank card's 150deg gradient
+  // ends and its muted "Top 8%" line, and the highlighted row's fill and avatar tile. The card's
+  // outline reuses `borderAthleteAvatar` (the same rgba(233,113,47,.28)) and a flat delta reuses
+  // `legal` (#5C5C55). The prototype's faint grey labels are not here: 8H retired that grey for
+  // readability, and `label` / `dimmer` stand in for it on this screen.
+  rankCardFrom: '#2A1A11',
+  rankCardTo: '#1D1512',
+  rankCardMuted: '#A08167',
+  rankSelfRowBg: 'rgba(233,113,47,.09)',
+  rankSelfAvatarBg: 'rgba(233,113,47,.18)',
 } as const;
 
 export type ColorToken = keyof typeof colors;

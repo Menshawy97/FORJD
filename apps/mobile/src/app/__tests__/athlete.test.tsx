@@ -58,6 +58,25 @@ const SELF_PROFILE = {
 };
 
 describe('AthleteScreen', () => {
+  it('goes back to the Rank tab when it was opened from a leaderboard row', async () => {
+    mockUseLocalSearchParams.mockReturnValue({ userId: 'u2', from: 'rank' });
+    (getAthlete as jest.Mock).mockResolvedValue({ ...SELF_PROFILE, userId: 'u2', isSelf: false });
+    const { findByLabelText } = await render(<AthleteScreen />);
+
+    await fireEvent.press(await findByLabelText('Back'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/rank');
+  });
+
+  it('still goes back to Privacy when it was not opened from the leaderboard', async () => {
+    mockUseLocalSearchParams.mockReturnValue({ userId: 'u1', publicProfile: 'true' });
+    const { findByLabelText } = await render(<AthleteScreen />);
+
+    await fireEvent.press(await findByLabelText('Back'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/privacy');
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseLocalSearchParams.mockReturnValue({ userId: 'u1', publicProfile: 'true' });
