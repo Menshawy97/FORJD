@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { AuthProviderModule } from "../auth/auth-provider.module";
+import { CitiesModule } from "../cities/cities.module";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ExercisesModule } from "../exercises/exercises.module";
 import { UsersModule } from "../users/users.module";
@@ -31,7 +32,8 @@ import { WorkoutsService } from "./workouts.service";
  * their own repositories to it.
  */
 @Module({
-  imports: [AuthProviderModule, UsersModule, ExercisesModule],
+  // UsersModule already exports PrivacyService, which the session upload reads live.
+  imports: [AuthProviderModule, UsersModule, ExercisesModule, CitiesModule],
   controllers: [WorkoutsController, WorkoutSessionsController],
   providers: [
     WorkoutsService,

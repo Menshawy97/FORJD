@@ -221,6 +221,83 @@ describe('Workout sessions (e2e)', () => {
     expect(rows).toHaveLength(1);
   });
 
+  describe('city (Phase 10)', () => {
+    // Alexandria, Egypt, well inside the city.
+    const alexandria = { latitude: 31.2001, longitude: 29.9187 };
+    const setPrivacy = (body: object) =>
+      request(app.getHttpServer())
+        .patch('/api/v1/users/me/privacy')
+        .set('Authorization', 'Bearer owner-token')
+        .send(body);
+
+    afterAll(async () => {
+      await setPrivacy({ locationForLeaderboard: false });
+      await setPrivacy({ leaderboardOptIn: false });
+    });
+
+    it('stores no city for an athlete who has not joined leaderboards, whatever the phone sends', async () => {
+      const body = { ...validBody(), startLocation: alexandria, city: 'Hacker Town', citySlug: 'hacker-town' };
+
+      const response = await upload(body).expect(201);
+      createdSessionIds.push(response.body.id);
+
+      expect(response.body.city).toBeNull();
+      expect(response.body.citySlug).toBeNull();
+    });
+
+    it('derives the city on the server for an athlete who joined and allowed location', async () => {
+      await setPrivacy({ leaderboardOptIn: true }).expect(200);
+      await setPrivacy({ locationForLeaderboard: true }).expect(200);
+
+      const response = await upload({ ...validBody(), startLocation: alexandria }).expect(201);
+      createdSessionIds.push(response.body.id);
+
+      expect(response.body.city).toBe('Alexandria');
+      expect(response.body.citySlug).toBe('alexandria-eg-361058');
+      expect(() => workoutSessionResponseSchema.parse(response.body)).not.toThrow();
+    });
+
+    it('ignores a slug the client chooses, because the slug is the leaderboard key', async () => {
+      const body = { ...validBody(), startLocation: alexandria, city: 'Hacker Town', citySlug: 'hacker-town' };
+
+      const response = await upload(body).expect(201);
+      createdSessionIds.push(response.body.id);
+
+      expect(response.body.citySlug).toBe('alexandria-eg-361058');
+    });
+
+    it('stores no city when the phone sent no position, even from an opted-in athlete', async () => {
+      const response = await upload({ ...validBody(), citySlug: 'hacker-town' }).expect(201);
+      createdSessionIds.push(response.body.id);
+
+      expect(response.body.city).toBeNull();
+      expect(response.body.citySlug).toBeNull();
+    });
+
+    it('stores no city for a position in the middle of the ocean', async () => {
+      const response = await upload({ ...validBody(), startLocation: { latitude: 0, longitude: -30 } }).expect(201);
+      createdSessionIds.push(response.body.id);
+
+      expect(response.body.citySlug).toBeNull();
+    });
+
+    it('rejects a position that is not on Earth', async () => {
+      await upload({ ...validBody(), startLocation: { latitude: 95, longitude: 0 } }).expect(400);
+    });
+
+    it('never stores the coordinates: the row has no place to put them', async () => {
+      const body = { ...validBody(), startLocation: alexandria };
+      const response = await upload(body).expect(201);
+      createdSessionIds.push(response.body.id);
+
+      const [row] = await db.select().from(workoutSessions).where(inArray(workoutSessions.id, [body.id]));
+      const stored = JSON.stringify(row);
+      expect(stored).not.toContain('31.2001');
+      expect(stored).not.toContain('29.9187');
+      expect(Object.keys(row ?? {}).some((key) => /latitude|longitude|coord|position|geo/i.test(key))).toBe(false);
+    });
+  });
+
   it('gets an uploaded session by id and it parses against the response contract', async () => {
     const created = await upload(validBody()).expect(201);
     createdSessionIds.push(created.body.id);

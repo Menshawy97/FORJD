@@ -208,18 +208,26 @@ export const workoutSessions = pgTable(
     perceivedEffort: text("perceived_effort"),
     notes: text("notes"),
     /**
-     * Coarse location, captured at session start and stored here -- never on the user
-     * record (`docs/architecture/security.md`) -- which is what makes "the leaderboard
-     * doesn't follow you when you relocate" true by construction. Null unless the user
-     * opted in to location for leaderboards.
+     * The city this session started in, stored here -- never on the user record
+     * (`docs/architecture/security.md`) -- which is what makes "the leaderboard doesn't follow
+     * you when you relocate" true by construction. **Derived by the server** from the start
+     * position the phone sent (`CityResolverService`, ADR-045), never taken from the request,
+     * because `city_slug` is the leaderboard key. The position itself is discarded: no
+     * coordinate is stored anywhere (ADR-048). Null unless the athlete had opted in to both
+     * leaderboards and location when the session was uploaded, and a city was within reach.
+     * A session's city is a fact as of when it happened and is not re-resolved later.
      */
     city: text("city"),
     citySlug: text("city_slug"),
     /**
-     * Whether this session was tracked live, with real start/end timestamps, rather than
-     * entered or backdated afterwards -- the anti-cheat fact `leaderboard_eligible` rests
-     * on at read time (security.md). Eligibility itself is not stored here: it also depends
-     * on the user's current privacy opt-in, which changes independently of this row.
+     * Whether this session was run through the live workout runner, with real start and end
+     * timestamps, rather than entered or backdated afterwards (ADR-044). It does **not** mean
+     * "streamed to the server as it happened": the runner logs on the device first so a
+     * workout works with no signal (rule 6), and uploads afterwards. It is the anti-cheat fact
+     * the leaderboard rests on, and it is a speed bump, not attestation: a modified client
+     * could still post a forged body. Rows from before Phase 10 are `false` and never rank, and
+     * are never back-filled. Eligibility itself is not stored here: it also depends on the
+     * athlete's current privacy opt-in, which changes independently of this row.
      */
     isLiveTracked: boolean("is_live_tracked").notNull().default(false),
     /**
@@ -236,6 +244,13 @@ export const workoutSessions = pgTable(
     // G): "give me this user's sessions, most recent first" is the whole WHERE+ORDER BY.
     index("workout_sessions_user_started_idx").on(table.userId, table.startedAt),
     index("workout_sessions_template_idx").on(table.templateId),
+    // A city leaderboard reads one city over one window (Phase 10, ADR-047): "sessions in this
+    // city since this instant". Partial, so it stays small -- most rows are never eligible.
+    // The predicate is the eligibility rule, minus the athlete's live privacy opt-in, which is
+    // joined at read time because it changes independently of these rows.
+    index("workout_sessions_city_started_idx")
+      .on(table.citySlug, table.startedAt)
+      .where(sql`${table.deletedAt} is null and ${table.isLiveTracked} = true and ${table.citySlug} is not null`),
   ],
 );
 

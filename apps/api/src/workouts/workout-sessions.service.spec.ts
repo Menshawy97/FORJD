@@ -1,7 +1,9 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Logger, NotFoundException } from "@nestjs/common";
 import type { WorkoutSessionUploadRequest } from "@forjd/contracts";
-import { Exercise, User, WorkoutSession } from "@forjd/domain";
+import { Exercise, PrivacySettings, User, WorkoutSession } from "@forjd/domain";
 
+import type { CityResolverService, ResolvedCity } from "../cities/city-resolver.service";
+import type { PrivacyService } from "../privacy/privacy.service";
 import { encodeWorkoutSessionCursor } from "./workout-cursor";
 import { WorkoutSessionsService } from "./workout-sessions.service";
 import {
@@ -109,10 +111,49 @@ describe("WorkoutSessionsService", () => {
     return repository as unknown as import("../exercises/exercises.repository").ExercisesRepository;
   };
 
+  const makePrivacyService = (over: Partial<PrivacySettings> = {}) => {
+    const calls: string[] = [];
+    const service = {
+      get: (userId: string) => {
+        calls.push(userId);
+        return Promise.resolve({
+          publicProfile: false,
+          leaderboardOptIn: false,
+          locationForLeaderboard: false,
+          ...over,
+        } as PrivacySettings);
+      },
+    };
+    return Object.assign(service as unknown as PrivacyService, { calls });
+  };
+
+  const OPTED_IN = { leaderboardOptIn: true, locationForLeaderboard: true } as const;
+
+  const makeCityResolver = (result: ResolvedCity | null | Error = null) => {
+    const calls: Array<[number, number]> = [];
+    const service = {
+      resolve: (latitude: number, longitude: number) => {
+        calls.push([latitude, longitude]);
+        if (result instanceof Error) throw result;
+        return result;
+      },
+    };
+    return Object.assign(service as unknown as CityResolverService, { calls });
+  };
+
   const makeService = (
     workoutsRepository: WorkoutsRepository,
     exercisesRepository = makeExercisesRepository(),
-  ) => new WorkoutSessionsService(workoutsRepository, exercisesRepository);
+    privacyService: PrivacyService = makePrivacyService(),
+    cityResolver: CityResolverService = makeCityResolver(),
+  ) => new WorkoutSessionsService(workoutsRepository, exercisesRepository, privacyService, cityResolver);
+
+  const ALEXANDRIA: ResolvedCity = {
+    name: "Alexandria",
+    slug: "alexandria-eg-361058",
+    countryCode: "EG",
+    timezone: "Africa/Cairo",
+  };
 
   const validBody: WorkoutSessionUploadRequest = {
     id: "44444444-4444-4444-8444-444444444444",
@@ -231,8 +272,6 @@ describe("WorkoutSessionsService", () => {
         endedAt: "2026-09-02T09:30:00.000Z",
         perceivedEffort: "solid",
         notes: "felt strong",
-        city: "Alexandria",
-        citySlug: "alexandria",
         exercises: [
           {
             exerciseId,
@@ -257,8 +296,6 @@ describe("WorkoutSessionsService", () => {
         endedAt: new Date("2026-09-02T09:30:00.000Z"),
         perceivedEffort: "solid",
         notes: "felt strong",
-        city: "Alexandria",
-        citySlug: "alexandria",
       });
       expect(repository.upsertCalls[0]?.exercises[0]).toMatchObject({
         notes: "explosive tempo",
@@ -266,6 +303,167 @@ describe("WorkoutSessionsService", () => {
       expect(repository.upsertCalls[0]?.exercises[0]?.sets[0]).toMatchObject({
         restSeconds: 90,
         completedAt: new Date("2026-09-02T09:05:00.000Z"),
+      });
+    });
+
+    describe("city (Phase 10, ADR-048): derived on the server, never taken from the client", () => {
+      const at = { latitude: 31.2, longitude: 29.92 };
+
+      it("resolves the city from the start position for an athlete who opted in to both", async () => {
+        const repository = makeWorkoutsRepository();
+        const resolver = makeCityResolver(ALEXANDRIA);
+
+        await makeService(repository, undefined, makePrivacyService(OPTED_IN), resolver).upload(owner, {
+          ...validBody,
+          startLocation: at,
+        });
+
+        expect(resolver.calls).toEqual([[31.2, 29.92]]);
+        expect(repository.upsertCalls[0]).toMatchObject({ city: "Alexandria", citySlug: "alexandria-eg-361058" });
+      });
+
+      it("ignores a city and slug the client sends, because the slug is a ranking key", async () => {
+        const repository = makeWorkoutsRepository();
+
+        await makeService(repository, undefined, makePrivacyService(OPTED_IN), makeCityResolver(ALEXANDRIA)).upload(
+          owner,
+          { ...validBody, startLocation: at, city: "Hacker Town", citySlug: "hacker-town" },
+        );
+
+        expect(repository.upsertCalls[0]).toMatchObject({ city: "Alexandria", citySlug: "alexandria-eg-361058" });
+      });
+
+      it("stores no city when the client sends only its own city and no position", async () => {
+        const repository = makeWorkoutsRepository();
+
+        await makeService(repository, undefined, makePrivacyService(OPTED_IN)).upload(owner, {
+          ...validBody,
+          city: "Hacker Town",
+          citySlug: "hacker-town",
+        });
+
+        expect(repository.upsertCalls[0]).toMatchObject({ city: null, citySlug: null });
+      });
+
+      it("does not read privacy or resolve anything when there is no position", async () => {
+        const repository = makeWorkoutsRepository();
+        const privacy = makePrivacyService(OPTED_IN);
+        const resolver = makeCityResolver(ALEXANDRIA);
+
+        await makeService(repository, undefined, privacy, resolver).upload(owner, validBody);
+        await makeService(repository, undefined, privacy, resolver).upload(owner, { ...validBody, startLocation: null });
+
+        expect(privacy.calls).toEqual([]);
+        expect(resolver.calls).toEqual([]);
+      });
+
+      it("stores no city for an athlete who has not joined leaderboards, and does not resolve", async () => {
+        const repository = makeWorkoutsRepository();
+        const resolver = makeCityResolver(ALEXANDRIA);
+
+        await makeService(repository, undefined, makePrivacyService(), resolver).upload(owner, {
+          ...validBody,
+          startLocation: at,
+        });
+
+        expect(resolver.calls).toEqual([]);
+        expect(repository.upsertCalls[0]).toMatchObject({ city: null, citySlug: null });
+      });
+
+      it("stores no city when the athlete joined leaderboards but did not allow location", async () => {
+        const repository = makeWorkoutsRepository();
+        const resolver = makeCityResolver(ALEXANDRIA);
+
+        await makeService(
+          repository,
+          undefined,
+          makePrivacyService({ leaderboardOptIn: true, locationForLeaderboard: false }),
+          resolver,
+        ).upload(owner, { ...validBody, startLocation: at });
+
+        expect(resolver.calls).toEqual([]);
+        expect(repository.upsertCalls[0]).toMatchObject({ city: null, citySlug: null });
+      });
+
+      it("stores no city when no city is within reach of the position", async () => {
+        const repository = makeWorkoutsRepository();
+
+        await makeService(repository, undefined, makePrivacyService(OPTED_IN), makeCityResolver(null)).upload(owner, {
+          ...validBody,
+          startLocation: { latitude: 0, longitude: -30 },
+        });
+
+        expect(repository.upsertCalls[0]).toMatchObject({ city: null, citySlug: null });
+      });
+
+      it("reads the athlete's consent on every upload rather than remembering it", async () => {
+        const repository = makeWorkoutsRepository();
+        const privacy = makePrivacyService(OPTED_IN);
+        const service = makeService(repository, undefined, privacy, makeCityResolver(ALEXANDRIA));
+
+        await service.upload(owner, { ...validBody, startLocation: at });
+        await service.upload(owner, { ...validBody, startLocation: at });
+
+        expect(privacy.calls).toEqual([owner.id, owner.id]);
+      });
+
+      it("never writes the coordinates anywhere: only the city reaches the repository", async () => {
+        const repository = makeWorkoutsRepository();
+
+        await makeService(repository, undefined, makePrivacyService(OPTED_IN), makeCityResolver(ALEXANDRIA)).upload(
+          owner,
+          { ...validBody, startLocation: { latitude: 31.2017, longitude: 29.9158 } },
+        );
+
+        const stored = JSON.stringify(repository.upsertCalls);
+        expect(stored).not.toContain("31.2017");
+        expect(stored).not.toContain("29.9158");
+        expect(repository.upsertCalls[0]).not.toHaveProperty("startLocation");
+      });
+
+      it("still saves the workout when the city lookup fails, with no city, and logs it without the position", async () => {
+        const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+        const repository = makeWorkoutsRepository();
+
+        const saved = await makeService(
+          repository,
+          undefined,
+          makePrivacyService(OPTED_IN),
+          makeCityResolver(new Error("snapshot missing")),
+        ).upload(owner, { ...validBody, startLocation: { latitude: 31.2017, longitude: 29.9158 } });
+
+        expect(saved).toBeDefined();
+        expect(repository.upsertCalls).toHaveLength(1);
+        expect(repository.upsertCalls[0]).toMatchObject({ city: null, citySlug: null });
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(String(warn.mock.calls[0]?.[0])).toContain("snapshot missing");
+        expect(String(warn.mock.calls[0]?.[0])).not.toContain("31.2017");
+        warn.mockRestore();
+      });
+
+      it("also saves the workout when the consent read fails, rather than losing it", async () => {
+        const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+        const repository = makeWorkoutsRepository();
+        const failing = { get: () => Promise.reject(new Error("db down")) } as unknown as PrivacyService;
+
+        await makeService(repository, undefined, failing, makeCityResolver(ALEXANDRIA)).upload(owner, {
+          ...validBody,
+          startLocation: at,
+        });
+
+        expect(repository.upsertCalls[0]).toMatchObject({ city: null, citySlug: null });
+        expect(String(warn.mock.calls[0]?.[0])).toContain("db down");
+        warn.mockRestore();
+      });
+
+      it("logs a non-Error failure too", async () => {
+        const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+        const failing = { get: () => Promise.reject("boom") } as unknown as PrivacyService;
+
+        await makeService(makeWorkoutsRepository(), undefined, failing).upload(owner, { ...validBody, startLocation: at });
+
+        expect(String(warn.mock.calls[0]?.[0])).toContain("boom");
+        warn.mockRestore();
       });
     });
   });

@@ -270,9 +270,27 @@ export const workoutSessionUploadRequestSchema = z.object({
   durationSeconds: z.number().int().min(0),
   perceivedEffort: perceivedEffortSchema.nullable().optional(),
   notes: z.string().trim().max(2000).nullable().optional(),
-  /** Present only when the user has opted in to location for leaderboards. */
+  /**
+   * **Deprecated and ignored (Phase 10, ADR-048).** The server derives a session's city itself
+   * from `startLocation`, because the slug is the leaderboard key and a client-chosen one would
+   * let anyone place themselves on any city's board. Still accepted, not read, for one release:
+   * a shipped `/api/v1` contract is never broken (rule 7) and an older app build still posts them.
+   */
   city: z.string().nullable().optional(),
   citySlug: z.string().nullable().optional(),
+  /**
+   * The coarse position the phone read once, at the start of the workout, and only after the
+   * person allowed location for leaderboards (the app never prompts mid-workout). The server
+   * resolves it to a city and **discards it: no coordinate is stored** (ADR-048). Null or absent
+   * when there was none.
+   */
+  startLocation: z
+    .object({
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+    })
+    .nullable()
+    .optional(),
   isLiveTracked: z.boolean(),
   // .max(100): an explicit cap (R10) -- generous for even HYROX/circuit-style sessions with
   // many distinct movements.
