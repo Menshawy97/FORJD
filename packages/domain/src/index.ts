@@ -186,3 +186,6 @@ export * from "./health-provider";
 export * from "./health-provider-contract";
 export * from "./age";
 export * from "./social-auth-vocabulary";
+
+export * from "./leaderboard-vocabulary";
+export * from "./leaderboard-scoring";
