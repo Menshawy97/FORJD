@@ -3,6 +3,7 @@ import {
   loginRequestSchema,
   refreshRequestSchema,
   registerRequestSchema,
+  resendConfirmationRequestSchema,
   socialSignInRequestSchema,
 } from "@forjd/contracts";
 
@@ -23,6 +24,7 @@ describe("AuthController", () => {
       login: jest.fn(),
       refresh: jest.fn(),
       requestPasswordReset: jest.fn(),
+      resendConfirmation: jest.fn(),
       logout: jest.fn(),
       socialSignIn: jest.fn(),
     } as unknown as jest.Mocked<AuthService>;
@@ -43,6 +45,22 @@ describe("AuthController", () => {
 
     it("is public -- it is how a person gets a session -- so it carries no guard", () => {
       expect(getMethodGuards(AuthController, "socialSignIn")).toEqual([]);
+    });
+  });
+
+  describe("resend confirmation", () => {
+    it("binds the body to resendConfirmationRequestSchema and hands the address to the service", async () => {
+      expect(getBodySchema(AuthController, "resendConfirmation")).toBe(resendConfirmationRequestSchema);
+      service.resendConfirmation.mockResolvedValue(undefined);
+
+      await expect(controller.resendConfirmation({ email: "a@example.com" })).resolves.toBeUndefined();
+
+      expect(service.resendConfirmation).toHaveBeenCalledWith("a@example.com");
+    });
+
+    it("answers 202 and is public, like forgot-password", () => {
+      expect(Reflect.getMetadata("__httpCode__", AuthController.prototype.resendConfirmation)).toBe(202);
+      expect(getMethodGuards(AuthController, "resendConfirmation")).toEqual([]);
     });
   });
 

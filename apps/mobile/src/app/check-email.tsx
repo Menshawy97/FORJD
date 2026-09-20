@@ -1,10 +1,19 @@
+import { isAxiosError } from 'axios';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { resendConfirmation } from '@/auth/apiClient';
+import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { useResendCooldown } from '@/auth/use-resend-cooldown';
 import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
+import { Toast, useToast } from '@/components/toast';
 import { colors } from '@/theme/tokens';
+
+/** How long "Resend email" rests after a send. The server allows three per fifteen minutes. */
+const RESEND_COOLDOWN_SECONDS = 60;
 
 // Shown after a sign-up that answered with no session. The project keeps email confirmation
 // on, so the account exists but cannot sign in until the link in the email is opened. There is
@@ -18,6 +27,38 @@ const STEPS = [
 
 export default function CheckEmailScreen() {
   const { email } = useLocalSearchParams<{ email?: string }>();
+  const toast = useToast();
+  const cooldown = useResendCooldown(RESEND_COOLDOWN_SECONDS);
+  const [sending, setSending] = useState(false);
+
+  const canResend = !sending && cooldown.secondsLeft === 0;
+  const resendLabel =
+    cooldown.secondsLeft > 0 ? `Resend in ${cooldown.secondsLeft}s` : 'Resend email';
+
+  const handleResend = async () => {
+    if (email === undefined || !canResend) return;
+    setSending(true);
+    try {
+      await resendConfirmation(email);
+      toast.show('Confirmation email sent');
+      cooldown.start();
+    } catch (cause) {
+      if (isAxiosError(cause) && cause.response?.status === 429) {
+        // The server's own limit (three a quarter-hour): the countdown says "wait" better than
+        // an error that invites another tap.
+        toast.show('Too many requests. Please wait a few minutes and try again.');
+        cooldown.start();
+      } else {
+        toast.show(
+          classifyRequestFailure(cause) === 'offline'
+            ? OFFLINE_MESSAGE
+            : 'Could not resend the email. Please try again.',
+        );
+      }
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <ScreenBackground>
@@ -74,6 +115,22 @@ export default function CheckEmailScreen() {
           <Text className="font-archivo text-button font-bold text-white">Go to Log In</Text>
         </Pressable>
 
+        {email !== undefined && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={resendLabel}
+            accessibilityState={{ disabled: !canResend }}
+            disabled={!canResend}
+            onPress={handleResend}
+            className="mt-[10px] h-[48px] items-center justify-center">
+            <Text
+              className="font-archivo text-[14px] font-semibold"
+              style={{ color: canResend ? colors.accent : colors.dimmer }}>
+              {resendLabel}
+            </Text>
+          </Pressable>
+        )}
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Use a different email"
@@ -92,6 +149,7 @@ export default function CheckEmailScreen() {
         style={{ color: colors.legal }}>
         Can&apos;t find it? Check your spam folder.
       </Text>
+      <Toast message={toast.message} />
     </ScreenBackground>
   );
 }

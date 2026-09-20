@@ -58,6 +58,16 @@ export const forgotPasswordRequestSchema = z.object({
 export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
 
 /**
+ * Asks for the sign-up confirmation email to be sent again (the "Resend email" button on the
+ * check-your-email screen). Like forgot-password it answers 202 whether or not the address has
+ * an account, so it cannot be used to find out who is registered.
+ */
+export const resendConfirmationRequestSchema = z.object({
+  email: z.string().email(),
+});
+export type ResendConfirmationRequest = z.infer<typeof resendConfirmationRequestSchema>;
+
+/**
  * ADR-041: sign in with a Google or Apple ID token, obtained natively on the phone. The token
  * is verified by the identity provider (through Supabase), never by this app or by us, and no
  * password is involved. Apple binds its token to a nonce, so the raw nonce is required there;

@@ -140,6 +140,13 @@ export class FakeAuthProvider implements AuthProvider {
     this.resetRequests.push(email);
   }
 
+  readonly confirmationResends: string[] = [];
+
+  /** Records the request and answers the same for every address, known or not. */
+  async resendConfirmation(email: string): Promise<void> {
+    this.confirmationResends.push(email);
+  }
+
   async deleteUser(externalId: string): Promise<void> {
     this.deletedExternalIds.push(externalId);
   }

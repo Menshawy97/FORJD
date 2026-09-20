@@ -26,6 +26,7 @@ interface AuthStub {
   signInWithPassword: jest.Mock;
   refreshSession: jest.Mock;
   resetPasswordForEmail: jest.Mock;
+  resend: jest.Mock;
   getUser: jest.Mock;
   admin: { signOut: jest.Mock; deleteUser: jest.Mock };
   signInWithIdToken: jest.Mock;
@@ -41,6 +42,7 @@ describe('SupabaseAuthProvider', () => {
       signInWithPassword: jest.fn(),
       refreshSession: jest.fn(),
       resetPasswordForEmail: jest.fn(),
+      resend: jest.fn(),
       getUser: jest.fn(),
       admin: { signOut: jest.fn(), deleteUser: jest.fn() },
       signInWithIdToken: jest.fn(),
@@ -246,6 +248,22 @@ describe('SupabaseAuthProvider', () => {
       });
 
       await expect(provider.deleteUser('ext-1')).rejects.toThrow('boom');
+    });
+  });
+
+  describe('resendConfirmation', () => {
+    it('asks Supabase to resend the signup confirmation email', async () => {
+      auth.resend.mockResolvedValue({ error: null });
+
+      await provider.resendConfirmation('a@example.com');
+
+      expect(auth.resend).toHaveBeenCalledWith({ type: 'signup', email: 'a@example.com' });
+    });
+
+    it('resolves even when the provider reports an error, so an unknown address reads the same', async () => {
+      auth.resend.mockResolvedValue({ error: authError('User not found', 'user_not_found') });
+
+      await expect(provider.resendConfirmation('nobody@example.com')).resolves.toBeUndefined();
     });
   });
 

@@ -5,8 +5,10 @@ import {
   loginRequestSchema,
   refreshRequestSchema,
   registerRequestSchema,
+  resendConfirmationRequestSchema,
   socialSignInRequestSchema,
   type ForgotPasswordRequest,
+  type ResendConfirmationRequest,
   type LoginRequest,
   type RefreshRequest,
   type RegisterRequest,
@@ -77,6 +79,19 @@ export class AuthController {
     @Body(new ZodValidationPipe(forgotPasswordRequestSchema)) body: ForgotPasswordRequest,
   ): Promise<void> {
     await this.authService.requestPasswordReset(body.email);
+  }
+
+  /**
+   * Same 202 and the same tight limit as forgot-password, for the same reasons: each call sends
+   * real mail, and the answer must not reveal whether the address has an account.
+   */
+  @Post('resend-confirmation')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle({ default: { limit: 3, ttl: 900_000 } })
+  async resendConfirmation(
+    @Body(new ZodValidationPipe(resendConfirmationRequestSchema)) body: ResendConfirmationRequest,
+  ): Promise<void> {
+    await this.authService.resendConfirmation(body.email);
   }
 
   /**

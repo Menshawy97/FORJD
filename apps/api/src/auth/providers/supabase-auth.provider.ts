@@ -210,6 +210,19 @@ export class SupabaseAuthProvider implements AuthProvider {
   }
 
   /**
+   * Same shape and reasoning as `requestPasswordReset`: a provider error (unknown address,
+   * already confirmed, Supabase's own mail rate limit) is logged and swallowed, so the response
+   * cannot tell a caller which of those it was. The route's throttle bounds abuse.
+   */
+  async resendConfirmation(email: string): Promise<void> {
+    const { error } = await this.client.auth.resend({ type: 'signup', email });
+
+    if (error) {
+      this.logger.warn(`resendConfirmation failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Verified in process against the project's published signing keys, not by asking
    * Supabase (ADR-012). This runs on every authenticated request, so the network round trip
    * it replaces was the largest fixed cost in the API.

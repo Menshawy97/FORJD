@@ -12,6 +12,77 @@ jest.mock('@/auth/secureStorage', () => ({
   consumeSessionExpired: jest.fn(() => false),
 }));
 
+jest.mock('@/auth/apiClient', () => ({ resendConfirmation: jest.fn() }));
+
+import { AxiosError } from 'axios';
+import { resendConfirmation } from '@/auth/apiClient';
+
+function serverError(status: number) {
+  return new AxiosError('failed', undefined, undefined, undefined, {
+    status,
+    data: {},
+    statusText: '',
+    headers: {},
+    config: {} as never,
+  });
+}
+
+describe('check-email screen - resend', () => {
+  const url = '/check-email?email=ada%40example.com';
+
+  beforeEach(() => {
+    (resendConfirmation as jest.Mock).mockReset();
+    (resendConfirmation as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  it('sends the confirmation email again to the address on screen and says so', async () => {
+    const { findByText } = await renderApp({ initialUrl: url });
+
+    fireEvent.press(await findByText('Resend email'));
+
+    await findByText('Confirmation email sent');
+    expect(resendConfirmation).toHaveBeenCalledTimes(1);
+    expect(resendConfirmation).toHaveBeenCalledWith('ada@example.com');
+  });
+
+  it('shows a countdown afterwards and ignores taps while it runs', async () => {
+    const { findByText } = await renderApp({ initialUrl: url });
+
+    fireEvent.press(await findByText('Resend email'));
+    const counting = await findByText(/^Resend in \d+s$/);
+    fireEvent.press(counting);
+
+    expect(resendConfirmation).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed send says so and leaves the button ready to try again', async () => {
+    (resendConfirmation as jest.Mock).mockRejectedValue(new Error('boom'));
+    const { findByText } = await renderApp({ initialUrl: url });
+
+    fireEvent.press(await findByText('Resend email'));
+
+    await findByText('Could not resend the email. Please try again.');
+    await findByText('Resend email');
+  });
+
+  it('a rate-limited send asks for patience and starts the countdown', async () => {
+    (resendConfirmation as jest.Mock).mockRejectedValue(serverError(429));
+    const { findByText } = await renderApp({ initialUrl: url });
+
+    fireEvent.press(await findByText('Resend email'));
+
+    await findByText('Too many requests. Please wait a few minutes and try again.');
+    await findByText(/^Resend in \d+s$/);
+  });
+
+  it('offers no resend when the address is unknown', async () => {
+    const { findByText, queryByText } = await renderApp({ initialUrl: '/check-email' });
+
+    await findByText('Check your email');
+    expect(queryByText('Resend email')).toBeNull();
+  });
+});
+
 describe('check-email screen', () => {
   it('is reachable while signed out and names the address the link was sent to', async () => {
     const rendered = renderApp({ initialUrl: '/check-email?email=ada%40example.com' });

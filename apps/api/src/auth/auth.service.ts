@@ -106,6 +106,15 @@ export class AuthService {
     await this.usersRepository.recordAudit(null, 'auth.password_reset_requested', { email });
   }
 
+  /**
+   * No audit row, unlike a password reset: there is no user to attach it to without a lookup
+   * that would make the response slower for a registered address, and writing the raw address
+   * would add a place the account-deletion scrub would have to know about.
+   */
+  async resendConfirmation(email: string): Promise<void> {
+    await this.authProvider.resendConfirmation(email);
+  }
+
   async logout(accessToken: string, userId: string | null): Promise<void> {
     await this.authProvider.signOut(accessToken);
     await this.usersRepository.recordAudit(userId, 'auth.logout');

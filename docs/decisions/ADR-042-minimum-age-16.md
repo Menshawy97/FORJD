@@ -19,7 +19,12 @@ collected a date of birth at signup and nothing checked one.
    intended production setting) an email sign-up gets no session, so the app shows a "Check your
    email" screen first and the "Your Profile" step comes right after the first login, via the
    signed-in gate. That sign-up also clears any login left on the phone from an earlier account,
-   so it cannot be mistaken for the new one.
+   so it cannot be mistaken for the new one. That screen has a "Resend email" button:
+   `POST /api/v1/auth/resend-confirmation` answers `202` for any well-formed address (a
+   registered and an unknown one read the same, like forgot-password), is limited to three calls
+   per fifteen minutes because each sends real mail, and writes no audit row (there is no user
+   to attach it to without a lookup, and the raw address would need the account-deletion
+   scrub). The app adds a 60-second countdown after each send.
 3. **Enforced on the server, not only in the app** (rule 12). `JwtAuthGuard` refuses every route
    for an account with no date of birth (`403 date_of_birth_required`) except those marked
    `@AllowWithoutDateOfBirth()`: read your own account, give the date, upload the avatar that
