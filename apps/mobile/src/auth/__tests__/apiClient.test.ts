@@ -404,6 +404,19 @@ describe('apiClient - profile reads and writes', () => {
     expect(instance.get).toHaveBeenCalledWith('/athletes/u2');
   });
 
+  it('getLeaderboard reads GET /leaderboards with the chosen metric and period', async () => {
+    const { getLeaderboard } = loadApiClient();
+    const instance = apiClientInstance();
+    const body = { status: 'coming_soon', rows: [], me: null };
+    instance.get.mockResolvedValue({ data: body });
+
+    await expect(getLeaderboard({ metric: 'strength', period: 'all_time' })).resolves.toEqual(body);
+
+    expect(instance.get).toHaveBeenCalledWith('/leaderboards', {
+      params: { metric: 'strength', period: 'all_time' },
+    });
+  });
+
   describe('getExerciseCatalogue (R20 conditional GET)', () => {
     it('sends no If-None-Match and returns the full body when there is no stored version yet', async () => {
       const { getExerciseCatalogue } = loadApiClient();
