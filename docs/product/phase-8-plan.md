@@ -243,7 +243,16 @@ owed, the same way WHOOP was handled.
    `apps/mobile/eas.json` (public by design; set for `development` and `staging`). It cannot run
    in Expo Go -- Google needs the app's own package name and signing key, and the native module
    is not in Expo Go -- so test on an EAS dev-client build.
-4. The owed items that remain as they were: the Apple Developer account (turns Apple on), the
+4. **The domain `getforjd.com` (registered 2026-09-20).** It unblocks several owed items, none
+   of which is done yet:
+   - **Custom SMTP for Supabase** (required before beta, see the roadmap): send auth email from
+     an address on this domain through a real mail provider, so the built-in mailer's small
+     hourly cap stops swallowing sign-up confirmations and "Resend email".
+   - **Google OAuth consent screen:** add it as an authorized domain, with the privacy policy
+     and terms URLs once they exist.
+   - **Store listings:** a support email and a privacy-policy URL on the domain (Apple and Play
+     both require them).
+5. The owed items that remain as they were: the Apple Developer account (turns Apple on), the
    token lifetime to 900 s, the 6F Android device test, the live WHOOP round-trip, the lawyer,
    and the Play Console.
 
