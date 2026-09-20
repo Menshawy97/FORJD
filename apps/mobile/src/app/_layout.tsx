@@ -150,7 +150,7 @@ export default function RootLayout() {
  * added here is over-protected (redirected when it should not be), which surfaces
  * immediately as a broken screen rather than silently as reachable-while-signed-out.
  */
-const PUBLIC_ROUTES = new Set(['welcome', 'login', 'signup']);
+const PUBLIC_ROUTES = new Set(['welcome', 'login', 'signup', 'check-email']);
 
 /** Redirects to /welcome for any authenticated route when there is no session. Separated
  * from RootLayout so the `useSegments` read (and the resulting extra render on route

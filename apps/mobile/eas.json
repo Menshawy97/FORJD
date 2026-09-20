@@ -8,14 +8,16 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "API_BASE_URL": "http://localhost:3000"
+        "API_BASE_URL": "http://localhost:3000",
+        "GOOGLE_WEB_CLIENT_ID": "772363715082-v5gvnt94vc2t9948aq6m0aesmppe8qs0.apps.googleusercontent.com"
       }
     },
     "staging": {
       "distribution": "internal",
       "channel": "staging",
       "env": {
-        "API_BASE_URL": "https://forjd-api-staging-772363715082.us-central1.run.app"
+        "API_BASE_URL": "https://forjd-api-staging-772363715082.us-central1.run.app",
+        "GOOGLE_WEB_CLIENT_ID": "772363715082-v5gvnt94vc2t9948aq6m0aesmppe8qs0.apps.googleusercontent.com"
       }
     },
     "production": {

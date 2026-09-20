@@ -214,6 +214,17 @@ const GLYPHS = {
       path('M6 5.6h12a1.4 1.4 0 0 1 1.4 1.4v11a1.4 1.4 0 0 1-1.4 1.4H6A1.4 1.4 0 0 1 4.6 18V7A1.4 1.4 0 0 1 6 5.6zM4.6 10h14.8M8.6 3.8v3.4M15.4 3.8v3.4'),
     ],
   },
+  /**
+   * The "Check your email" tile's envelope. Not in the prototype's glyph set (that screen has no
+   * design of its own); drawn in the same 1.6-weight outline style as its neighbours.
+   */
+  mail: {
+    viewBox: '0 0 24 24',
+    shapes: [
+      { kind: 'rect', x: 3, y: 5, width: 18, height: 14, rx: 3 },
+      path('M3.5 7.5l8.5 6 8.5-6'),
+    ],
+  },
   camera: {
     viewBox: '0 0 24 24',
     shapes: [

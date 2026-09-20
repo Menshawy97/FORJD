@@ -15,7 +15,11 @@ collected a date of birth at signup and nothing checked one.
    `ageInYears` / `isOldEnough`, counted on calendar parts so a timezone cannot shift a day). The
    user chose 16 on 2026-09-19; the lawyer may move it, and it is a one-line change.
 2. **Asked once, on the "Your Profile" step** that every new account passes through -- email
-   sign-ups and Google/Apple sign-ups alike (design screenshot `signuppage2.png`).
+   sign-ups and Google/Apple sign-ups alike (design screenshot `signuppage2.png`). With email confirmation on (staging, and the
+   intended production setting) an email sign-up gets no session, so the app shows a "Check your
+   email" screen first and the "Your Profile" step comes right after the first login, via the
+   signed-in gate. That sign-up also clears any login left on the phone from an earlier account,
+   so it cannot be mistaken for the new one.
 3. **Enforced on the server, not only in the app** (rule 12). `JwtAuthGuard` refuses every route
    for an account with no date of birth (`403 date_of_birth_required`) except those marked
    `@AllowWithoutDateOfBirth()`: read your own account, give the date, upload the avatar that
