@@ -2,6 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import type { PublicProfileResponse } from '@forjd/contracts';
+
 import { getAthlete } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
@@ -9,32 +11,37 @@ import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
+import {
+  PersonalRecords,
+  PrivacyNote,
+  RecentSessions,
+  StatTiles,
+} from '@/features/athlete/athlete-sections';
 import { colors } from '@/theme/tokens';
 
 // Ports the prototype's `s_athlete()`. Reached from `privacy.tsx`'s "Preview my public profile"
 // row (self-view) and from a public-profile row on the Rank tab (a stranger-view, with
 // `from=rank` so Back returns there). `getAthlete()` takes any userId.
 //
-// Two deliberate divergences from the prototype, both forced by the real backend
+// Phase 10N made this the full profile: identity, the three stat tiles (city rank, score, streak),
+// personal records, recent sessions and the "never public" footnote, from `public profile.png`
+// and `s_athlete()`. The tiles appear only for an athlete who is on this month's leaderboard, and
+// health data (sleep, HRV, body composition, InBody) is not in the response at all.
+//
+// One deliberate divergence from the prototype, forced by the real backend
 // (apps/api/src/athletes/athletes.service.ts):
 //
-// 1. **Identity only.** §11 Q4's resolution: the stat tiles, personal records and recent
-//    sessions all need Phase 10 leaderboard/analytics data that does not exist, so they are
-//    omitted rather than faked with placeholder numbers. The footnote card describing that
-//    content is omitted too — it would describe screen content that is not there.
-// 2. **One generic error state, not the prototype's stranger-specific "this profile is
+// **One generic error state, not the prototype's stranger-specific "this profile is
 //    private" message.** The backend makes a private profile and a nonexistent one return
 //    byte-identical 404s on purpose — accounts hold health data, and a distinguishable
 //    refusal would be an enumeration oracle. Reproducing the prototype's specific copy for a
 //    404 would leak exactly the distinction the backend refuses to make. The self-view
 //    "your profile is private" nudge below is NOT this case: self always gets data back
 //    regardless of the privacy flag (see athletes.service.ts), so it renders from a real
-//    successful response, not from a refusal.
+//    successful response, not from a refusal. (The leaderboard shows a private athlete's name
+//    but does not link to them, so a stranger never reaches this refusal from Rank.)
 //
-// A THIRD divergence — "no handle line" — used to be listed here, reflecting the slice-2
-// decision that the product had no handle concept at all. ADR-019 reverses that decision:
-// `s_athlete()`'s own `@handle` line (immediately below the name, above the city/rank row)
-// now renders for real, from `PublicProfileResponse.username`, and is `null` rather than
+// The `@handle` line renders for real from `PublicProfileResponse.username` (ADR-019), and is
 // omitted for the pre-ADR-019 accounts that predate the field.
 //
 // `PublicProfileResponse` never includes privacy flags (by design — see the contract's own
@@ -50,12 +57,10 @@ export default function AthleteScreen() {
   const publicProfile = Array.isArray(params.publicProfile)
     ? params.publicProfile[0]
     : params.publicProfile;
-  const [profile, setProfile] = useState<{
-    displayName: string | null;
-    username: string | null;
-    city: string | null;
-    isSelf: boolean;
-  } | null>(null);
+  const [profile, setProfile] = useState<Pick<
+    PublicProfileResponse,
+    'displayName' | 'username' | 'city' | 'isSelf' | 'stats' | 'personalRecords' | 'recentSessions'
+  > | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,6 +87,11 @@ export default function AthleteScreen() {
           username: athlete.username,
           city: athlete.city,
           isSelf: athlete.isSelf,
+          // `?? ` because the app and the API deploy separately: an API from before Phase 10N
+          // answers without these three, and the identity part must still render.
+          stats: athlete.stats ?? null,
+          personalRecords: athlete.personalRecords ?? [],
+          recentSessions: athlete.recentSessions ?? [],
         });
       })
       .catch((cause: unknown) => {
@@ -168,16 +178,27 @@ export default function AthleteScreen() {
                   {`@${profile.username}`}
                 </Text>
               )}
-              {profile.city && (
+              {(profile.stats || profile.city) && (
                 <View className="mt-2 flex-row items-center" style={{ gap: 6 }}>
                   <Icon name="pin" size={13} color={colors.metadata} />
                   <Text className="font-archivo text-[11.5px] font-medium text-metadata">
-                    {profile.city}
+                    {profile.stats
+                      ? `${profile.stats.cityName} · #${profile.stats.cityRank} this month`
+                      : profile.city}
                   </Text>
                 </View>
               )}
             </View>
           </View>
+        )}
+
+        {profile && !isPrivateSelfView && (
+          <>
+            {profile.stats && <StatTiles stats={profile.stats} />}
+            <PersonalRecords records={profile.personalRecords} />
+            <RecentSessions sessions={profile.recentSessions} />
+            <PrivacyNote />
+          </>
         )}
       </ScrollView>
 

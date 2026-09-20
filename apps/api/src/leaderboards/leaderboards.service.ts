@@ -20,6 +20,15 @@ import { CityAthleteRow, LeaderboardsRepository } from './leaderboards.repositor
 /** Used to date a board that has no city to date it by: not opted in, or no city yet. */
 const NO_CITY_TIME_ZONE = 'UTC';
 
+/** One athlete's place on this month's board. */
+export interface AthleteStanding {
+  cityName: string;
+  citySlug: string;
+  rank: number;
+  score: number;
+  periodLabel: string;
+}
+
 interface CityContext {
   name: string;
   slug: string;
@@ -56,7 +65,7 @@ export class LeaderboardsService {
     private readonly snapshots: LeaderboardSnapshotRepository,
   ) {}
 
-  async get(viewer: User, query: LeaderboardQuery, now: Date = new Date()): Promise<LeaderboardResponse> {
+  async get(viewer: Pick<User, 'id'>, query: LeaderboardQuery, now: Date = new Date()): Promise<LeaderboardResponse> {
     const { metric, period } = query;
 
     // Strength, running and HYROX have no score yet. The chip is real and the answer is a designed
@@ -101,6 +110,25 @@ export class LeaderboardsService {
       minCohortSize: MIN_COHORT_SIZE,
       me: { rank: me.rank, score: me.score, topPercent: topPercent(me.rank, ranked.length), delta: deltaOf(me) },
       rows: ranked.slice(from - 1, to).map((entry) => this.toRow(entry, byId.get(entry.userId) as CityAthleteRow, viewer.id, deltaOf(entry))),
+    };
+  }
+
+  /**
+   * Where one athlete stands on this month's city Activity board, for their public profile
+   * (Phase 10N). `null` unless they are actually ranked: not joined, no city, no eligible
+   * session, or a city below the minimum all read as "no standing", so a profile can never show
+   * a rank the leaderboard itself would not show. It is the same computation as `get`, so the
+   * two cannot disagree.
+   */
+  async standingFor(userId: string, now: Date = new Date()): Promise<AthleteStanding | null> {
+    const board = await this.get({ id: userId }, { metric: 'activity', period: 'month', window: 0 }, now);
+    if (board.status !== 'ranked' || !board.me || !board.city) return null;
+    return {
+      cityName: board.city.name,
+      citySlug: board.city.slug,
+      rank: board.me.rank,
+      score: board.me.score,
+      periodLabel: board.periodLabel,
     };
   }
 

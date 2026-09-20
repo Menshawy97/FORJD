@@ -85,6 +85,47 @@ describe('LeaderboardsService', () => {
 
   const get = (service: LeaderboardsService, over: Partial<LeaderboardQuery> = {}) => service.get(viewer, query(over), NOW);
 
+  describe('standingFor (the public profile tiles)', () => {
+    it("returns the athlete's rank, score, city and window on the month board", async () => {
+      const { service } = build({ athletes: cohort(10, 5) });
+
+      const standing = await service.standingFor(viewer.id, NOW);
+
+      // Athlete number 5 of 10 is ranked 6th (higher n trained more).
+      expect(standing).toEqual({
+        cityName: 'Alexandria',
+        citySlug: SLUG,
+        rank: 6,
+        score: expect.any(Number),
+        periodLabel: 'Sep 2026',
+      });
+    });
+
+    it('asks for the month board with no neighbours, for the athlete it is given', async () => {
+      const { service, privacyCalls } = build({ athletes: cohort(10, 5) });
+
+      await service.standingFor(viewer.id, NOW);
+
+      expect(privacyCalls).toEqual([viewer.id]);
+    });
+
+    it.each([
+      ['has not joined', { privacy: { leaderboardOptIn: false } }],
+      ['has no city yet', { latest: null }],
+      ['is in a city below the minimum', { athletes: cohort(MIN_COHORT_SIZE - 1, 2) }],
+    ])('is null for an athlete who %s', async (_label, options) => {
+      const { service } = build(options as Parameters<typeof build>[0]);
+
+      expect(await service.standingFor(viewer.id, NOW)).toBeNull();
+    });
+
+    it('defaults to the current time', async () => {
+      const { service } = build({ athletes: cohort(10, 5) });
+
+      expect((await service.standingFor(viewer.id))?.rank).toBeGreaterThan(0);
+    });
+  });
+
   describe('a ranked board', () => {
     it('ranks the city, marks the caller, and centres the window on them (44-50 for 47th in the design)', async () => {
       const { service } = build({ athletes: cohort(60, 20) });

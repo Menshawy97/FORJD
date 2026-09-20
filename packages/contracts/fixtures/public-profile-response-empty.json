@@ -6,5 +6,8 @@
   "city": null,
   "trainingGoals": [],
   "activities": [],
-  "isSelf": false
+  "isSelf": false,
+  "stats": null,
+  "personalRecords": [],
+  "recentSessions": []
 }

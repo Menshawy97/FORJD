@@ -196,6 +196,16 @@ export const responseFixtures = {
       trainingGoals: ['get_stronger', 'improve_endurance'],
       activities: ['strength', 'hyrox'],
       isSelf: false,
+      stats: { cityName: 'Cairo', cityRank: 47, score: 92.7, streakWeeks: 6, periodLabel: 'Sep 2026' },
+      personalRecords: [
+        { exerciseName: 'Deadlift', weightKg: 180 },
+        { exerciseName: 'Back Squat', weightKg: 140 },
+        { exerciseName: 'Bench Press', weightKg: 100 },
+      ],
+      recentSessions: [
+        { name: 'Upper Body Push', startedAt: '2026-09-19T10:00:00.000Z', volumeKg: 14200, durationSeconds: 3600 },
+        { name: '5K Run', startedAt: '2026-09-16T06:30:00.000Z', volumeKg: 0, durationSeconds: 1422 },
+      ],
     },
   },
 
@@ -214,6 +224,9 @@ export const responseFixtures = {
       trainingGoals: [],
       activities: [],
       isSelf: false,
+      stats: null,
+      personalRecords: [],
+      recentSessions: [],
     },
   },
 

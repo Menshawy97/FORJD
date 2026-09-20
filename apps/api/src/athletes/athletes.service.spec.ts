@@ -1,8 +1,11 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrivacySettings, Profile, User } from '@forjd/domain';
 
+import type { CityResolverService } from '../cities/city-resolver.service';
+import type { LeaderboardsService } from '../leaderboards/leaderboards.service';
 import { PrivacyRepository } from '../privacy/privacy.repository';
 import { UsersRepository } from '../users/users.repository';
+import type { AthleteStatsRepository } from './athlete-stats.repository';
 import { AthletesService } from './athletes.service';
 
 /**
@@ -54,14 +57,29 @@ describe('AthletesService', () => {
 
   let usersRepository: { findProfile: jest.Mock };
   let privacyRepository: { find: jest.Mock };
+  let statsRepository: { personalRecords: jest.Mock; recentSessions: jest.Mock; weekStreak: jest.Mock };
+  let leaderboards: { standingFor: jest.Mock };
+  let cities: { findBySlug: jest.Mock };
   let service: AthletesService;
+
+  const NOW = new Date('2026-09-23T12:00:00Z');
 
   beforeEach(() => {
     usersRepository = { findProfile: jest.fn().mockResolvedValue(ownerProfile) };
     privacyRepository = { find: jest.fn().mockResolvedValue(privacy({ publicProfile: true })) };
+    statsRepository = {
+      personalRecords: jest.fn().mockResolvedValue([]),
+      recentSessions: jest.fn().mockResolvedValue([]),
+      weekStreak: jest.fn().mockResolvedValue(0),
+    };
+    leaderboards = { standingFor: jest.fn().mockResolvedValue(null) };
+    cities = { findBySlug: jest.fn().mockReturnValue({ timezone: 'Africa/Cairo' }) };
     service = new AthletesService(
       usersRepository as unknown as UsersRepository,
       privacyRepository as unknown as PrivacyRepository,
+      statsRepository as unknown as AthleteStatsRepository,
+      leaderboards as unknown as LeaderboardsService,
+      cities as unknown as CityResolverService,
     );
   });
 
@@ -76,6 +94,9 @@ describe('AthletesService', () => {
         trainingGoals: ['get_stronger'],
         activities: ['strength', 'hyrox'],
         isSelf: false,
+        stats: null,
+        personalRecords: [],
+        recentSessions: [],
       });
     });
 
@@ -107,6 +128,98 @@ describe('AthletesService', () => {
       ]) {
         expect(result).not.toHaveProperty(field);
       }
+    });
+  });
+
+  describe('the stats a profile carries (Phase 10N)', () => {
+    const standing = {
+      cityName: 'Cairo',
+      citySlug: 'cairo-eg-360630',
+      rank: 47,
+      score: 92.7,
+      periodLabel: 'Sep 2026',
+    };
+
+    it('shows the rank, score and streak when the athlete is ranked this month', async () => {
+      leaderboards.standingFor.mockResolvedValue(standing);
+      statsRepository.weekStreak.mockResolvedValue(6);
+
+      const result = await service.getPublicProfile(viewer, ownerId, NOW);
+
+      expect(result.stats).toEqual({
+        cityName: 'Cairo',
+        cityRank: 47,
+        score: 92.7,
+        streakWeeks: 6,
+        periodLabel: 'Sep 2026',
+      });
+    });
+
+    it('hides the whole tile row, streak included, for an athlete who is not ranked', async () => {
+      leaderboards.standingFor.mockResolvedValue(null);
+
+      const result = await service.getPublicProfile(viewer, ownerId, NOW);
+
+      expect(result.stats).toBeNull();
+      expect(statsRepository.weekStreak).not.toHaveBeenCalled();
+    });
+
+    it("asks for the standing of the profile's owner, not the viewer", async () => {
+      await service.getPublicProfile(viewer, ownerId, NOW);
+
+      expect(leaderboards.standingFor).toHaveBeenCalledWith(ownerId, NOW);
+    });
+
+    it("dates the streak in the ranked city's own calendar", async () => {
+      leaderboards.standingFor.mockResolvedValue(standing);
+
+      await service.getPublicProfile(viewer, ownerId, NOW);
+
+      expect(cities.findBySlug).toHaveBeenCalledWith('cairo-eg-360630');
+      expect(statsRepository.weekStreak).toHaveBeenCalledWith(ownerId, 'Africa/Cairo', NOW);
+    });
+
+    it('falls back to UTC for a city missing from the current dataset', async () => {
+      leaderboards.standingFor.mockResolvedValue(standing);
+      cities.findBySlug.mockReturnValue(null);
+
+      await service.getPublicProfile(viewer, ownerId, NOW);
+
+      expect(statsRepository.weekStreak).toHaveBeenCalledWith(ownerId, 'UTC', NOW);
+    });
+
+    it('lists the four best records and the last three sessions, as plain values', async () => {
+      statsRepository.personalRecords.mockResolvedValue([
+        { exerciseName: 'Deadlift', weightKg: 180 },
+        { exerciseName: 'Back Squat', weightKg: 140 },
+      ]);
+      statsRepository.recentSessions.mockResolvedValue([
+        { name: 'Upper Body Push', startedAt: new Date('2026-09-19T10:00:00Z'), volumeKg: 14200, durationSeconds: 3600 },
+        { name: '5K Run', startedAt: new Date('2026-09-16T06:30:00Z'), volumeKg: 0, durationSeconds: null },
+      ]);
+
+      const result = await service.getPublicProfile(viewer, ownerId, NOW);
+
+      expect(statsRepository.personalRecords).toHaveBeenCalledWith(ownerId, 4);
+      expect(statsRepository.recentSessions).toHaveBeenCalledWith(ownerId, 3);
+      expect(result.personalRecords).toEqual([
+        { exerciseName: 'Deadlift', weightKg: 180 },
+        { exerciseName: 'Back Squat', weightKg: 140 },
+      ]);
+      expect(result.recentSessions).toEqual([
+        { name: 'Upper Body Push', startedAt: '2026-09-19T10:00:00.000Z', volumeKg: 14200, durationSeconds: 3600 },
+        { name: '5K Run', startedAt: '2026-09-16T06:30:00.000Z', volumeKg: 0, durationSeconds: null },
+      ]);
+    });
+
+    it('reads none of it for a profile the viewer may not see', async () => {
+      privacyRepository.find.mockResolvedValue(privacy({ publicProfile: false }));
+
+      await service.getPublicProfile(viewer, ownerId, NOW).catch(() => undefined);
+
+      expect(leaderboards.standingFor).not.toHaveBeenCalled();
+      expect(statsRepository.personalRecords).not.toHaveBeenCalled();
+      expect(statsRepository.recentSessions).not.toHaveBeenCalled();
     });
   });
 
