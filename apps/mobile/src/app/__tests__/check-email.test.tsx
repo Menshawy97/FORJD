@@ -14,6 +14,27 @@ jest.mock('@/auth/secureStorage', () => ({
 
 jest.mock('@/auth/apiClient', () => ({ resendConfirmation: jest.fn() }));
 
+// The real countdown is an interval; `renderApp` swaps fake timers for real ones right after the
+// first render, which would strand an interval started on arrival. The hook has its own timer
+// tests (auth/__tests__/use-resend-cooldown.test.ts), so the screen is tested against a double
+// that records `start()` and only counts down when a test asks it to.
+let mockStartCountsDown = false;
+const mockStart = jest.fn();
+jest.mock('@/auth/use-resend-cooldown', () => {
+  const { useCallback, useState } = jest.requireActual('react');
+  return {
+    useResendCooldown: (seconds: number) => {
+      const [secondsLeft, setSecondsLeft] = useState(0);
+      // Stable across renders, like the real hook's, so the screen's arrival effect runs once.
+      const start = useCallback(() => {
+        mockStart(seconds);
+        if (mockStartCountsDown) setSecondsLeft(seconds);
+      }, [seconds]);
+      return { secondsLeft, start };
+    },
+  };
+});
+
 import { AxiosError } from 'axios';
 import { resendConfirmation } from '@/auth/apiClient';
 
@@ -33,6 +54,27 @@ describe('check-email screen - resend', () => {
   beforeEach(() => {
     (resendConfirmation as jest.Mock).mockReset();
     (resendConfirmation as jest.Mock).mockResolvedValue(undefined);
+    mockStart.mockClear();
+    mockStartCountsDown = false;
+  });
+
+  // The sign-up that led here has just sent an email, and Supabase keeps about a minute between
+  // emails to one address, so a resend tapped straight away would be silently dropped.
+  it('starts the countdown as soon as it opens, for a 60-second wait', async () => {
+    const { findByText } = await renderApp({ initialUrl: url });
+
+    await findByText('Check your email');
+
+    expect(mockStart).toHaveBeenCalledTimes(1);
+    expect(mockStart).toHaveBeenCalledWith(60);
+  });
+
+  it('starts no countdown when the address is unknown, since nothing was just sent', async () => {
+    const { findByText } = await renderApp({ initialUrl: '/check-email' });
+
+    await findByText('Check your email');
+
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
   it('sends the confirmation email again to the address on screen and says so', async () => {
@@ -47,6 +89,7 @@ describe('check-email screen - resend', () => {
 
   it('shows a countdown afterwards and ignores taps while it runs', async () => {
     const { findByText } = await renderApp({ initialUrl: url });
+    mockStartCountsDown = true;
 
     fireEvent.press(await findByText('Resend email'));
     const counting = await findByText(/^Resend in \d+s$/);
@@ -68,6 +111,7 @@ describe('check-email screen - resend', () => {
   it('a rate-limited send asks for patience and starts the countdown', async () => {
     (resendConfirmation as jest.Mock).mockRejectedValue(serverError(429));
     const { findByText } = await renderApp({ initialUrl: url });
+    mockStartCountsDown = true;
 
     fireEvent.press(await findByText('Resend email'));
 

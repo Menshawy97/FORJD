@@ -218,8 +218,15 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { error } = await this.client.auth.resend({ type: 'signup', email });
 
     if (error) {
-      this.logger.warn(`resendConfirmation failed: ${error.message}`);
+      this.logger.warn(`resendConfirmation failed (${error.code ?? error.status}): ${error.message}`);
+      return;
     }
+
+    // Supabase answers "ok" even when it sends nothing (unknown or already-confirmed address, a
+    // send inside its minimum gap between emails), so this line only says the request was
+    // accepted, not that mail went out. It is there to make that gap visible when someone asks
+    // why nothing arrived. The address is deliberately not logged.
+    this.logger.log('resendConfirmation accepted by the provider');
   }
 
   /**

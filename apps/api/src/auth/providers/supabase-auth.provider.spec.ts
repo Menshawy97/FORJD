@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Logger, UnauthorizedException } from '@nestjs/common';
 import { AuthError } from '@supabase/supabase-js';
 
 import { SupabaseAuthProvider } from './supabase-auth.provider';
@@ -264,6 +264,33 @@ describe('SupabaseAuthProvider', () => {
       auth.resend.mockResolvedValue({ error: authError('User not found', 'user_not_found') });
 
       await expect(provider.resendConfirmation('nobody@example.com')).resolves.toBeUndefined();
+    });
+
+    // Supabase answers "ok" even when it sends nothing (unknown or already-confirmed address,
+    // a send inside its minimum gap), so the outcome is logged to make a silent non-send visible.
+    // The address itself never goes in the log.
+    it('logs that the provider accepted the request, without the address', async () => {
+      const log = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+      auth.resend.mockResolvedValue({ error: null });
+
+      await provider.resendConfirmation('a@example.com');
+
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('resendConfirmation accepted'));
+      expect(JSON.stringify(log.mock.calls)).not.toContain('a@example.com');
+      log.mockRestore();
+    });
+
+    it('logs the provider error code when it refuses, without the address', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      auth.resend.mockResolvedValue({
+        error: authError('For security purposes, you can only request this after 59 seconds', 'over_email_send_rate_limit'),
+      });
+
+      await provider.resendConfirmation('a@example.com');
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('over_email_send_rate_limit'));
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('a@example.com');
+      warn.mockRestore();
     });
   });
 

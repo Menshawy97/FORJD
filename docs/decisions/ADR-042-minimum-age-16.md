@@ -24,7 +24,10 @@ collected a date of birth at signup and nothing checked one.
    registered and an unknown one read the same, like forgot-password), is limited to three calls
    per fifteen minutes because each sends real mail, and writes no audit row (there is no user
    to attach it to without a lookup, and the raw address would need the account-deletion
-   scrub). The app adds a 60-second countdown after each send.
+   scrub). The app runs a 60-second countdown from the moment the screen opens (the sign-up just sent an
+   email, and Supabase keeps about a minute between emails to one address) and again after each
+   send. Supabase answers "ok" even when it sends nothing, so the API logs each resend's outcome
+   (never the address) to make a silent non-send visible.
 3. **Enforced on the server, not only in the app** (rule 12). `JwtAuthGuard` refuses every route
    for an account with no date of birth (`403 date_of_birth_required`) except those marked
    `@AllowWithoutDateOfBirth()`: read your own account, give the date, upload the avatar that
