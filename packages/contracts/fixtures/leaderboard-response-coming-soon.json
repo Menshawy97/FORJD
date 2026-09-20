@@ -1,0 +1,14 @@
+{
+  "status": "coming_soon",
+  "metric": "strength",
+  "period": "month",
+  "city": {
+    "name": "Alexandria",
+    "slug": "alexandria-eg"
+  },
+  "periodLabel": "Sep 2026",
+  "cohortSize": 0,
+  "minCohortSize": 5,
+  "me": null,
+  "rows": []
+}
