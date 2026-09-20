@@ -20,8 +20,15 @@ jest.mock('@/integrations/location/location-provider', () => ({
   requestCoarsePermission: jest.fn(),
 }));
 
+// ADR-048: allowing location also keeps the device's copy of that consent, which is what lets a
+// workout decide, offline and at its start, whether to read a position.
+jest.mock('@/store/leaderboard-consent', () => ({
+  rememberLocationConsent: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { updatePrivacy, updateProfile } from '@/auth/apiClient';
 import { requestCoarsePermission } from '@/integrations/location/location-provider';
+import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import LocationScreen from '../location';
 
 const METRICS = {
@@ -111,6 +118,34 @@ describe('LocationScreen', () => {
       expect(updatePrivacy).not.toHaveBeenCalled();
       resolvePermission('granted');
       await waitFor(() => expect(updatePrivacy).toHaveBeenCalledTimes(1));
+    });
+
+    it('keeps the on-device copy of the consent, so a workout knows to read a position', async () => {
+      const { findByText } = await render(<LocationScreen />);
+
+      await fireEvent.press(await findByText('Allow Location'));
+
+      await waitFor(() => expect(rememberLocationConsent).toHaveBeenCalledWith(true));
+    });
+
+    it('does not keep a copy when the consent was not recorded on the server', async () => {
+      (updatePrivacy as jest.Mock).mockRejectedValue(new Error('boom'));
+      const { findByText } = await render(<LocationScreen />);
+
+      await fireEvent.press(await findByText('Allow Location'));
+      await findByText('Could not update your location. Please try again.');
+
+      expect(rememberLocationConsent).not.toHaveBeenCalled();
+    });
+
+    it('does not keep a copy when the system permission was declined', async () => {
+      (requestCoarsePermission as jest.Mock).mockResolvedValue('denied');
+      const { findByText } = await render(<LocationScreen />);
+
+      await fireEvent.press(await findByText('Allow Location'));
+      await findByText(/location is off for forjd/i);
+
+      expect(rememberLocationConsent).not.toHaveBeenCalled();
     });
 
     it('never writes a city: the server derives it from the position a workout starts with', async () => {

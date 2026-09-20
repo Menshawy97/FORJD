@@ -71,6 +71,13 @@ export interface LiveSession {
   /** Applies to every set in this workout -- the design's own wording on the rest card. */
   restSeconds: number;
   exercises: LiveExercise[];
+  /**
+   * The coarse position read when the workout started, if the person allowed location for
+   * leaderboards (ADR-048). Absent when the workout starts, because the read never holds the start
+   * up (rule 6): it arrives afterwards and is written back into the snapshot so a crash keeps it.
+   * Sent with the upload; the server turns it into a city and discards it.
+   */
+  startLocation?: { latitude: number; longitude: number } | null;
 }
 
 /**
@@ -477,8 +484,14 @@ export function setDurationSeconds(currentSeconds: number | null, raw: string): 
  *   `isCompleted`. Dropping the unticked ones would quietly rewrite what the athlete did.
  * - **Exercises with no sets are dropped**, because the contract requires at least one and an
  *   exercise with none has nothing to say.
- * - **`isLiveTracked` is false.** It means "streamed live to the server as it happened", which
- *   this never is — the whole design logs locally first (rule 6).
+ * - **`isLiveTracked` is true** (ADR-044). It means "run through the live workout runner, with
+ *   real start and end timestamps", not "streamed to the server as it happened": the runner logs
+ *   on the device first so a workout works with no signal (rule 6), and uploads afterwards. It is
+ *   what separates a workout done in the app from one typed in later, and the leaderboard counts
+ *   only the former. It is a speed bump, not attestation. Sessions uploaded before Phase 10 say
+ *   `false` and never rank.
+ * - **`startLocation` is the position, never a city.** The server derives the city (and the slug
+ *   that is the leaderboard key) itself, and discards the position (ADR-048).
  */
 export function toUploadRequest(
   session: LiveSession,
@@ -494,7 +507,8 @@ export function toUploadRequest(
     startedAt: session.startedAt.toISOString(),
     endedAt: endedAt.toISOString(),
     durationSeconds: Math.max(0, Math.round(durationSeconds)),
-    isLiveTracked: false,
+    isLiveTracked: true,
+    startLocation: session.startLocation ?? null,
     exercises: session.exercises
       .filter((exercise) => exercise.sets.length > 0)
       .map((exercise) => ({

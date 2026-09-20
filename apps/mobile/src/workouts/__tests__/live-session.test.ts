@@ -440,3 +440,48 @@ describe('editing a timed set as mm:ss', () => {
     expect(setDurationSeconds(null, '30')).toBe(30);
   });
 });
+
+// Phase 10 (ADR-044, ADR-048). What the upload says about where and how a workout was run.
+describe('toUploadRequest and the leaderboard facts', () => {
+  const POSITION = { latitude: 31.202, longitude: 29.916 };
+
+  it('marks a workout run through the live runner as live-tracked (ADR-044)', () => {
+    // It means "run through the runner with real start and end timestamps", not "streamed as it
+    // happened": the runner logs on the device first, so a workout works with no signal.
+    expect(toUploadRequest(session(), LATER, 60).isLiveTracked).toBe(true);
+  });
+
+  it('carries the position the workout started with', () => {
+    const request = toUploadRequest({ ...session(), startLocation: POSITION }, LATER, 60);
+
+    expect(request.startLocation).toEqual(POSITION);
+  });
+
+  it('says there was no position, rather than omitting the field, when none was captured', () => {
+    expect(toUploadRequest(session(), LATER, 60).startLocation).toBeNull();
+    expect(toUploadRequest({ ...session(), startLocation: null }, LATER, 60).startLocation).toBeNull();
+  });
+
+  it('never sends a city or a slug: the server derives them, and ignores any it is sent', () => {
+    const request = toUploadRequest({ ...session(), startLocation: POSITION }, LATER, 60);
+
+    expect(request).not.toHaveProperty('city');
+    expect(request).not.toHaveProperty('citySlug');
+  });
+
+  it('keeps the position through a crash and resume, because the snapshot carries it', () => {
+    const started = { ...session(), startLocation: POSITION };
+    const snapshot = JSON.parse(JSON.stringify(started)) as LiveSession;
+
+    const restored = restoreSession(
+      { ...snapshot, startedAt: new Date(snapshot.startedAt) },
+      { status: 'in_progress', completedSetKeys: [] },
+    );
+
+    expect(toUploadRequest(restored, LATER, 60).startLocation).toEqual(POSITION);
+  });
+
+  it('starts a session with no position, which arrives afterwards without holding the start up', () => {
+    expect(session().startLocation ?? null).toBeNull();
+  });
+});

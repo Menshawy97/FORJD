@@ -58,6 +58,12 @@ jest.mock('@/store/workout-session', () => ({
   enqueueSessionUpload: jest.fn(),
 }));
 
+// ADR-048: the start position is read after the workout has started and never awaited by it. It
+// is mocked here so each test decides when, whether and how it answers.
+jest.mock('@/workouts/capture-start-location', () => ({
+  captureStartLocation: jest.fn(),
+}));
+
 // Every API function rejects. Nothing in the live flow may depend on one.
 jest.mock('@/auth/apiClient', () => ({
   getWorkoutTemplate: jest.fn().mockRejectedValue(new Error('network is down')),
@@ -76,6 +82,7 @@ import {
   replaySessionState,
   saveSessionSnapshot,
 } from '@/store/workout-session';
+import { captureStartLocation } from '@/workouts/capture-start-location';
 import {
   consumeCompletedTimedSet,
   consumePendingLiveSession,
@@ -152,6 +159,7 @@ beforeEach(() => {
     durationSeconds: 0,
     completedSetKeys: [],
   });
+  (captureStartLocation as jest.Mock).mockResolvedValue(null);
 });
 
 describe('formatElapsed', () => {
@@ -739,6 +747,125 @@ describe('editing the session in flight', () => {
   });
 });
 
+describe('the start position (Phase 10, ADR-048)', () => {
+  const POSITION = { latitude: 31.202, longitude: 29.916 };
+
+  const finishWorkout = async (findByLabelText: (label: string) => Promise<never>) => {
+    await fireEvent.press(await findByLabelText('Complete set 1 of Bench Press'));
+    await fireEvent.press(await findByLabelText('Finish workout'));
+    await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
+    return (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+  };
+
+  it('asks for the position once, when a workout starts', async () => {
+    stageSession();
+    await render(<LiveScreen />);
+
+    await waitFor(() => expect(captureStartLocation).toHaveBeenCalledTimes(1));
+  });
+
+  it('starts, logs and finishes without waiting for the position (rule 6)', async () => {
+    // The read never answers, as with a GPS that cannot get a fix.
+    (captureStartLocation as jest.Mock).mockReturnValue(new Promise(() => undefined));
+    stageSession();
+    const { findByLabelText, findByText } = await render(<LiveScreen />);
+
+    expect(await findByText('Live · Upper Body Push')).toBeTruthy();
+    const payload = await finishWorkout(findByLabelText as never);
+
+    expect(payload.startLocation).toBeNull();
+    expect(payload.isLiveTracked).toBe(true);
+  });
+
+  it('sends the position with the upload once it has arrived', async () => {
+    (captureStartLocation as jest.Mock).mockResolvedValue(POSITION);
+    stageSession();
+    const { findByLabelText } = await render(<LiveScreen />);
+
+    // Wait for the write-back below, which is the moment the position is part of the session.
+    await waitFor(() => expect(saveSessionSnapshot).toHaveBeenCalledTimes(2));
+    const payload = await finishWorkout(findByLabelText as never);
+
+    expect(payload.startLocation).toEqual(POSITION);
+  });
+
+  it('writes the position into the crash-recovery snapshot, so a force-kill keeps it', async () => {
+    (captureStartLocation as jest.Mock).mockResolvedValue(POSITION);
+    stageSession();
+    await render(<LiveScreen />);
+
+    await waitFor(() => expect(saveSessionSnapshot).toHaveBeenCalledTimes(2));
+    const [, sessionId, payload] = (saveSessionSnapshot as jest.Mock).mock.calls[1];
+    expect(sessionId).toBe('session-1');
+    expect(payload).toMatchObject({ id: 'session-1', startLocation: POSITION });
+  });
+
+  it('does not bring the snapshot back if the position arrives after the workout has finished', async () => {
+    // Finish clears the snapshot; a late position must not write it again, or the next launch
+    // would find a snapshot for a workout that is already in the upload queue.
+    let deliver: (value: typeof POSITION) => void = () => undefined;
+    (captureStartLocation as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        deliver = resolve;
+      }),
+    );
+    stageSession();
+    const { findByLabelText } = await render(<LiveScreen />);
+
+    await finishWorkout(findByLabelText as never);
+    await waitFor(() => expect(clearSessionSnapshot).toHaveBeenCalledTimes(1));
+    deliver(POSITION);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(saveSessionSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not touch the snapshot when there is no position', async () => {
+    stageSession();
+    await render(<LiveScreen />);
+
+    await waitFor(() => expect(captureStartLocation).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(saveSessionSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('carries on normally when the position read fails', async () => {
+    (captureStartLocation as jest.Mock).mockRejectedValue(new Error('gps'));
+    stageSession();
+    const { findByLabelText, findByText } = await render(<LiveScreen />);
+
+    expect(await findByText('Live · Upper Body Push')).toBeTruthy();
+    const payload = await finishWorkout(findByLabelText as never);
+
+    expect(payload.startLocation).toBeNull();
+  });
+
+  it('does not read a position again when resuming an interrupted workout', async () => {
+    // A resumed workout already has whatever position it had; a second read would describe where
+    // the phone is now, not where the workout started.
+    const stored = {
+      id: 'session-1',
+      templateId: null,
+      name: 'Upper Body Push',
+      activity: 'strength',
+      startedAt: '2026-09-02T18:00:00.000Z',
+      status: 'in_progress',
+      restSeconds: 90,
+      exercises: [],
+    };
+    (getUnfinishedSessionSnapshot as jest.Mock).mockResolvedValue({
+      sessionId: 'session-1',
+      payload: stored,
+      startedAt: stored.startedAt,
+    });
+    const { findByText } = await render(<LiveScreen />);
+
+    expect(await findByText('Session resumed — your logged sets were recovered')).toBeTruthy();
+    expect(captureStartLocation).not.toHaveBeenCalled();
+  });
+});
+
 describe('the offline path', () => {
   /**
    * The proof `phase-3-plan.md` asks for by name. Every API function is mocked to reject at the
@@ -765,7 +892,8 @@ describe('the offline path', () => {
     // though every API call rejected.
     await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
     const payload = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
-    expect(payload).toMatchObject({ id: 'session-1', templateId: 'template-1', isLiveTracked: false });
+    // ADR-044: run through the live runner, so it counts, even though it was logged offline.
+    expect(payload).toMatchObject({ id: 'session-1', templateId: 'template-1', isLiveTracked: true });
     // Every set travels, ticked or not -- analytics filters on isCompleted rather than
     // assuming each row happened.
     expect(payload.exercises[0].sets).toHaveLength(2);
