@@ -121,6 +121,12 @@ jobs:
       # consumes their emitted types. Filtering to the API alone leaves them unbuilt.
       - run: pnpm -r build
 
+      # The city snapshot is a .json under src/, which `nest build` copies only because
+      # nest-cli.json lists it as an asset (ADR-045). Without that entry it exists in development
+      # and is missing from the container: a green CI, then a 500 on the first workout upload in
+      # staging. Load it through the COMPILED code, from dist, so that cannot happen unnoticed.
+      - run: node -e "const s = require('./apps/api/dist/cities/city-snapshot').loadCitySnapshotFromDisk(); if (s.count < 30000) process.exit(1); console.log('city snapshot ok:', s.count, 'rows')"
+
       # @forjd/domain has its own jest suite (exercise-vocabulary.spec.ts and onward) and no
       # Postgres dependency, so it runs here rather than getting a job of its own. `pnpm -r
       # build` above only type-checks these files as a build artifact; without this step they

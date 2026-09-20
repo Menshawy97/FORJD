@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { BodyModule } from './body/body.module';
 import { AthletesModule } from './athletes/athletes.module';
 import { ExercisesModule } from './exercises/exercises.module';
+import { CitiesModule } from './cities/cities.module';
 import { HealthDataModule } from './health-data/health-data.module';
 import { WhoopModule } from './integrations/whoop/whoop.module';
 import { ProgramsModule } from './programs/programs.module';
@@ -50,6 +51,7 @@ import { validateEnv } from './common/config/env-validation';
     AthletesModule,
     ExercisesModule,
     HealthDataModule,
+    CitiesModule,
     WhoopModule,
     ProgramsModule,
     NutritionModule,

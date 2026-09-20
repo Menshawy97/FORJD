@@ -259,4 +259,95 @@ describe('normalizeCities', () => {
       expect(normalizeCities([setagaya, tokyo], meta)).toEqual(normalizeCities([tokyo, setagaya], meta));
     });
   });
+
+  describe('metro dominance', () => {
+    const metro = city({
+      geonameId: 1000, name: 'Metro', countryCode: 'JP', latitude: 35.0, longitude: 139.0,
+      featureCode: 'PPLC', population: 4_000_000, timezone: 'Asia/Tokyo',
+    });
+    // 0.1 degrees of latitude is about 11 km.
+    const near = (over: Partial<GeonamesCity>): GeonamesCity =>
+      city({ geonameId: 2000, name: 'Ward', countryCode: 'JP', latitude: 35.1, longitude: 139.0, featureCode: 'PPL', population: 100_000, timezone: 'Asia/Tokyo', ...over });
+    const slugOf = (out: ReturnType<typeof normalizeCities>, id: number): unknown =>
+      out.rows.find((r) => r[col('geonameId')] === id)?.[col('slug')];
+
+    it('attaches a much smaller place close to a much larger one, whatever GeoNames calls it', () => {
+      const out = normalizeCities([metro, near({})], meta);
+      expect(slugOf(out, 2000)).toBe('metro-jp-1000');
+      expect(out.rows.find((r) => r[col('geonameId')] === 2000)?.[col('name')]).toBe('Metro');
+    });
+
+    it('attaches at exactly four times the population and not below it', () => {
+      expect(slugOf(normalizeCities([metro, near({ population: 1_000_000 })], meta), 2000)).toBe('metro-jp-1000');
+      expect(slugOf(normalizeCities([metro, near({ population: 1_000_001 })], meta), 2000)).toBe('ward-jp-2000');
+    });
+
+    it('keeps two comparable neighbours apart, as with Oakland and San Francisco', () => {
+      expect(slugOf(normalizeCities([metro, near({ population: 2_000_000 })], meta), 2000)).toBe('ward-jp-2000');
+    });
+
+    it('does not attach beyond the reach', () => {
+      expect(slugOf(normalizeCities([metro, near({ latitude: 35.4 })], meta), 2000)).toBe('ward-jp-2000');
+    });
+
+    it('does not attach across a border', () => {
+      expect(slugOf(normalizeCities([metro, near({ countryCode: 'KR' })], meta), 2000)).toBe('ward-kr-2000');
+    });
+
+    it('chooses the largest qualifying place when several are in reach', () => {
+      const bigger = city({
+        geonameId: 3000, name: 'Giant', countryCode: 'JP', latitude: 35.05, longitude: 139.1,
+        featureCode: 'PPLC', population: 9_000_000, timezone: 'Asia/Tokyo',
+      });
+      expect(slugOf(normalizeCities([metro, bigger, near({ population: 50_000 })], meta), 2000)).toBe('giant-jp-3000');
+    });
+
+    it('follows a chain to the root: a village near a town near a city', () => {
+      const town = near({ geonameId: 2100, name: 'Town', latitude: 35.2, population: 500_000 });
+      const village = near({ geonameId: 2200, name: 'Village', latitude: 35.4, population: 10_000 });
+      const out = normalizeCities([metro, town, village], meta);
+      expect(slugOf(out, 2100)).toBe('metro-jp-1000');
+      expect(slugOf(out, 2200)).toBe('metro-jp-1000');
+    });
+
+    it('leaves the root, and places out of every chain, as themselves', () => {
+      expect(slugOf(normalizeCities([metro], meta), 1000)).toBe('metro-jp-1000');
+    });
+
+    it('sends a district to the root of its parent, not to the parent', () => {
+      const town = near({ geonameId: 2100, name: 'Town', latitude: 35.2, population: 500_000 });
+      const district = near({ geonameId: 2300, name: 'District', latitude: 35.21, featureCode: 'PPLX', population: 300_000 });
+      const out = normalizeCities([metro, town, district], meta);
+      expect(slugOf(out, 2300)).toBe('metro-jp-1000');
+    });
+
+    it('sends a district to a dominant metro in reach rather than to a nearer satellite that is its own root', () => {
+      // 30 km from the metro, so the satellite is not itself attached to it.
+      const satellite = near({ geonameId: 2400, name: 'Satellite', latitude: 35.27, population: 500_000 });
+      const district = near({ geonameId: 2500, name: 'District', latitude: 35.25, featureCode: 'PPLX', population: 300_000 });
+      const out = normalizeCities([metro, satellite, district], meta);
+      expect(slugOf(out, 2400)).toBe('satellite-jp-2400');
+      expect(slugOf(out, 2500)).toBe('metro-jp-1000');
+    });
+
+    it('still uses the nearest larger place for a district when no place is four times its size', () => {
+      const satellite = near({ geonameId: 2400, name: 'Satellite', latitude: 35.27, population: 500_000 });
+      const district = near({ geonameId: 2500, name: 'District', latitude: 35.25, featureCode: 'PPLX', population: 300_000 });
+      const out = normalizeCities([satellite, district], meta);
+      expect(slugOf(out, 2500)).toBe('satellite-jp-2400');
+    });
+
+    it('takes the timezone of the root', () => {
+      const elsewhere = near({ timezone: 'Asia/Seoul' });
+      const out = normalizeCities([metro, elsewhere], meta);
+      const tz = out.rows.find((r) => r[col('geonameId')] === 2000)?.[col('timezoneIndex')];
+      expect(out.timezones[tz as number]).toBe('Asia/Tokyo');
+    });
+
+    it('is order independent', () => {
+      const town = near({ geonameId: 2100, name: 'Town', latitude: 35.2, population: 500_000 });
+      const village = near({ geonameId: 2200, name: 'Village', latitude: 35.4, population: 10_000 });
+      expect(normalizeCities([village, town, metro], meta)).toEqual(normalizeCities([metro, town, village], meta));
+    });
+  });
 });

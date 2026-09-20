@@ -26,6 +26,18 @@ export const SECTION_FEATURE_CODE = 'PPLX';
  */
 export const PARENT_MAX_KM = 30;
 
+/**
+ * Metro dominance: a place attaches to the largest place within {@link DOMINANCE_MAX_KM} that is
+ * at least {@link DOMINANCE_RATIO} times its size, in the same country. GeoNames lists the wards
+ * and suburbs of a big city as ordinary places (Tokyo's Chuo and Minato, Manhattan, Jersey City),
+ * so without this a Tokyo Station position resolves to "Chuo" and one metro area is split over
+ * dozens of boards. Comparable neighbours stay apart: Oakland and San Francisco are 2x, Giza and
+ * Cairo 2.2x, Yokohama and Tokyo 2.6x. Both numbers are product judgements, not measurements
+ * (ADR-045), and a wrong one is corrected by re-running the normalizer.
+ */
+export const DOMINANCE_RATIO = 4;
+export const DOMINANCE_MAX_KM = 25;
+
 export type NormalizedRow = [number, string, string, number, number, number, number, string];
 
 export interface NormalizedCities {
@@ -43,6 +55,8 @@ export interface NormalizedCities {
 export interface SluggedCity extends GeonamesCity {
   slug: string | null;
 }
+
+type Place = SluggedCity & { slug: string };
 
 const COORDINATE_DECIMALS = 4;
 const round = (value: number): number => {
@@ -98,30 +112,76 @@ export function assignSlugs(cities: readonly GeonamesCity[]): SluggedCity[] {
   });
 }
 
-/**
- * The nearest place, in the same country and within {@link PARENT_MAX_KM}, that is larger than
- * the district and is not itself a district. "Larger" rather than "nearest" is the point: the
- * nearest place to Tokyo's Setagaya ward is a 19,000-person suburb, and attaching to that would
- * put 940,000 people on a board of its own instead of Tokyo's.
- */
-function findParent(
-  section: SluggedCity,
-  places: readonly (SluggedCity & { slug: string })[],
-): (SluggedCity & { slug: string }) | null {
-  let best: (SluggedCity & { slug: string }) | null = null;
-  let bestKm = Infinity;
-  for (const place of places) {
-    if (place.countryCode !== section.countryCode || place.population <= section.population) continue;
-    // Cheap reject before the trigonometry: a degree of latitude is about 111 km.
-    if (Math.abs(place.latitude - section.latitude) > PARENT_MAX_KM / 100) continue;
-    const km = haversineKm(section.latitude, section.longitude, place.latitude, place.longitude);
-    if (km > PARENT_MAX_KM) continue;
-    if (km < bestKm || (km === bestKm && best !== null && place.geonameId < best.geonameId)) {
-      best = place;
-      bestKm = km;
+/** Places sorted by latitude, searchable by a latitude window so no lookup scans all 31,000. */
+class LatitudeIndex {
+  private readonly sorted: Place[];
+
+  constructor(places: readonly Place[]) {
+    this.sorted = [...places].sort((a, b) => a.latitude - b.latitude || a.geonameId - b.geonameId);
+  }
+
+  /** Places within `km` of latitude, plus a little slack: a degree of latitude is about 111 km. */
+  near(latitude: number, km: number): Place[] {
+    const band = km / 110;
+    let low = 0;
+    let high = this.sorted.length;
+    while (low < high) {
+      const mid = (low + high) >>> 1;
+      if ((this.sorted[mid] as Place).latitude < latitude - band) low = mid + 1;
+      else high = mid;
+    }
+    const found: Place[] = [];
+    for (let i = low; i < this.sorted.length && (this.sorted[i] as Place).latitude <= latitude + band; i += 1) {
+      found.push(this.sorted[i] as Place);
+    }
+    return found;
+  }
+}
+
+/** The largest place within reach that is at least {@link DOMINANCE_RATIO} times `place`. */
+function findDominantParent(place: Place, index: LatitudeIndex): Place | null {
+  let best: Place | null = null;
+  for (const other of index.near(place.latitude, DOMINANCE_MAX_KM)) {
+    if (other.geonameId === place.geonameId || other.countryCode !== place.countryCode) continue;
+    if (other.population < DOMINANCE_RATIO * place.population) continue;
+    if (haversineKm(place.latitude, place.longitude, other.latitude, other.longitude) > DOMINANCE_MAX_KM) continue;
+    if (best === null || other.population > best.population || (other.population === best.population && other.geonameId < best.geonameId)) {
+      best = other;
     }
   }
   return best;
+}
+
+/**
+ * The parent of a district: the largest place within {@link PARENT_MAX_KM} that is at least four
+ * times its size if there is one (Delhi, not the satellite Najafgarh), otherwise the nearest
+ * larger place. Always in the same country, and never itself a district. Sections are held to a
+ * weaker test than places (larger, not four times larger) because a section is by definition part
+ * of some place: Kowloon is only 3.3x Hong Kong's remainder and still belongs to it.
+ */
+function findSectionParent(section: SluggedCity, index: LatitudeIndex): Place | null {
+  let nearest: Place | null = null;
+  let nearestKm = Infinity;
+  let dominant: Place | null = null;
+  for (const place of index.near(section.latitude, PARENT_MAX_KM)) {
+    if (place.countryCode !== section.countryCode || place.population <= section.population) continue;
+    const km = haversineKm(section.latitude, section.longitude, place.latitude, place.longitude);
+    if (km > PARENT_MAX_KM) continue;
+    if (km < nearestKm || (km === nearestKm && nearest !== null && place.geonameId < nearest.geonameId)) {
+      nearest = place;
+      nearestKm = km;
+    }
+    // A place four times the district's size is a metro, not a neighbour: Delhi, not Najafgarh.
+    if (
+      place.population >= DOMINANCE_RATIO * section.population &&
+      (dominant === null ||
+        place.population > dominant.population ||
+        (place.population === dominant.population && place.geonameId < dominant.geonameId))
+    ) {
+      dominant = place;
+    }
+  }
+  return dominant ?? nearest;
 }
 
 /**
@@ -129,9 +189,10 @@ function findParent(
  * the resolver can binary-search a latitude band, and so the output is byte-identical whatever
  * order the input arrived in, which is what lets CI diff it.
  *
- * Districts (`PPLX`) stay in the snapshot as locating points, but carry their parent's name,
- * slug and timezone. A position in Setagaya then resolves to the row for Setagaya and comes back
- * as Tokyo, with no special case in the resolver. A district with no parent is dropped.
+ * Every place stays in the snapshot as a locating point, but the name, slug and timezone it
+ * carries are those of the city it belongs to: its own if it is a root, otherwise the root of its
+ * dominance chain (a suburb of a ward of Tokyo comes back as Tokyo). A resolver that simply finds
+ * the nearest row therefore needs no special cases. A district with no parent is dropped.
  */
 export function normalizeCities(
   cities: readonly GeonamesCity[],
@@ -140,18 +201,38 @@ export function normalizeCities(
   const slugged = assignSlugs(cities);
   const isSection = (city: SluggedCity): boolean => city.featureCode === SECTION_FEATURE_CODE;
 
-  const places = slugged.filter((city): city is SluggedCity & { slug: string } => !isSection(city) && city.slug !== null);
+  const places = slugged.filter((city): city is Place => !isSection(city) && city.slug !== null);
   const noSlug = slugged.filter((city) => !isSection(city) && city.slug === null).length;
+  const index = new LatitudeIndex(places);
 
-  const resolved: (SluggedCity & { slug: string })[] = [...places];
+  // Each place's dominance parent. A parent is strictly larger (at least 4x), so no cycle exists.
+  const parentOf = new Map<number, Place>();
+  for (const place of places) {
+    const parent = findDominantParent(place, index);
+    if (parent !== null) parentOf.set(place.geonameId, parent);
+  }
+  const rootOf = (place: Place): Place => {
+    let current = place;
+    for (let next = parentOf.get(current.geonameId); next !== undefined; next = parentOf.get(current.geonameId)) {
+      current = next;
+    }
+    return current;
+  };
+
+  const resolved: Place[] = places.map((place) => {
+    const root = rootOf(place);
+    return { ...place, name: root.name, slug: root.slug, timezone: root.timezone };
+  });
+
   let orphanSection = 0;
   for (const section of slugged.filter(isSection)) {
-    const parent = findParent(section, places);
+    const parent = findSectionParent(section, index);
     if (parent === null) {
       orphanSection += 1;
       continue;
     }
-    resolved.push({ ...section, name: parent.name, slug: parent.slug, timezone: parent.timezone });
+    const root = rootOf(parent);
+    resolved.push({ ...section, slug: root.slug, name: root.name, timezone: root.timezone });
   }
 
   const sorted = resolved.sort(
@@ -159,7 +240,7 @@ export function normalizeCities(
   );
 
   const timezones = [...new Set(sorted.map((city) => city.timezone))].sort();
-  const timezoneIndex = new Map(timezones.map((tz, index) => [tz, index]));
+  const timezoneIndex = new Map(timezones.map((tz, position) => [tz, position]));
 
   const rows: NormalizedRow[] = sorted.map((city) => [
     city.geonameId,
