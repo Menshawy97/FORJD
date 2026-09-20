@@ -70,6 +70,29 @@ describe('CityResolverService', () => {
     expect(loader).toHaveBeenCalledTimes(2);
   });
 
+  describe('findBySlug', () => {
+    it('finds a city by the slug stored on a workout, with its timezone', () => {
+      expect(new CityResolverService(snapshot).findBySlug('rome-it-2')).toEqual({
+        name: 'Rome',
+        slug: 'rome-it-2',
+        countryCode: 'IT',
+        timezone: 'Europe/Rome',
+      });
+    });
+
+    it('is null for an unknown slug', () => {
+      expect(new CityResolverService(snapshot).findBySlug('atlantis-xx-9')).toBeNull();
+    });
+
+    it('shares the lazily built index with resolve, so the snapshot loads once', () => {
+      const loader = jest.fn(snapshot);
+      const service = new CityResolverService(loader);
+      service.resolve(30.05, 31.24);
+      service.findBySlug('cairo-eg-1');
+      expect(loader).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('is a pure function of its arguments', () => {
     const service = new CityResolverService(snapshot);
     expect(service.resolve(30.05, 31.24)).toEqual(service.resolve(30.05, 31.24));

@@ -151,6 +151,36 @@ describe('nearestBruteForce', () => {
   });
 });
 
+describe('bySlug', () => {
+  const index = buildCityIndex(
+    snapshot([
+      row(1, 'Alexandria', 31.2, 29.9, { slug: 'alexandria-eg-1', tz: 0 }),
+      // A district row carries its parent's slug, so one slug can appear on several rows.
+      row(2, 'Alexandria', 31.0, 29.8, { slug: 'alexandria-eg-1', tz: 0 }),
+      row(3, 'Rome', 41.9, 12.5, { slug: 'rome-it-3', countryCode: 'IT', tz: 1 }),
+    ], ['Africa/Cairo', 'Europe/Rome']),
+  );
+
+  it('finds a city by its slug, with the timezone as a name', () => {
+    expect(index.bySlug('alexandria-eg-1')).toEqual({
+      name: 'Alexandria',
+      slug: 'alexandria-eg-1',
+      countryCode: 'EG',
+      timezone: 'Africa/Cairo',
+    });
+    expect(index.bySlug('rome-it-3')?.timezone).toBe('Europe/Rome');
+  });
+
+  it('is null for a slug that is not in the list, for example one from an older version of it', () => {
+    expect(index.bySlug('atlantis-xx-9')).toBeNull();
+    expect(index.bySlug('')).toBeNull();
+  });
+
+  it('answers from the first row when several rows share the slug', () => {
+    expect(index.bySlug('alexandria-eg-1')?.name).toBe('Alexandria');
+  });
+});
+
 describe('nearest agrees with a brute-force scan', () => {
   // A small deterministic generator, so the property test is repeatable.
   const seeded = (seed: number): (() => number) => {

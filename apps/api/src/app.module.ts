@@ -12,6 +12,7 @@ import { AthletesModule } from './athletes/athletes.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { CitiesModule } from './cities/cities.module';
 import { HealthDataModule } from './health-data/health-data.module';
+import { LeaderboardsModule } from './leaderboards/leaderboards.module';
 import { WhoopModule } from './integrations/whoop/whoop.module';
 import { ProgramsModule } from './programs/programs.module';
 import { NutritionModule } from './nutrition/nutrition.module';
@@ -52,6 +53,7 @@ import { validateEnv } from './common/config/env-validation';
     ExercisesModule,
     HealthDataModule,
     CitiesModule,
+    LeaderboardsModule,
     WhoopModule,
     ProgramsModule,
     NutritionModule,

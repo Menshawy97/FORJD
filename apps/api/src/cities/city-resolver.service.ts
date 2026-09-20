@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { CityIndex, buildCityIndex } from './city-index';
+import { CityBySlug, CityIndex, buildCityIndex } from './city-index';
 import { NormalizedCities } from './ingest/normalize-cities';
 
 /** Injection token for the function that produces the snapshot, so tests need not touch the disk. */
@@ -40,6 +40,14 @@ export class CityResolverService {
     const match = this.getIndex().nearest(latitude, longitude, MAX_CITY_DISTANCE_KM);
     if (match === null) return null;
     return { name: match.name, slug: match.slug, countryCode: match.countryCode, timezone: match.timezone };
+  }
+
+  /**
+   * The city a stored slug names, with its timezone, or null if the list no longer has it. The
+   * leaderboard needs the timezone to know when "this month" starts for a city.
+   */
+  findBySlug(slug: string): CityBySlug | null {
+    return this.getIndex().bySlug(slug);
   }
 
   private getIndex(): CityIndex {

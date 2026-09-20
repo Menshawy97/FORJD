@@ -192,6 +192,18 @@
         "functions": 100,
         "lines": 100
       },
+      "./src/leaderboards/leaderboards.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./src/leaderboards/city-time.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
       "./src/cities/city-index.ts": {
         "statements": 100,
         "branches": 100,

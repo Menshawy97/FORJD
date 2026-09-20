@@ -10,8 +10,18 @@ export interface CityMatch {
   distanceKm: number;
 }
 
+/** A city as identified by the slug stored on a workout. No distance: it was not found by position. */
+export interface CityBySlug {
+  name: string;
+  slug: string;
+  countryCode: string;
+  timezone: string;
+}
+
 export interface CityIndex {
   readonly size: number;
+  /** The city a stored slug names, or null if the list no longer has it. */
+  bySlug(slug: string): CityBySlug | null;
   /** The nearest place within `maxKm`, or null. Never throws on bad coordinates. */
   nearest(latitude: number, longitude: number, maxKm: number): CityMatch | null;
 }
@@ -108,8 +118,30 @@ export function buildCityIndex(snapshot: NormalizedCities): CityIndex {
     }
   });
 
+  // Several rows can carry one slug (a district row carries its city's), so the first wins. Built
+  // lazily: only the leaderboard read needs it, and only once per process.
+  let slugs: Map<string, CityBySlug> | null = null;
+  const bySlugMap = (): Map<string, CityBySlug> => {
+    if (slugs === null) {
+      slugs = new Map();
+      for (const row of rows) {
+        const slug = row[ROW.slug];
+        if (!slugs.has(slug)) {
+          slugs.set(slug, {
+            name: row[ROW.name],
+            slug,
+            countryCode: row[ROW.countryCode],
+            timezone: snapshot.timezones[row[ROW.timezoneIndex]] as string,
+          });
+        }
+      }
+    }
+    return slugs;
+  };
+
   return {
     size: rows.length,
+    bySlug: (slug) => bySlugMap().get(slug) ?? null,
     nearest(latitude, longitude, maxKm) {
       if (!isValidQuery(latitude, longitude, maxKm) || rows.length === 0) return null;
 

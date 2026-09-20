@@ -255,6 +255,18 @@ export function scoreCohort(athletes: readonly AthleteActivityInput[]): RankedAt
   return [...scored].sort(compareForRank).map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
+/**
+ * The rows to show around an athlete: `window` above and below, so ranks 44-50 for the 47th with a
+ * window of 3. Near either end the window slides instead of shrinking, so the list keeps its
+ * height (the 2nd shows 1-7, not 1-5), and a city smaller than the window shows everyone.
+ */
+export function rankWindow(rank: number, cohortSize: number, window: number): { from: number; to: number } {
+  const span = 2 * window + 1;
+  if (cohortSize <= span) return { from: 1, to: cohortSize };
+  const from = Math.min(Math.max(1, rank - window), cohortSize - span + 1);
+  return { from, to: from + span - 1 };
+}
+
 /** "Top 8%". Never below 1, so the leader does not read "Top 0%"; an empty cohort reads 100. */
 export function topPercent(rank: number, cohortSize: number): number {
   return Math.max(1, Math.ceil((100 * rank) / Math.max(1, cohortSize)));
