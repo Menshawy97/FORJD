@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AuthProviderModule } from '../auth/auth-provider.module';
 import { CitiesModule } from '../cities/cities.module';
 import { UsersModule } from '../users/users.module';
+import { LeaderboardSnapshotRepository } from './leaderboard-snapshot.repository';
 import { LeaderboardsController } from './leaderboards.controller';
 import { LeaderboardsRepository } from './leaderboards.repository';
 import { LeaderboardsService } from './leaderboards.service';
@@ -16,6 +17,6 @@ import { LeaderboardsService } from './leaderboards.service';
 @Module({
   imports: [AuthProviderModule, UsersModule, CitiesModule],
   controllers: [LeaderboardsController],
-  providers: [LeaderboardsService, LeaderboardsRepository],
+  providers: [LeaderboardsService, LeaderboardsRepository, LeaderboardSnapshotRepository],
 })
 export class LeaderboardsModule {}

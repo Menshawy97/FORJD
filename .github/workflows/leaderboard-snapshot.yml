@@ -1,0 +1,100 @@
+name: Snapshot leaderboard ranks
+
+# Once a week, records where everyone stands in their city so the leaderboard can show "up 3 this
+# week" (Phase 10J, ADR-047). Monday 00:20 UTC: 20 minutes past the hour because the top of the
+# hour is when GitHub's scheduler is busiest and it delays or drops runs.
+#
+# GitHub cron is best-effort, and it disables scheduled workflows in a repository after 60 days
+# without activity. Both are accepted: a missed week means the arrow reads from the last snapshot
+# that exists, or shows nothing, and the leaderboard itself never depends on this job.
+#
+# The schedule snapshots BOTH environments; a manual dispatch snapshots the one it names. Run a
+# dispatch on a Monday: the job labels a run with the Monday of its week and replaces that week's
+# rows, so a mid-week dispatch would overwrite the start-of-week baseline with mid-week standings.
+#
+# Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire, and
+# with several instances it would fire once per instance.
+on:
+  schedule:
+    - cron: "20 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment whose database to snapshot
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+# Two runs on the same database would be harmless (the job replaces a week, it does not add to
+# it), but there is no reason to run them at once.
+concurrency:
+  group: leaderboard-snapshot-${{ github.event_name }}-${{ inputs.target || 'all' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for google-github-actions/auth's Workload Identity Federation
+
+jobs:
+  # Same split as deploy-api.yml: missing GCP setup shows as a skipped job (green), not a red
+  # failure every Monday until the credentials exist.
+  check:
+    name: Check prerequisites
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && [ -n "${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}" ] && [ -n "${{ vars.GCP_PROJECT_ID }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GCP config not set yet (GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOY_SERVICE_ACCOUNT, GCP_PROJECT_ID) — skipping the snapshot."
+          fi
+
+  snapshot:
+    name: Capture this week's ranks
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    environment: ${{ matrix.target }}
+    strategy:
+      # One environment failing (say production is not provisioned yet) must not stop the other.
+      fail-fast: false
+      matrix:
+        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["staging","production"]') }}
+    env:
+      TARGET: ${{ matrix.target }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Capture the ranks
+        # The database URL comes from Secret Manager (forjd-<target>-database-url), the same
+        # secret the deploy uses, and must be the Supabase session pooler string: the direct one
+        # fails over IPv6 from GitHub-hosted runners. The workspace packages are built first
+        # because ts-node resolves `@forjd/domain` through `dist/`, as in deploy-api.yml.
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @forjd/domain --filter @forjd/contracts build
+          export DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
+          pnpm --filter @forjd/api leaderboard:snapshot

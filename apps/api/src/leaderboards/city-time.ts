@@ -1,5 +1,7 @@
 import type { LeaderboardPeriod } from '@forjd/domain';
 
+import { civilDateMs, civilDateString, localCalendarDate, weekStartOf } from '../workouts/calendar-utils';
+
 const MS_PER_MINUTE = 60_000;
 const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
@@ -76,4 +78,39 @@ export function monthWeeks(bounds: { start: Date; end: Date }, now: Date): numbe
 /** Weeks since an athlete's first eligible session, for the all-time board. Never below one. */
 export function allTimeWeeks(firstStartedAt: Date, now: Date): number {
   return Math.max(1, (now.getTime() - firstStartedAt.getTime()) / MS_PER_WEEK);
+}
+
+/**
+ * The label a weekly snapshot run gets in a city: the Monday of the local week that is starting or
+ * has just started. The job runs at Monday 00:20 UTC, which is still Sunday evening in the
+ * Americas and already Monday afternoon in Oceania, so the instant is nudged half a day forward
+ * before its local date is read. Every city then labels the run with the coming Monday, and a
+ * re-run a few hours later gets the same label and so replaces the rows rather than adding a set.
+ */
+export function snapshotWeekStart(runAt: Date, timeZone: string): string {
+  return weekStartOf(localCalendarDate(new Date(runAt.getTime() + 12 * MS_PER_HOUR), timeZone));
+}
+
+/**
+ * The Monday of the current local week: the label of the snapshot that says where everyone stood
+ * as the week began, which "up 3 this week" is measured from.
+ */
+export function comparisonWeekStart(now: Date, timeZone: string): string {
+  return weekStartOf(localCalendarDate(now, timeZone));
+}
+
+/**
+ * The oldest snapshot label the arrow may be measured from.
+ *
+ * - **A month** is scored over its own calendar month, so a baseline from last month is a
+ *   different board: on Thursday 1 October the snapshot labelled Monday 28 September holds the
+ *   September standings, and `september rank - october rank` is not movement. The floor is the
+ *   first of the current local month.
+ * - **All time** has no such break, but a baseline months old is not "this week" either, which is
+ *   what happens when the job missed weeks or the city dipped below the minimum. It may be at most
+ *   two weeks older than the current one.
+ */
+export function baselineNotBefore(period: LeaderboardPeriod, now: Date, timeZone: string): string {
+  if (period === 'month') return localCalendarDate(monthBounds(now, timeZone).start, timeZone);
+  return civilDateString(civilDateMs(comparisonWeekStart(now, timeZone)) - 14 * MS_PER_DAY);
 }
