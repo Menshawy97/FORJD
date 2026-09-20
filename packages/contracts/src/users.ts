@@ -177,10 +177,46 @@ export type UpdatePrivacyRequest = z.infer<typeof updatePrivacyRequestSchema>;
  * "Public" means visible to other signed-in FORJD users, not to the internet. The endpoint is
  * authenticated.
  *
- * No email, date of birth, sex, height, unit preferences or privacy flags. No stat tiles
- * either — the design draws them, but they need the leaderboard and analytics data that
- * arrives in phase 10, and a placeholder would be a lie with a number on it.
+ * No email, date of birth, sex, height, unit preferences or privacy flags, and none of the
+ * health data (sleep, HRV, body composition, InBody) — "Rank, records and sessions only" is what
+ * the design's own footnote promises, and this shape is what keeps the promise.
  */
+
+/**
+ * The three stat tiles (Phase 10N). Present only when the athlete is on this month's city
+ * leaderboard, so a profile can never show a rank for someone who chose not to be ranked. The
+ * streak rides with them and is hidden with them.
+ */
+export const athleteStatsSchema = z.object({
+  cityName: z.string(),
+  cityRank: z.number().int().positive(),
+  score: z.number().min(0).max(100),
+  /** Consecutive weeks with a completed workout. */
+  streakWeeks: z.number().int().nonnegative(),
+  /** "Sep 2026": the window the rank is for, rendered server-side. */
+  periodLabel: z.string(),
+});
+export type AthleteStats = z.infer<typeof athleteStatsSchema>;
+
+/** One of the athlete's heaviest lifts: the best set of an exercise, by weight. */
+export const athleteRecordSchema = z.object({
+  exerciseName: z.string(),
+  weightKg: z.number().positive(),
+});
+export type AthleteRecord = z.infer<typeof athleteRecordSchema>;
+
+/**
+ * One of the last completed workouts: its name, when it started, and the one number the row
+ * shows: kilograms lifted when there were any, otherwise how long it took.
+ */
+export const athleteSessionSchema = z.object({
+  name: z.string(),
+  startedAt: z.string().datetime(),
+  volumeKg: z.number().nonnegative(),
+  durationSeconds: z.number().int().nonnegative().nullable(),
+});
+export type AthleteSession = z.infer<typeof athleteSessionSchema>;
+
 export const publicProfileResponseSchema = z.object({
   userId: z.string().uuid(),
   displayName: z.string().nullable(),
@@ -195,6 +231,12 @@ export const publicProfileResponseSchema = z.object({
    * self-view, and is why a private profile is still visible to its owner.
    */
   isSelf: z.boolean(),
+  /** `null` when the athlete is not on the city leaderboard this month. */
+  stats: athleteStatsSchema.nullable(),
+  /** Up to four, heaviest first. */
+  personalRecords: z.array(athleteRecordSchema).max(4),
+  /** Up to three, newest first. */
+  recentSessions: z.array(athleteSessionSchema).max(3),
 });
 export type PublicProfileResponse = z.infer<typeof publicProfileResponseSchema>;
 

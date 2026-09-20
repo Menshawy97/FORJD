@@ -2,8 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { PublicProfileResponse } from '@forjd/contracts';
 import { Profile, User } from '@forjd/domain';
 
+import { CityResolverService } from '../cities/city-resolver.service';
+import { LeaderboardsService } from '../leaderboards/leaderboards.service';
 import { PrivacyRepository } from '../privacy/privacy.repository';
 import { UsersRepository } from '../users/users.repository';
+import { AthleteStatsRepository } from './athlete-stats.repository';
+
+const RECORD_COUNT = 4;
+const RECENT_SESSION_COUNT = 3;
+const UTC = 'UTC';
 
 /** Matches any RFC 4122 version. Rejecting early keeps a malformed id out of Postgres. */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -22,9 +29,16 @@ export class AthletesService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly privacyRepository: PrivacyRepository,
+    private readonly statsRepository: AthleteStatsRepository,
+    private readonly leaderboards: LeaderboardsService,
+    private readonly cityResolver: CityResolverService,
   ) {}
 
-  async getPublicProfile(viewer: User, userId: string): Promise<PublicProfileResponse> {
+  async getPublicProfile(
+    viewer: User,
+    userId: string,
+    now: Date = new Date(),
+  ): Promise<PublicProfileResponse> {
     // A malformed id never reaches the database. Postgres raises an invalid-uuid cast as an
     // error that surfaces as a 500 — a third, distinguishable response, which is exactly what
     // the single refusal shape below exists to avoid.
@@ -59,7 +73,7 @@ export class AthletesService {
     // Reached only once access is settled. The projection is never built and then stripped:
     // a build-then-strip would mean the full record briefly exists in the shape that gets
     // serialised, and every future field would be exposed by default until someone removed it.
-    return this.toPublicProfile(profile, isSelf);
+    return this.toPublicProfile(profile, isSelf, now);
   }
 
   /**
@@ -81,7 +95,30 @@ export class AthletesService {
    * absent from this list is absent from the response, and adding something here is a visible
    * edit to a file about what strangers can see.
    */
-  private toPublicProfile(profile: Profile, isSelf: boolean): PublicProfileResponse {
+  private async toPublicProfile(profile: Profile, isSelf: boolean, now: Date): Promise<PublicProfileResponse> {
+    const [standing, records, sessions] = await Promise.all([
+      this.leaderboards.standingFor(profile.userId, now),
+      this.statsRepository.personalRecords(profile.userId, RECORD_COUNT),
+      this.statsRepository.recentSessions(profile.userId, RECENT_SESSION_COUNT),
+    ]);
+
+    // The tiles exist only for an athlete who is ranked this month, and the streak goes with
+    // them: a profile shows a rank only for someone who chose to be on the leaderboard. The
+    // streak is dated in the ranked city's own calendar.
+    const stats = standing
+      ? {
+          cityName: standing.cityName,
+          cityRank: standing.rank,
+          score: standing.score,
+          streakWeeks: await this.statsRepository.weekStreak(
+            profile.userId,
+            this.cityResolver.findBySlug(standing.citySlug)?.timezone ?? UTC,
+            now,
+          ),
+          periodLabel: standing.periodLabel,
+        }
+      : null;
+
     return {
       userId: profile.userId,
       displayName: profile.displayName,
@@ -91,6 +128,17 @@ export class AthletesService {
       trainingGoals: profile.trainingGoals,
       activities: profile.activities,
       isSelf,
+      stats,
+      personalRecords: records.map((record) => ({
+        exerciseName: record.exerciseName,
+        weightKg: record.weightKg,
+      })),
+      recentSessions: sessions.map((session) => ({
+        name: session.name,
+        startedAt: session.startedAt.toISOString(),
+        volumeKg: session.volumeKg,
+        durationSeconds: session.durationSeconds,
+      })),
     };
   }
 }

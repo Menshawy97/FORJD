@@ -18,5 +18,6 @@ import { LeaderboardsService } from './leaderboards.service';
   imports: [AuthProviderModule, UsersModule, CitiesModule],
   controllers: [LeaderboardsController],
   providers: [LeaderboardsService, LeaderboardsRepository, LeaderboardSnapshotRepository],
+  exports: [LeaderboardsService],
 })
 export class LeaderboardsModule {}

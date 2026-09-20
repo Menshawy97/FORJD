@@ -139,6 +139,10 @@ describe('Public athlete profile (e2e)', () => {
       trainingGoals: ['get_stronger'],
       activities: ['strength'],
       isSelf: false,
+      // Not on the leaderboard and no workouts logged: nothing to show, and nothing invented.
+      stats: null,
+      personalRecords: [],
+      recentSessions: [],
     });
   });
 

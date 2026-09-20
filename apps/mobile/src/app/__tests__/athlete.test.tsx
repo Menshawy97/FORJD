@@ -55,9 +55,111 @@ const SELF_PROFILE = {
   trainingGoals: [],
   activities: [],
   isSelf: true,
+  stats: null,
+  personalRecords: [],
+  recentSessions: [],
+};
+
+const FULL_PROFILE = {
+  ...SELF_PROFILE,
+  isSelf: false,
+  userId: 'u2',
+  displayName: 'James Mitchell',
+  username: 'jmitch',
+  stats: { cityName: 'Cairo', cityRank: 47, score: 92.7, streakWeeks: 6, periodLabel: 'Sep 2026' },
+  personalRecords: [
+    { exerciseName: 'Deadlift', weightKg: 180 },
+    { exerciseName: 'Back Squat', weightKg: 140 },
+  ],
+  recentSessions: [
+    { name: 'Upper Body Push', startedAt: '2026-08-19T12:00:00.000Z', volumeKg: 14200, durationSeconds: 3600 },
+    { name: '5K Run', startedAt: '2026-08-16T12:00:00.000Z', volumeKg: 0, durationSeconds: 1422 },
+  ],
 };
 
 describe('AthleteScreen', () => {
+  describe('the full profile (Phase 10N)', () => {
+    beforeEach(() => {
+      mockUseLocalSearchParams.mockReturnValue({ userId: 'u2', from: 'rank' });
+      (getAthlete as jest.Mock).mockResolvedValue(FULL_PROFILE);
+    });
+
+    it('draws the three stat tiles from the response', async () => {
+      const { findByText, getByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('#47')).toBeTruthy();
+      expect(getByText('92.7')).toBeTruthy();
+      expect(getByText('6')).toBeTruthy();
+      expect(getByText('weeks')).toBeTruthy();
+      expect(getByText('City rank')).toBeTruthy();
+    });
+
+    it('puts the rank beside the city under the name', async () => {
+      const { findByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('Cairo · #47 this month')).toBeTruthy();
+    });
+
+    it('lists personal records in kilograms', async () => {
+      const { findByText, getByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('Personal records')).toBeTruthy();
+      expect(getByText('Deadlift')).toBeTruthy();
+      expect(getByText('180 kg')).toBeTruthy();
+      expect(getByText('140 kg')).toBeTruthy();
+    });
+
+    it('lists recent sessions with the date and one figure: kilograms for a lift, a clock for a run', async () => {
+      const { findByText, getByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('Recent sessions')).toBeTruthy();
+      expect(getByText('Upper Body Push · 19 Aug')).toBeTruthy();
+      expect(getByText('14,200 kg')).toBeTruthy();
+      expect(getByText('5K Run · 16 Aug')).toBeTruthy();
+      expect(getByText('23:42')).toBeTruthy();
+    });
+
+    it('still shows the identity when the API predates the stats (older server)', async () => {
+      const oldShape: Record<string, unknown> = { ...FULL_PROFILE };
+      delete oldShape.stats;
+      delete oldShape.personalRecords;
+      delete oldShape.recentSessions;
+      (getAthlete as jest.Mock).mockResolvedValue(oldShape);
+      const { findByText, queryByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('James Mitchell')).toBeTruthy();
+      expect(queryByText('Personal records')).toBeNull();
+      expect(queryByText('City rank')).toBeNull();
+    });
+
+    it('says what is never public', async () => {
+      const { findByText } = await render(<AthleteScreen />);
+
+      expect(await findByText(/never public/, { exact: false })).toBeTruthy();
+    });
+
+    it('hides the tiles for an athlete who is not ranked, keeping records and sessions', async () => {
+      (getAthlete as jest.Mock).mockResolvedValue({ ...FULL_PROFILE, stats: null });
+      const { findByText, queryByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('Personal records')).toBeTruthy();
+      expect(queryByText('City rank')).toBeNull();
+      expect(queryByText('Streak')).toBeNull();
+      expect(queryByText(/this month/)).toBeNull();
+      // Their plain city still shows.
+      expect(await findByText('Alexandria')).toBeTruthy();
+    });
+
+    it('leaves out an empty records or sessions section rather than drawing an empty heading', async () => {
+      (getAthlete as jest.Mock).mockResolvedValue({ ...FULL_PROFILE, personalRecords: [], recentSessions: [] });
+      const { findByText, queryByText } = await render(<AthleteScreen />);
+
+      await findByText('#47');
+      expect(queryByText('Personal records')).toBeNull();
+      expect(queryByText('Recent sessions')).toBeNull();
+    });
+  });
+
   it('goes back to the Rank tab when it was opened from a leaderboard row', async () => {
     mockUseLocalSearchParams.mockReturnValue({ userId: 'u2', from: 'rank' });
     (getAthlete as jest.Mock).mockResolvedValue({ ...SELF_PROFILE, userId: 'u2', isSelf: false });
