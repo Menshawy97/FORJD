@@ -6,6 +6,7 @@ import {
   compareForRank,
   midRankPercentile,
   percentileRanker,
+  rankWindow,
   roundToTenth,
   scoreCohort,
   topPercent,
@@ -379,5 +380,49 @@ describe("topPercent", () => {
 
   it("stays finite for an empty cohort rather than returning Infinity", () => {
     expect(topPercent(1, 0)).toBe(100);
+  });
+});
+
+describe('rankWindow', () => {
+  it('centres the window on the athlete', () => {
+    expect(rankWindow(47, 588, 3)).toEqual({ from: 44, to: 50 });
+  });
+
+  it('gives just the athlete for a window of zero', () => {
+    expect(rankWindow(47, 588, 0)).toEqual({ from: 47, to: 47 });
+  });
+
+  it('back-fills at the top so the row count stays stable: 2nd with 3 either side is 1..7, not 1..5', () => {
+    expect(rankWindow(2, 588, 3)).toEqual({ from: 1, to: 7 });
+    expect(rankWindow(1, 588, 3)).toEqual({ from: 1, to: 7 });
+  });
+
+  it('back-fills at the bottom too', () => {
+    expect(rankWindow(587, 588, 3)).toEqual({ from: 582, to: 588 });
+    expect(rankWindow(588, 588, 3)).toEqual({ from: 582, to: 588 });
+  });
+
+  it('shows everyone when the whole city fits in the window', () => {
+    expect(rankWindow(3, 6, 3)).toEqual({ from: 1, to: 6 });
+    expect(rankWindow(1, 1, 3)).toEqual({ from: 1, to: 1 });
+  });
+
+  it('is exactly the window when the city is exactly that big', () => {
+    expect(rankWindow(4, 7, 3)).toEqual({ from: 1, to: 7 });
+  });
+
+  it('always contains the athlete and always fits inside the city', () => {
+    for (let cohort = 1; cohort <= 40; cohort += 1) {
+      for (let rank = 1; rank <= cohort; rank += 1) {
+        for (const window of [0, 1, 3, 10]) {
+          const { from, to } = rankWindow(rank, cohort, window);
+          expect(from).toBeLessThanOrEqual(rank);
+          expect(to).toBeGreaterThanOrEqual(rank);
+          expect(from).toBeGreaterThanOrEqual(1);
+          expect(to).toBeLessThanOrEqual(cohort);
+          expect(to - from + 1).toBe(Math.min(cohort, 2 * window + 1));
+        }
+      }
+    }
   });
 });
