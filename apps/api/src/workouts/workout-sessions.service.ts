@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import type {
   ExerciseHistoryQuery,
   ExerciseHistoryResponse,
@@ -12,7 +12,9 @@ import type {
 } from "@forjd/contracts";
 import { User, WorkoutSession, WorkoutSessionExercise, WorkoutSet } from "@forjd/domain";
 
+import { CityResolverService } from "../cities/city-resolver.service";
 import { ExercisesRepository } from "../exercises/exercises.repository";
+import { PrivacyService } from "../privacy/privacy.service";
 import { decodeWorkoutSessionCursor, encodeWorkoutSessionCursor } from "./workout-cursor";
 import {
   CreateWorkoutSessionExerciseInput,
@@ -34,9 +36,13 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
  */
 @Injectable()
 export class WorkoutSessionsService {
+  private readonly logger = new Logger(WorkoutSessionsService.name);
+
   constructor(
     private readonly workoutsRepository: WorkoutsRepository,
     private readonly exercisesRepository: ExercisesRepository,
+    private readonly privacyService: PrivacyService,
+    private readonly cityResolver: CityResolverService,
   ) {}
 
   /**
@@ -64,10 +70,44 @@ export class WorkoutSessionsService {
       throw new BadRequestException(`Unknown exercise id(s): ${missing.join(", ")}`);
     }
 
-    const input = this.toRepositoryInput(owner.id, body, visibleExercises);
+    const { city, citySlug } = await this.deriveCity(owner.id, body.startLocation);
+    const input = this.toRepositoryInput(owner.id, body, visibleExercises, city, citySlug);
     const session = await this.workoutsRepository.upsertSession(input);
 
     return this.toDetail(session);
+  }
+
+  /**
+   * The city a session started in, from the position the phone sent (ADR-045, ADR-048).
+   *
+   * The client's own `city` and `citySlug` are never read: the slug is the leaderboard key, so a
+   * client-chosen one would let anyone place themselves on any city's board. A city is derived
+   * only for an athlete who has joined leaderboards **and** allowed location, read live and not
+   * remembered so a withdrawal is true on the very next upload. The position is used and then
+   * dropped; it never reaches the repository.
+   *
+   * A failure here must not lose the workout, so it degrades to "no city" and is logged without
+   * the position.
+   */
+  private async deriveCity(
+    userId: string,
+    startLocation: WorkoutSessionUploadRequest["startLocation"],
+  ): Promise<{ city: string | null; citySlug: string | null }> {
+    const noCity = { city: null, citySlug: null };
+    if (!startLocation) return noCity;
+
+    try {
+      const privacy = await this.privacyService.get(userId);
+      if (!privacy.leaderboardOptIn || !privacy.locationForLeaderboard) return noCity;
+
+      const resolved = this.cityResolver.resolve(startLocation.latitude, startLocation.longitude);
+      return resolved ? { city: resolved.name, citySlug: resolved.slug } : noCity;
+    } catch (error) {
+      this.logger.warn(
+        `Could not derive a city for a workout upload: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return noCity;
+    }
   }
 
   /**
@@ -179,6 +219,8 @@ export class WorkoutSessionsService {
     userId: string,
     body: WorkoutSessionUploadRequest,
     visibleExercises: Map<string, { measure: CreateWorkoutSessionExerciseInput["measure"] }>,
+    city: string | null,
+    citySlug: string | null,
   ): CreateWorkoutSessionInput {
     return {
       id: body.id,
@@ -192,8 +234,8 @@ export class WorkoutSessionsService {
       durationSeconds: body.durationSeconds,
       perceivedEffort: body.perceivedEffort ?? null,
       notes: body.notes ?? null,
-      city: body.city ?? null,
-      citySlug: body.citySlug ?? null,
+      city,
+      citySlug,
       isLiveTracked: body.isLiveTracked,
       exercises: body.exercises.map((exercise) => ({
         exerciseId: exercise.exerciseId,

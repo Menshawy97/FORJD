@@ -1,5 +1,5 @@
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { randomUUID } from "crypto";
 
@@ -326,6 +326,28 @@ describe("workouts schema (migrations 0012, 0013)", () => {
 
       // Leave nothing behind for the shared teardown to trip over.
       await db.delete(programWorkouts).where(eq(programWorkouts.programId, programId));
+    });
+  });
+
+  describe("workout_sessions city index (migration 0020, Phase 10)", () => {
+    const indexDefinition = async (): Promise<string | undefined> => {
+      const result = await db.execute(
+        sql`select indexdef from pg_indexes where tablename = 'workout_sessions' and indexname = 'workout_sessions_city_started_idx'`,
+      );
+      return (result.rows[0] as { indexdef: string } | undefined)?.indexdef;
+    };
+
+    it("exists, on city then start time, so one city over one window is an index range", async () => {
+      const definition = await indexDefinition();
+      expect(definition).toBeDefined();
+      expect(definition).toContain("(city_slug, started_at)");
+    });
+
+    it("is partial, covering only sessions that could ever be eligible", async () => {
+      const definition = (await indexDefinition()) ?? "";
+      expect(definition).toContain("deleted_at IS NULL");
+      expect(definition).toContain("is_live_tracked = true");
+      expect(definition).toContain("city_slug IS NOT NULL");
     });
   });
 });

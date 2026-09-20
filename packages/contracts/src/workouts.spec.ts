@@ -310,6 +310,43 @@ describe('workout contracts', () => {
       expect(workoutSessionUploadRequestSchema.safeParse(validSession).success).toBe(true);
     });
 
+    describe('startLocation (Phase 10)', () => {
+      const parse = (over: Record<string, unknown>) =>
+        workoutSessionUploadRequestSchema.safeParse({ ...validSession, ...over });
+
+      it('is optional, and null means the phone had no position to send', () => {
+        expect(parse({}).success).toBe(true);
+        expect(parse({ startLocation: null }).success).toBe(true);
+      });
+
+      it('accepts a coarse position and returns it', () => {
+        const parsed = parse({ startLocation: { latitude: 31.2, longitude: 29.92 } });
+        expect(parsed.success && parsed.data.startLocation).toEqual({ latitude: 31.2, longitude: 29.92 });
+      });
+
+      it('accepts the extremes of the range', () => {
+        expect(parse({ startLocation: { latitude: 90, longitude: 180 } }).success).toBe(true);
+        expect(parse({ startLocation: { latitude: -90, longitude: -180 } }).success).toBe(true);
+      });
+
+      it.each([
+        ['latitude above 90', { latitude: 91, longitude: 0 }],
+        ['latitude below -90', { latitude: -91, longitude: 0 }],
+        ['longitude above 180', { latitude: 0, longitude: 181 }],
+        ['longitude below -180', { latitude: 0, longitude: -181 }],
+        ['a missing longitude', { latitude: 0 }],
+        ['a non-numeric latitude', { latitude: '31.2', longitude: 0 }],
+        ['an infinite latitude', { latitude: Infinity, longitude: 0 }],
+      ])('rejects %s', (_label, startLocation) => {
+        expect(parse({ startLocation }).success).toBe(false);
+      });
+
+      it('still accepts the deprecated city and citySlug from an older app build', () => {
+        // Rule 7: a shipped /api/v1 contract is never broken, and an old build still posts these.
+        expect(parse({ city: 'Alexandria', citySlug: 'alexandria' }).success).toBe(true);
+      });
+    });
+
     it('carries its sync idempotency key -- id is required, not optional or server-assigned', () => {
       const withoutId: Record<string, unknown> = { ...validSession };
       delete withoutId.id;

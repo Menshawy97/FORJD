@@ -1,0 +1,1 @@
+CREATE INDEX "workout_sessions_city_started_idx" ON "workout_sessions" USING btree ("city_slug","started_at") WHERE "workout_sessions"."deleted_at" is null and "workout_sessions"."is_live_tracked" = true and "workout_sessions"."city_slug" is not null;
