@@ -2,6 +2,7 @@
 import body from '../assets/screens/body.png';
 import health from '../assets/screens/health.png';
 import home from '../assets/screens/home.png';
+import nutrition from '../assets/screens/nutrition.png';
 import live from '../assets/screens/live.png';
 import rank from '../assets/screens/rank.png';
 import Phone from '../components/Phone.astro';
@@ -172,6 +173,23 @@ import Base from '../layouts/Base.astro';
 
       <div class="row">
         <div class="row-copy">
+          <span class="label accent" data-reveal>Nutrition</span>
+          <h2 class="h2" data-reveal data-stagger="1">Calories and macros without a second app.</h2>
+          <p class="body" data-reveal data-stagger="2">
+            Log meals by breakfast, lunch, snack and dinner, set your own targets, and save the meals you eat every week
+            so logging them takes one tap.
+          </p>
+          <ul class="ticks" data-reveal data-stagger="3">
+            <li>Protein, carbs and fat against your goals</li>
+            <li>Saved meals for the things you eat often</li>
+            <li>Search foods or add your own</li>
+          </ul>
+        </div>
+        <div class="row-shot"><Phone src={nutrition} data-reveal data-stagger="1" alt="The FORJD nutrition screen: 488 of 2,400 kcal with protein, carbs and fat progress bars." /></div>
+      </div>
+
+      <div class="row flip">
+        <div class="row-copy">
           <span class="label" style="color:var(--sleep)" data-reveal>Body composition</span>
           <h2 class="h2" data-reveal data-stagger="1">Every InBody scan, on one timeline.</h2>
           <p class="body" data-reveal data-stagger="2">
@@ -187,7 +205,7 @@ import Base from '../layouts/Base.astro';
         <div class="row-shot"><Phone src={body} data-reveal data-stagger="1" alt="The FORJD Body progress tab: weight 87.1 kg and body fat 16.4% with charts over five months." /></div>
       </div>
 
-      <div class="row flip">
+      <div class="row">
         <div class="row-copy">
           <span class="label accent" data-reveal>City leaderboards</span>
           <h2 class="h2" data-reveal data-stagger="1">See where you stand in your city.</h2>
