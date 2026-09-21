@@ -422,6 +422,13 @@ describe('workout contracts', () => {
         expect(parse({ run: { ...run, splits: many(201) } }).success).toBe(false);
       });
 
+      it('rejects two splits with the same index, which the database could not store', () => {
+        const split = { index: 1, distanceMeters: 1000, durationSeconds: 300, avgHeartRateBpm: null };
+        const result = parse({ run: { ...run, splits: [split, { ...split, durationSeconds: 310 }] } });
+        expect(result.success).toBe(false);
+        expect(!result.success && result.error.issues.some((i) => i.path.join('.') === 'run.splits')).toBe(true);
+      });
+
       it.each([
         ['an index of 0', { index: 0 }],
         ['a negative split distance', { distanceMeters: -5 }],

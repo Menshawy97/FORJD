@@ -286,6 +286,12 @@ export const runSummaryInputSchema = z
   .refine((run) => run.caloriesKcal === null || run.caloriesSource !== null, {
     message: 'caloriesSource is required when caloriesKcal is given',
     path: ['caloriesSource'],
+  })
+  // Two splits with one index would violate the table's unique key and fail the whole upload with a
+  // 500, which the offline queue would retry; refuse it here as the client bug it is.
+  .refine((run) => new Set(run.splits.map((split) => split.index)).size === run.splits.length, {
+    message: 'split indexes must be unique',
+    path: ['splits'],
   });
 export type RunSummaryInput = z.infer<typeof runSummaryInputSchema>;
 
