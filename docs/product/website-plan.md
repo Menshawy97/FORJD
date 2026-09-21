@@ -237,13 +237,17 @@ proposed it needs its own decision), a blog, localisation, and a web version of 
   | Build command | exactly as above |
   | Output directory, root directory | `apps/web/dist`, empty |
   | Environment variables, production **and** preview | `NODE_VERSION=24`, `PNPM_VERSION=11.22.0`, `SKIP_DEPENDENCY_INSTALL=1` |
-  | Build watch paths | `apps/web/*, pnpm-lock.yaml, pnpm-workspace.yaml`, no excludes |
+  | Build watch paths | now `["apps/web/*","pnpm-lock.yaml","pnpm-workspace.yaml"]` (see the correction below) |
   | Custom domains | `getforjd.com` and `www.getforjd.com`, both `active` (validation and verification `active`) |
   | Zone | `getforjd.com`, `active` |
 
-  The watch paths are proven by behaviour, not just by config: the deployment history shows a
-  lockfile-only change building, and documentation-only commits (#226, #228) producing no production
-  deployment at all.
+  **Correction, same day: the watch paths were broken, and this audit missed it.** They had been saved as
+  one entry, `"apps/web/*, pnpm-lock.yaml, pnpm-workspace.yaml"`, not three, so nothing matched and
+  Cloudflare skipped the production builds for both website merges (#229 and #230); the site stayed on the
+  13:17 build until it was noticed. The API returned the bad value and it was read as correct. Fixed by
+  re-entering them as three separate entries (`["apps/web/*","pnpm-lock.yaml","pnpm-workspace.yaml"]`).
+  Lesson: after changing watch paths, do not trust the stored value, push a change under `apps/web/` and
+  confirm a build actually runs. A skipped deployment shows every stage as `idle`.
 
   Not confirmable from here, and both are small. The redirect rule's own settings could not be read,
   because the token lacked the Single Redirect read permission; its behaviour is confirmed instead
