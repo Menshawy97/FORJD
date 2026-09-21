@@ -13,7 +13,7 @@ export interface MapStyleRule {
 export const DARK_MAP_STYLE: MapStyleRule[] = [
   { elementType: 'geometry', stylers: [{ color: '#141517' }] },
   { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#6b6b64' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a82' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#141517' }] },
   { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#26272a' }] },
   { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#181a1c' }] },
