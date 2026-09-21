@@ -102,12 +102,50 @@ describe("turnstile-client", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("retries a 5xx up to three times, then fails closed", async () => {
+  it("sends no request for a whitespace-only token", async () => {
+    const fetchImpl = jest.fn();
+    const client = createTurnstileClient({ secretKey, fetchImpl });
+
+    await expect(client.verify("   ")).resolves.toBe(false);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("refuses to follow a redirect, so the secret is never re-sent elsewhere", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(successFixture));
+    const client = createTurnstileClient({ secretKey, fetchImpl });
+
+    await client.verify(token);
+
+    expect(fetchImpl.mock.calls[0][1].redirect).toBe("error");
+  });
+
+  it("keeps the worst case short: two attempts of five seconds, not thirty", async () => {
+    // Anonymous callers can each hold a request open, so the ceiling matters.
+    jest.useFakeTimers();
+    try {
+      const fetchImpl = jest.fn(
+        (_url: unknown, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+          }),
+      );
+      const client = createTurnstileClient({ secretKey, fetchImpl: fetchImpl as unknown as typeof fetch });
+
+      const result = client.verify(token);
+      await jest.advanceTimersByTimeAsync(10_000);
+
+      await expect(result).resolves.toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("retries a 5xx once, then fails closed", async () => {
     const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({}, false, 503));
     const client = createTurnstileClient({ secretKey, fetchImpl });
 
     await expect(client.verify(token)).resolves.toBe(false);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("recovers when a retry succeeds", async () => {
@@ -121,12 +159,12 @@ describe("turnstile-client", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("retries a network error, then fails closed", async () => {
+  it("retries a network error once, then fails closed", async () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error("socket hang up"));
     const client = createTurnstileClient({ secretKey, fetchImpl });
 
     await expect(client.verify(token)).resolves.toBe(false);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("fails closed even when fetch rejects with something that is not an Error", async () => {
@@ -134,7 +172,7 @@ describe("turnstile-client", () => {
     const client = createTurnstileClient({ secretKey, fetchImpl });
 
     await expect(client.verify(token)).resolves.toBe(false);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("does not retry a 4xx, which is a real rejection rather than a blip", async () => {
@@ -157,10 +195,10 @@ describe("turnstile-client", () => {
       const client = createTurnstileClient({ secretKey, fetchImpl: fetchImpl as unknown as typeof fetch });
 
       const result = client.verify(token);
-      await jest.advanceTimersByTimeAsync(40_000);
+      await jest.advanceTimersByTimeAsync(20_000);
 
       await expect(result).resolves.toBe(false);
-      expect(fetchImpl).toHaveBeenCalledTimes(3);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
     } finally {
       jest.useRealTimers();
     }

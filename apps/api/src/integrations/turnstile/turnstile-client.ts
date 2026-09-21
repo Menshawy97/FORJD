@@ -10,8 +10,14 @@ import { ConfigService } from "@nestjs/config";
 export const TURNSTILE_CLIENT = Symbol("TURNSTILE_CLIENT");
 
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-const MAX_ATTEMPTS = 3;
-const REQUEST_TIMEOUT_MS = 10_000;
+/**
+ * Two attempts of five seconds, not three of ten. The endpoint this guards is public, so every
+ * caller can hold a request open for as long as Cloudflare stalls: a 10s worst case, not 30s,
+ * bounds that. It also suits Turnstile itself, whose tokens are single-use, so a retry after a
+ * lost reply is likely to be refused anyway.
+ */
+const MAX_ATTEMPTS = 2;
+const REQUEST_TIMEOUT_MS = 5_000;
 
 export interface TurnstileClient {
   /**
@@ -49,7 +55,7 @@ async function postWithRetry(fetchImpl: typeof fetch, init: RequestInit): Promis
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const response = await fetchImpl(SITEVERIFY_URL, { ...init, signal: controller.signal });
+      const response = await fetchImpl(SITEVERIFY_URL, { ...init, redirect: "error", signal: controller.signal });
 
       if (response.ok) {
         return await response.json();
@@ -94,7 +100,7 @@ export function createTurnstileClient(options: CreateTurnstileClientOptions): Tu
         }
         return false;
       }
-      if (!token) return false;
+      if (!token.trim()) return false;
 
       const form = new URLSearchParams({ secret: options.secretKey, response: token });
       if (remoteIp) form.set("remoteip", remoteIp);
@@ -112,7 +118,7 @@ export function createTurnstileClient(options: CreateTurnstileClientOptions): Tu
         logger.warn(`Turnstile refused a token (error-codes: ${readErrorCodes(body)}).`);
         return false;
       } catch (err) {
-        logger.warn(`Turnstile could not be reached; refusing the sign-up (${(err as Error).message}).`);
+        logger.warn(`Turnstile could not be reached; refusing the sign-up (${err instanceof Error ? err.name : "unknown error"}).`);
         return false;
       }
     },
