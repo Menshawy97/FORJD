@@ -42,13 +42,11 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    // ADR-048: city leaderboards need a city, not a fix, and never a background one. The
-    // expo-location plugin declares fine and background location by default; both are blocked so
-    // the manifest asks for coarse location alone, which is what the app says it does.
-    blockedPermissions: [
-      'android.permission.ACCESS_FINE_LOCATION',
-      'android.permission.ACCESS_BACKGROUND_LOCATION',
-    ],
+    // ADR-048 / ADR-049: location is foreground only, never in the background. The expo-location
+    // plugin declares background location by default, so it is blocked. Fine location is allowed
+    // (it was blocked before runs): the run screen needs a precise position while a run is open,
+    // and the leaderboard path still asks for a coarse one.
+    blockedPermissions: ['android.permission.ACCESS_BACKGROUND_LOCATION'],
   },
   web: {
     output: 'static',
@@ -71,15 +69,15 @@ const config: ExpoConfig = {
       ? ['@react-native-google-signin/google-signin', { iosUrlScheme: process.env.GOOGLE_IOS_URL_SCHEME }]
       : '@react-native-google-signin/google-signin',
     '@react-native-community/datetimepicker',
-    // ADR-048: one coarse position at the start of a workout, to place the athlete on a city
-    // leaderboard. Foreground only; the Android fine and background permissions are blocked
-    // above. The purpose string is what the system dialog shows, so it says exactly what the app
-    // does with the position.
+    // ADR-048 / ADR-049: one coarse position at the start of a workout, to place the athlete on a
+    // city leaderboard, and a precise one while a run is open. Foreground only; the Android
+    // background permission is blocked above. The purpose string is what the system dialog shows,
+    // so it says exactly what the app does with the position.
     [
       'expo-location',
       {
         locationWhenInUsePermission:
-          'FORJD uses your approximate location once, at the start of a workout, to place you on your city leaderboard. Your precise location is never stored or shared.',
+          'FORJD uses your approximate location once, at the start of a workout, to place you on your city leaderboard, and your precise location while a run is open, to measure distance, pace and your route. Your route stays on your phone and is never uploaded.',
         isAndroidBackgroundLocationEnabled: false,
         isAndroidForegroundServiceEnabled: false,
         // The plugin adds the iOS "Always" and motion purpose strings by default even with

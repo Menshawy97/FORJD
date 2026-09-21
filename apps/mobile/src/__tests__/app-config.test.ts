@@ -1,7 +1,7 @@
-// Phase 10 / ADR-048. What the app declares to the operating system about location. Coarse and
-// foreground only: the leaderboard needs a city, read once at the start of a workout, and
-// nothing about it justifies a fine fix or tracking in the background. Store review checks this
-// against what the app says it does.
+// Phase 10 / ADR-048, amended by ADR-049. What the app declares to the operating system about
+// location. Foreground only. The leaderboard needs a coarse city, read once at the start of a
+// workout; the run screen needs a precise position while a run is open. Nothing justifies
+// tracking in the background. Store review checks this against what the app says it does.
 import config from '../../app.config';
 
 type PluginEntry = string | [string, Record<string, unknown>];
@@ -16,7 +16,13 @@ describe('app config: location', () => {
     const options = locationPlugin()?.[1];
     expect(options?.locationWhenInUsePermission).toEqual(expect.stringContaining('approximate location'));
     expect(options?.locationWhenInUsePermission).toEqual(expect.stringContaining('city leaderboard'));
-    expect(options?.locationWhenInUsePermission).toEqual(expect.stringContaining('never stored'));
+  });
+
+  it('says the run screen uses a precise position while a run is open, and keeps the route on the phone', () => {
+    const text = String(locationPlugin()?.[1].locationWhenInUsePermission);
+    expect(text).toContain('precise location while a run is open');
+    expect(text).toContain('stays on your phone');
+    expect(text).toContain('never uploaded');
   });
 
   it('turns background location and the foreground service off', () => {
@@ -25,13 +31,12 @@ describe('app config: location', () => {
     expect(options?.isAndroidForegroundServiceEnabled).toBe(false);
   });
 
-  it('blocks the Android permissions a city does not need: fine and background location', () => {
-    expect(config.android?.blockedPermissions).toEqual(
-      expect.arrayContaining(['android.permission.ACCESS_FINE_LOCATION', 'android.permission.ACCESS_BACKGROUND_LOCATION']),
-    );
+  it('still blocks background location on Android', () => {
+    expect(config.android?.blockedPermissions).toContain('android.permission.ACCESS_BACKGROUND_LOCATION');
   });
 
-  it('does not block coarse location, which is the one permission it uses', () => {
+  it('no longer blocks fine location, which a run needs (ADR-049), nor coarse, which the leaderboard uses', () => {
+    expect(config.android?.blockedPermissions).not.toContain('android.permission.ACCESS_FINE_LOCATION');
     expect(config.android?.blockedPermissions).not.toContain('android.permission.ACCESS_COARSE_LOCATION');
   });
 
