@@ -1,6 +1,6 @@
 # The live run — "Start a run" on Train
 
-Status: **in progress** (2026-09-21). R1, R2 and R3 are merged and green on `main`; R4 to R8 and F1 remain.
+Status: **in progress** (2026-09-22). R1 to R5 are merged and green on `main`; R6 and R7 are in one PR; R8 and F1 remain.
 
 Train's "Start a run" tile (`apps/mobile/src/app/(tabs)/train.tsx:53`, `href: null`) was left inert
 by Phase 2 and Phase 3 because a run needs GPS, and Phase 3H deferred it ("a different modality
@@ -92,7 +92,21 @@ Train active.
 - The share tile on the summary shows a "coming soon" note: the run share card ("Route & Splits")
   is not part of this work.
 - Elapsed, pace and the other values are real; the prototype's hard-coded 298 kcal and 24 m are not
-  copied.
+  copied. A figure that was never measured reads "—".
+- Distance is kilometres only for now; there is no miles option on the run screens yet.
+- The header's pulse animation is a static dot, as on the strength runner.
+- Label and unit greys use the app's contrast-lifted `label` (#94948B) and `dimmer` (#8A8A82) tokens
+  instead of the prototype's #77776f / #6e6e66, as every other screen does (R19).
+- The GPS pill has two states the design does not draw: "GPS weak" (worse than 10 m, accent dot) and
+  "GPS searching" (before the first reading, grey dot).
+- A denied, approximate-only or unavailable location shows an explanation card (with Open Settings
+  where it can help) in place of the map. The run keeps its clock, but cannot measure distance.
+- Locking the phone pauses the run and the screen says so, because foreground location stops.
+- Calories on the summary carry a small "estimated" line when they are the ACSM estimate and not a
+  watch reading (the plan's "the tile says estimated").
+- A run under 50 m is offered for discarding rather than saved.
+- The run screens read `healthDataAllowed: false` until R8 wires the watch and the health-data consent,
+  so no heart rate is stored yet; estimated calories are stored regardless, as ADR-050 #3 says.
 
 ## Owed by the user
 
@@ -101,23 +115,24 @@ SHA-1, set as the EAS environment variable `GOOGLE_MAPS_ANDROID_API_KEY`; a deve
 a device walk of tracking, the map and keep-awake; the Health Connect test (R8); and the Play Data
 safety form updated to say precise location is used on the device during a run.
 
-## Where we stopped (2026-09-21)
+## Where we stopped (2026-09-22)
 
-Done and green on `main`: R1 (domain maths), R2 (contract `run`, migration 0022, service consent rule,
-`Outdoor Run` seed exercise), R3 (`getPrecisePermission`, `requestPrecisePermission`,
-`watchPrecisePosition` with an `isCancelled` option, fine location unblocked, background blocked).
+**Merged and green on `main`:** S1, A1, D1, R1 to R5. Production has migrations up to `0021`; `0022`
+(the run tables) is on staging only, and reaches production on the next manual production deploy.
 
-Next, in order: **R4** maps (`react-native-maps` behind `integrations/maps/`, striped fallback, conformance
-rule), **R5** run engine and persistence (reducer over `buildTrack`, SQLite points and snapshot,
-keep-awake, `toRunUploadRequest` using the `Outdoor Run` exercise slug `outdoor-run`), **R6/R7** the two
-screens (audit every value against the screenshots), **R8** watch heart rate (device test before merge),
-**F1** the FAQ, only after the user signs off [faq-copy.md](faq-copy.md).
+**R6 + R7, branch `feat/run-screens`, one PR:** `app/run.tsx` with `features/run/use-run-session.ts`, the run
+sections, `app/run-done.tsx`, Train's tile link and the km line. Reviewed by agents (React, security, silent
+failures, test coverage); their findings are fixed. Known follow-ups, not blocking: the run snapshot is not cleared
+on logout (a second account on the same phone would be offered the first one's unfinished run; strength has the same
+gap); the route rebuilds every second on the live screen (cheap now, worth a memo on very long runs); and
+`run_points` in `store/run-session.ts` is unused (the snapshot carries the fixes).
 
-Callers of `watchPrecisePosition` must pass `isCancelled` and keep a single watch (a double tap or a
-Strict Mode double effect must not start two). iOS "approximate" grants cannot be detected: the 25 m accuracy
-filter in `acceptFix` is what excludes those fixes.
+Next: **R8** (watch heart rate and calories through Health Connect; open the PR green, **do not merge until run on a
+physical Android phone**, rule 16), then **F1** (FAQ, **only after the user signs off `faq-copy.md`**), then close-out
+docs. When R8 lands it must set `healthDataAllowed` from the health-data consent and gate what the snapshot stores.
+Local Postgres tests need `DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd` (Node resolves
+`localhost` to IPv6).
 
-Production is live (deploy 2026-09-21, `/api/v1/health` ok) and the leaderboard snapshot ran twice against
-it ("captured 0 cities": no city has five athletes yet). Local Postgres tests need
-`DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd`, because Node resolves `localhost` to
-IPv6 and Docker binds IPv4 only.
+Owed by the user: the FAQ sign-off; a Google Cloud Maps key restricted to `com.forjd.app` + the signing SHA-1, set as
+the EAS variable `GOOGLE_MAPS_ANDROID_API_KEY`; a dev-client build; the device walk of a real run.
+

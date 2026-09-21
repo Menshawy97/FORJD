@@ -8,6 +8,7 @@ import {
   formatRelativeDay,
   formatSessionDuration,
   sessionExerciseChips,
+  sessionLoadLabel,
   sessionVolumeKg,
   toRepeatExercises,
 } from '../previous-workout';
@@ -429,5 +430,31 @@ describe('formatHistoryDate', () => {
 
   it('writes a January date without a leading zero, as the design does', () => {
     expect(formatHistoryDate(new Date('2026-01-05T10:00:00'), now)).toBe('5 Jan');
+  });
+});
+
+// Train's Previous Workout line shows kilometres for a run instead of "0 kg" (ADR-050).
+describe('sessionLoadLabel', () => {
+  const exercise = (measure: string, sets: unknown[]) => ({ exerciseId: 'e1', orderIndex: 0, measure, sets }) as never;
+
+  it('shows the volume in kg for a strength session', () => {
+    const s = session({ exercises: [exercise('reps', [set({ weightKg: 100, reps: 10 })])] });
+    expect(sessionLoadLabel(s)).toBe('1,000 kg');
+  });
+
+  it('shows kilometres for a run, from its completed distance sets', () => {
+    const s = session({
+      activity: 'running',
+      exercises: [exercise('distance', [set({ distanceMeters: 3560, durationSeconds: 1329 })])],
+    });
+    expect(sessionLoadLabel(s)).toBe('3.56 km');
+  });
+
+  it('ignores sets that were not completed', () => {
+    const s = session({
+      activity: 'running',
+      exercises: [exercise('distance', [set({ distanceMeters: 5000, isCompleted: false })])],
+    });
+    expect(sessionLoadLabel(s)).toBe('0.00 km');
   });
 });
