@@ -4,6 +4,7 @@ import type { WorkoutEventType, WorkoutSessionStatus } from '@forjd/domain';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 
 import type { SqliteConnection } from './exercise-catalogue';
+import { RUN_SESSION_MIGRATION } from './run-session';
 import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
 
 /**
@@ -52,6 +53,16 @@ export async function openWorkoutSessionDb(): Promise<SqliteConnection> {
  * by it, and the table is unbounded (append-only for the lifetime of the app), so this is a
  * real, load-bearing index, not one invented only to exercise the migration machinery.
  */
+/**
+ * **This is the one, whole ordered list for this database file.** `run-session.ts` shares the
+ * same `forjd-workout-sessions.db` and the same `PRAGMA user_version` counter (ADR-049), and
+ * appends its own step (`RUN_SESSION_MIGRATION`) to this array rather than keeping a second list:
+ * two independently-versioned lists both calling `runSqliteMigrations` against one counter would
+ * let call order decide which tables exist. Whichever of `ensureWorkoutSessionSchema` /
+ * `ensureRunSessionSchema` runs first on a fresh device must migrate the same database to the
+ * same end state regardless of which caller got there first, and only one shared list guarantees
+ * that.
+ */
 const MIGRATIONS: SqliteMigration[] = [
   {
     version: 1,
@@ -97,6 +108,7 @@ const MIGRATIONS: SqliteMigration[] = [
       `);
     },
   },
+  RUN_SESSION_MIGRATION,
 ];
 
 /** Idempotent, run before every use -- see `exercise-catalogue.ts`'s own note on why (cheap, no init step for a caller to forget). Applies every migration a given database is missing; see `MIGRATIONS` above and `sqlite-migrations.ts` for the mechanism. */
