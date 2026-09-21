@@ -28,6 +28,9 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Name, username, date of birth (required, age 16+), sex, height, units, goals | Onboarding, edit profile | `profiles` | No | Yes | Yes (cascade) |
 | City (coarse text only, no coordinates) | Location screen | `profiles.city`, `workout_sessions.city`, `workout_sessions.city_slug` | No | Yes | Yes |
 | Approximate start position of a workout (about 110 m), only if location for leaderboards is on | Workout start (coarse, foreground) | **Not stored on the server.** Sent to our API, resolved to a city, discarded. On the device only, in the recovery snapshot and upload queue until the workout uploads | n/a | No | Cleared on device with local data |
+| Run route (precise GPS points), only while a run is open (ADR-049) | Run screen (precise, foreground only) | **Device only**, in the local SQLite database until the run is discarded or the app data is cleared. Never uploaded | n/a | No | Cleared on device with local data |
+| Run summary: distance, moving time, elevation gain, splits (ADR-050) | Run screen | `workout_run_summaries`, `workout_run_splits` (planned) | No | Yes | Yes (cascade) |
+| Run heart rate and calories, from a watch or estimated (ADR-050) | Run screen, Health Connect | Same tables, **only with health-data consent**; dropped by the server otherwise | Yes (health) | No | Yes (cascade) |
 | Weekly city rank (rank, score, cohort size) | Weekly snapshot job | `leaderboard_rank_snapshots` (derived, replaced never patched) | No | No | Yes (cascade) |
 | Avatar image | Profile photo | Storage bucket `avatars` (public URL) | Storage default | URL only | Yes (explicit delete) |
 | InBody photo and body composition | InBody scan | Bucket `inbody` (private), `body_scans`, `body_measurements` | Storage default | Measurements yes; photo file no | Yes |
@@ -54,7 +57,9 @@ Derived from the table. Confirm against the final build and the lawyer's privacy
 - **Shared with third parties:** InBody photos with OpenAI (after consent) and WHOOP OAuth
   exchange only. Hosting and processing by Supabase is service-provider processing.
 - **Encrypted in transit:** yes. **Deletion available:** yes, in-app (Profile, Delete account).
-- **Not collected:** precise location, contacts, advertising ID, financial info.
+- **Not collected on the server:** precise location, contacts, advertising ID, financial info. Once
+  runs ship (ADR-049), the app *uses* precise location on the device while a run is open, keeps the
+  route only on the device, and the Play Data safety form must say so.
 
 ## Known mismatches, tracked as follow-ups
 
