@@ -1,6 +1,6 @@
 # The live run — "Start a run" on Train
 
-Status: **planned** (2026-09-21). Slices R1 to R8 below; nothing built yet.
+Status: **in progress** (2026-09-21). R1, R2 and R3 are merged and green on `main`; R4 to R8 and F1 remain.
 
 Train's "Start a run" tile (`apps/mobile/src/app/(tabs)/train.tsx:53`, `href: null`) was left inert
 by Phase 2 and Phase 3 because a run needs GPS, and Phase 3H deferred it ("a different modality
@@ -57,10 +57,10 @@ Each slice is test-first, reviewed by agents, merged by PR, and confirmed green 
 
 | Slice | What |
 |---|---|
-| D1 | This plan, ADR-049, ADR-050, `security.md`, `data-inventory.md`, `faq-copy.md` (docs only) |
-| R1 | `packages/domain/src/run-calculations.ts` and its spec: the formulas above, pure |
-| R2 | Contracts: an optional `run` object on the session upload (additive, `/api/v1`); migration for `workout_run_summaries` and `workout_run_splits`; the service stores it in the session's transaction and drops HR and calories without health consent; a curated "Outdoor Run" exercise |
-| R3 | Location adapter: `requestPrecisePermission`, `watchPrecisePosition`; `app.config.ts` unblocks fine location only |
+| D1 | **Merged (#218).** This plan, ADR-049, ADR-050, `security.md`, `data-inventory.md`, `faq-copy.md` (docs only) |
+| R1 | **Merged (#219).** `packages/domain/src/run-calculations.ts` and its spec: the formulas above, pure, hardened after review (non-finite input, bad anchors, both clocks) |
+| R2 | **Merged (#220).** | Contracts: an optional `run` object on the session upload (additive, `/api/v1`); migration for `workout_run_summaries` and `workout_run_splits`; the service stores it in the session's transaction and drops HR and calories without health consent; a curated "Outdoor Run" exercise |
+| R3 | **Merged (#222).** Location adapter: `requestPrecisePermission`, `watchPrecisePosition`; `app.config.ts` unblocks fine location only |
 | R4 | `integrations/maps/route-map.tsx` with the no-key fallback; a conformance rule confines `react-native-maps` to that folder |
 | R5 | `workouts/live-run.ts` reducer, `store/run-session.ts` (SQLite points and snapshot), keep-awake, upload mapping |
 | R6 | The live run screen `app/run.tsx`, pixel-exact |
@@ -100,3 +100,24 @@ The Google Cloud billing account and a Maps SDK key restricted to the app packag
 SHA-1, set as the EAS environment variable `GOOGLE_MAPS_ANDROID_API_KEY`; a development-client build;
 a device walk of tracking, the map and keep-awake; the Health Connect test (R8); and the Play Data
 safety form updated to say precise location is used on the device during a run.
+
+## Where we stopped (2026-09-21)
+
+Done and green on `main`: R1 (domain maths), R2 (contract `run`, migration 0022, service consent rule,
+`Outdoor Run` seed exercise), R3 (`getPrecisePermission`, `requestPrecisePermission`,
+`watchPrecisePosition` with an `isCancelled` option, fine location unblocked, background blocked).
+
+Next, in order: **R4** maps (`react-native-maps` behind `integrations/maps/`, striped fallback, conformance
+rule), **R5** run engine and persistence (reducer over `buildTrack`, SQLite points and snapshot,
+keep-awake, `toRunUploadRequest` using the `Outdoor Run` exercise slug `outdoor-run`), **R6/R7** the two
+screens (audit every value against the screenshots), **R8** watch heart rate (device test before merge),
+**F1** the FAQ, only after the user signs off [faq-copy.md](faq-copy.md).
+
+Callers of `watchPrecisePosition` must pass `isCancelled` and keep a single watch (a double tap or a
+Strict Mode double effect must not start two). iOS "approximate" grants cannot be detected: the 25 m accuracy
+filter in `acceptFix` is what excludes those fixes.
+
+Production is live (deploy 2026-09-21, `/api/v1/health` ok) and the leaderboard snapshot ran twice against
+it ("captured 0 cities": no city has five athletes yet). Local Postgres tests need
+`DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd`, because Node resolves `localhost` to
+IPv6 and Docker binds IPv4 only.
