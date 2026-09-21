@@ -508,18 +508,20 @@ describe('workout-session store', () => {
 
       await ensureWorkoutSessionSchema(versionOneDb);
 
-      expect(versionOneDb.userVersion).toBe(2);
+      // 3, not 2: this one shared list also carries run-session.ts's RUN_SESSION_MIGRATION step
+      // (ADR-049) -- one database, one PRAGMA user_version, one list, whichever caller runs first.
+      expect(versionOneDb.userVersion).toBe(3);
       const events = await getSessionEvents(versionOneDb, 'session-1');
       expect(events).toHaveLength(1);
       expect(events[0]?.type).toBe('workout_finished');
     });
 
     it('is a no-op on a database already at the latest version', async () => {
-      const upToDateDb = new FakeSqliteConnection(2);
+      const upToDateDb = new FakeSqliteConnection(3);
 
       await expect(ensureWorkoutSessionSchema(upToDateDb)).resolves.toBeUndefined();
 
-      expect(upToDateDb.userVersion).toBe(2);
+      expect(upToDateDb.userVersion).toBe(3);
     });
 
     it('throws rather than silently proceeding when the database is newer than this app build understands', async () => {

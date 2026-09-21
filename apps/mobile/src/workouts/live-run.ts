@@ -67,6 +67,8 @@ export const MIN_SAVEABLE_RUN_METERS = 50;
 const MAX_DISTANCE_METERS = 200_000;
 const MAX_MOVING_SECONDS = 86_400;
 const MAX_SPLITS = 200;
+const MAX_ELEVATION_GAIN_METERS = 10_000;
+const MAX_CALORIES_KCAL = 20_000;
 const MIN_HEART_RATE_BPM = 30;
 const MAX_HEART_RATE_BPM = 250;
 
@@ -211,12 +213,18 @@ const roundCoarse = (value: number): number => {
  * first reading rounded to about 110 m, and only for someone who allowed location for leaderboards,
  * exactly as for any workout (ADR-048).
  *
- * Heart rate and calories are only included when health data is allowed; the server applies the same
- * rule again (ADR-043), so this is the phone declining to send, not the only line of defence. Every
- * value is clamped to the contract's limits: a run that overshoots one is saved, not refused.
+ * Heart rate and the watch's calories are only included when health data is allowed. **An estimated
+ * calorie figure is sent regardless of consent**, because it is the app's own arithmetic from pace
+ * and weight, not a health reading (ADR-050); the server applies the same consent rule to it anyway,
+ * for simplicity, so a device without consent still gets its estimate stripped before storage. Every
+ * numeric field is clamped to the contract's limits: a run that overshoots one is saved, not refused.
  */
 export function toRunUploadRequest(state: RunState, options: RunUploadOptions): WorkoutSessionUploadRequest {
-  const endedAtMs = state.endedAtMs ?? state.startedAtMs + movingMsAt(state, state.startedAtMs);
+  if (state.status !== 'finished' || state.endedAtMs === null) {
+    // Callers finish the run first; there is no sensible "upload of a run still in progress".
+    throw new Error('toRunUploadRequest: the run must be finished before it can be uploaded');
+  }
+  const endedAtMs = state.endedAtMs;
   const stats = runStats(state, endedAtMs);
   const movingSeconds = clampInt(stats.movingSeconds, 0, MAX_MOVING_SECONDS);
   const distanceMeters = Math.min(MAX_DISTANCE_METERS, Math.round(stats.distanceMeters * 100) / 100);
@@ -240,8 +248,9 @@ export function toRunUploadRequest(state: RunState, options: RunUploadOptions): 
     netClimbMeters: stats.netClimbMeters,
     weightKg: options.weightKg,
   });
-  const calories = watchCalories ?? estimated;
-  const caloriesSource = watchCalories !== null ? 'watch' : estimated !== null ? 'estimate' : null;
+  const clampedEstimate = estimated === null ? null : Math.min(MAX_CALORIES_KCAL, estimated);
+  const calories = watchCalories ?? clampedEstimate;
+  const caloriesSource = watchCalories !== null ? 'watch' : clampedEstimate !== null ? 'estimate' : null;
 
   const first = buildTrack(state.fixes)[0];
   const startLocation =
@@ -269,7 +278,9 @@ export function toRunUploadRequest(state: RunState, options: RunUploadOptions): 
       distanceMeters,
       movingSeconds,
       elevationGainMeters:
-        stats.elevationGainMeters === null ? null : Math.round(stats.elevationGainMeters * 10) / 10,
+        stats.elevationGainMeters === null
+          ? null
+          : Math.min(MAX_ELEVATION_GAIN_METERS, Math.round(stats.elevationGainMeters * 10) / 10),
       avgHeartRateBpm: avgHeartRate,
       caloriesKcal: calories,
       caloriesSource,

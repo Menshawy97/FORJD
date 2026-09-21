@@ -151,5 +151,21 @@ describe('run-session store', () => {
       await ensureRunSessionSchema(db);
       await expect(getRunPoints(db, 'run-1')).resolves.toEqual([]);
     });
+
+    it('brings a fresh device up to the same schema version as the strength runner, called alone', async () => {
+      // A device that opens the run screen before ever starting a strength workout must not stop
+      // ensureWorkoutSessionSchema from later applying v1/v2: both share one migration list.
+      const fresh = new FakeSqliteConnection();
+      await ensureRunSessionSchema(fresh);
+      expect(fresh.userVersion).toBeGreaterThanOrEqual(3);
+    });
+
+    it('does not throw as a downgrade when the other caller runs afterwards', async () => {
+      const fresh = new FakeSqliteConnection();
+      await ensureRunSessionSchema(fresh);
+
+      const { ensureWorkoutSessionSchema } = require('../workout-session') as typeof import('../workout-session');
+      await expect(ensureWorkoutSessionSchema(fresh)).resolves.not.toThrow();
+    });
   });
 });

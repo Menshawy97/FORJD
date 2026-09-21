@@ -209,6 +209,11 @@ describe('toRunUploadRequest', () => {
   const finished = (): RunState => finishRun(runSteadily(4, 260), T0 + 260_000);
   const base = { weightKg: 70, allowStartLocation: false, healthDataAllowed: false, watchCaloriesKcal: null };
 
+  it('refuses a run that has not been finished', () => {
+    expect(() => toRunUploadRequest(runSteadily(4, 10), base)).toThrow();
+    expect(() => toRunUploadRequest(pauseRun(runSteadily(4, 10), T0 + 10_000), base)).toThrow();
+  });
+
   it('builds an upload the API contract accepts', () => {
     const body = toRunUploadRequest(finished(), base);
     expect(() => workoutSessionUploadRequestSchema.parse(body)).not.toThrow();
@@ -306,6 +311,24 @@ describe('toRunUploadRequest', () => {
     expect(body).not.toContain('route');
     expect(body).not.toContain('altitude');
     expect(body).not.toContain('accuracy');
+  });
+
+  it('clamps an estimate past the contract ceiling rather than sending a rejectable value', () => {
+    // A day-long, very heavy-weight run pushes the ACSM estimate well past 20,000 kcal.
+    const long = finishRun(runSteadily(3, 24 * 3600), T0 + 24 * 3600 * 1000);
+    const body = toRunUploadRequest(long, { ...base, weightKg: 400 });
+    expect(body.run?.caloriesKcal).toBeLessThanOrEqual(20_000);
+  });
+
+  it('clamps elevation gain past the contract ceiling', () => {
+    let state = startRun(ID, T0);
+    let altitude = 0;
+    for (let t = 1; t <= 20; t += 1) {
+      altitude += 2000; // a climb far larger than 10,000 m in total
+      state = addFix(state, at(t, t, { altitudeMeters: altitude }));
+    }
+    const body = toRunUploadRequest(finishRun(state, T0 + 20_000), base);
+    expect(body.run?.elevationGainMeters).toBeLessThanOrEqual(10_000);
   });
 
   it('keeps every value inside the contract limits for an extreme run', () => {
