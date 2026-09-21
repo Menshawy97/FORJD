@@ -47,6 +47,10 @@ const config: ExpoConfig = {
     // (it was blocked before runs): the run screen needs a precise position while a run is open,
     // and the leaderboard path still asks for a coarse one.
     blockedPermissions: ['android.permission.ACCESS_BACKGROUND_LOCATION'],
+    // R8 / ADR-034 / ADR-050: a run reads the watch's heart rate and active energy through Health
+    // Connect, read-only, once the person allows it. Nothing else is declared and nothing is written.
+    // Unverified on a physical phone (ADR-035), like the rest of the Health Connect adapter.
+    permissions: ['android.permission.health.READ_HEART_RATE', 'android.permission.health.READ_ACTIVE_CALORIES_BURNED'],
   },
   web: {
     output: 'static',

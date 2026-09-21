@@ -10,6 +10,7 @@
 // on every mutation, so it can never serve a token the store no longer holds.
 import * as SecureStore from 'expo-secure-store';
 
+import { forgetHealthConsent } from '@/store/health-consent-local';
 import { forgetLocationConsent } from '@/store/leaderboard-consent';
 
 const KEYS = {
@@ -146,6 +147,8 @@ export async function clearSession(options?: { expired?: boolean }): Promise<voi
   // session ends passes through here, so a different account on the same phone never inherits the
   // previous person's yes. Never throws, so it cannot stop a sign-out.
   await forgetLocationConsent();
+  // ADR-043: the same for the device's copy of the health-data consent (R8).
+  await forgetHealthConsent();
   cache.accessToken = null;
   cache.refreshToken = null;
   cache.expiresAt = null;

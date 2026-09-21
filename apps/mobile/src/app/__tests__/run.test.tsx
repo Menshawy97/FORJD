@@ -45,6 +45,12 @@ jest.mock('@/store/run-session', () => ({
   clearRunPoints: jest.fn(),
 }));
 
+jest.mock('@/integrations/health/device-health-provider', () => ({ getDeviceHealthProvider: jest.fn() }));
+jest.mock('@/store/health-consent-local', () => ({ readHealthConsent: jest.fn() }));
+jest.mock('@/store/run-health-access', () => ({
+  hasAskedRunHealthAccess: jest.fn(),
+  markRunHealthAccessAsked: jest.fn(),
+}));
 jest.mock('@/features/run/latest-weight', () => ({ fetchLatestWeightKg: jest.fn() }));
 jest.mock('@/workouts/sync-sessions', () => ({ syncPendingSessions: jest.fn() }));
 jest.mock('@/store/leaderboard-consent', () => ({ readLocationConsent: jest.fn() }));
@@ -55,12 +61,15 @@ import {
   watchPrecisePosition,
   type PreciseFix,
 } from '@/integrations/location/location-provider';
+import { getDeviceHealthProvider } from '@/integrations/health/device-health-provider';
+import { readHealthConsent } from '@/store/health-consent-local';
+import { hasAskedRunHealthAccess, markRunHealthAccessAsked } from '@/store/run-health-access';
 import { toRunSnapshot } from '@/features/run/run-snapshot';
 import { fetchLatestWeightKg } from '@/features/run/latest-weight';
 import { clearRunSnapshot, getUnfinishedRunSnapshot, saveRunSnapshot } from '@/store/run-session';
 import { readLocationConsent } from '@/store/leaderboard-consent';
 import { enqueueSessionUpload, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
-import { addFix, pauseRun, startRun } from '@/workouts/live-run';
+import { addFix, addHeartRate, pauseRun, startRun } from '@/workouts/live-run';
 import { clearCompletedRun, getCompletedRun } from '@/workouts/run-handoff';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
 
@@ -115,6 +124,10 @@ beforeEach(() => {
   (fetchLatestWeightKg as jest.Mock).mockResolvedValue(70);
   (syncPendingSessions as jest.Mock).mockResolvedValue(undefined);
   (readLocationConsent as jest.Mock).mockResolvedValue(false);
+  (readHealthConsent as jest.Mock).mockResolvedValue(false);
+  (getDeviceHealthProvider as jest.Mock).mockReturnValue(null);
+  (hasAskedRunHealthAccess as jest.Mock).mockResolvedValue(false);
+  (markRunHealthAccessAsked as jest.Mock).mockResolvedValue(undefined);
   jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
   jest.spyOn(AppState, 'addEventListener').mockImplementation(((_type: string, handler: (state: string) => void) => {
@@ -364,6 +377,168 @@ describe('RunScreen -- finishing', () => {
     await waitFor(() => expect(screen.getByText('Run not saved — try Finish again.')).toBeTruthy());
     expect(mockReplace).not.toHaveBeenCalled();
     expect(clearRunSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+describe('RunScreen -- watch heart rate and calories (R8)', () => {
+  /** A Health Connect stand-in that always has one reading just after the time it is asked from. */
+  const watchProvider = () => ({
+    source: 'health_connect',
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn(),
+    getCapabilities: jest.fn(),
+    requestPermissions: jest.fn().mockResolvedValue({ granted: ['heart_rate', 'active_energy'], denied: [] }),
+    sync: jest.fn(async (request: { metricTypes: string[]; since: Date }) => {
+      const at = new Date(request.since.getTime() + 1);
+      const isHeart = request.metricTypes.includes('heart_rate');
+      return {
+        observations: [
+          {
+            metricType: isHeart ? 'heart_rate' : 'active_energy',
+            value: isHeart ? 147 : 210,
+            unit: isHeart ? 'bpm' : 'kcal',
+            startTime: at,
+            endTime: at,
+            providerRecordId: null,
+            deviceId: null,
+            quality: null,
+          },
+        ],
+        syncedAt: new Date(),
+      };
+    }),
+  });
+
+  it('does not touch Health Connect without health-data consent', async () => {
+    const provider = watchProvider();
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(false);
+
+    await render(<RunScreen />);
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+
+    expect(provider.connect).not.toHaveBeenCalled();
+    expect(provider.requestPermissions).not.toHaveBeenCalled();
+    expect(screen.getByText('— bpm now')).toBeTruthy();
+  });
+
+  it('asks Health Connect once on the first run and shows the heart rate that arrives', async () => {
+    const provider = watchProvider();
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(true);
+
+    await render(<RunScreen />);
+
+    await waitFor(() => expect(screen.getByText('147 bpm now')).toBeTruthy());
+    expect(provider.requestPermissions).toHaveBeenCalledWith(['heart_rate', 'active_energy']);
+    expect(markRunHealthAccessAsked).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('147')).toBeTruthy();
+  });
+
+  it('does not pause the run when Health Connect opens its own screen', async () => {
+    const provider = watchProvider();
+    let release: () => void = () => undefined;
+    provider.requestPermissions.mockReturnValue(
+      new Promise((resolve) => {
+        release = () => resolve({ granted: ['heart_rate', 'active_energy'], denied: [] });
+      }),
+    );
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(true);
+
+    await render(<RunScreen />);
+    await waitFor(() => expect(provider.requestPermissions).toHaveBeenCalled());
+    await act(async () => {
+      appStateHandler('background');
+    });
+    expect(screen.getByText('Live · Outdoor run')).toBeTruthy();
+
+    await act(async () => {
+      release();
+    });
+  });
+
+  it('drops heart-rate samples recovered from a saved run when consent is no longer on', async () => {
+    const base = Date.now() - 60_000;
+    let state = startRun('11111111-1111-4111-8111-111111111111', base);
+    state = addHeartRate(state, [{ timestampMs: base + 1000, bpm: 150 }]);
+    (getUnfinishedRunSnapshot as jest.Mock).mockResolvedValue({
+      sessionId: state.id,
+      payload: toRunSnapshot(pauseRun(state, base + 5000), base + 5000),
+      startedAt: new Date(base).toISOString(),
+    });
+    (readHealthConsent as jest.Mock).mockResolvedValue(false);
+
+    await render(<RunScreen />);
+
+    await waitFor(() => expect(screen.getByText('Paused · Outdoor run')).toBeTruthy());
+    expect(screen.getByText('— bpm now')).toBeTruthy();
+  });
+
+  it('never asks again on a later run', async () => {
+    const provider = watchProvider();
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(true);
+    (hasAskedRunHealthAccess as jest.Mock).mockResolvedValue(true);
+
+    await render(<RunScreen />);
+
+    await waitFor(() => expect(screen.getByText('147 bpm now')).toBeTruthy());
+    expect(provider.requestPermissions).not.toHaveBeenCalled();
+    expect(markRunHealthAccessAsked).not.toHaveBeenCalled();
+  });
+
+  it('uploads the watch heart rate and calories with consent', async () => {
+    const provider = watchProvider();
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(true);
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(screen.getByText('147 bpm now')).toBeTruthy());
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 100, 31));
+
+    await fireEvent.press(screen.getByText('Finish run'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    expect(request.run.avgHeartRateBpm).toBe(147);
+    expect(request.run.caloriesKcal).toBe(210);
+    expect(request.run.caloriesSource).toBe('watch');
+    expect(getCompletedRun()?.avgHeartRateBpm).toBe(147);
+  });
+
+  it('sends no heart rate and keeps the estimate when consent is off, even with a watch', async () => {
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(watchProvider());
+    (readHealthConsent as jest.Mock).mockResolvedValue(false);
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 100, 31));
+
+    await fireEvent.press(screen.getByText('Finish run'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    expect(request.run.avgHeartRateBpm).toBeNull();
+    expect(request.run.caloriesSource).not.toBe('watch');
+  });
+
+  it('still saves the run when Health Connect is unavailable', async () => {
+    const provider = watchProvider();
+    provider.connect.mockRejectedValue(new Error('not available'));
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(true);
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 100, 31));
+
+    await fireEvent.press(screen.getByText('Finish run'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
   });
 });
 

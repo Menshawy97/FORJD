@@ -11,12 +11,16 @@ import {
   type PreciseFix,
 } from '@/integrations/location/location-provider';
 import type { SqliteConnection } from '@/store/exercise-catalogue';
+import { getDeviceHealthProvider } from '@/integrations/health/device-health-provider';
+import { readHealthConsent } from '@/store/health-consent-local';
 import { readLocationConsent } from '@/store/leaderboard-consent';
+import { hasAskedRunHealthAccess, markRunHealthAccessAsked } from '@/store/run-health-access';
 import { clearRunSnapshot, ensureRunSessionSchema, getUnfinishedRunSnapshot, saveRunSnapshot } from '@/store/run-session';
 import { enqueueSessionUpload, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
 import {
   MIN_SAVEABLE_RUN_METERS,
   addFix,
+  addHeartRate,
   finishRun,
   isRunWorthSaving,
   pauseRun,
@@ -32,6 +36,7 @@ import { syncPendingSessions } from '@/workouts/sync-sessions';
 
 import { gpsQuality, type GpsQuality } from './gps-quality';
 import { fetchLatestWeightKg } from './latest-weight';
+import { HEART_RATE_POLL_MS, prepareRunHealth, readFinalHealth, type FinalHealth, type RunHealthReader } from './run-health';
 import { restoreRunSnapshot, toRunSnapshot } from './run-snapshot';
 import { toRunSummary } from './run-summary';
 
@@ -95,6 +100,8 @@ export function useRunSession(): RunSession {
   const finishingRef = useRef(false);
   const closedRef = useRef(false);
   const saveWarnedRef = useRef(false);
+  const healthRef = useRef<RunHealthReader | null>(null);
+  const healthPromptOpenRef = useRef(false);
 
   const getDb = useCallback((): Promise<SqliteConnection> => {
     if (!dbRef.current) {
@@ -188,6 +195,11 @@ export function useRunSession(): RunSession {
           await clearRunSnapshot(db, recovered.id);
           recovered = null;
         }
+        // Health data kept from before is dropped unless consent is still on (ADR-043): a recovered run
+        // must not carry, show or re-save heart rate the person no longer allows.
+        if (recovered && recovered.heartRate.length > 0 && (await readHealthConsent()) !== true) {
+          recovered = { ...recovered, heartRate: [] };
+        }
         if (snapshot && !recovered) {
           showToast('Your last run could not be restored, so this is a new run.');
         }
@@ -249,6 +261,59 @@ export function useRunSession(): RunSession {
     return () => clearInterval(id);
   }, [persist]);
 
+  // Watch heart rate (R8): only with health-data consent, asked of Health Connect once ever, polled
+  // gently because watches sync in batches. A watch that is absent or silent is just a run without it.
+  // It waits for the location question to settle, so the two system prompts never overlap.
+  const isReady = run !== null && permission !== 'checking';
+  useEffect(() => {
+    if (!isReady) return undefined;
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
+    const poll = async (reader: RunHealthReader) => {
+      const current = runRef.current;
+      if (!current || closedRef.current) return;
+      try {
+        const samples = await reader.readHeartRate(current.startedAtMs);
+        const latest = runRef.current;
+        if (!cancelled && latest && samples.length > 0) commit(addHeartRate(latest, samples));
+      } catch {
+        // A missed poll costs a few seconds of the chart, not the run.
+      }
+    };
+
+    void (async () => {
+      try {
+        if ((await readHealthConsent()) !== true) return;
+        const provider = getDeviceHealthProvider();
+        if (!provider) return;
+        // Health Connect's own screen sends the app to the background while it is open; that is not
+        // the phone locking, so the run must not pause itself for it.
+        healthPromptOpenRef.current = true;
+        let reader: RunHealthReader | null;
+        try {
+          reader = await prepareRunHealth(provider, {
+            alreadyAsked: await hasAskedRunHealthAccess(),
+            markAsked: markRunHealthAccessAsked,
+          });
+        } finally {
+          healthPromptOpenRef.current = false;
+        }
+        if (!reader || cancelled) return;
+        healthRef.current = reader;
+        await poll(reader);
+        if (!cancelled) timer = setInterval(() => void poll(reader), HEART_RATE_POLL_MS);
+      } catch {
+        // Optional feature: nothing to tell the runner if there is no watch to read.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [isReady, commit]);
+
   const pause = useCallback(() => {
     const current = runRef.current;
     if (!current) return;
@@ -274,7 +339,7 @@ export function useRunSession(): RunSession {
         void recheckPermission();
         return;
       }
-      if (state !== 'background') return;
+      if (state !== 'background' || healthPromptOpenRef.current) return;
       const current = runRef.current;
       if (current?.status !== 'running') return;
       setAutoPaused(true);
@@ -343,13 +408,26 @@ export function useRunSession(): RunSession {
     void (async () => {
       try {
         const db = await getDb();
-        const [weightKg, startAllowed] = await Promise.all([fetchLatestWeightKg(), readLocationConsent()]);
-        const request = toRunUploadRequest(finished, {
+        const noHealth: FinalHealth = { heartRate: [], caloriesKcal: null };
+        const healthConsentRead = readHealthConsent();
+        // The final watch read runs beside the weight lookup, so Finish waits for the slower, not both.
+        const finalHealthRead = healthConsentRead.then((consent) =>
+          consent === true ? readFinalHealth(healthRef.current, finished.startedAtMs, endedAt) : noHealth,
+        );
+        const [weightKg, startAllowed, healthConsent, finalHealth] = await Promise.all([
+          fetchLatestWeightKg(),
+          readLocationConsent(),
+          healthConsentRead,
+          finalHealthRead,
+        ]);
+        const healthAllowed = healthConsent === true;
+        const withHeartRate = healthAllowed ? addHeartRate(finished, finalHealth.heartRate) : finished;
+        const request = toRunUploadRequest(withHeartRate, {
           weightKg,
           allowStartLocation: startAllowed === true,
-          // Watch heart rate and its consent arrive with R8; until then nothing here is health data.
-          healthDataAllowed: false,
-          watchCaloriesKcal: null,
+          // Only an explicit yes reads or stores heart rate and the watch's calories (ADR-043).
+          healthDataAllowed: healthAllowed,
+          watchCaloriesKcal: healthAllowed ? finalHealth.caloriesKcal : null,
         });
         // Closed before the enqueue, so a late autosave cannot write the snapshot back afterwards.
         closedRef.current = true;
@@ -396,10 +474,11 @@ export function useRunSession(): RunSession {
     const last = samples[samples.length - 1];
     return {
       currentBpm: last ? last.bpm : null,
-      averageBpm: run ? averageHeartRate(samples, run.startedAtMs, nowMs) : null,
+      // Every sample since the start: `nowMs` can be a second stale, and a watch sample is never "future".
+      averageBpm: run ? averageHeartRate(samples, run.startedAtMs, Number.MAX_SAFE_INTEGER) : null,
       series: samples.slice(-HEART_RATE_POINTS).map((sample) => sample.bpm),
     };
-  }, [run, nowMs]);
+  }, [run]);
 
   return {
     ready: run !== null,

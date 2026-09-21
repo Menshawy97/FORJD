@@ -65,7 +65,7 @@ Each slice is test-first, reviewed by agents, merged by PR, and confirmed green 
 | R5 | `workouts/live-run.ts` reducer, `store/run-session.ts` (SQLite points and snapshot), keep-awake, upload mapping |
 | R6 | The live run screen `app/run.tsx`, pixel-exact |
 | R7 | The run complete screen `app/run-done.tsx`; Train's "previous workout" shows kilometres for a run |
-| R8 | Watch heart rate and calories through Health Connect. **Cannot merge until run on a physical Android phone** (CLAUDE.md rule 16, ADR-035): open the PR green and leave it |
+| R8 | Watch heart rate and calories through Health Connect, read during a run only with health-data consent; asks Health Connect once, on the first run (the user's decision), then only reads. `features/run/run-health.ts`, `integrations/health/device-health-provider.ts`, a device copy of the consent (`store/health-consent-local.ts`), the two read permissions in `app.config.ts`. **Not verified on a physical Android phone** (ADR-035); the user agreed on 2026-09-22 that automated tests, TDD, review agents and green CI are enough to merge |
 | F1 | The FAQ screen, after the user signs off `faq-copy.md` |
 
 ## Values to transcribe (from the prototype, audited per slice)

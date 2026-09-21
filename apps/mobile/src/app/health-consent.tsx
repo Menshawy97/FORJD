@@ -7,6 +7,7 @@ import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Icon } from '@/components/icon';
 import { pressGhost, pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
+import { rememberHealthConsent } from '@/store/health-consent-local';
 import { colors } from '@/theme/tokens';
 
 // ADR-043 (Phase 8). Shown before FORJD collects any health data -- connecting WHOOP today,
@@ -54,6 +55,8 @@ export default function HealthConsentScreen() {
     setSaving(true);
     try {
       await updatePrivacy({ healthDataConsent: true });
+      // Only after the server accepted it. The device's copy lets a run read a watch offline (R8).
+      await rememberHealthConsent(true);
       goBack();
     } catch (cause) {
       setError(describeFailure(cause));
