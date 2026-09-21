@@ -63,6 +63,21 @@ ADRs: [044](../decisions/ADR-044-is-live-tracked-means-run-through-the-live-runn
 6. **Home's City Rank tile** still reads an em dash; it can now read the caller's rank from the same
    endpoint.
 
+## Testing on a phone (what tripped us up)
+
+- `apps/mobile/.env` (gitignored) holds `API_BASE_URL`. It must be this PC's current Wi-Fi address, for
+  example `http://192.168.1.24:3000`, not `localhost`. When the address changes, edit it and restart
+  Expo, because Metro reads the value at start. "Cannot reach FORJD" on the login screen means this
+  value is wrong or the API is not running.
+- The API (`pnpm --filter @forjd/api start`, port 3000) needs local Postgres up. An account exists only
+  if it was registered against that database.
+- Windows Firewall may block inbound ports 3000 and 8081 or 8082 from the phone. Allow Node.js on
+  private networks.
+- Port 8081 was held by a stale `node` process, so Expo was started with `--port 8082`. Check what owns a
+  port before killing it: another Claude session may own it.
+- Expo Go cannot run `expo-location` or share-card image export (native modules). Use a development-client
+  build for location, as `apps/mobile/AGENTS.md` says.
+
 ## Not in this phase
 
 Billing and paywalls, Strength, Running and HYROX scores, national or friends boards, a rank history
