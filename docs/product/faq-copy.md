@@ -23,7 +23,8 @@ other athletes in your city.
 Up to **70 points** come from meeting the World Health Organization's activity guidelines, and they
 mean the same in every city:
 - Up to 40 for time active. The guideline is 150 to 300 minutes a week; you earn the full 40 at 150
-  minutes a week over the period.
+  minutes a week. The target is scaled to the length of the period: the weeks so far this month (at
+  least one), or, for all time, the weeks since your first workout.
 - Up to 10 more for going from 150 towards 300 minutes a week.
 - Up to 20 for strength training. The guideline is at least 2 days a week; a "strength day" is a day
   with a lifted set that has weight on it.
@@ -44,17 +45,19 @@ sedentary behaviour. *Br J Sports Med* 2020;54:1451-1462.
 ### Which workouts count?
 Only workouts you ran through FORJD's workout screen, from the moment you started them, and only if you
 joined the leaderboard and allowed location. Workouts typed in afterwards never count. Each workout
-counts for at most two hours. This stops casual gaming; it can't stop someone determined to cheat.
+counts for at most two hours of time towards the score (kilograms and kilometres aren't capped). This
+stops casual gaming; it can't stop someone determined to cheat.
 
 ### Why don't I see a rank?
-A city needs at least 5 athletes before anyone is ranked, so the board never shows a score that means
-nothing. You also need to have joined the leaderboard, allowed location, and finished a live workout
+A city needs at least 5 athletes with a qualifying workout in the period before anyone is ranked, so
+the board never shows a score that means nothing. You also need to have joined the leaderboard, allowed location, and finished a live workout
 in the period. If a screen shows a dash where a rank should be, one of these isn't true yet.
 
 ### What does "up 3 this week" mean?
-It's your rank last Monday minus your rank now, so a positive number means you moved up. It appears
-once there is a saved rank from the start of the week to compare with. Comparing September's rank with
-October's isn't movement, so it isn't shown across a month change.
+It's your rank at the start of this week minus your rank now, so a positive number means you moved up.
+The start-of-week rank is saved early on Monday (UTC); if that one is missing, FORJD uses the latest
+earlier one, up to two weeks old. Comparing September's rank with October's isn't movement, so nothing
+is shown across a month change.
 
 ### How is "Top 8%" worked out?
 It is your rank divided by the number of athletes in your city, rounded up, and never below 1%.
@@ -62,15 +65,16 @@ It is your rank divided by the number of athletes in your city, rounded up, and 
 ### Who can see me on the leaderboard?
 Other athletes in your city can see your name, username, photo, score and movement. If your profile is
 private, your name and username still appear on the board but your profile can't be opened, and your
-photo is hidden from everyone but you. A public profile shows your rank, score, streak, your four
-heaviest lifts and your last three sessions. It never shows your email, date of birth, sleep, HRV,
-body composition or InBody results. You can leave the leaderboard at any time, and it takes effect on
+photo is hidden from everyone but you. A public profile can be opened by any signed-in FORJD user. It
+shows your city, training goals and activities, your four heaviest lifts and your last three sessions,
+and, only while you are ranked this month, your rank, score and streak. It never shows your email, date
+of birth, sleep, HRV, body composition or InBody results. You can leave the leaderboard at any time, and it takes effect on
 the very next request.
 
 ### How does FORJD know my city?
 When you start a workout, and only if you allowed it, your phone sends a position rounded to about
-110 metres. Our server matches it to the nearest large city from a public dataset (GeoNames, CC BY 4.0)
-and throws the position away. Only the city name is kept, on the workout. Nearby suburbs join their
+110 metres. Our server matches it to the nearest city of about 15,000 people or more, within 120 km,
+from a public dataset (GeoNames, CC BY 4.0), and throws the position away. Only the city name is kept, on the workout. Nearby suburbs join their
 main city's board.
 
 ---
@@ -92,9 +96,10 @@ Sets × reps × weight, added up. It's the standard "volume load".
 volume load with and without exercise displacement. *Sports* 2018;6(4):137. doi:10.3390/sports6040137
 
 ### How is my muscle split worked out?
-Each set's volume is shared equally between the muscle groups it mainly works, grouped into six
-buckets. "Full body" and "neck" are left out, and the percentages are for the current calendar month.
-This is FORJD's own grouping.
+Each completed set that has a weight on it has its volume shared equally between the muscle groups the
+exercise mainly works, grouped into six buckets, so bodyweight-only sets aren't counted. "Full body" and
+"neck" are left out, and the percentages are for the current calendar month. This is FORJD's own
+grouping.
 
 ### What counts as a personal record?
 The heaviest weight you've lifted for an exercise, dated the first time you reached it. The change
@@ -105,17 +110,18 @@ The number of weeks in a row, starting each Monday, with at least one finished w
 has just started with no workout yet doesn't break your streak.
 
 ### What is FORJD Insight, and is it AI?
-It is not AI. It is a set of fixed rules applied to your own numbers: this week's volume against last
-week's, how often you train, your estimated one-rep-max trend, and whether you've beaten your target
-reps two sessions running. It starts after two weeks of history. The one instruction it gives is to add
-a small amount of weight, once you've passed your target reps on two sessions in a row. It never tells
-you to rest or warns of injury, because the research doesn't support that.
+It is not AI. It is a set of fixed rules applied to your own numbers: whether your top reps beat the
+target on two sessions in a row of the same template, how this week's volume compares with last week's
+(mentioned when it changes by 5% or more), your estimated one-rep-max trend, and a note when you've
+trained fewer than twice this week. It starts after two weeks of history. The one instruction it gives
+is to add a small amount of weight, once you've passed your target reps on two sessions in a row. It
+never tells you to rest or warns of injury, because the research doesn't support that.
 
 *Sources:* American College of Sports Medicine. Progression models in resistance training for healthy
 adults. *Med Sci Sports Exerc* 2009;41(3):687-708 (the 2–10% increase). American College of Sports
 Medicine Position Stand, *Resistance Training Prescription for Muscle Function, Hypertrophy, and
 Physical Performance in Healthy Adults: An Overview of Reviews*, *Med Sci Sports Exerc*, April 2026
-(about ten sets per muscle group per week, and training each muscle group at least twice a week).
+(the advice to train each muscle group at least twice a week).
 *The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and
 Frequency on Muscle Hypertrophy and Strength Gains.* *Sports Med* 2025. doi:10.1007/s40279-025-02344-w
 
@@ -147,17 +153,21 @@ Different sensors measure it with different accuracy; chest straps are better th
 FORJD keeps every reading with its source and never mixes them. When several sources report the same
 thing, a manual entry wins, then WHOOP, then Health Connect or Apple Health.
 
-*Source:* wrist-based photoplethysmography validation of WHOOP, PMC8160717.
+*Sources:* wrist-based photoplethysmography validation of WHOOP, PMC8160717; and an observational
+device-comparison study, PMC12819663 (both recorded in ADR-031).
 
 ### What does FORJD do with my health data?
-Health data (sleep, HRV, heart rate, steps, InBody scans) is only stored with your separate consent, is
-never shared on the leaderboard, and is never sent to any analytics or advertising service. You can
-turn consent off, and export or delete everything, in Privacy settings.
+Sleep, heart-rate, steps and other health readings, and WHOOP data, are only stored with your separate
+health-data consent. They are never shown on the leaderboard and never sent to any analytics or
+advertising service. Turning consent off stops FORJD collecting more; it doesn't erase what is already
+stored. To remove data, use Profile → Account → Delete account, which removes everything, or export it
+first with Export my data. The consent switches themselves are in Profile → Privacy settings.
 
 ### Where do my body-composition numbers come from?
-From the InBody scans you upload. The trend is your latest scan minus your first, and comparing two
-scans is the second minus the first. Any value the scanner read with low confidence is left blank for
-you to check rather than filled in.
+From the InBody sheets you scan. The photo is read by a third-party AI service, so scanning needs your
+separate AI-features consent, and the numbers it reads are only suggestions for you to confirm. Any value
+the reader is less than 90% sure of is left blank for you to check rather than filled in. The trend is
+your latest scan minus your first, and comparing two scans is the second minus the first.
 
 ---
 
@@ -172,13 +182,16 @@ wobble isn't counted. That elevation rule is FORJD's own.
 
 ### Where does a run's route go?
 Your route stays on your phone. Only the summary — distance, time, splits, elevation and, if you allowed
-health data, heart rate and calories — is saved to your account. The map behind the route comes from
-Google Maps, so Google's map software receives the area you are viewing; the route itself is drawn on
-top by FORJD and isn't sent to Google.
+health data, heart rate and calories — is saved to your account. If you joined the leaderboard and
+allowed location, the run also sends the same rounded start position as any workout, so FORJD can work
+out your city, and that position is thrown away afterwards. The map behind the route comes from Google
+Maps, so Google's map software receives the area you are viewing; the route itself is drawn on top by
+FORJD and isn't sent to Google. Without a connection the map tiles won't load, and the route is drawn on
+a plain background instead.
 
 ### How are calories worked out?
 If your watch reports the calories, FORJD uses those. Otherwise it estimates them from your pace,
-the slope, and your latest weight using the American College of Sports Medicine's running and walking
+your net climb from start to finish, and your latest weight using the American College of Sports Medicine's running and walking
 equations, and marks the number "estimated". With no weight on record it shows a dash instead.
 
 Running (at about 8 km/h and faster): oxygen use = 0.2 × speed + 0.9 × speed × grade + 3.5. Walking
@@ -191,8 +204,9 @@ rate will usually be closer.
 Prescription*, 11th ed. Wolters Kluwer; 2021.
 
 ### Why does heart rate show a dash?
-FORJD reads heart rate from a watch that shares it through Health Connect. With none connected, or if
-you haven't allowed health data, it shows a dash rather than a number that isn't yours.
+FORJD reads heart rate from a watch that shares it through Health Connect, and only if you've allowed
+health data. With no watch connected, or health data switched off, it shows a dash rather than a number
+that isn't yours.
 
 ---
 
@@ -208,7 +222,7 @@ Data sources page.
 
 ### Can I delete my account and my data?
 Yes. Deleting your account removes your login and your data, and you can export everything first. Both
-are in Profile → Privacy & permissions.
+are in Profile → Account (Export my data, Delete account).
 
 ---
 

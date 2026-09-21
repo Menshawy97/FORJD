@@ -38,8 +38,12 @@ the leaderboard path and adds a separate, narrower exception for the run screen.
    "no latitude or longitude column exists anywhere" remains true.
 5. **The leaderboard start position is unchanged.** A run still sends the same coarse, rounded start
    position as any workout, only if the leaderboard consent is on, and the server still resolves it to a
-   city and discards it (ADR-045, ADR-048 #4 and #6). It is taken from the first accepted fix rounded to
-   three decimals, never from the precise route.
+   city and discards it (ADR-045, ADR-048 #4 and #6). It is the first accepted fix of the run, rounded to
+   three decimals before it leaves the phone, exactly as for any other workout; the precise route is
+   never sent.
+7. **ADR-048 #2 is restated for the run screen.** "Nothing can raise a system dialog in the middle of a
+   workout" still holds for the strength runner and for every leaderboard read. The one place a location
+   dialog may appear is the moment a person starts a run for the first time, from the screen they tapped.
 6. **Copy is updated where it made the old promise.** The iOS when-in-use string, the Location screen,
    the Data sources page and `docs/architecture/security.md` no longer say location is only ever read
    once and coarsely; they say a precise position is used on the device while a run is open. The Play

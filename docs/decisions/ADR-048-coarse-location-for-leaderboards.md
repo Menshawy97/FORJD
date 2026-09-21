@@ -1,6 +1,8 @@
 # ADR-048: Coarse location for city leaderboards: permissioned once, resolved on the server, never stored
 
-**Status:** Accepted
+**Status:** Accepted. Amended by [ADR-049](ADR-049-precise-foreground-location-for-runs.md) for the run
+screen only: precise, foreground-only location while a run is open. Everything below still governs the
+leaderboard path.
 **Date:** 2026-09-20
 
 ## Context

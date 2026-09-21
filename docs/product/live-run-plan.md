@@ -21,7 +21,7 @@ permission-denied state, or the run share card.
 | R3 | A **Google street map** under the route (`react-native-maps`, Google provider on Android), dark-styled. The user creates the Google Cloud billing account and a restricted Maps SDK key. With no key, the map falls back to the designed striped background with the route drawn over it. |
 | R4 | The route (GPS points) stays **on the phone only**. Distance, time, pace, splits and elevation go to the server. |
 | R5 | Calories: the watch's `active_energy` from Health Connect first, otherwise an estimate from the ACSM running equation and body weight. Elevation from GPS altitude. |
-| R6 | Average HR, per-split bpm and calories are stored server-side **only with health-data consent** (ADR-043). Without it the server drops those fields and keeps the rest, because a queued upload must never fail and lose the run. |
+| R6 | Watch heart rate is read, and average HR, per-split bpm and calories stored server-side, **only with health-data consent** (ADR-043). If consent was withdrawn before an upload the server drops those fields and keeps the rest, because a queued upload must never fail and lose the run. Estimated calories are the app's own arithmetic and still show on the summary. |
 
 Also decided this session: Home's City Rank tile reads the caller's rank (PR #216), the weekly
 snapshot failure is diagnosed and production redeployed (PR #215), and the "How is this
@@ -42,7 +42,9 @@ Google still requires a billing account on the project. Recheck before launch.
 - **Elevation gain:** climbs only, counting a rise once it passes 3 m, so altitude noise is ignored.
   A product rule, not a published method, and the FAQ says so.
 - **Calories, fallback:** from the ACSM metabolic equations (*ACSM's Guidelines for Exercise Testing
-  and Prescription*, 11th ed., Wolters Kluwer, 2021). Speed `v` in m/min, `grade` as a fraction:
+  and Prescription*, 11th ed., Wolters Kluwer, 2021). Speed `v` in m/min; `grade` is the **net** climb
+  (last altitude minus first, never below zero) over the distance, as a fraction, because the
+  equations describe a constant incline and total gain would overstate a loop:
   running (`v` at or above 134 m/min) `VO2 = 0.2·v + 0.9·v·grade + 3.5`; walking (below)
   `VO2 = 0.1·v + 1.8·v·grade + 3.5`; both in mL·kg⁻¹·min⁻¹. Energy is
   `kcal/min = VO2 · kg / 1000 · 5`, about 5 kcal per litre of oxygen. Body weight is the latest
