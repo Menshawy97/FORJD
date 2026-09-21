@@ -60,10 +60,10 @@ ADRs: [044](../decisions/ADR-044-is-live-tracked-means-run-through-the-live-runn
    nothing to replace and no arrow to see). **Production fails, and not because its schema is behind:**
    its database URL secret does not resolve (`getaddrinfo EAI_AGAIN base`), and `deploy-api.yml` with
    `target=production` fails at the migration step for the same reason. Production has never been
-   provisioned (the roadmap's note under the Phase 6 session close says as much). Until it exists the
-   Monday cron snapshots staging only. Owed by the user: create the production Supabase project (within
-   the two-project free-tier limit), put a valid pooler URL in Secret Manager as
-   `forjd-production-database-url`, then re-add production to the schedule.
+   provisioned (the roadmap's note under the Phase 6 session close says as much): the `forjd-prod`
+   Supabase project is paused and its secrets are missing or invalid. The Monday cron's production job
+   stays red until it is set up, by decision (the user chose to prepare production rather than skip it).
+   Steps, all the user's: [production-setup.md](production-setup.md).
 4. **The container build check** (`docker build`, then confirm the city snapshot is in the image). The
    Docker engine was unavailable while building this; the compiled-`dist` CI step covers the same risk.
 5. **The "How is this calculated?" copy** became a **Profile → FAQ** page covering every calculation
