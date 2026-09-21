@@ -83,6 +83,7 @@ above applies unchanged.
 From Phase 1, CI includes a grep-based conformance check that fails the build if:
 - the Supabase SDK is imported outside the provider adapter directories,
 - `react-native-health-connect` is imported outside `apps/mobile/src/integrations/health/`,
+- `react-native-maps` is imported outside `apps/mobile/src/integrations/maps/` (ADR-050),
 - domain packages (`packages/domain/**`) import anything from UI or provider SDKs.
 
 If you're about to violate one of these rules "just this once," don't — fix the

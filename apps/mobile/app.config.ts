@@ -88,6 +88,14 @@ const config: ExpoConfig = {
         motionUsagePermission: false,
       },
     ],
+    // ADR-050: Google's street map under a run's route, on Android. The key is a client key
+    // (restricted to this app's package and signing SHA-1 in the Google Cloud console, so it is
+    // not a secret), supplied as the EAS environment variable GOOGLE_MAPS_ANDROID_API_KEY and
+    // never committed. Without one the plugin is left out and the route map falls back to the
+    // striped background, so the app builds either way. No iOS key: iOS ships later (ADR-007).
+    ...(process.env.GOOGLE_MAPS_ANDROID_API_KEY
+      ? [['react-native-maps', { androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY }] as [string, Record<string, unknown>]]
+      : []),
     [
       'expo-splash-screen',
       {
@@ -138,6 +146,9 @@ const config: ExpoConfig = {
     // Sign in with Apple is built but stays off until a paid Apple Developer account exists;
     // flipping this to true (plus adding the entitlement plugin) turns it on with no code change.
     appleSignInEnabled: process.env.APPLE_SIGN_IN_ENABLED === 'true',
+    // ADR-050. Only whether a Google Maps key was configured, never the key: `extra` ships as
+    // readable JSON, and the key already lives in the Android manifest via the plugin above.
+    hasMapsKey: Boolean(process.env.GOOGLE_MAPS_ANDROID_API_KEY),
     eas: {
       projectId: '971ed96d-2f88-42e2-bcbf-1643ba5d8fa2',
     },

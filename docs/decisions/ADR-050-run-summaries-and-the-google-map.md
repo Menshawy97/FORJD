@@ -44,7 +44,8 @@ tiles come from.
    the Google Cloud console, not secrecy, the same argument ADR-041 #6 makes for the Google client ID.
    It is supplied as an EAS environment variable and never committed. It is the user's to create.
 7. **Privacy trade-off, stated plainly.** Drawing street tiles means Google's SDK receives the area
-   being viewed. That is why the map is only on the run screens, why the route itself is never sent to
+   being viewed at street zoom, along with the phone's IP address and the SDK's own telemetry, so
+   Google learns roughly where a run started. That is why the map is only on the run screens, why the route itself is never sent to
    Google (it is drawn on top by our code), and why the FAQ says so.
 8. **CLAUDE.md rule 15 (no health data to an analytics or advertising SDK) is not breached, and no
    exception is needed.** The Maps SDK is a tile renderer, not an analytics or advertising SDK. It is given
