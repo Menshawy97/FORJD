@@ -18,6 +18,12 @@
  *    file**, so nothing downstream ever holds anything more precise than a city needs. The server
  *    resolves it to a city and discards it.
  *
+ * **The run screen is the one exception to rules 1 to 3 (ADR-049).** While a run is open, and only
+ * then, `watchPrecisePosition` follows a precise position so distance, pace and a route can be
+ * measured. It is still foreground only, still never prompts (`requestPrecisePermission` is the one
+ * place that does, called when a person starts a run), and the route it feeds stays on the phone: it
+ * is never uploaded. The leaderboard path above is unchanged and still coarse.
+ *
  * Nothing here throws into the caller. A workout must be able to start with location off, denied,
  * slow or broken (CLAUDE.md rule 6: the network, and here the GPS, is never in the critical path).
  */
@@ -133,5 +139,161 @@ export async function readCoarsePosition(timeoutMs: number = READ_TIMEOUT_MS): P
     return null;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The run screen's precise position (ADR-049).
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What the person has allowed for a run. Android 12 and later let someone grant location but
+ * choose "approximate", which is useless for measuring a run: it is reported as `coarse_only` so
+ * the run screen can say so instead of recording nothing.
+ */
+export type PrecisePermission = 'granted' | 'coarse_only' | 'denied' | 'undetermined' | 'unavailable';
+export type PrecisePermissionRequest = 'granted' | 'coarse_only' | 'denied' | 'unavailable';
+
+/** One precise reading, at full precision. It never leaves the phone. */
+export interface PreciseFix {
+  latitude: number;
+  longitude: number;
+  /** Metres above sea level, or `null` when the phone gave none. */
+  altitudeMeters: number | null;
+  /** Horizontal accuracy radius in metres, or `null` when the phone gave none. */
+  accuracyMeters: number | null;
+  /** When the reading was taken, in epoch milliseconds. */
+  timestampMs: number;
+}
+
+/** A running watch (`stop` is safe to call more than once), or why there is none. */
+export type PreciseWatch =
+  | { status: 'watching'; stop: () => void }
+  | { status: 'denied' | 'coarse_only' | 'unavailable' };
+
+/** How often the watch asks for a reading, and how far the phone must move for one (metres). */
+export const PRECISE_TIME_INTERVAL_MS = 1000;
+export const PRECISE_DISTANCE_INTERVAL_METERS = 2;
+
+interface PermissionResponseLike {
+  status?: string;
+  android?: { accuracy?: string };
+}
+
+function toPrecisePermission(response: PermissionResponseLike): PrecisePermission {
+  if (response.status !== 'granted') {
+    return response.status === 'denied' ? 'denied' : 'undetermined';
+  }
+  return response.android?.accuracy === 'coarse' ? 'coarse_only' : 'granted';
+}
+
+/** The current precise-location permission, without asking. Never prompts. */
+export async function getPrecisePermission(): Promise<PrecisePermission> {
+  const location = loadSdk();
+  if (!location) {
+    return 'unavailable';
+  }
+  try {
+    return toPrecisePermission(await location.getForegroundPermissionsAsync());
+  } catch {
+    return 'unavailable';
+  }
+}
+
+/**
+ * Shows the system permission dialog for foreground location. Called when a person starts a run,
+ * and nowhere else in a workout: watching a position only ever checks.
+ */
+export async function requestPrecisePermission(): Promise<PrecisePermissionRequest> {
+  const location = loadSdk();
+  if (!location) {
+    return 'unavailable';
+  }
+  try {
+    const permission = toPrecisePermission(await location.requestForegroundPermissionsAsync());
+    return permission === 'granted' || permission === 'coarse_only' ? permission : 'denied';
+  } catch {
+    return 'unavailable';
+  }
+}
+
+const finiteOrNull = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+function toPreciseFix(reading: unknown): PreciseFix | null {
+  const { coords, timestamp } = (reading ?? {}) as {
+    coords?: { latitude?: unknown; longitude?: unknown; altitude?: unknown; accuracy?: unknown };
+    timestamp?: unknown;
+  };
+  if (!coords || !isCoordinate(coords.latitude, 90) || !isCoordinate(coords.longitude, 180)) {
+    return null;
+  }
+  return {
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    altitudeMeters: finiteOrNull(coords.altitude),
+    accuracyMeters: finiteOrNull(coords.accuracy),
+    timestampMs: finiteOrNull(timestamp) ?? Date.now(),
+  };
+}
+
+/**
+ * Follows the phone's precise position for a run and hands each valid reading to `onFix`.
+ *
+ * Only starts when precise foreground permission is already granted, so it can never raise a
+ * dialog. Readings that are not valid coordinates are dropped, a listener that throws cannot take
+ * the watch down, and nothing arrives after `stop`. It never throws: where the module or the
+ * location service is missing, the result says `unavailable` and the run carries on without a route.
+ */
+export async function watchPrecisePosition(onFix: (fix: PreciseFix) => void): Promise<PreciseWatch> {
+  const location = loadSdk();
+  if (!location) {
+    return { status: 'unavailable' };
+  }
+
+  try {
+    const permission = toPrecisePermission(await location.getForegroundPermissionsAsync());
+    if (permission === 'coarse_only') {
+      return { status: 'coarse_only' };
+    }
+    if (permission !== 'granted') {
+      return { status: 'denied' };
+    }
+
+    let stopped = false;
+    const subscription = await location.watchPositionAsync(
+      {
+        accuracy: location.Accuracy.BestForNavigation,
+        timeInterval: PRECISE_TIME_INTERVAL_MS,
+        distanceInterval: PRECISE_DISTANCE_INTERVAL_METERS,
+      },
+      (reading) => {
+        if (stopped) {
+          return;
+        }
+        const fix = toPreciseFix(reading);
+        if (!fix) {
+          return;
+        }
+        try {
+          onFix(fix);
+        } catch {
+          // A bug in one listener must not stop the run being followed.
+        }
+      },
+    );
+
+    return {
+      status: 'watching',
+      stop: () => {
+        if (stopped) {
+          return;
+        }
+        stopped = true;
+        subscription.remove();
+      },
+    };
+  } catch {
+    return { status: 'unavailable' };
   }
 }

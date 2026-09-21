@@ -24,6 +24,13 @@ describe('location adapter without the native module', () => {
     await expect(load().requestCoarsePermission()).resolves.toBe('unavailable');
   });
 
+  it('reports precise permission, and a precise watch, as unavailable', async () => {
+    const adapter = load();
+    await expect(adapter.getPrecisePermission()).resolves.toBe('unavailable');
+    await expect(adapter.requestPrecisePermission()).resolves.toBe('unavailable');
+    await expect(adapter.watchPrecisePosition(jest.fn())).resolves.toEqual({ status: 'unavailable' });
+  });
+
   it('reads no position and does not throw', async () => {
     await expect(load().readCoarsePosition()).resolves.toBeNull();
   });
