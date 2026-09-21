@@ -35,6 +35,16 @@ describe('app config: location', () => {
     expect(config.android?.blockedPermissions).toContain('android.permission.ACCESS_BACKGROUND_LOCATION');
   });
 
+  // R8: a run reads a watch's heart rate and active energy from Health Connect, read-only. Only
+  // those two are declared: every extra health permission is a store-review question.
+  it('declares read access to heart rate and active energy in Health Connect, and no more', () => {
+    const permissions = config.android?.permissions ?? [];
+    expect(permissions).toContain('android.permission.health.READ_HEART_RATE');
+    expect(permissions).toContain('android.permission.health.READ_ACTIVE_CALORIES_BURNED');
+    expect(permissions.filter((p) => p.startsWith('android.permission.health.'))).toHaveLength(2);
+    expect(permissions.some((p) => p.startsWith('android.permission.health.WRITE'))).toBe(false);
+  });
+
   it('no longer blocks fine location, which a run needs (ADR-049), nor coarse, which the leaderboard uses', () => {
     expect(config.android?.blockedPermissions).not.toContain('android.permission.ACCESS_FINE_LOCATION');
     expect(config.android?.blockedPermissions).not.toContain('android.permission.ACCESS_COARSE_LOCATION');

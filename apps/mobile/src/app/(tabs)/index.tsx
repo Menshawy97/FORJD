@@ -19,6 +19,7 @@ import {
   getWorkoutStats,
   listNutritionLog,
 } from '@/auth/apiClient';
+import { rememberHealthConsent } from '@/store/health-consent-local';
 import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { ScreenBackground } from '@/components/screen-background';
@@ -127,6 +128,8 @@ export default function HomeScreen() {
     // position. Nothing is written when the server could not be reached or has no settings yet.
     if (meResult.status === 'fulfilled' && meResult.value.privacy) {
       void rememberLocationConsent(meResult.value.privacy.locationForLeaderboard);
+      // ADR-043: likewise the health-data consent, so a run can decide offline whether to read a watch.
+      void rememberHealthConsent(meResult.value.privacy.healthDataConsent);
     }
 
     // R26: distinguishes "no network reachable at all" from an ordinary new account, without
