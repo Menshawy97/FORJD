@@ -266,3 +266,30 @@ jobs:
       # CI environment problem, and fixing them is app-config work outside this
       # CI-wiring change. Add the step once that drift is cleared — a step that fails on
       # every run from day one is worse than no step.
+
+  web:
+    name: Website check, test, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # getforjd.com (ADR-051). It depends on no other workspace package, so nothing is
+      # built first. `check` type-checks the .astro pages as well as the .ts modules;
+      # `build` is what Cloudflare Pages runs, so a page that fails here fails there too.
+      - run: pnpm --filter @forjd/web check
+
+      - run: pnpm --filter @forjd/web test
+
+      - run: pnpm --filter @forjd/web build
