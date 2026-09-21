@@ -1,5 +1,3 @@
-import type { SQLiteBindValue } from 'expo-sqlite';
-
 import type { SqliteMigration } from './sqlite-migrations';
 import type { SqliteConnection } from './exercise-catalogue';
 
@@ -66,7 +64,6 @@ export interface RunPointRecord {
   latitude: number;
   longitude: number;
   movingMs: number;
-  [key: string]: SQLiteBindValue | undefined;
 }
 
 /** Appends one reading to a run's route. */
