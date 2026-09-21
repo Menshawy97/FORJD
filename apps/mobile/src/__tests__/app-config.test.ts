@@ -57,3 +57,56 @@ describe('app config: location', () => {
     expect(plist).not.toHaveProperty('NSLocationAlwaysUsageDescription');
   });
 });
+
+// ADR-050. The run map's Google Maps key is a client key, restricted to the app in the Google Cloud
+// console and supplied as an EAS environment variable, never committed. Without it the app still
+// builds and the route map falls back to the striped background, so the plugin is only added when
+// a key exists, and the key itself never reaches `extra` (only whether one exists).
+describe('app config: the run map key', () => {
+  const loadConfig = (key: string | undefined) => {
+    const previous = process.env.GOOGLE_MAPS_ANDROID_API_KEY;
+    if (key === undefined) delete process.env.GOOGLE_MAPS_ANDROID_API_KEY;
+    else process.env.GOOGLE_MAPS_ANDROID_API_KEY = key;
+    try {
+      let loaded: typeof config | undefined;
+      jest.isolateModules(() => {
+        loaded = require('../../app.config').default;
+      });
+      return loaded as typeof config;
+    } finally {
+      if (previous === undefined) delete process.env.GOOGLE_MAPS_ANDROID_API_KEY;
+      else process.env.GOOGLE_MAPS_ANDROID_API_KEY = previous;
+    }
+  };
+
+  const mapsPlugin = (c: typeof config) =>
+    (c.plugins as PluginEntry[]).find((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin) === 'react-native-maps');
+
+  it('adds no maps plugin, and reports no key, when none is configured', () => {
+    const c = loadConfig(undefined);
+    expect(mapsPlugin(c)).toBeUndefined();
+    expect(c.extra?.hasMapsKey).toBe(false);
+  });
+
+  it('treats an empty key as no key', () => {
+    const c = loadConfig('');
+    expect(mapsPlugin(c)).toBeUndefined();
+    expect(c.extra?.hasMapsKey).toBe(false);
+  });
+
+  it('registers the maps plugin with the Android key when one is configured', () => {
+    const c = loadConfig('test-android-key');
+    expect(mapsPlugin(c)).toEqual(['react-native-maps', { androidGoogleMapsApiKey: 'test-android-key' }]);
+    expect(c.extra?.hasMapsKey).toBe(true);
+  });
+
+  it('never puts the key itself into extra, which ships as readable JSON in the bundle', () => {
+    const c = loadConfig('test-android-key');
+    expect(JSON.stringify(c.extra)).not.toContain('test-android-key');
+  });
+
+  it('gives the plugin no iOS key: iOS has no Google Maps setup until Phase 11 decides one', () => {
+    const plugin = mapsPlugin(loadConfig('test-android-key')) as [string, Record<string, unknown>];
+    expect(plugin[1]).not.toHaveProperty('iosGoogleMapsApiKey');
+  });
+});

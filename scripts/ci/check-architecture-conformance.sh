@@ -243,6 +243,19 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# ADR-050 / CLAUDE.md rule 4: react-native-maps is an implementation detail behind the route map in
+# apps/mobile/src/integrations/maps/. It is a native module (loaded lazily so Expo Go degrades to the
+# striped background instead of crashing), and it hands the map SDK the visible area, so one directory
+# owns it: no other file can quietly start putting a Google map in front of a screen, or passing
+# anything but a viewport and a route to it.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' -E "(from|import|require\()[[:space:]]*\(?[[:space:]]*['\"]react-native-maps['\"]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/integrations/maps/' || true)
+  if [ -n "$hits" ]; then
+    report "react-native-maps imported outside apps/mobile/src/integrations/maps/" "$hits"
+  fi
+fi
+
 # Phase 7D-7F / CLAUDE.md rule 4: WHOOP's own hostname is the tell for code that actually
 # talks to WHOOP (as opposed to code that merely knows the provider name "whoop" as a
 # HealthSource string, which is legitimate everywhere -- e.g. HEALTH_SOURCE_PRIORITY in
