@@ -5,6 +5,7 @@
 const mockGetPermissions = jest.fn();
 const mockRequestPermissions = jest.fn();
 const mockWatchPosition = jest.fn();
+const mockAccuracy = { Low: 2, Balanced: 3, High: 4, Highest: 5, BestForNavigation: 6 };
 
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: (...args: unknown[]) => mockGetPermissions(...args),
@@ -113,8 +114,10 @@ describe('precise location adapter', () => {
     it('starts a best-accuracy watch, about once a second and every couple of metres', async () => {
       const result = await watchPrecisePosition(jest.fn());
       expect(result.status).toBe('watching');
+      // The mock's Accuracy table is ours, so this proves the adapter asks for BestForNavigation by
+      // name, not that the literal is right.
       expect(mockWatchPosition).toHaveBeenCalledWith(
-        expect.objectContaining({ accuracy: 6, timeInterval: 1000, distanceInterval: 2 }),
+        expect.objectContaining({ accuracy: mockAccuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 }),
         expect.any(Function),
       );
     });
@@ -190,6 +193,50 @@ describe('precise location adapter', () => {
       callback(reading());
 
       expect(onFix).not.toHaveBeenCalled();
+    });
+
+    it('removes the subscription itself when the run was cancelled while the watch was starting', async () => {
+      // The caller has no handle until the promise resolves, so an unmount in that window would
+      // otherwise leave a best-accuracy watch running for the rest of the session.
+      let cancelled = false;
+      mockWatchPosition.mockImplementation(async () => {
+        cancelled = true; // the person left the screen while the native call was in flight
+        return { remove };
+      });
+
+      const result = await watchPrecisePosition(jest.fn(), { isCancelled: () => cancelled });
+
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ status: 'cancelled' });
+    });
+
+    it('does not start the watch at all when it was cancelled before permission came back', async () => {
+      const result = await watchPrecisePosition(jest.fn(), { isCancelled: () => true });
+
+      expect(mockWatchPosition).not.toHaveBeenCalled();
+      expect(result).toEqual({ status: 'cancelled' });
+    });
+
+    it('keeps watching when the run is not cancelled', async () => {
+      const result = await watchPrecisePosition(jest.fn(), { isCancelled: () => false });
+
+      expect(result.status).toBe('watching');
+      expect(remove).not.toHaveBeenCalled();
+    });
+
+    it('does not throw from stop when the subscription cannot be removed', async () => {
+      remove.mockImplementationOnce(() => {
+        throw new Error('already removed');
+      });
+      const result = await watchPrecisePosition(jest.fn());
+      if (result.status !== 'watching') throw new Error('expected a watch');
+
+      expect(() => result.stop()).not.toThrow();
+    });
+
+    it('reports unavailable when permission cannot be read inside the watch', async () => {
+      mockGetPermissions.mockRejectedValue(new Error('boom'));
+      await expect(watchPrecisePosition(jest.fn())).resolves.toEqual({ status: 'unavailable' });
     });
 
     it('reports unavailable rather than throwing when the watch cannot start', async () => {

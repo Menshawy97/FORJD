@@ -166,10 +166,22 @@ export interface PreciseFix {
   timestampMs: number;
 }
 
-/** A running watch (`stop` is safe to call more than once), or why there is none. */
+/**
+ * A running watch (`stop` is safe to call more than once), or why there is none. `cancelled` means
+ * the caller's `isCancelled` turned true while the watch was starting, so nothing is running.
+ */
 export type PreciseWatch =
   | { status: 'watching'; stop: () => void }
-  | { status: 'denied' | 'coarse_only' | 'unavailable' };
+  | { status: 'denied' | 'coarse_only' | 'unavailable' | 'cancelled' };
+
+export interface PreciseWatchOptions {
+  /**
+   * Asked after each await. A caller that leaves the screen while the watch is still starting has
+   * no handle to stop yet, so it says so here and the adapter removes the subscription itself
+   * instead of leaking a best-accuracy watch.
+   */
+  isCancelled?: () => boolean;
+}
 
 /** How often the watch asks for a reading, and how far the phone must move for one (metres). */
 export const PRECISE_TIME_INTERVAL_MS = 1000;
@@ -242,17 +254,27 @@ function toPreciseFix(reading: unknown): PreciseFix | null {
  *
  * Only starts when precise foreground permission is already granted, so it can never raise a
  * dialog. Readings that are not valid coordinates are dropped, a listener that throws cannot take
- * the watch down, and nothing arrives after `stop`. It never throws: where the module or the
+ * the watch down, and nothing arrives after `stop`. **On iOS a person can switch off "Precise
+ * Location" while still granting access, and nothing here can tell**: those fixes carry an accuracy
+ * of a kilometre or more, so the run's own accuracy filter (`acceptFix`, 25 m) is what stops them
+ * counting. It never throws: where the module or the
  * location service is missing, the result says `unavailable` and the run carries on without a route.
  */
-export async function watchPrecisePosition(onFix: (fix: PreciseFix) => void): Promise<PreciseWatch> {
+export async function watchPrecisePosition(
+  onFix: (fix: PreciseFix) => void,
+  options: PreciseWatchOptions = {},
+): Promise<PreciseWatch> {
   const location = loadSdk();
   if (!location) {
     return { status: 'unavailable' };
   }
+  const isCancelled = options.isCancelled ?? (() => false);
 
   try {
     const permission = toPrecisePermission(await location.getForegroundPermissionsAsync());
+    if (isCancelled()) {
+      return { status: 'cancelled' };
+    }
     if (permission === 'coarse_only') {
       return { status: 'coarse_only' };
     }
@@ -283,16 +305,23 @@ export async function watchPrecisePosition(onFix: (fix: PreciseFix) => void): Pr
       },
     );
 
-    return {
-      status: 'watching',
-      stop: () => {
-        if (stopped) {
-          return;
-        }
-        stopped = true;
+    const stop = (): void => {
+      if (stopped) {
+        return;
+      }
+      stopped = true;
+      try {
         subscription.remove();
-      },
+      } catch {
+        // Already gone; stopping twice, or after the OS ended it, must not throw into a run ending.
+      }
     };
+
+    if (isCancelled()) {
+      stop();
+      return { status: 'cancelled' };
+    }
+    return { status: 'watching', stop };
   } catch {
     return { status: 'unavailable' };
   }
