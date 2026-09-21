@@ -40,5 +40,10 @@ const ogImage = new URL('/og.png', Astro.site);
       <slot />
     </main>
     <Footer />
+    <script>
+      import { bootMotion } from "../lib/boot-motion";
+
+      bootMotion();
+    </script>
   </body>
 </html>

@@ -5,12 +5,14 @@
  */
 interface Props {
   id: string;
+  /** Forwarded to the root element, so a page can mark it for scroll motion (W6). */
+  [key: string]: unknown;
 }
 
-const { id } = Astro.props;
+const { id, ...rest } = Astro.props;
 ---
 
-<div class="waitlist-block">
+<div class="waitlist-block" {...rest}>
   <form class="waitlist" aria-describedby={`${id}-note`}>
     <input
       id={id}

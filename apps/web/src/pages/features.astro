@@ -15,13 +15,13 @@ import Base from '../layouts/Base.astro';
 >
   <div class="page-head">
     <div class="wrap">
-      <span class="label accent">Features</span>
-      <h1 class="display page-display">One model<span class="dot">.</span><br />Every sport<span class="dot">.</span></h1>
-      <p class="lede">
+      <span class="label accent" data-reveal>Features</span>
+      <h1 class="display page-display" data-reveal data-stagger="1">One model<span class="dot">.</span><br />Every sport<span class="dot">.</span></h1>
+      <p class="lede" data-reveal data-stagger="2">
         A lift, a run, a night's sleep and a body scan are all stored the same way, whichever app or device they came
         from. That's what lets FORJD put them side by side.
       </p>
-      <nav class="jump" aria-label="Feature sections">
+      <nav class="jump" aria-label="Feature sections" data-reveal data-stagger="3">
         <a href="#train">Train</a><a href="#run">Run</a><a href="#recover">Recover</a>
         <a href="#body">Body</a><a href="#eat">Eat</a><a href="#compete">Compete</a>
       </nav>
@@ -32,106 +32,106 @@ import Base from '../layouts/Base.astro';
     <div class="wrap rows">
       <section class="row" id="train">
         <div class="row-copy">
-          <span class="label accent">Train</span>
-          <h2 class="h2">Programs, templates and a workout that runs offline.</h2>
-          <p class="body">
+          <span class="label accent" data-reveal>Train</span>
+          <h2 class="h2" data-reveal data-stagger="1">Programs, templates and a workout that runs offline.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Start a suggested session, follow a multi-week program, or build your own from the exercise library. Every
             workout you finish becomes history you can compare against next time.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>Exercise library with muscle groups and equipment</li>
             <li>Your own custom exercises and routines</li>
             <li>Strength, hypertrophy and conditioning blocks</li>
             <li>Works with no signal, syncs later</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={train} alt="The FORJD Train tab with suggested workouts and programs." /></div>
+        <div class="row-shot"><Phone src={train} data-reveal data-stagger="1" alt="The FORJD Train tab with suggested workouts and programs." /></div>
       </section>
 
       <section class="row flip" id="run">
         <div class="row-copy">
-          <span class="label accent">Run</span>
-          <h2 class="h2">Runs live in the same history as your lifts.</h2>
-          <p class="body">
+          <span class="label accent" data-reveal>Run</span>
+          <h2 class="h2" data-reveal data-stagger="1">Runs live in the same history as your lifts.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Track a run with pace, distance and heart rate. It counts toward the same week as your gym sessions, so your
             training load tells the whole story.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>Live pace, distance and time</li>
             <li>Heart rate from your watch</li>
             <li>HYROX-style sessions that mix running and stations</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={run} alt="A live FORJD run screen with pace, distance and time." /></div>
+        <div class="row-shot"><Phone src={run} data-reveal data-stagger="1" alt="A live FORJD run screen with pace, distance and time." /></div>
       </section>
 
       <section class="row" id="recover">
         <div class="row-copy">
-          <span class="label" style="color:#8bbf96">Recover</span>
-          <h2 class="h2">Your wearable's data, with the source kept.</h2>
-          <p class="body">
+          <span class="label" style="color:#8bbf96" data-reveal>Recover</span>
+          <h2 class="h2" data-reveal data-stagger="1">Your wearable's data, with the source kept.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Connect Apple Health, Health Connect or WHOOP. If two devices both record your sleep, FORJD keeps both
             readings and shows you which one it's using. It never quietly overwrites one with the other.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>Sleep, HRV, resting heart rate and steps</li>
             <li>A daily readiness score on your home screen</li>
             <li>FORJD Insights: short, plain notes built from your own numbers</li>
           </ul>
         </div>
-        <div class="row-shot g"><Phone src={sources} alt="The FORJD connected sources screen listing Apple Health, Health Connect and WHOOP." /></div>
+        <div class="row-shot g"><Phone src={sources} data-reveal data-stagger="1" alt="The FORJD connected sources screen listing Apple Health, Health Connect and WHOOP." /></div>
       </section>
 
       <section class="row flip" id="body">
         <div class="row-copy">
-          <span class="label" style="color:var(--sleep)">Body</span>
-          <h2 class="h2">InBody scans that finally mean something.</h2>
-          <p class="body">
+          <span class="label" style="color:var(--sleep)" data-reveal>Body</span>
+          <h2 class="h2" data-reveal data-stagger="1">InBody scans that finally mean something.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Photograph your printed InBody result sheet and FORJD reads the values for you. It keeps the full history:
             weight, body fat, skeletal muscle mass and the segmental breakdown, charted against the training that
             produced it.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>Scan history with change since last time</li>
             <li>You confirm every value before anything is saved</li>
             <li>Trends for each metric, month by month</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={inbody} alt="The FORJD InBody history screen listing past scans." /></div>
+        <div class="row-shot"><Phone src={inbody} data-reveal data-stagger="1" alt="The FORJD InBody history screen listing past scans." /></div>
       </section>
 
       <section class="row" id="eat">
         <div class="row-copy">
-          <span class="label accent">Eat</span>
-          <h2 class="h2">Calories and macros without a second app.</h2>
-          <p class="body">
+          <span class="label accent" data-reveal>Eat</span>
+          <h2 class="h2" data-reveal data-stagger="1">Calories and macros without a second app.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Log meals by breakfast, lunch, snack and dinner, set your own targets, and save the meals you eat every week
             so logging them takes one tap.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>Protein, carbs and fat against your goals</li>
             <li>Saved meals for the things you eat often</li>
             <li>Search foods or add your own</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={nutrition} alt="The FORJD nutrition screen: 488 of 2,400 kcal with protein, carbs and fat progress bars." /></div>
+        <div class="row-shot"><Phone src={nutrition} data-reveal data-stagger="1" alt="The FORJD nutrition screen: 488 of 2,400 kcal with protein, carbs and fat progress bars." /></div>
       </section>
 
       <section class="row flip" id="compete">
         <div class="row-copy">
-          <span class="label accent">Compete</span>
-          <h2 class="h2">A leaderboard for the city you actually train in.</h2>
-          <p class="body">
+          <span class="label accent" data-reveal>Compete</span>
+          <h2 class="h2" data-reveal data-stagger="1">A leaderboard for the city you actually train in.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Your city board ranks you on activity, with strength, running and HYROX boards to follow. Boards only appear
             once enough people in a city have joined, so a rank always means something.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>This month and all-time rankings</li>
             <li>Tap through to any athlete's public profile</li>
             <li>Choose what your profile shows in privacy settings</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={rank} alt="The FORJD city leaderboard." /></div>
+        <div class="row-shot"><Phone src={rank} data-reveal data-stagger="1" alt="The FORJD city leaderboard." /></div>
       </section>
     </div>
   </div>

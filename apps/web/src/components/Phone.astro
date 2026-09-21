@@ -12,11 +12,13 @@ interface Props {
   alt: string;
   class?: string;
   loading?: 'eager' | 'lazy';
+  /** Forwarded to the root element, so a page can mark it for scroll motion (W6). */
+  [key: string]: unknown;
 }
 
-const { src, alt, class: className, loading = 'lazy' } = Astro.props;
+const { src, alt, class: className, loading = 'lazy', ...rest } = Astro.props;
 ---
 
-<div class:list={['phone', className]}>
+<div class:list={['phone', className]} {...rest}>
   <Image src={src} alt={alt} width={396} height={827} format="webp" loading={loading} />
 </div>

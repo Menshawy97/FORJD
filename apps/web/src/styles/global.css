@@ -120,7 +120,8 @@ p { margin: 0; }
 
 /* hero */
 .hero { background: var(--ember); overflow: hidden; }
-.hero .wrap { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; padding-block: clamp(48px, 7vw, 96px) 0; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; padding-block: clamp(48px, 7vw, 96px) 0; }
+.hero .display { font-size: clamp(52px, 7.4vw, 104px); }
 .hero-copy { display: grid; gap: 28px; padding-bottom: clamp(48px, 7vw, 96px); }
 .pill {
   display: inline-flex; align-items: center; gap: 8px; width: fit-content;
@@ -131,11 +132,11 @@ p { margin: 0; }
 .hero-feats { display: grid; gap: 0; border-top: 1px solid var(--line-faint); max-width: 520px; }
 .hero-feats div { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line-faint); color: var(--feature); font-size: 14.5px; font-weight: 500; }
 .hero-feats svg { flex: none; }
-.cluster { position: relative; height: clamp(520px, 52vw, 640px); align-self: end; }
+.cluster { position: relative; height: clamp(600px, 56vw, 820px); align-self: start; }
 .cluster .phone { position: absolute; bottom: -8%; }
-.cluster .p-center { left: 50%; transform: translateX(-50%); width: 58%; max-width: 310px; z-index: 3; }
-.cluster .p-left { left: 0; width: 46%; transform: rotate(-7deg); bottom: -2%; z-index: 1; opacity: .9; }
-.cluster .p-right { right: 0; width: 46%; transform: rotate(7deg); bottom: -2%; z-index: 2; opacity: .9; }
+.cluster .p-center { left: 50%; transform: translateX(-50%); width: 70%; max-width: 410px; z-index: 3; }
+.cluster .p-left { left: 9%; width: 48%; max-width: 320px; transform: rotate(-7deg); bottom: -2%; z-index: 1; opacity: .9; }
+.cluster .p-right { right: 9%; width: 48%; max-width: 320px; transform: rotate(7deg); bottom: -2%; z-index: 2; opacity: .9; }
 
 /* thesis */
 .thesis-head { display: grid; gap: 20px; max-width: 820px; }
@@ -292,4 +293,64 @@ footer nav a:hover { color: var(--text); }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .btn { transition: none; }
+}
+
+/* ---------- scroll motion (W6) ----------
+   Nothing here applies until src/lib/reveal.ts adds .fj-motion to <html>, and it only
+   does that once it has confirmed IntersectionObserver exists and the reader has not
+   asked for reduced motion. That indirection is the whole point: the served HTML carries
+   no hidden state, so a crawler, a link preview, or a browser whose script failed gets
+   the finished page rather than a blank one. A plain `opacity: 0` in this file would
+   invert that and hide the site from everything that does not run JavaScript.
+
+   Numbers measured from sayapp.net, recorded in docs/product/website-plan.md (W6). */
+.fj-motion [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity .7s cubic-bezier(.16, 1, .3, 1),
+    transform .7s cubic-bezier(.16, 1, .3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.fj-motion [data-reveal].is-revealed { opacity: 1; transform: none; will-change: auto; }
+
+/* The hero does not wait for a scroll -- it is already in view -- so it runs on load,
+   from a little further down and a little slower than a section reveal. */
+.fj-motion [data-hero] {
+  opacity: 0;
+  transform: translateY(36px);
+  transition:
+    opacity 1s cubic-bezier(.16, 1, .3, 1),
+    transform 1s cubic-bezier(.16, 1, .3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.fj-motion [data-hero].is-revealed { opacity: 1; transform: none; }
+
+/* The example-week chart is the one place the motion explains the content: volume grows
+   off the baseline, HRV traces left to right. transform-box keeps scaleY anchored to the
+   bar's own box rather than the SVG viewport origin. */
+.fj-motion [data-chart-bar] {
+  transform: scaleY(0);
+  transform-box: fill-box;
+  transform-origin: bottom;
+  transition: transform 1s cubic-bezier(.16, 1, .3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.fj-motion [data-chart-bar].is-revealed { transform: none; }
+.fj-motion [data-chart-line] { transition: stroke-dashoffset 1.4s cubic-bezier(.16, 1, .3, 1); }
+
+/* Belt and braces with the check in reveal.ts: a reader who turns the preference on
+   after load, or a browser that only honours the media query, still gets a still page. */
+@media (prefers-reduced-motion: reduce) {
+  .fj-motion [data-reveal],
+  .fj-motion [data-hero],
+  .fj-motion [data-chart-bar],
+  .fj-motion [data-chart-line] {
+    opacity: 1 !important;
+    transform: none !important;
+    stroke-dashoffset: 0 !important;
+    transition: none !important;
+  }
+  html { scroll-behavior: auto; }
 }
