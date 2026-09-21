@@ -22,6 +22,7 @@ import {
   exerciseHistoryResponseSchema,
   workoutSessionListResponseSchema,
   workoutSessionResponseSchema,
+  waitlistSignupResponseSchema,
   workoutStatsResponseSchema,
   workoutTemplateListResponseSchema,
   workoutTemplateResponseSchema,
@@ -1130,6 +1131,15 @@ export const responseFixtures = {
       me: null,
       rows: [],
     },
+  },
+
+  /**
+   * The waitlist sign-up answer (ADR-051). One value only, so a new address and a repeat look
+   * identical to the caller.
+   */
+  'waitlist-signup-response': {
+    schema: waitlistSignupResponseSchema,
+    sample: { status: 'accepted' },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;
 
