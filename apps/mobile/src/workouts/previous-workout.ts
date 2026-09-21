@@ -120,6 +120,24 @@ export function sessionVolumeKg(session: WorkoutSessionResponse): number {
   return total;
 }
 
+/**
+ * The load figure on the Previous Workout line: kilometres for a run, kilograms otherwise (ADR-050).
+ * A run has no external load, so showing its volume would read "0 kg". Counts completed sets only,
+ * for the same reason `sessionVolumeKg` does.
+ */
+export function sessionLoadLabel(session: WorkoutSessionResponse): string {
+  if (session.activity === 'running') {
+    let meters = 0;
+    for (const exercise of session.exercises) {
+      for (const set of exercise.sets) {
+        if (set.isCompleted && set.distanceMeters !== null) meters += set.distanceMeters;
+      }
+    }
+    return `${(meters / 1000).toFixed(2)} km`;
+  }
+  return `${sessionVolumeKg(session).toLocaleString()} kg`;
+}
+
 /** The heaviest completed set, which is the one the prototype's chip names. */
 function bestCompletedSet(exercise: SessionExercise): SessionSet | null {
   let best: SessionSet | null = null;

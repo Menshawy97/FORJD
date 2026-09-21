@@ -26,6 +26,7 @@ import {
   formatSessionDuration,
   type ResolvedExercise,
   sessionExerciseChips,
+  sessionLoadLabel,
   sessionVolumeKg,
   toRepeatExercises,
 } from '@/workouts/previous-workout';
@@ -41,16 +42,15 @@ import { colors } from '@/theme/tokens';
  * Still to come from the screenshot: the **programs** sections (Phase 3K). The header's
  * favourites star is still omitted — nothing backs a workout-favourites feature yet.
  *
- * `Start a run` targets a Phase 3 screen that does not exist — rendered per §9's own
- * instruction ("render the card, route it nowhere yet"), so it is not wired to `onPress` at
- * all. `Exercise library` is real: it is `library.tsx`, shipped this same phase.
+ * `Start a run` opens the live run (`run.tsx`, ADR-049); it was inert until that screen existed.
+ * `Exercise library` is `library.tsx`, shipped in Phase 3.
  *
  * **The header "+" button** (`train1.png`) opened `/builder` from Phase 3G until Phase 3K6,
  * which found the prototype disagreed: `this.go('programBuilder')`. The workout builder's own
  * entry point is unchanged -- the "+ New workout" link beside MY WORKOUTS still opens `/builder`.
  */
-const QUICK_ACTIONS: ReadonlyArray<{ key: string; label: string; icon: IconName; href: '/library' | null }> = [
-  { key: 'run', label: 'Start a run', icon: 'runner', href: null },
+const QUICK_ACTIONS: ReadonlyArray<{ key: string; label: string; icon: IconName; href: '/library' | '/run' }> = [
+  { key: 'run', label: 'Start a run', icon: 'runner', href: '/run' },
   { key: 'library', label: 'Exercise library', icon: 'dumb', href: '/library' },
 ];
 
@@ -100,9 +100,7 @@ async function loadPreviousWorkout(): Promise<PreviousWorkout | null> {
     session,
     performedAt,
     // `avg 151 bpm` is in the design and not in the data — no HealthProvider feeds this app.
-    meta: `${performedAt} · ${formatSessionDuration(session.durationSeconds)} · ${sessionVolumeKg(
-      session,
-    ).toLocaleString()} kg`,
+    meta: `${performedAt} · ${formatSessionDuration(session.durationSeconds)} · ${sessionLoadLabel(session)}`,
     chips: sessionExerciseChips(session, (id) => resolved.get(id)?.name ?? null),
     resolved,
   };
@@ -399,8 +397,7 @@ export default function TrainScreen() {
               key={action.key}
               accessibilityRole="button"
               accessibilityLabel={action.label}
-              disabled={action.href === null}
-              onPress={action.href ? () => router.push(action.href as '/library') : undefined}
+              onPress={() => router.push(action.href)}
               className="min-w-0 flex-1 flex-row items-center gap-[9px] rounded-card border border-border bg-surface px-[13px] py-[11px]"
               style={({ pressed }) => (pressed ? { borderColor: 'rgba(233,113,47,.4)' } : null)}>
               <Icon name={action.icon} size={18} color={colors.metadata} />

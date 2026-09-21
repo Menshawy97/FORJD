@@ -92,7 +92,21 @@ Train active.
 - The share tile on the summary shows a "coming soon" note: the run share card ("Route & Splits")
   is not part of this work.
 - Elapsed, pace and the other values are real; the prototype's hard-coded 298 kcal and 24 m are not
-  copied.
+  copied. A figure that was never measured reads "—".
+- Distance is kilometres only for now; there is no miles option on the run screens yet.
+- The header's pulse animation is a static dot, as on the strength runner.
+- Label and unit greys use the app's contrast-lifted `label` (#94948B) and `dimmer` (#8A8A82) tokens
+  instead of the prototype's #77776f / #6e6e66, as every other screen does (R19).
+- The GPS pill has two states the design does not draw: "GPS weak" (worse than 10 m, accent dot) and
+  "GPS searching" (before the first reading, grey dot).
+- A denied, approximate-only or unavailable location shows an explanation card (with Open Settings
+  where it can help) in place of the map. The run keeps its clock, but cannot measure distance.
+- Locking the phone pauses the run and the screen says so, because foreground location stops.
+- Calories on the summary carry a small "estimated" line when they are the ACSM estimate and not a
+  watch reading (the plan's "the tile says estimated").
+- A run under 50 m is offered for discarding rather than saved.
+- The run screens read `healthDataAllowed: false` until R8 wires the watch and the health-data consent,
+  so no heart rate is stored yet; estimated calories are stored regardless, as ADR-050 #3 says.
 
 ## Owed by the user
 

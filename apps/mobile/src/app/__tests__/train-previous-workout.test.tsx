@@ -155,6 +155,52 @@ describe('the card', () => {
     expect(queryByText('PR +')).toBeNull();
   });
 
+  // ADR-050: a run has no external load, so its line reads kilometres rather than "0 kg".
+  it('writes a run in kilometres', async () => {
+    (getWorkoutSession as jest.Mock).mockResolvedValue(
+      detail({
+        name: 'Outdoor Run',
+        activity: 'running',
+        durationSeconds: 1329,
+        exercises: [
+          {
+            id: 'se-run',
+            exerciseId: 'ex-run',
+            orderIndex: 0,
+            measure: 'distance',
+            notes: null,
+            sets: [
+              {
+                id: 's-run',
+                setIndex: 0,
+                type: 'working',
+                isCompleted: true,
+                weightKg: null,
+                reps: null,
+                durationSeconds: 1329,
+                distanceMeters: 3560,
+                restSeconds: null,
+                completedAt: new Date('2026-09-02T18:22:00').toISOString(),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const { findByText, queryByText } = await render(<TrainScreen />);
+
+    expect(await findByText('Yesterday · 22:09 · 3.56 km')).toBeTruthy();
+    expect(queryByText(/0 kg/)).toBeNull();
+  });
+
+  it('opens the live run from the Start a run tile', async () => {
+    const { findByLabelText } = await render(<TrainScreen />);
+
+    await fireEvent.press(await findByLabelText('Start a run'));
+
+    expect(mockPush).toHaveBeenCalledWith('/run');
+  });
+
   it('names each exercise by its heaviest completed set', async () => {
     const { findByText } = await render(<TrainScreen />);
 

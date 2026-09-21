@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   caption: {
     position: 'absolute',
     left: 12,
-    bottom: 8,
+    bottom: 10,
     fontFamily: MONO,
     fontSize: 10,
     fontWeight: '500',
