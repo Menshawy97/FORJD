@@ -117,9 +117,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Recursive, so @forjd/domain and @forjd/contracts compile before the API that
-      # consumes their emitted types. Filtering to the API alone leaves them unbuilt.
-      - run: pnpm -r build
+      # `@forjd/api...` selects the API and its workspace dependencies, built in dependency
+      # order, so @forjd/domain and @forjd/contracts compile before the API that consumes
+      # their emitted types (filtering to the API alone leaves them unbuilt). Not `pnpm -r
+      # build`: that would also build apps/web, letting a website failure fail this job; the
+      # web job builds the site on its own.
+      - run: pnpm --filter "@forjd/api..." build
 
       # The city snapshot is a .json under src/, which `nest build` copies only because
       # nest-cli.json lists it as an asset (ADR-045). Without that entry it exists in development
