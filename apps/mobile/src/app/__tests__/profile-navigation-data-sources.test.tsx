@@ -48,4 +48,13 @@ describe('Profile: Data sources row', () => {
 
     expect(mockReplace).toHaveBeenCalledWith('/data-sources');
   });
+
+  // F1: how the numbers are worked out lives one row below, as a settings destination too.
+  it('opens the FAQ', async () => {
+    const { findByText } = await render(<ProfileScreen />);
+
+    await fireEvent.press(await findByText('FAQ'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/faq');
+  });
 });

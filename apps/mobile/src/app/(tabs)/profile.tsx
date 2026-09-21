@@ -153,6 +153,13 @@ function buildGroups(
         // Phase 10L: GeoNames is CC BY 4.0, so its attribution must be visible in the app.
         onPress: () => router.replace('/data-sources'),
       },
+      {
+        icon: 'search',
+        title: 'FAQ',
+        subtitle: 'How your numbers are worked out',
+        // F1: a settings destination, so router.replace like its neighbours (ADR-011).
+        onPress: () => router.replace('/faq'),
+      },
     ],
   },
   {

@@ -1,6 +1,6 @@
 # Profile → FAQ: draft copy for sign-off
 
-Status: **draft, awaiting the user's sign-off** (2026-09-21). The FAQ screen (slice F1) is not built
+Status: **approved by the user on 2026-09-22 and built (F1)**. Draft note kept below for the record. The FAQ screen (slice F1) is not built
 until this is approved, because it carries health and training claims and their citations into the
 product (see the standing rule: cite published sources, get them approved, never call a rules-based
 number "AI").
