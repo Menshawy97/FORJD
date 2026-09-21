@@ -118,7 +118,7 @@ export function createTurnstileClient(options: CreateTurnstileClientOptions): Tu
         logger.warn(`Turnstile refused a token (error-codes: ${readErrorCodes(body)}).`);
         return false;
       } catch (err) {
-        logger.warn(`Turnstile could not be reached; refusing the sign-up (${err instanceof Error ? err.name : "unknown error"}).`);
+        logger.warn(`Turnstile could not be reached; refusing the sign-up (${(err as Error).name}).`);
         return false;
       }
     },
