@@ -1,6 +1,7 @@
 # Website plan: getforjd.com
 
-Status: **W0 merged (#221); W1 in review** (2026-09-21). Decisions in `docs/decisions/ADR-051-marketing-website-and-waitlist.md`.
+Status: **W0-W2 done. The site is live at https://getforjd.com. W3 is next** (2026-09-21).
+Decisions in `docs/decisions/ADR-051-marketing-website-and-waitlist.md`.
 Design source: `docs/design/website/design-v1.html` (the published preview, with `%%name%%`
 placeholders where the cropped app screenshots were embedded; `crop-screenshots.js` produced them).
 
@@ -76,6 +77,11 @@ live pages, HTTPS, the redirect and a pull-request preview build.
 
 ### W3: `POST /api/v1/waitlist` (API vertical slice)
 
+**Split, because the migration is blocked.** Migration `0022` (the live-run session) was still not on
+`main` on 2026-09-21, and two sessions must not claim the same migration number. **W3a** is everything
+that touches no table: the contract (step 1) and the Turnstile adapter (step 3). **W3b** is the rest
+(steps 2, 4-8), and starts by rebasing onto a `main` that has `0022`.
+
 Test-first throughout, following the existing auth controller's pattern (`ZodValidationPipe`,
 `@Throttle`).
 
@@ -146,3 +152,29 @@ proposed it needs its own decision), a blog, localisation, and a web version of 
     switched off in W1 and nothing would call it; the unit-tested module in W1 is the pricing copy
     instead. Brand values live in `src/styles/global.css` rather than a separate `tokens.css`,
     since they arrived together with the design's component styles.
+- **W2** (2026-09-21): **live**. Cloudflare Pages project `forjd-web`, production branch `main`,
+  root directory empty, output `apps/web/dist`, build command:
+
+  ```
+  pnpm install --frozen-lockfile --filter "@forjd/web..." && pnpm --filter @forjd/web build
+  ```
+
+  with `NODE_VERSION=24`, `PNPM_VERSION=11.22.0` and `SKIP_DEPENDENCY_INSTALL=1`. That last one
+  matters: Cloudflare would otherwise install the whole workspace, including the mobile app's
+  toolchain. The filtered install pulls 498 packages in about 40 seconds, then builds in about 30.
+  Build watch paths are `apps/web/*, pnpm-lock.yaml, pnpm-workspace.yaml`, so app and API changes
+  don't spend builds from the free 500 a month.
+
+  Both custom domains are attached, and a zone Redirect Rule sends `https://www.*` to
+  `https://${1}` with a 301, keeping path and query string.
+
+  Verified from outside the network: all four pages, the 404, `robots.txt`, the sitemap, `og.png`
+  and the icon return 200 over HTTPS on the apex, and `www.getforjd.com/features/?utm_source=x`
+  301s to the apex with both path and query preserved.
+
+  Two things worth knowing next time. The Pages dashboard's "Verifying" and "Complete DNS setup"
+  labels on a custom domain lag well behind reality: the domain was already serving the site while
+  both still showed as pending, so test with a real request rather than believing the badge. And
+  the Cloudflare connector (the `cloudflare` plugin's MCP server) is installed but signing it in
+  from one Claude instance does not sign it in for another, so a session that needs it must
+  authenticate in that session.
