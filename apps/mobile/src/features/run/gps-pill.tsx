@@ -15,7 +15,7 @@ import type { GpsQuality } from './gps-quality';
 const DOT_COLORS: Record<GpsQuality['level'], string> = {
   strong: colors.green,
   weak: colors.accent,
-  searching: '#6E6E66',
+  searching: colors.metadata,
 };
 
 export function GpsPill({ quality }: { quality: GpsQuality }) {

@@ -89,7 +89,7 @@ export default function RunScreen() {
         <View className="flex-row items-center" style={{ gap: 7 }}>
           <View
             className="h-[7px] w-[7px] rounded-[4px]"
-            style={{ backgroundColor: isPaused ? '#6E6E66' : colors.accent }}
+            style={{ backgroundColor: isPaused ? colors.metadata : colors.accent }}
           />
           <Text
             className="font-archivo text-[10px] font-semibold uppercase tracking-[.14em]"
