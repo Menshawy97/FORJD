@@ -139,6 +139,14 @@ describe('RunDoneScreen', () => {
     expect(screen.getByText('Sharing a run is coming soon')).toBeTruthy();
   });
 
+  it('does not show a finished run twice, however the screen is left', async () => {
+    setCompletedRun(SCREENSHOT_RUN);
+    const { unmount } = await render(<RunDoneScreen />);
+    await fireEvent.press(screen.getByText('View Progress'));
+    await unmount();
+    expect(getCompletedRun()).toBeNull();
+  });
+
   it('View Progress goes to the Progress tab', async () => {
     setCompletedRun(SCREENSHOT_RUN);
     await render(<RunDoneScreen />);

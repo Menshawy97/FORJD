@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
@@ -34,6 +35,9 @@ const DASH = '—';
 export default function RunDoneScreen() {
   const run = getCompletedRun();
   const toast = useToast();
+
+  // However the person leaves (Done, View Progress, a tab, back), a finished run is not shown twice.
+  useEffect(() => clearCompletedRun, []);
 
   if (!run) {
     return (

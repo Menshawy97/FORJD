@@ -42,6 +42,33 @@ describe('run snapshot', () => {
     expect(restored.nextFixStartsSegment).toBe(true);
   });
 
+  it('refuses a snapshot older than a day when told the time, rather than resuming a stale run', () => {
+    const payload = toRunSnapshot(startRun(ID, T0), T0 + 1_000);
+    expect(restoreRunSnapshot(payload, T0 + 23 * 3_600_000)).not.toBeNull();
+    expect(restoreRunSnapshot(payload, T0 + 25 * 3_600_000)).toBeNull();
+  });
+
+  const oneFix = (over: Record<string, unknown>) => ({
+    latitude: 1,
+    longitude: 0,
+    altitudeMeters: null,
+    accuracyMeters: 5,
+    timestampMs: T0,
+    movingMs: 0,
+    segmentStart: true,
+    ...over,
+  });
+
+  it.each([
+    ['an id that is not a uuid', { savedAtMs: T0, state: startRun('not-a-uuid', T0) }],
+    ['a save time before the run started', { savedAtMs: T0 - 1, state: startRun(ID, T0) }],
+    ['a latitude off the globe', { savedAtMs: T0, state: { ...startRun(ID, T0), fixes: [oneFix({ latitude: 200 })] } }],
+    ['a negative accuracy', { savedAtMs: T0, state: { ...startRun(ID, T0), fixes: [oneFix({ accuracyMeters: -3 })] } }],
+    ['negative banked time', { savedAtMs: T0, state: { ...startRun(ID, T0), movedBeforeMs: -5 } }],
+  ])('refuses %s', (_label, payload) => {
+    expect(restoreRunSnapshot(payload)).toBeNull();
+  });
+
   it.each([
     ['null', null],
     ['a string', 'nope'],

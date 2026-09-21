@@ -34,6 +34,7 @@ jest.mock('@/integrations/location/location-provider', () => ({
 jest.mock('@/store/workout-session', () => ({
   openWorkoutSessionDb: jest.fn(),
   enqueueSessionUpload: jest.fn(),
+  getQueuedSessions: jest.fn(),
 }));
 
 jest.mock('@/store/run-session', () => ({
@@ -58,7 +59,7 @@ import { toRunSnapshot } from '@/features/run/run-snapshot';
 import { fetchLatestWeightKg } from '@/features/run/latest-weight';
 import { clearRunSnapshot, getUnfinishedRunSnapshot, saveRunSnapshot } from '@/store/run-session';
 import { readLocationConsent } from '@/store/leaderboard-consent';
-import { enqueueSessionUpload, openWorkoutSessionDb } from '@/store/workout-session';
+import { enqueueSessionUpload, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
 import { addFix, pauseRun, startRun } from '@/workouts/live-run';
 import { clearCompletedRun, getCompletedRun } from '@/workouts/run-handoff';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
@@ -107,6 +108,7 @@ beforeEach(() => {
   });
   (openWorkoutSessionDb as jest.Mock).mockResolvedValue(DB);
   (enqueueSessionUpload as jest.Mock).mockResolvedValue(undefined);
+  (getQueuedSessions as jest.Mock).mockResolvedValue([]);
   (getUnfinishedRunSnapshot as jest.Mock).mockResolvedValue(null);
   (saveRunSnapshot as jest.Mock).mockResolvedValue(undefined);
   (clearRunSnapshot as jest.Mock).mockResolvedValue(undefined);
@@ -362,6 +364,74 @@ describe('RunScreen -- finishing', () => {
     await waitFor(() => expect(screen.getByText('Run not saved — try Finish again.')).toBeTruthy());
     expect(mockReplace).not.toHaveBeenCalled();
     expect(clearRunSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+describe('RunScreen -- review fixes (second round)', () => {
+  const finishedRun = async () => {
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 100, 31));
+  };
+
+  it('can be finished again after a failed save', async () => {
+    (enqueueSessionUpload as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
+    await finishedRun();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+    await waitFor(() => expect(screen.getByText('Run not saved — try Finish again.')).toBeTruthy());
+
+    await fireEvent.press(screen.getByText('Finish run'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(enqueueSessionUpload).toHaveBeenCalledTimes(2);
+  });
+
+  it('a Pause really saves a paused snapshot, not just the one from opening', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    (saveRunSnapshot as jest.Mock).mockClear();
+
+    await fireEvent.press(screen.getByText('Pause'));
+
+    await waitFor(() => expect(saveRunSnapshot).toHaveBeenCalled());
+    const payload = (saveRunSnapshot as jest.Mock).mock.calls[0][2] as { state: { status: string } };
+    expect(payload.state.status).toBe('paused');
+  });
+
+  it('does not bring back a saved run that is already in the upload queue', async () => {
+    const base = Date.now() - 60_000;
+    const state = pauseRun(startRun('11111111-1111-4111-8111-111111111111', base), base + 5_000);
+    (getUnfinishedRunSnapshot as jest.Mock).mockResolvedValue({
+      sessionId: state.id,
+      payload: toRunSnapshot(state, base + 5_000),
+      startedAt: new Date(base).toISOString(),
+    });
+    (getQueuedSessions as jest.Mock).mockResolvedValue([{ sessionId: state.id }]);
+
+    await render(<RunScreen />);
+
+    await waitFor(() => expect(screen.getByText('Live · Outdoor run')).toBeTruthy());
+    expect(clearRunSnapshot).toHaveBeenCalledWith(DB, state.id);
+  });
+
+  it('stops following the position when the screen is left', async () => {
+    const { unmount } = await render(<RunScreen />);
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText('GPS searching')).toBeTruthy());
+
+    await unmount();
+
+    expect(mockStop).toHaveBeenCalled();
+  });
+
+  it('says location is not available, with no Settings button that could not help', async () => {
+    (getPrecisePermission as jest.Mock).mockResolvedValue('unavailable');
+    await render(<RunScreen />);
+    await waitFor(() => expect(screen.getByText('Location is not available')).toBeTruthy());
+    expect(screen.queryByText('Open Settings')).toBeNull();
+    expect(watchPrecisePosition).not.toHaveBeenCalled();
   });
 });
 

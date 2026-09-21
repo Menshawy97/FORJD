@@ -13,7 +13,7 @@ import {
 import type { SqliteConnection } from '@/store/exercise-catalogue';
 import { readLocationConsent } from '@/store/leaderboard-consent';
 import { clearRunSnapshot, ensureRunSessionSchema, getUnfinishedRunSnapshot, saveRunSnapshot } from '@/store/run-session';
-import { enqueueSessionUpload, openWorkoutSessionDb } from '@/store/workout-session';
+import { enqueueSessionUpload, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
 import {
   MIN_SAVEABLE_RUN_METERS,
   addFix,
@@ -102,7 +102,11 @@ export function useRunSession(): RunSession {
         const db = await openWorkoutSessionDb();
         await ensureRunSessionSchema(db);
         return db;
-      })();
+      })().catch((error: unknown) => {
+        // Not cached: a failed open must be retried by the next call, not fail forever.
+        dbRef.current = null;
+        throw error;
+      });
     }
     return dbRef.current;
   }, []);
@@ -176,8 +180,17 @@ export function useRunSession(): RunSession {
     void (async () => {
       let recovered: RunState | null = null;
       try {
-        const snapshot = await getUnfinishedRunSnapshot(await getDb());
-        recovered = snapshot ? restoreRunSnapshot(snapshot.payload) : null;
+        const db = await getDb();
+        const snapshot = await getUnfinishedRunSnapshot(db);
+        recovered = snapshot ? restoreRunSnapshot(snapshot.payload, Date.now()) : null;
+        // A snapshot left behind by a run that was in fact queued must not bring it back to life.
+        if (recovered && (await getQueuedSessions(db)).some((row) => row.sessionId === recovered?.id)) {
+          await clearRunSnapshot(db, recovered.id);
+          recovered = null;
+        }
+        if (snapshot && !recovered) {
+          showToast('Your last run could not be restored, so this is a new run.');
+        }
       } catch {
         // No readable snapshot: start a fresh run rather than refuse to run.
       }
@@ -186,28 +199,33 @@ export function useRunSession(): RunSession {
       commit(initial);
       void persist(initial);
 
-      let granted = await getPrecisePermission();
-      if (cancelled) return;
-      // Asked here, once, because the person just tapped Start a run (ADR-049 #3).
-      if (granted === 'undetermined') {
-        granted = await requestPrecisePermission();
+      try {
+        let granted = await getPrecisePermission();
         if (cancelled) return;
-      }
-      if (granted !== 'granted') {
-        updatePermission(granted === 'coarse_only' || granted === 'unavailable' ? granted : 'denied');
-        return;
-      }
+        // Asked here, once, because the person just tapped Start a run (ADR-049 #3).
+        if (granted === 'undetermined') {
+          granted = await requestPrecisePermission();
+          if (cancelled) return;
+        }
+        if (granted !== 'granted') {
+          updatePermission(granted === 'coarse_only' || granted === 'unavailable' ? granted : 'denied');
+          return;
+        }
 
-      const watch = await watchPrecisePosition(onFix, { isCancelled: () => cancelled });
-      if (cancelled) {
-        if (watch.status === 'watching') watch.stop();
-        return;
-      }
-      if (watch.status === 'watching') {
-        stopWatchRef.current = watch.stop;
-        updatePermission('granted');
-      } else if (watch.status !== 'cancelled') {
-        updatePermission(watch.status);
+        const watch = await watchPrecisePosition(onFix, { isCancelled: () => cancelled });
+        if (cancelled) {
+          if (watch.status === 'watching') watch.stop();
+          return;
+        }
+        if (watch.status === 'watching') {
+          stopWatchRef.current = watch.stop;
+          updatePermission('granted');
+        } else if (watch.status !== 'cancelled') {
+          updatePermission(watch.status);
+        }
+      } catch {
+        // Never leave the screen "checking" forever with a clock running and no GPS.
+        if (!cancelled) updatePermission('unavailable');
       }
     })();
 
@@ -302,7 +320,8 @@ export function useRunSession(): RunSession {
 
   const finish = useCallback(() => {
     const current = runRef.current;
-    if (!current || finishingRef.current) return;
+    // Not while a discard is closing the run: the two must never both act on it.
+    if (!current || finishingRef.current || closedRef.current) return;
     const endedAt = Date.now();
     const finished = finishRun(current, endedAt);
     const stats = runStats(finished, endedAt);
@@ -335,13 +354,19 @@ export function useRunSession(): RunSession {
         // Closed before the enqueue, so a late autosave cannot write the snapshot back afterwards.
         closedRef.current = true;
         await enqueueSessionUpload(db, request);
+        // From here the run is safely queued: nothing below may report it as "not saved".
         try {
           await clearRunSnapshot(db, finished.id);
         } catch {
-          // Queued already; a leftover snapshot for a finished id is harmless and cleared next time.
+          // A leftover snapshot for a queued run could be offered back; retry once, best effort.
+          await clearRunSnapshot(db, finished.id).catch(() => undefined);
         }
         stopWatching();
-        setCompletedRun(toRunSummary(request, stats.route));
+        try {
+          setCompletedRun(toRunSummary(request, stats.route));
+        } catch {
+          // The summary is a convenience; the run is queued either way.
+        }
         void syncPendingSessions();
         router.replace('/run-done');
       } catch {

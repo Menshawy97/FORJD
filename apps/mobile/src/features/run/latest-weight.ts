@@ -66,10 +66,15 @@ export async function fetchLatestWeightKg(): Promise<number | null> {
   const lookup = Promise.all([settled(getHealthObservationSeries()), settled(getBodyScanSeries())]).then(
     ([health, body]) => pickLatestWeightKg(health, body),
   );
-  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), LOOKUP_TIMEOUT_MS));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), LOOKUP_TIMEOUT_MS);
+  });
   try {
     return await Promise.race([lookup, timeout]);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
