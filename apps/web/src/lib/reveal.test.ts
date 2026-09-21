@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { STAGGER_STEP_MS, createRevealController, shouldAnimate, staggerDelayMs } from './reveal';
+import {
+  MOTION_CLASS,
+  MOTION_FALLBACK_MS,
+  STAGGER_STEP_MS,
+  createRevealController,
+  motionBootSnippet,
+  shouldAnimate,
+  staggerDelayMs,
+} from './reveal';
 import type { ObserverLike, RevealEntry } from './reveal';
 
 /**
@@ -10,13 +18,17 @@ import type { ObserverLike, RevealEntry } from './reveal';
  */
 function fakeObserver() {
   const observed = new Set<Element>();
+  let observeCalls = 0;
   let fire: (entries: RevealEntry[]) => void = () => {};
   let disconnected = false;
 
   const factory = (callback: (entries: RevealEntry[]) => void): ObserverLike => {
     fire = callback;
     return {
-      observe: (el) => observed.add(el),
+      observe: (el) => {
+        observeCalls += 1;
+        observed.add(el);
+      },
       unobserve: (el) => observed.delete(el),
       disconnect: () => {
         disconnected = true;
@@ -28,9 +40,14 @@ function fakeObserver() {
   return {
     factory,
     observed,
+    observeCalls: () => observeCalls,
     isDisconnected: () => disconnected,
     intersect: (el: Element) => fire([{ target: el, isIntersecting: true }]),
     pass: (el: Element) => fire([{ target: el, isIntersecting: false }]),
+    scrolledPast: (el: Element) =>
+      fire([{ target: el, isIntersecting: false, boundingClientRect: { top: -400 } }]),
+    notYetReached: (el: Element) =>
+      fire([{ target: el, isIntersecting: false, boundingClientRect: { top: 900 } }]),
   };
 }
 
@@ -84,7 +101,7 @@ describe('staggerDelayMs', () => {
     // Without the clamp a twelve-item list would leave the last item hidden for 1.4s
     // after its section arrived, which reads as broken rather than considered.
     expect(staggerDelayMs(12)).toBe(staggerDelayMs(8));
-    expect(staggerDelayMs(40)).toBeLessThanOrEqual(960);
+    expect(staggerDelayMs(8)).toBe(960);
   });
 
   it('treats a negative or non-finite index as no delay', () => {
@@ -129,7 +146,21 @@ describe('createRevealController', () => {
     expect(observer.observed.has(el)).toBe(false);
   });
 
-  it('observes every element it is given, and is safe to call twice', () => {
+  it('observes every element it is given', () => {
+    const observer = fakeObserver();
+    const controller = createRevealController({
+      observerFactory: observer.factory,
+      onReveal: vi.fn(),
+    });
+
+    controller.observe([element(), element()]);
+
+    expect(observer.observed.size).toBe(2);
+  });
+
+  it('does not observe an element again once it has been revealed', () => {
+    // Counting calls is what makes this fail if the guard in observe() is removed; a Set
+    // of observed elements would look identical either way.
     const observer = fakeObserver();
     const controller = createRevealController({
       observerFactory: observer.factory,
@@ -138,9 +169,79 @@ describe('createRevealController', () => {
     const [a, b] = [element(), element()];
 
     controller.observe([a]);
+    observer.intersect(a);
     controller.observe([a, b]);
 
-    expect(observer.observed.size).toBe(2);
+    expect(observer.observeCalls()).toBe(2); // a once, b once
+  });
+
+  it('reveals an element the reader has already scrolled past', () => {
+    // Landing on /features/#eat, or restoring a scroll position, leaves everything above
+    // the fold un-intersecting forever; without this it would stay invisible.
+    const observer = fakeObserver();
+    const onReveal = vi.fn();
+    const el = element();
+
+    createRevealController({ observerFactory: observer.factory, onReveal }).observe([el]);
+    observer.scrolledPast(el);
+
+    expect(onReveal).toHaveBeenCalledWith(el);
+  });
+
+  it('leaves an element that is still below the viewport hidden', () => {
+    const observer = fakeObserver();
+    const onReveal = vi.fn();
+    const el = element();
+
+    createRevealController({ observerFactory: observer.factory, onReveal }).observe([el]);
+    observer.notYetReached(el);
+
+    expect(onReveal).not.toHaveBeenCalled();
+  });
+
+  describe('sweep', () => {
+    // IntersectionObserver only reports changes. An element that was below the fold when
+    // the page loaded and is above it after a jump to #eat never crosses a threshold, so
+    // it is never reported and would stay invisible. The sweep is how those get caught.
+    it('reveals pending elements the reader is already past', () => {
+      const observer = fakeObserver();
+      const onReveal = vi.fn();
+      const controller = createRevealController({ observerFactory: observer.factory, onReveal });
+      const [past, ahead] = [element(), element()];
+
+      controller.observe([past, ahead]);
+      controller.sweep((el) => el === past);
+
+      expect(onReveal).toHaveBeenCalledTimes(1);
+      expect(onReveal).toHaveBeenCalledWith(past);
+      expect(observer.observed.has(past)).toBe(false);
+      expect(observer.observed.has(ahead)).toBe(true);
+    });
+
+    it('never reveals the same element twice across sweeps and intersections', () => {
+      const observer = fakeObserver();
+      const onReveal = vi.fn();
+      const controller = createRevealController({ observerFactory: observer.factory, onReveal });
+      const el = element();
+
+      controller.observe([el]);
+      controller.sweep(() => true);
+      controller.sweep(() => true);
+      observer.intersect(el);
+
+      expect(onReveal).toHaveBeenCalledTimes(1);
+    });
+
+    it('reveals nothing when nothing is behind the reader', () => {
+      const observer = fakeObserver();
+      const onReveal = vi.fn();
+      const controller = createRevealController({ observerFactory: observer.factory, onReveal });
+
+      controller.observe([element(), element()]);
+      controller.sweep(() => false);
+
+      expect(onReveal).not.toHaveBeenCalled();
+    });
   });
 
   it('stops observing when told to', () => {
@@ -154,5 +255,66 @@ describe('createRevealController', () => {
     controller.stop();
 
     expect(observer.isDisconnected()).toBe(true);
+  });
+});
+
+describe('motionBootSnippet', () => {
+  /**
+   * The snippet runs inline in <head>, before first paint, so the hidden starting state is
+   * in place before anything is shown. Adding the class from a deferred module instead let
+   * the page paint visible and then fade out, a flash. Running it against a fake window and
+   * document proves what it does without a browser.
+   */
+  function run(opts: { reduced?: boolean; hasObserver?: boolean }) {
+    const classes = new Set<string>();
+    const timers: Array<() => void> = [];
+    const win: Record<string, unknown> = {
+      matchMedia: () => ({ matches: opts.reduced ?? false }),
+      ...(opts.hasObserver === false ? {} : { IntersectionObserver: class {} }),
+    };
+    const doc = {
+      documentElement: {
+        classList: {
+          add: (c: string) => classes.add(c),
+          remove: (c: string) => classes.delete(c),
+        },
+      },
+    };
+    const setTimeoutFake = (fn: () => void) => timers.push(fn);
+    new Function('window', 'document', 'setTimeout', motionBootSnippet)(win, doc, setTimeoutFake);
+    return { classes, timers, win };
+  }
+
+  it('enables motion when the browser supports it and the reader has not opted out', () => {
+    expect(run({}).classes.has(MOTION_CLASS)).toBe(true);
+  });
+
+  it('does nothing for a reader who prefers reduced motion', () => {
+    expect(run({ reduced: true }).classes.has(MOTION_CLASS)).toBe(false);
+  });
+
+  it('does nothing without IntersectionObserver', () => {
+    expect(run({ hasObserver: false }).classes.has(MOTION_CLASS)).toBe(false);
+  });
+
+  it('takes the class back off if the page script never reports in', () => {
+    // If the bundle fails to load, the class is the only thing hiding content and nothing
+    // would ever reveal it. This timer is the difference between a slow page and a blank one.
+    const { classes, timers } = run({});
+    expect(classes.has(MOTION_CLASS)).toBe(true);
+    expect(MOTION_FALLBACK_MS).toBeGreaterThan(0);
+
+    timers.forEach((t) => t());
+
+    expect(classes.has(MOTION_CLASS)).toBe(false);
+  });
+
+  it('leaves the class alone once the page script has reported in', () => {
+    const { classes, timers, win } = run({});
+    win.__fjMotion = true;
+
+    timers.forEach((t) => t());
+
+    expect(classes.has(MOTION_CLASS)).toBe(true);
   });
 });

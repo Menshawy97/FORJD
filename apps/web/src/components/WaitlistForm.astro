@@ -3,10 +3,10 @@
  * The waitlist form, shown switched off until the API's POST /api/v1/waitlist exists
  * (website-plan.md, W3 and W4). Every control is disabled, so it sends nothing and stores nothing.
  */
-interface Props {
+import type { HTMLAttributes } from 'astro/types';
+
+interface Props extends HTMLAttributes<'div'> {
   id: string;
-  /** Forwarded to the root element, so a page can mark it for scroll motion (W6). */
-  [key: string]: unknown;
 }
 
 const { id, ...rest } = Astro.props;
