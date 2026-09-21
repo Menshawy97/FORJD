@@ -17,7 +17,12 @@ import { AUTH_PROVIDER } from '../src/auth/providers/auth-provider.interface';
 import { Database, DRIZZLE } from '../src/database/database.module';
 import { exercises } from '../src/database/schema/exercises.schema';
 import { users } from '../src/database/schema/users.schema';
-import { workoutSessions, workoutTemplates } from '../src/database/schema/workouts.schema';
+import {
+  workoutRunSplits,
+  workoutRunSummaries,
+  workoutSessions,
+  workoutTemplates,
+} from '../src/database/schema/workouts.schema';
 import { FakeAuthProvider } from './support/fake-auth-provider';
 import { markAdult } from './support/adult';
 
@@ -48,6 +53,7 @@ describe('Workout sessions (e2e)', () => {
   const createdTemplateIds: string[] = [];
   const createdSessionIds: string[] = [];
   let exerciseId: string;
+  let runExerciseId: string;
   let templateId: string;
 
   const upload = (body: unknown, token = 'owner-token') =>
@@ -135,6 +141,20 @@ describe('Workout sessions (e2e)', () => {
     if (!exerciseRow) throw new Error('exercise seed insert returned no row');
     exerciseId = exerciseRow.id;
     createdExerciseIds.push(exerciseId);
+
+    const [runExerciseRow] = await db
+      .insert(exercises)
+      .values({
+        name: `${suiteId} Outdoor Run`,
+        slug: `${suiteId}-outdoor-run`,
+        category: 'running',
+        goal: 'muscular_endurance',
+        measure: 'distance',
+      })
+      .returning();
+    if (!runExerciseRow) throw new Error('run exercise seed insert returned no row');
+    runExerciseId = runExerciseRow.id;
+    createdExerciseIds.push(runExerciseId);
 
     // Prescribes 100kg -- the session below performs 95kg, which is the point of the
     // "never back-filled from its template" assertion.
@@ -473,6 +493,97 @@ describe('Workout sessions (e2e)', () => {
       const response = await upload({ ...validBody(), id: created.body.id }, 'stranger-token');
 
       expect(response.status).toBe(409);
+    });
+  });
+
+  describe('a running session with a summary (ADR-050)', () => {
+    const runBody = () => ({
+      id: randomUUID(),
+      name: `${suiteId} Outdoor Run`,
+      activity: 'running',
+      status: 'completed',
+      startedAt: '2026-09-02T06:00:00.000Z',
+      endedAt: '2026-09-02T06:25:00.000Z',
+      durationSeconds: 1500,
+      isLiveTracked: true,
+      exercises: [
+        {
+          exerciseId: runExerciseId,
+          sets: [{ type: 'working', isCompleted: true, distanceMeters: 5012.4, durationSeconds: 1500 }],
+        },
+      ],
+      run: {
+        distanceMeters: 5012.4,
+        movingSeconds: 1500,
+        elevationGainMeters: 24.5,
+        avgHeartRateBpm: 152,
+        caloriesKcal: 298,
+        caloriesSource: 'watch',
+        splits: [
+          { index: 1, distanceMeters: 1000, durationSeconds: 304, avgHeartRateBpm: 148 },
+          { index: 2, distanceMeters: 1000, durationSeconds: 311, avgHeartRateBpm: 152 },
+        ],
+      },
+    });
+
+    const summaryOf = async (id: string) => {
+      const [summary] = await db
+        .select()
+        .from(workoutRunSummaries)
+        .where(inArray(workoutRunSummaries.sessionId, [id]));
+      const splits = await db
+        .select()
+        .from(workoutRunSplits)
+        .where(inArray(workoutRunSplits.sessionId, [id]));
+      return { summary, splits };
+    };
+
+    it('stores heart rate and calories for an athlete who allowed health data', async () => {
+      await request(app.getHttpServer())
+        .patch('/api/v1/users/me/privacy')
+        .set('Authorization', 'Bearer owner-token')
+        .send({ healthDataConsent: true })
+        .expect(200);
+
+      const body = runBody();
+      const response = await upload(body).expect(201);
+      createdSessionIds.push(response.body.id);
+
+      const { summary, splits } = await summaryOf(body.id);
+      expect(summary).toMatchObject({ movingSeconds: 1500, avgHeartRateBpm: 152, caloriesKcal: 298, caloriesSource: 'watch' });
+      expect(splits.map((split) => split.avgHeartRateBpm).sort()).toEqual([148, 152]);
+    });
+
+    it('keeps the run but drops heart rate and calories for an athlete who did not', async () => {
+      const body = runBody();
+      const response = await upload(body, 'stranger-token').expect(201);
+      createdSessionIds.push(response.body.id);
+
+      const { summary, splits } = await summaryOf(body.id);
+      expect(Number(summary?.distanceMeters)).toBeCloseTo(5012.4, 1);
+      expect(summary?.movingSeconds).toBe(1500);
+      expect(summary?.avgHeartRateBpm).toBeNull();
+      expect(summary?.caloriesKcal).toBeNull();
+      expect(summary?.caloriesSource).toBeNull();
+      expect(splits).toHaveLength(2);
+      expect(splits.every((split) => split.avgHeartRateBpm === null)).toBe(true);
+    });
+
+    it('writes one summary when the upload is retried', async () => {
+      const body = runBody();
+      const first = await upload(body).expect(201);
+      createdSessionIds.push(first.body.id);
+      await upload(body).expect(201);
+
+      const { summary, splits } = await summaryOf(body.id);
+      expect(summary?.sessionId).toBe(body.id);
+      expect(splits).toHaveLength(2);
+    });
+
+    it('rejects a run summary on a session that is not a run', async () => {
+      const response = await upload({ ...validBody(), run: runBody().run });
+
+      expect(response.status).toBe(400);
     });
   });
 });

@@ -132,3 +132,37 @@ export const CURATED_EXERCISES: readonly NormalizedExercise[] = [
     description: null,
   },
 ];
+
+/**
+ * The exercise a GPS run is logged against (ADR-050). A run uploads as an ordinary session with one
+ * completed distance set, so the leaderboard's kilometres and time (ADR-046) and every volume query
+ * count it with no special case.
+ *
+ * **Deliberately not one of the four above.** Those exist because the programs need them, and
+ * `program-catalogue.spec.ts` pins that list exactly. This one exists because the app itself does:
+ * no program uses it. It travels the same seed and the same `(source, source_id)` upsert, so
+ * re-running the seed can never duplicate it.
+ */
+export const OUTDOOR_RUN_EXERCISE: NormalizedExercise = {
+  source: CURATED_EXERCISE_SOURCE,
+  sourceId: "outdoor-run",
+  name: "Outdoor Run",
+  slug: "outdoor-run",
+  category: "running",
+  goal: "muscular_endurance",
+  // Distance: the run screen measures it. Time travels on the set's duration, as for any run.
+  measure: "distance",
+  primaryMuscles: ["quads", "hamstrings", "calves"],
+  secondaryMuscles: ["glutes", "core"],
+  equipment: [],
+  force: null,
+  level: "beginner",
+  mechanic: "compound",
+  instructions: [
+    "Start with a few minutes of walking or easy jogging to warm up.",
+    "Run at an effort that suits the session, letting the app keep track of distance, pace and splits.",
+    "Finish with a few minutes of walking to cool down.",
+  ],
+  imageKeys: [],
+  description: null,
+};

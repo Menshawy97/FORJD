@@ -55,6 +55,12 @@ tiles come from.
 
 ## Consequences
 
+- Withdrawing health-data consent stops new heart rate and calorie figures being stored; it does not
+  erase those already stored on earlier runs, exactly as ADR-043 already treats other health readings.
+  Deleting the account removes them (cascade). If withdrawal is ever meant to purge, these two tables
+  join that job.
+- Two splits with one index are refused at the contract (400) rather than reaching the unique key, so a
+  bad payload from the offline queue fails visibly once instead of rolling back a whole run as a 500.
 - Runs appear in leaderboards, volume totals and "previous workout" without new scoring rules; the
   previous-workout line shows kilometres for a run instead of "0 kg".
 - The upload schema, the service and the two tables gain tests; a request with `run` on a non-running

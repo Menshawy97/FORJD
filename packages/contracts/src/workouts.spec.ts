@@ -347,6 +347,99 @@ describe('workout contracts', () => {
       });
     });
 
+    describe('run summary (ADR-050)', () => {
+      const run = {
+        distanceMeters: 5012.4,
+        movingSeconds: 1500,
+        elevationGainMeters: 24.5,
+        avgHeartRateBpm: 152,
+        caloriesKcal: 298,
+        caloriesSource: 'estimate' as const,
+        splits: [
+          { index: 1, distanceMeters: 1000, durationSeconds: 304, avgHeartRateBpm: 148 },
+          { index: 2, distanceMeters: 1000, durationSeconds: 311, avgHeartRateBpm: null },
+        ],
+      };
+      const parse = (over: Record<string, unknown>) =>
+        workoutSessionUploadRequestSchema.safeParse({ ...validSession, activity: 'running', ...over });
+
+      it('is optional, and null means the run had no summary to send', () => {
+        expect(parse({}).success).toBe(true);
+        expect(parse({ run: null }).success).toBe(true);
+        // A strength session never carries one, and needs none.
+        expect(workoutSessionUploadRequestSchema.safeParse(validSession).success).toBe(true);
+      });
+
+      it('accepts a complete run summary and returns it', () => {
+        const parsed = parse({ run });
+        expect(parsed.success && parsed.data.run).toEqual(run);
+      });
+
+      it('accepts a summary with no heart rate, calories or elevation', () => {
+        const bare = {
+          distanceMeters: 3000,
+          movingSeconds: 1000,
+          elevationGainMeters: null,
+          avgHeartRateBpm: null,
+          caloriesKcal: null,
+          caloriesSource: null,
+          splits: [],
+        };
+        expect(parse({ run: bare }).success).toBe(true);
+      });
+
+      it('rejects a run summary on any activity but running', () => {
+        const result = workoutSessionUploadRequestSchema.safeParse({ ...validSession, run });
+        expect(result.success).toBe(false);
+        expect(!result.success && result.error.issues.some((i) => i.path[0] === 'run')).toBe(true);
+      });
+
+      it('requires a source whenever calories are given', () => {
+        expect(parse({ run: { ...run, caloriesSource: null } }).success).toBe(false);
+        expect(parse({ run: { ...run, caloriesKcal: null, caloriesSource: null } }).success).toBe(true);
+      });
+
+      it.each([
+        ['a negative distance', { distanceMeters: -1 }],
+        ['a distance past 200 km', { distanceMeters: 200_001 }],
+        ['a non-integer moving time', { movingSeconds: 10.5 }],
+        ['a moving time past 24 hours', { movingSeconds: 86_401 }],
+        ['negative elevation gain', { elevationGainMeters: -1 }],
+        ['a heart rate below 30', { avgHeartRateBpm: 29 }],
+        ['a heart rate above 250', { avgHeartRateBpm: 251 }],
+        ['a non-integer heart rate', { avgHeartRateBpm: 150.5 }],
+        ['negative calories', { caloriesKcal: -1 }],
+        ['an unknown calorie source', { caloriesSource: 'guess' }],
+        ['a non-finite distance', { distanceMeters: Infinity }],
+      ])('rejects %s', (_label, over) => {
+        expect(parse({ run: { ...run, ...over } }).success).toBe(false);
+      });
+
+      it('caps the number of splits at 200', () => {
+        const split = { index: 1, distanceMeters: 1000, durationSeconds: 300, avgHeartRateBpm: null };
+        const many = (n: number) => Array.from({ length: n }, (_, i) => ({ ...split, index: i + 1 }));
+        expect(parse({ run: { ...run, splits: many(200) } }).success).toBe(true);
+        expect(parse({ run: { ...run, splits: many(201) } }).success).toBe(false);
+      });
+
+      it('rejects two splits with the same index, which the database could not store', () => {
+        const split = { index: 1, distanceMeters: 1000, durationSeconds: 300, avgHeartRateBpm: null };
+        const result = parse({ run: { ...run, splits: [split, { ...split, durationSeconds: 310 }] } });
+        expect(result.success).toBe(false);
+        expect(!result.success && result.error.issues.some((i) => i.path.join('.') === 'run.splits')).toBe(true);
+      });
+
+      it.each([
+        ['an index of 0', { index: 0 }],
+        ['a negative split distance', { distanceMeters: -5 }],
+        ['a fractional split time', { durationSeconds: 300.5 }],
+        ['a split heart rate above 250', { avgHeartRateBpm: 300 }],
+      ])('rejects a split with %s', (_label, over) => {
+        const split = { index: 1, distanceMeters: 1000, durationSeconds: 300, avgHeartRateBpm: null };
+        expect(parse({ run: { ...run, splits: [{ ...split, ...over }] } }).success).toBe(false);
+      });
+    });
+
     it('carries its sync idempotency key -- id is required, not optional or server-assigned', () => {
       const withoutId: Record<string, unknown> = { ...validSession };
       delete withoutId.id;

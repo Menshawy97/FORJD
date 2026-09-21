@@ -3,13 +3,14 @@ import { Pool } from "pg";
 
 import { ExercisesRepository } from "../../exercises/exercises.repository";
 import { ProgramsSeedRepository, SeedProgramResult } from "../programs.seed-repository";
-import { CURATED_EXERCISES } from "./curated-exercises";
+import { CURATED_EXERCISES, OUTDOOR_RUN_EXERCISE } from "./curated-exercises";
 import { EXERCISE_SLUG_BY_NAME, SEED_PROGRAMS, SeedProgram } from "./program-catalogue";
 
 /**
  * `pnpm --filter @forjd/api programs:seed`
  *
- * Upserts the four curated exercises and then the nine preset programs. Runs in
+ * Upserts the four curated exercises, the Outdoor Run exercise the run screen logs against, and then
+ * the nine preset programs. Runs in
  * `deploy-api.yml` immediately after `exercises:load`, and depends on it: 24 of the 28 exercise
  * names the programs use resolve to ingested catalogue rows, so seeding before the catalogue
  * exists fails loudly with the missing slugs rather than seeding a hollow program.
@@ -56,7 +57,7 @@ export async function seedPrograms(
   programs: readonly SeedProgram[] = SEED_PROGRAMS,
   slugForName: Readonly<Record<string, string>> = EXERCISE_SLUG_BY_NAME,
 ): Promise<SeedSummary> {
-  for (const exercise of CURATED_EXERCISES) {
+  for (const exercise of [...CURATED_EXERCISES, OUTDOOR_RUN_EXERCISE]) {
     await exerciseTarget.upsertCatalogueExercise(exercise);
   }
 

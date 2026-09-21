@@ -72,6 +72,14 @@ export function assertNeverWorkoutBlockType(value: never): never {
 export const WORKOUT_SET_TYPES = ["working", "warmup", "drop"] as const;
 export type WorkoutSetType = (typeof WORKOUT_SET_TYPES)[number];
 
+/**
+ * Where a run's calorie figure came from (ADR-050): read from the person's watch, or estimated from
+ * pace, climb and weight with the ACSM equations. The summary screen says "estimated" for the
+ * latter, so the difference has to be stored, not inferred.
+ */
+export const RUN_CALORIE_SOURCES = ["watch", "estimate"] as const;
+export type RunCalorieSource = (typeof RUN_CALORIE_SOURCES)[number];
+
 export const WORKOUT_SET_TYPE_DISPLAY_NAMES: Record<WorkoutSetType, string> = {
   working: "Working set",
   warmup: "Warm-up set",

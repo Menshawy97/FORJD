@@ -17,6 +17,7 @@ import { ExercisesRepository } from "../exercises/exercises.repository";
 import { PrivacyService } from "../privacy/privacy.service";
 import { decodeWorkoutSessionCursor, encodeWorkoutSessionCursor } from "./workout-cursor";
 import {
+  CreateRunSummaryInput,
   CreateWorkoutSessionExerciseInput,
   CreateWorkoutSessionInput,
   WorkoutSessionSummaryRow,
@@ -71,7 +72,8 @@ export class WorkoutSessionsService {
     }
 
     const { city, citySlug } = await this.deriveCity(owner.id, body.startLocation);
-    const input = this.toRepositoryInput(owner.id, body, visibleExercises, city, citySlug);
+    const run = await this.resolveRun(owner.id, body.run);
+    const input = this.toRepositoryInput(owner.id, body, visibleExercises, city, citySlug, run);
     const session = await this.workoutsRepository.upsertSession(input);
 
     return this.toDetail(session);
@@ -108,6 +110,47 @@ export class WorkoutSessionsService {
       );
       return noCity;
     }
+  }
+
+  /**
+   * A GPS run's summary, ready to store (ADR-050).
+   *
+   * Heart rate and calories are health data, so they are kept only for an athlete whose health-data
+   * consent is on, read live and not remembered so a withdrawal is true on the very next upload
+   * (ADR-043). Without consent, or when consent cannot be read, they are dropped and the rest of the
+   * run is stored anyway: an upload comes from the offline queue and must never fail and lose a
+   * finished run. Estimated calories follow the same rule, so the server holds no health figure the
+   * person did not allow. Consent is not even read when the run carries no such figure.
+   */
+  private async resolveRun(
+    userId: string,
+    run: WorkoutSessionUploadRequest["run"],
+  ): Promise<CreateRunSummaryInput | null> {
+    if (!run) return null;
+
+    const carriesHealthFigures =
+      run.avgHeartRateBpm !== null ||
+      run.caloriesKcal !== null ||
+      run.splits.some((split) => split.avgHeartRateBpm !== null);
+    if (!carriesHealthFigures) return { ...run, splits: run.splits.map((split) => ({ ...split })) };
+
+    let allowed = false;
+    try {
+      allowed = (await this.privacyService.get(userId)).healthDataConsent;
+    } catch (error) {
+      this.logger.warn(
+        `Could not read health-data consent for a run upload, dropping its health figures: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (allowed) return { ...run, splits: run.splits.map((split) => ({ ...split })) };
+
+    return {
+      ...run,
+      avgHeartRateBpm: null,
+      caloriesKcal: null,
+      caloriesSource: null,
+      splits: run.splits.map((split) => ({ ...split, avgHeartRateBpm: null })),
+    };
   }
 
   /**
@@ -221,6 +264,7 @@ export class WorkoutSessionsService {
     visibleExercises: Map<string, { measure: CreateWorkoutSessionExerciseInput["measure"] }>,
     city: string | null,
     citySlug: string | null,
+    run: CreateRunSummaryInput | null,
   ): CreateWorkoutSessionInput {
     return {
       id: body.id,
@@ -237,6 +281,7 @@ export class WorkoutSessionsService {
       city,
       citySlug,
       isLiveTracked: body.isLiveTracked,
+      run,
       exercises: body.exercises.map((exercise) => ({
         exerciseId: exercise.exerciseId,
         // Never absent here -- `upload` already rejected any id not present in this map.

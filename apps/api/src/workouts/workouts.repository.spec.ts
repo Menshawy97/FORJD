@@ -6,7 +6,12 @@ import { randomUUID } from "crypto";
 
 import { exercises } from "../database/schema/exercises.schema";
 import { users } from "../database/schema/users.schema";
-import { workoutSessions, workoutTemplates } from "../database/schema/workouts.schema";
+import {
+  workoutRunSplits,
+  workoutRunSummaries,
+  workoutSessions,
+  workoutTemplates,
+} from "../database/schema/workouts.schema";
 import { ExercisesRepository } from "../exercises/exercises.repository";
 import {
   CreateWorkoutSessionExerciseInput,
@@ -567,6 +572,129 @@ describe("WorkoutsRepository", () => {
 
       const rows = await db.select().from(workoutSessions).where(inArray(workoutSessions.id, [input.id]));
       expect(rows).toHaveLength(1);
+    });
+
+    describe("a run summary (ADR-050)", () => {
+      const run = {
+        distanceMeters: 5012.4,
+        movingSeconds: 1500,
+        elevationGainMeters: 24.5,
+        avgHeartRateBpm: 152,
+        caloriesKcal: 298,
+        caloriesSource: "estimate" as const,
+        splits: [
+          { index: 1, distanceMeters: 1000, durationSeconds: 304, avgHeartRateBpm: 148 },
+          { index: 2, distanceMeters: 1000, durationSeconds: 311, avgHeartRateBpm: null },
+        ],
+      };
+
+      const runSession = async (label: string) => {
+        const owner = await makeUser(label);
+        const exerciseId = await makeExercise(`${label}-ex`);
+        return minimalSession(owner, exerciseId, { activity: "running", run });
+      };
+
+      it("stores the summary and its splits with the session", async () => {
+        const input = await runSession("run-store");
+        const created = await repository.upsertSession(input);
+        createdSessionIds.push(created.id);
+
+        const [summary] = await db
+          .select()
+          .from(workoutRunSummaries)
+          .where(inArray(workoutRunSummaries.sessionId, [input.id]));
+        expect(summary).toMatchObject({
+          sessionId: input.id,
+          movingSeconds: 1500,
+          avgHeartRateBpm: 152,
+          caloriesKcal: 298,
+          caloriesSource: "estimate",
+        });
+        expect(Number(summary?.distanceMeters)).toBeCloseTo(5012.4, 1);
+        expect(Number(summary?.elevationGainMeters)).toBeCloseTo(24.5, 1);
+
+        const splits = await db
+          .select()
+          .from(workoutRunSplits)
+          .where(inArray(workoutRunSplits.sessionId, [input.id]));
+        expect(splits.map((split) => split.splitIndex).sort()).toEqual([1, 2]);
+        expect(splits.find((split) => split.splitIndex === 2)?.avgHeartRateBpm).toBeNull();
+      });
+
+      it("keeps a summary with no elevation, heart rate or calories as nulls", async () => {
+        const base = await runSession("run-bare");
+        const input = {
+          ...base,
+          run: {
+            distanceMeters: 3000,
+            movingSeconds: 1000,
+            elevationGainMeters: null,
+            avgHeartRateBpm: null,
+            caloriesKcal: null,
+            caloriesSource: null,
+            splits: [],
+          },
+        };
+        const created = await repository.upsertSession(input);
+        createdSessionIds.push(created.id);
+
+        const [summary] = await db
+          .select()
+          .from(workoutRunSummaries)
+          .where(inArray(workoutRunSummaries.sessionId, [input.id]));
+        expect(summary?.elevationGainMeters).toBeNull();
+        expect(summary?.avgHeartRateBpm).toBeNull();
+        expect(summary?.caloriesKcal).toBeNull();
+        expect(summary?.caloriesSource).toBeNull();
+      });
+
+      it("does not write a second summary or split when the upload is retried", async () => {
+        const input = await runSession("run-retry");
+        const first = await repository.upsertSession(input);
+        createdSessionIds.push(first.id);
+
+        await repository.upsertSession({ ...input, run: { ...run, distanceMeters: 999 } });
+
+        const summaries = await db
+          .select()
+          .from(workoutRunSummaries)
+          .where(inArray(workoutRunSummaries.sessionId, [input.id]));
+        expect(summaries).toHaveLength(1);
+        expect(Number(summaries[0]?.distanceMeters)).toBeCloseTo(5012.4, 1);
+        const splits = await db
+          .select()
+          .from(workoutRunSplits)
+          .where(inArray(workoutRunSplits.sessionId, [input.id]));
+        expect(splits).toHaveLength(2);
+      });
+
+      it("writes no summary for a session without one", async () => {
+        const owner = await makeUser("run-none");
+        const exerciseId = await makeExercise("run-none-ex");
+        const input = minimalSession(owner, exerciseId);
+        const created = await repository.upsertSession(input);
+        createdSessionIds.push(created.id);
+
+        const summaries = await db
+          .select()
+          .from(workoutRunSummaries)
+          .where(inArray(workoutRunSummaries.sessionId, [input.id]));
+        expect(summaries).toHaveLength(0);
+      });
+
+      it("is deleted with the session", async () => {
+        const input = await runSession("run-cascade");
+        await repository.upsertSession(input);
+
+        await db.delete(workoutSessions).where(inArray(workoutSessions.id, [input.id]));
+
+        expect(
+          await db.select().from(workoutRunSummaries).where(inArray(workoutRunSummaries.sessionId, [input.id])),
+        ).toHaveLength(0);
+        expect(
+          await db.select().from(workoutRunSplits).where(inArray(workoutRunSplits.sessionId, [input.id])),
+        ).toHaveLength(0);
+      });
     });
 
     it("rejects a replayed id that belongs to a different user", async () => {
