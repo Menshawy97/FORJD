@@ -1,6 +1,6 @@
 # Website plan: getforjd.com
 
-Status: **W0-W2 done. The site is live at https://getforjd.com. W3 is next** (2026-09-21).
+Status: **W0-W2 done, W6 motion done, W3a done. The site is live at https://getforjd.com. W3b is next, blocked on migration `0022`** (2026-09-21).
 Decisions in `docs/decisions/ADR-051-marketing-website-and-waitlist.md`.
 Design source: `docs/design/website/design-v1.html` (the published preview, with `%%name%%`
 placeholders where the cropped app screenshots were embedded; `crop-screenshots.js` produced them).
@@ -77,7 +77,7 @@ live pages, HTTPS, the redirect and a pull-request preview build.
 
 ### W3: `POST /api/v1/waitlist` (API vertical slice)
 
-**Split, because the migration is blocked.** Migration `0022` (the live-run session) was still not on
+**W3a is done (#231). Split, because the migration is blocked.** Migration `0022` (the live-run session) was still not on
 `main` on 2026-09-21, and two sessions must not claim the same migration number. **W3a** is everything
 that touches no table: the contract (step 1) and the Turnstile adapter (step 3). **W3b** is the rest
 (steps 2, 4-8), and starts by rebasing onto a `main` that has `0022`.
@@ -133,7 +133,7 @@ to production with the new secrets and point the production site at it. Check on
 
 Asked for on 2026-09-21: "i want to have skills to do animation in the website while the user is
 scrolling i need each section to slide up into the view check for example sayapp.net suggest
-animations for my approval". **The proposals below need the user's sign-off before any of it is
+animations for my approval". **Motions 1 to 4 below were approved and built (#229); 5 is a constraint. Originally: the proposals needed the user's sign-off before any of it was
 built.**
 
 **What sayapp.net actually does** (measured in the browser on 2026-09-21, not guessed). No animation
@@ -149,7 +149,7 @@ Children inside a section are staggered with `transition-delay` in 0.12s steps. 
 same movement as a keyframe animation instead (`translateY(36px)`, 1s, delays 0 / .15s / .3s / .5s),
 and two small cards drift on a 5s loop.
 
-**Proposed for FORJD, for approval:**
+**Proposed for FORJD (1 to 4 approved and built; 5 is the restraint they run inside):**
 
 1. **Section reveal** — the main ask. Each section fades in while sliding up 28px over 0.7s on that
    same easing, once, when about 15% of it has entered the viewport. Never replays on scroll back.
@@ -227,3 +227,65 @@ proposed it needs its own decision), a blog, localisation, and a web version of 
   the Cloudflare connector (the `cloudflare` plugin's MCP server) is installed but signing it in
   from one Claude instance does not sign it in for another, so a session that needs it must
   authenticate in that session.
+
+  **Verified against the Cloudflare API** (2026-09-21, with a read-only token; every value matches the
+  above):
+
+  | Setting | Found |
+  |---|---|
+  | Production branch | `main` |
+  | Build command | exactly as above |
+  | Output directory, root directory | `apps/web/dist`, empty |
+  | Environment variables, production **and** preview | `NODE_VERSION=24`, `PNPM_VERSION=11.22.0`, `SKIP_DEPENDENCY_INSTALL=1` |
+  | Build watch paths | `apps/web/*, pnpm-lock.yaml, pnpm-workspace.yaml`, no excludes |
+  | Custom domains | `getforjd.com` and `www.getforjd.com`, both `active` (validation and verification `active`) |
+  | Zone | `getforjd.com`, `active` |
+
+  The watch paths are proven by behaviour, not just by config: the deployment history shows a
+  lockfile-only change building, and documentation-only commits (#226, #228) producing no production
+  deployment at all.
+
+  Not confirmable from here, and both are small. The redirect rule's own settings could not be read,
+  because the token lacked the Single Redirect read permission; its behaviour is confirmed instead
+  (`https://www.getforjd.com/features/?utm_source=x` returns 301 to the apex with path and query kept).
+  And plain `http://` could not be tested from this network, where an ISP intercepts port 80.
+
+  Preview deployments point at the same variables as production. That is right for now; W4 will give
+  previews their own `PUBLIC_API_URL` pointing at staging.
+
+- **W6** (2026-09-21, #229): scroll motion built, with motions 1 to 4 approved by the user (section
+  reveal, stagger, hero on load, the chart drawing itself); motion 5 (restraint) is honoured by scope.
+  Privacy and the 404 have none, pricing has only the plain reveal. Findings worth keeping:
+  - The hidden starting state is switched on by an inline `<head>` script built from the tested
+    `shouldAnimate`, not by a deferred module. Added late, the class let the page paint visible and
+    then fade out. The served HTML still contains no hidden state.
+  - It fails safe: the page script reports in, and if it never does the class comes off after 3s.
+  - `IntersectionObserver` only reports changes, so after a jump to `/features/#eat` the 20 sections
+    above the landing point stayed invisible. A coalesced sweep on scroll, load, pageshow and hashchange
+    reveals what the reader is already past. A code review did not find this; the browser did.
+  - The chart is observed as one unit. Observing each bar left bars clipped by a phone's scroll box
+    permanently collapsed.
+  - Use `threshold: 0` with a bottom `rootMargin`, not a ratio, which an element taller than about 6.7
+    viewports can never reach.
+  - Also shipped: the hero phone cluster now sits beside the headline and was resized three times to the
+    user's direction (larger, then smaller, then 20% smaller, with a little more spread).
+- **Nutrition on the home page** (2026-09-21, #230): a Nutrition row between Readiness and Body
+  composition, reusing the existing screenshot and the Features page's copy. It claims nothing about
+  Free versus Pro. Body and Leaderboards swapped their `flip` class so the phones keep alternating.
+- **W3a** (2026-09-21, #231): the parts of the waitlist that touch no table.
+  - `packages/contracts/src/waitlist.ts`: request `{ email, turnstileToken }`, email trimmed and
+    lower-cased then validated then capped at 254; token 1 to 2048 characters. The response's only value is
+    `accepted`, so a new address and a repeat are indistinguishable.
+  - `apps/api/src/integrations/turnstile/`: a `TurnstileClient` behind a token, mirroring the WHOOP
+    client. `verify()` fails closed and never throws. Two attempts of 5s, not three of 10s: the endpoint is
+    public, so each anonymous caller can hold a request open, and Turnstile tokens are single-use, so a
+    retry after a lost reply is likely refused anyway. `redirect: "error"`, so the secret is never
+    re-sent elsewhere. Logs error codes and the error name, never the secret or the token.
+  - `TURNSTILE_SECRET_KEY` is deliberately not in the required-env schema, so staging and dev boot before
+    it exists. The module is not imported by `AppModule` until W3b gives it a consumer.
+  - Gotcha for next time: a stale `packages/domain/dist` makes unrelated contract specs fail with
+    "no exported member"; `pnpm --filter @forjd/domain build` fixes it. And `pnpm --filter
+    @forjd/contracts fixtures` rewrites every fixture's line endings on Windows with no content change;
+    revert those and keep only the new file.
+  - For W3b: the controller must set a request body limit, and take the caller address only from the
+    trusted proxy header (`CF-Connecting-IP`), never a raw `X-Forwarded-For`.
