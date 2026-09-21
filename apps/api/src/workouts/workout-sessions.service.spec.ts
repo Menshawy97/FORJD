@@ -250,6 +250,18 @@ describe("WorkoutSessionsService", () => {
         warn.mockRestore();
       });
 
+      it("also fails closed when the consent read throws something that is not an Error", async () => {
+        const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+        const repository = makeWorkoutsRepository();
+        const privacy = { get: () => Promise.reject("connection lost") } as unknown as PrivacyService;
+
+        await makeService(repository, makeExercisesRepository(), privacy).upload(owner, runBody);
+
+        expect(repository.upsertCalls[0]?.run?.avgHeartRateBpm).toBeNull();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("connection lost"));
+        warn.mockRestore();
+      });
+
       it("does not read consent for a run with no health figures in it", async () => {
         const repository = makeWorkoutsRepository();
         const privacy = makePrivacyService();
