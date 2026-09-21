@@ -43,6 +43,8 @@ jest.mock('@/auth/apiClient', () => ({
   // after login. Resolved empty for the same reason getWorkoutStats is above.
   getHealthObservationSeries: jest.fn().mockResolvedValue({ series: [] }),
   getReadiness: jest.fn().mockResolvedValue({ score: null, zone: null, components: [], withheldReason: 'Still building your baseline.' }),
+  // Home's City Rank tile reads the Activity board; not under test in this suite.
+  getLeaderboard: jest.fn().mockRejectedValue(new Error('no leaderboard in this suite')),
 }));
 
 import * as SecureStore from 'expo-secure-store';

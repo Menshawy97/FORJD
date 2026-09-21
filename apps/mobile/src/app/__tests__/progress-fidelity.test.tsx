@@ -20,6 +20,8 @@ jest.mock('@/auth/apiClient', () => ({
   // Phase 6: Progress also reads health-observation series and readiness for the Health tab.
   getHealthObservationSeries: jest.fn().mockRejectedValue(new Error('no health data in this suite')),
   getReadiness: jest.fn().mockRejectedValue(new Error('no readiness in this suite')),
+  // Home's City Rank tile reads the Activity board; not under test in this suite.
+  getLeaderboard: jest.fn().mockRejectedValue(new Error('no leaderboard in this suite')),
 }));
 
 import { getBodyScanSeries, getProgressStrength } from '@/auth/apiClient';

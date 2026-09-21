@@ -28,6 +28,8 @@ jest.mock('@/auth/apiClient', () => ({
   getWorkoutStats: jest.fn().mockRejectedValue(new Error('no stats')),
   getHealthObservationSeries: jest.fn().mockRejectedValue(new Error('no health data in this suite')),
   getReadiness: jest.fn().mockRejectedValue(new Error('no readiness in this suite')),
+  // Home's City Rank tile reads the Activity board; not under test in this suite.
+  getLeaderboard: jest.fn().mockRejectedValue(new Error('no leaderboard in this suite')),
 }));
 
 jest.mock('@/store/workout-session', () => ({
