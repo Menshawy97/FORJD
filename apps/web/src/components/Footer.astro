@@ -1,0 +1,39 @@
+---
+import Logo from './Logo.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer>
+  <div class="wrap">
+    <div class="footer-brand">
+      <a class="brand" href="/">
+        <Logo size={24} />
+        FORJD
+      </a>
+      <p>Training, recovery and progress in one place. Coming soon to iPhone and Android.</p>
+    </div>
+    <nav aria-label="Product">
+      <span class="label">Product</span>
+      <a href="/features">Features</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/#join">Join the waitlist</a>
+    </nav>
+    <nav aria-label="Legal">
+      <span class="label">Legal</span>
+      <a href="/privacy">Privacy</a>
+      <a href="/privacy#terms">Terms</a>
+      <a href="/privacy#credits">Data sources</a>
+    </nav>
+    <div class="fine">
+      <span>© {year} FORJD</span>
+      <span>Apple Health, Health Connect, WHOOP and InBody are trademarks of their respective owners.</span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer-brand { display: grid; gap: 14px; align-content: start; }
+  .footer-brand p { color: var(--meta); font-size: 14px; max-width: 26em; }
+  nav .label { margin-bottom: 6px; }
+</style>

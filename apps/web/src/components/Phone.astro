@@ -1,0 +1,22 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+/**
+ * An app screenshot in its phone frame. The PNGs in src/assets/screens are the design's own
+ * captures, cropped to the frame by docs/design/website/crop-screenshots.js (396 x 827 each).
+ */
+interface Props {
+  src: ImageMetadata;
+  /** Empty for decorative copies; describe the screen whenever it carries content. */
+  alt: string;
+  class?: string;
+  loading?: 'eager' | 'lazy';
+}
+
+const { src, alt, class: className, loading = 'lazy' } = Astro.props;
+---
+
+<div class:list={['phone', className]}>
+  <Image src={src} alt={alt} width={396} height={827} format="webp" loading={loading} />
+</div>
