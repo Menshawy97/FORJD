@@ -234,7 +234,7 @@ export function useRunSession(): RunSession {
       unmountedRef.current = true;
       stopWatching();
     };
-  }, [commit, getDb, onFix, persist, stopWatching, updatePermission]);
+  }, [commit, getDb, onFix, persist, showToast, stopWatching, updatePermission]);
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), TICK_MS);

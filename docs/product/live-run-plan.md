@@ -1,6 +1,6 @@
 # The live run — "Start a run" on Train
 
-Status: **in progress** (2026-09-21). R1, R2 and R3 are merged and green on `main`; R4 to R8 and F1 remain.
+Status: **in progress** (2026-09-22). R1 to R5 are merged and green on `main`; R6 and R7 are in one PR; R8 and F1 remain.
 
 Train's "Start a run" tile (`apps/mobile/src/app/(tabs)/train.tsx:53`, `href: null`) was left inert
 by Phase 2 and Phase 3 because a run needs GPS, and Phase 3H deferred it ("a different modality
@@ -115,36 +115,24 @@ SHA-1, set as the EAS environment variable `GOOGLE_MAPS_ANDROID_API_KEY`; a deve
 a device walk of tracking, the map and keep-awake; the Health Connect test (R8); and the Play Data
 safety form updated to say precise location is used on the device during a run.
 
-## Where we stopped (2026-09-21, updated)
+## Where we stopped (2026-09-22)
 
-**Merged and green on `main`:** S1, A1, D1, R1, R2, R3, R4. Production is live.
+**Merged and green on `main`:** S1, A1, D1, R1 to R5. Production has migrations up to `0021`; `0022`
+(the run tables) is on staging only, and reaches production on the next manual production deploy.
 
-**PR #227 (R5, run engine + recovery + upload resolution):** open; its CI was still running when this
-was written. Merge it once green, then confirm CI on `main`.
+**R6 + R7, branch `feat/run-screens`, one PR:** `app/run.tsx` with `features/run/use-run-session.ts`, the run
+sections, `app/run-done.tsx`, Train's tile link and the km line. Reviewed by agents (React, security, silent
+failures, test coverage); their findings are fixed. Known follow-ups, not blocking: the run snapshot is not cleared
+on logout (a second account on the same phone would be offered the first one's unfinished run; strength has the same
+gap); the route rebuilds every second on the live screen (cheap now, worth a memo on very long runs); and
+`run_points` in `store/run-session.ts` is unused (the snapshot carries the fixes).
 
-**In progress: R6 + R7 together, branch `feat/run-screens` (cut from R5's branch), one PR.** They are one flow
-(Finish leads to the summary), so they ship together, in separate commits. Done so far: `features/run/run-format.ts`
-and its tests (duration `21:27`, distance `3.43`, pace `5:03`, speed `11.9`, split bar widths).
-
-Remaining for R6/R7, all pixel-audited against `live run 1/2.png` and `run done.png` and prototype `s_run()`
-(dc.html 2914-2972) / `s_runDone()` (2973-3006):
-- `features/run/` sections: metric tile, heart-rate card (empty "—" and no sparkline until R8), splits list
-  (`RunStats.splits`, bar via `splitBarPercent`), GPS pill (strong <= 10 m, weak <= 25 m, searching before a fix).
-- `app/run.tsx`: `useKeepAwake()`; on mount `getPrecisePermission` then `requestPrecisePermission` (the person just
-  tapped Start a run); denied or `coarse_only` shows an explanation with Open Settings. `watchPrecisePosition(onFix,
-  { isCancelled })`, one watch only. 1 s tick for elapsed. Snapshot the whole `RunState` (plus `savedAtMs`) into
-  `run_snapshot` every ~10 s and on pause/finish; on reopen restore it **paused** at `savedAtMs` so the time the app was
-  dead is not counted (`run_points` stays unused; the snapshot carries the fixes). The X asks before discarding.
-  Finish: `finishRun`; if `!isRunWorthSaving` offer to discard; otherwise `toRunUploadRequest` (weight best-effort,
-  consents from `readLocationConsent` and the privacy settings), `enqueueSessionUpload`, clear snapshot, fire
-  `syncPendingSessions`, keep the finished run in a small in-memory store for the summary, then navigate to `/run-done`.
-- `app/run-done.tsx` per the screenshot; Train tile `href: '/run'` (`app/(tabs)/train.tsx:53`); Previous Workout shows
-  km for a run.
-- Deviations to record: km only (no miles yet), the X asks before discarding, the run share tile shows "coming soon".
-
-Then R8 (watch heart rate; **needs a physical Android phone before merge**, rule 16), then F1 (FAQ, **needs the
-user's sign-off on `faq-copy.md`**), then close-out docs. Local Postgres tests need
-`DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd` (Node resolves `localhost` to IPv6).
+Next: **R8** (watch heart rate and calories through Health Connect; open the PR green, **do not merge until run on a
+physical Android phone**, rule 16), then **F1** (FAQ, **only after the user signs off `faq-copy.md`**), then close-out
+docs. When R8 lands it must set `healthDataAllowed` from the health-data consent and gate what the snapshot stores.
+Local Postgres tests need `DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd` (Node resolves
+`localhost` to IPv6).
 
 Owed by the user: the FAQ sign-off; a Google Cloud Maps key restricted to `com.forjd.app` + the signing SHA-1, set as
 the EAS variable `GOOGLE_MAPS_ANDROID_API_KEY`; a dev-client build; the device walk of a real run.
+
