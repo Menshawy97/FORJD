@@ -69,6 +69,16 @@ export const SPLIT_DISTANCE_METERS = 1000;
  */
 export const ACSM_RUNNING_THRESHOLD_M_PER_MIN = 134;
 
+/**
+ * After this many readings in a row are thrown away as jumps, the next one starts a fresh segment.
+ * Without it a bad first reading (a cold-start GPS fix a kilometre off) would make every real
+ * reading after it look like a jump, and the run would record nothing.
+ */
+export const MAX_CONSECUTIVE_REJECTIONS = 5;
+
+/** Floating-point slack when deciding a kilometre boundary has been reached, in metres. */
+const BOUNDARY_EPSILON_METERS = 1e-6;
+
 /** Great-circle distance between two readings, in metres. */
 export function haversineMeters(
   a: Pick<RunFix, 'latitude' | 'longitude'>,
@@ -86,25 +96,61 @@ export function haversineMeters(
 /**
  * Whether a new reading belongs in the track, judged against the last one that did.
  *
- * Rejected: a reading less accurate than `MAX_FIX_ACCURACY_METERS`, one that is not later than the
- * previous, and one that implies a jump faster than `MAX_PLAUSIBLE_SPEED_METERS_PER_SECOND`. An
- * unknown accuracy is accepted, because it cannot be judged and rejecting every such reading
- * would zero a run on a phone that never reports one. The first reading after a pause is judged by
- * accuracy only: the runner may have moved while paused, and that gap is not counted anyway.
+ * Rejected: a reading with a non-finite number in it, one less accurate than
+ * `MAX_FIX_ACCURACY_METERS`, one whose wall-clock time is not later than the previous (or whose
+ * moving time goes backwards), and one that implies a jump faster than
+ * `MAX_PLAUSIBLE_SPEED_METERS_PER_SECOND`. A reading of unknown accuracy can follow a known one, since
+ * speed still checks it, but cannot start the track or a segment: everything after is judged
+ * against that reading. The first reading after a pause is judged by accuracy and time only, since
+ * the runner may have moved while paused and that gap is never counted.
  */
 export function acceptFix(previous: RunFix | null, next: RunFix): boolean {
+  if (!isUsable(next)) return false;
+  const anchors = previous === null || next.segmentStart;
+  // A reading with unknown accuracy can be judged by speed against its predecessor, but must not
+  // be the one every later reading is judged against.
+  if (anchors && next.accuracyMeters === null) return false;
   if (next.accuracyMeters !== null && next.accuracyMeters > MAX_FIX_ACCURACY_METERS) return false;
-  if (previous === null || next.segmentStart) return true;
+  if (previous === null) return true;
+  if (next.timestampMs <= previous.timestampMs || next.movingMs < previous.movingMs) return false;
+  if (next.segmentStart) return true;
   const seconds = (next.movingMs - previous.movingMs) / 1000;
   if (seconds <= 0) return false;
   return haversineMeters(previous, next) / seconds <= MAX_PLAUSIBLE_SPEED_METERS_PER_SECOND;
 }
 
-/** The accepted readings, in order. Each is judged against the last one accepted. */
+/** Every number the maths reads is finite: one NaN would otherwise poison the whole track. */
+function isUsable(fix: RunFix): boolean {
+  return (
+    Number.isFinite(fix.latitude) &&
+    Number.isFinite(fix.longitude) &&
+    Number.isFinite(fix.timestampMs) &&
+    Number.isFinite(fix.movingMs) &&
+    (fix.accuracyMeters === null || Number.isFinite(fix.accuracyMeters))
+  );
+}
+
+/**
+ * The accepted readings, in order. Each is judged against the last one accepted. After
+ * `MAX_CONSECUTIVE_REJECTIONS` jumps in a row the next usable reading starts a new segment, so the
+ * track recovers from a bad anchor instead of staying stuck on it.
+ */
 export function buildTrack(fixes: readonly RunFix[]): RunFix[] {
   const track: RunFix[] = [];
+  let rejections = 0;
   for (const fix of fixes) {
-    if (acceptFix(track[track.length - 1] ?? null, fix)) track.push(fix);
+    const last = track[track.length - 1] ?? null;
+    if (acceptFix(last, fix)) {
+      track.push(fix);
+      rejections = 0;
+      continue;
+    }
+    rejections += 1;
+    const reanchored = { ...fix, segmentStart: true };
+    if (rejections >= MAX_CONSECUTIVE_REJECTIONS && acceptFix(last, reanchored)) {
+      track.push(reanchored);
+      rejections = 0;
+    }
   }
   return track;
 }
@@ -149,8 +195,8 @@ export function splitsFromTrack(track: readonly RunFix[]): RunSplit[] {
   for (const { from, to, meters } of countedSteps(track)) {
     const startCumulative = cumulative;
     cumulative += meters;
-    while (meters > 0 && nextBoundary <= cumulative) {
-      const fraction = (nextBoundary - startCumulative) / meters;
+    while (meters > 0 && nextBoundary <= cumulative + BOUNDARY_EPSILON_METERS) {
+      const fraction = Math.min(1, Math.max(0, (nextBoundary - startCumulative) / meters));
       const movingAt = from.movingMs + fraction * (to.movingMs - from.movingMs);
       const wallAt = from.timestampMs + fraction * (to.timestampMs - from.timestampMs);
       splits.push({
@@ -196,7 +242,17 @@ export function currentSpeedMetersPerSecond(track: readonly RunFix[]): number | 
 }
 
 function altitudes(track: readonly RunFix[]): number[] {
-  return track.flatMap((fix) => (fix.altitudeMeters === null ? [] : [fix.altitudeMeters]));
+  return track.flatMap((fix) =>
+    fix.altitudeMeters !== null && Number.isFinite(fix.altitudeMeters) ? [fix.altitudeMeters] : [],
+  );
+}
+
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? (sorted[middle] ?? 0)
+    : ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2;
 }
 
 /**
@@ -220,13 +276,23 @@ export function elevationGainMeters(track: readonly RunFix[]): number | null {
   return gain;
 }
 
-/** Last altitude minus the first, never below zero, or `null` without altitudes. */
+/** How many readings at each end are combined, by median, for the net climb. */
+const NET_CLIMB_EDGE_READINGS = 3;
+
+/**
+ * End altitude minus start altitude, never below zero, or `null` without altitudes. GPS altitude
+ * on the very first readings is notoriously noisy, so with enough readings each end is the median
+ * of its first (or last) three; a short track uses the raw ends.
+ */
 export function netClimbMeters(track: readonly RunFix[]): number | null {
   const values = altitudes(track);
   const first = values[0];
   const last = values[values.length - 1];
   if (first === undefined || last === undefined) return null;
-  return Math.max(0, last - first);
+  if (values.length < NET_CLIMB_EDGE_READINGS * 2) return Math.max(0, last - first);
+  const start = median(values.slice(0, NET_CLIMB_EDGE_READINGS));
+  const end = median(values.slice(-NET_CLIMB_EDGE_READINGS));
+  return Math.max(0, end - start);
 }
 
 export interface RunCalorieInput {
@@ -253,10 +319,13 @@ export interface RunCalorieInput {
  */
 export function estimateRunCaloriesKcal(input: RunCalorieInput): number | null {
   const { distanceMeters, movingSeconds, weightKg } = input;
-  if (weightKg === null || weightKg <= 0 || movingSeconds <= 0 || distanceMeters <= 0) return null;
+  if (weightKg === null || !Number.isFinite(weightKg) || weightKg <= 0) return null;
+  if (!Number.isFinite(movingSeconds) || movingSeconds <= 0) return null;
+  if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) return null;
 
   const metersPerMinute = distanceMeters / (movingSeconds / 60);
-  const grade = Math.max(0, input.netClimbMeters ?? 0) / distanceMeters;
+  const climb = input.netClimbMeters !== null && Number.isFinite(input.netClimbMeters) ? input.netClimbMeters : 0;
+  const grade = Math.max(0, climb) / distanceMeters;
   const vo2 =
     metersPerMinute >= ACSM_RUNNING_THRESHOLD_M_PER_MIN
       ? 0.2 * metersPerMinute + 0.9 * metersPerMinute * grade + 3.5

@@ -14,8 +14,9 @@ import {
   trackDistanceMeters,
 } from './run-calculations';
 
-// One degree of latitude on the mean-radius sphere (R = 6,371,000 m) is 111,194.93 m.
-const METERS_PER_DEGREE = 111194.93;
+// One degree of latitude on the mean-radius sphere (R = 6,371,000 m): 111,194.93 m, computed exactly
+// so a test that says "1,000 m" really is 1,000 m to the haversine.
+const METERS_PER_DEGREE = (6_371_000 * Math.PI) / 180;
 
 /** A fix `meters` north of the start, `seconds` into the run. */
 function fix(meters: number, seconds: number, over: Partial<RunFix> = {}): RunFix {
@@ -72,8 +73,33 @@ describe('acceptFix', () => {
     expect(acceptFix(null, fix(0, 0, { accuracyMeters: 25 }))).toBe(true);
   });
 
-  it('accepts a fix with unknown accuracy, since it cannot be judged', () => {
-    expect(acceptFix(null, fix(0, 0, { accuracyMeters: null }))).toBe(true);
+  it('lets a fix with unknown accuracy follow a known one, but never anchor the track', () => {
+    // Unknown accuracy cannot be judged, but it can be checked by speed against its predecessor.
+    expect(acceptFix(fix(0, 0), fix(10, 5, { accuracyMeters: null }))).toBe(true);
+    // As the first fix, or the first after a pause, everything else is judged against it.
+    expect(acceptFix(null, fix(0, 0, { accuracyMeters: null }))).toBe(false);
+    expect(acceptFix(fix(0, 0), fix(10, 5, { accuracyMeters: null, segmentStart: true }))).toBe(false);
+  });
+
+  it('rejects any reading with a non-finite number in it', () => {
+    expect(acceptFix(null, { ...fix(0, 0), latitude: NaN })).toBe(false);
+    expect(acceptFix(null, { ...fix(0, 0), longitude: Infinity })).toBe(false);
+    expect(acceptFix(null, { ...fix(0, 0), accuracyMeters: NaN })).toBe(false);
+    expect(acceptFix(fix(0, 0), { ...fix(5, 5), movingMs: NaN })).toBe(false);
+    expect(acceptFix(fix(0, 0), { ...fix(5, 5), timestampMs: NaN })).toBe(false);
+  });
+
+  it('rejects a reading whose wall-clock time does not advance, even if moving time does', () => {
+    expect(acceptFix(fix(0, 5), { ...fix(5, 10), timestampMs: fix(0, 5).timestampMs })).toBe(false);
+    expect(acceptFix(fix(0, 5), { ...fix(5, 10), timestampMs: fix(0, 5).timestampMs - 1 })).toBe(false);
+  });
+
+  it('rejects a post-pause reading that goes backwards in either clock', () => {
+    const before = fix(0, 10);
+    expect(acceptFix(before, fix(500, 9, { segmentStart: true }))).toBe(false);
+    expect(acceptFix(before, fix(500, 12, { segmentStart: true, timestampMs: before.timestampMs }))).toBe(false);
+    // Moving time may stand still across a pause: it is the wall clock that must advance.
+    expect(acceptFix(before, fix(500, 10, { segmentStart: true, timestampMs: before.timestampMs + 60_000 }))).toBe(true);
   });
 
   it('rejects a jump faster than 12 m/s and accepts a fast sprint just under it', () => {
@@ -105,6 +131,36 @@ describe('buildTrack', () => {
 
   it('returns an empty track for no fixes', () => {
     expect(buildTrack([])).toEqual([]);
+  });
+
+  it('does not judge a fix by speed when it starts a new segment', () => {
+    const track = buildTrack([fix(0, 0), fix(15, 5), fix(9000, 6, { segmentStart: true }), fix(9015, 11)]);
+    expect(track).toHaveLength(4);
+    expect(trackDistanceMeters(track)).toBeCloseTo(30, 0);
+  });
+
+  it('recovers when the first fix was accurate but wrong', () => {
+    // A cold-start fix 50 km off, then real readings: each looks like a jump from it. After five
+    // in a row, the next starts a new segment, so the run records from there instead of never.
+    const raw = [
+      fix(50_000, 0),
+      fix(0, 5),
+      fix(3, 10),
+      fix(6, 15),
+      fix(9, 20),
+      fix(12, 25),
+      fix(15, 30),
+      fix(18, 35),
+    ];
+    const track = buildTrack(raw);
+    expect(track.map((f) => f.movingMs)).toEqual([0, 25000, 30000, 35000]);
+    expect(track[1]?.segmentStart).toBe(true);
+    expect(trackDistanceMeters(track)).toBeCloseTo(6, 0);
+  });
+
+  it('does not re-anchor on readings that are individually unusable', () => {
+    const bad = [1, 2, 3, 4, 5, 6].map((t) => fix(t * 3, t * 5, { accuracyMeters: 60 }));
+    expect(buildTrack([fix(0, 0), ...bad])).toHaveLength(1);
   });
 });
 
@@ -157,6 +213,13 @@ describe('splitsFromTrack', () => {
     const [first] = splits;
     expect(first?.startTimestampMs).toBe(1_000_000);
     expect((first?.endTimestampMs ?? 0) - (first?.startTimestampMs ?? 0)).toBeCloseTo(250_000, -1);
+  });
+
+  it('counts a kilometre reached exactly at the end of the run', () => {
+    // 4 m/s for 250 s is exactly 1,000 m; summed float steps may land a hair short of it.
+    const splits = splitsFromTrack(steadyRun(4, 250));
+    expect(splits).toHaveLength(1);
+    expect(splits[0]?.durationSeconds).toBeCloseTo(250, 3);
   });
 
   it('has no splits for a run shorter than a kilometre', () => {
@@ -238,6 +301,16 @@ describe('elevationGainMeters', () => {
     expect(elevationGainMeters(track)).toBeCloseTo(6.7, 5);
   });
 
+  it('counts a rise of exactly 3 m and ignores one just under it', () => {
+    expect(elevationGainMeters([100, 103].map((alt, i) => at(alt, i)))).toBe(3);
+    expect(elevationGainMeters([100, 102.99].map((alt, i) => at(alt, i)))).toBe(0);
+  });
+
+  it('ignores an altitude that is not a number', () => {
+    expect(elevationGainMeters([NaN, 100, 104].map((alt, i) => at(alt, i)))).toBeCloseTo(4, 5);
+    expect(elevationGainMeters([NaN, Infinity].map((alt, i) => at(alt, i)))).toBeNull();
+  });
+
   it('never counts a steady descent', () => {
     const track = [120, 116, 112, 108].map((alt, i) => at(alt, i));
     expect(elevationGainMeters(track)).toBe(0);
@@ -256,6 +329,16 @@ describe('netClimbMeters', () => {
   it('is the last altitude minus the first, never below zero', () => {
     expect(netClimbMeters([at(100, 0), at(105, 1), at(112, 2)])).toBeCloseTo(12, 5);
     expect(netClimbMeters([at(112, 0), at(100, 1)])).toBe(0);
+  });
+
+  it('smooths the noisy ends of a longer track by the median of three readings at each end', () => {
+    // A noisy 140 m start reading: the median of 100, 101, 140 is 101, and of 120, 121, 122 is 121.
+    const track = [100, 101, 140, 120, 121, 122].map((alt, i) => at(alt, i));
+    expect(netClimbMeters(track)).toBe(20);
+  });
+
+  it('ignores altitudes that are not numbers', () => {
+    expect(netClimbMeters([NaN, 100, 110].map((alt, i) => at(alt, i)))).toBe(10);
   });
 
   it('is unknown without altitudes', () => {
@@ -288,6 +371,23 @@ describe('estimateRunCaloriesKcal', () => {
     // 6,700 m in 50 min is exactly 134 m/min, so running: VO2 = 0.2 x 134 + 3.5 = 30.3.
     // kcal/min = 30.3 x 70 x 5 / 1000 = 10.605. Over 50 min: 530.25.
     expect(estimateRunCaloriesKcal({ ...run, distanceMeters: 6700 })).toBe(530);
+  });
+
+  it('adds the grade term to the walking equation too', () => {
+    // 4 km in 50 min is 80 m/min; 100 m net climb is a 0.025 grade. VO2 = 0.1 x 80 + 1.8 x 80 x 0.025
+    // + 3.5 = 15.1. kcal/min = 15.1 x 70 x 5 / 1000 = 5.285. Over 50 min: 264.25.
+    expect(estimateRunCaloriesKcal({ ...run, distanceMeters: 4000, netClimbMeters: 100 })).toBe(264);
+  });
+
+  it('never lets a downhill lower the estimate, and ignores a non-numeric climb', () => {
+    expect(estimateRunCaloriesKcal({ ...run, netClimbMeters: -50 })).toBe(761);
+    expect(estimateRunCaloriesKcal({ ...run, netClimbMeters: NaN })).toBe(761);
+  });
+
+  it('has no estimate for a non-numeric weight, time or distance', () => {
+    expect(estimateRunCaloriesKcal({ ...run, weightKg: NaN })).toBeNull();
+    expect(estimateRunCaloriesKcal({ ...run, movingSeconds: NaN })).toBeNull();
+    expect(estimateRunCaloriesKcal({ ...run, distanceMeters: Infinity })).toBeNull();
   });
 
   it('has no estimate without a weight, without moving time, or without distance', () => {
