@@ -11,8 +11,8 @@ import { colors } from '@/theme/tokens';
  *
  * **The counters are real as of Phase 3J-c**, from `GET /workouts/sessions/stats` -- workouts,
  * this month and the week streak all count completed sessions server-side. City Rank is the
- * exception and still reads an em dash: it needs the leaderboard behind the Rank tab, itself
- * still a placeholder, and "#0" would be a rank rather than an absence.
+ * caller's rank on this month's Activity board (Phase 10 close-out), and an em dash for anyone
+ * not ranked there: "#0" would be a rank rather than an absence.
  *
  * **The four health metrics are real as of Phase 6 (light-up-the-UI slice)**, from
  * `GET /health-data/observations/series` -- each is the latest reading (or, for steps, the
@@ -82,6 +82,8 @@ export interface StatStripProps {
   totalSessions: number | null;
   sessionsThisMonth: number | null;
   weekStreak: number | null;
+  /** The caller's rank on this month's Activity board; `null` when not ranked or not loaded. */
+  cityRank: number | null;
   /** Minutes -- `health-metrics.ts`'s `latestReading('sleep_duration', ...)`. */
   sleepMinutes: number | null;
   hrvMs: number | null;
@@ -109,13 +111,13 @@ function counters({
   totalSessions,
   sessionsThisMonth,
   weekStreak,
+  cityRank,
 }: StatStripProps): ReadonlyArray<{ key: string; label: string; value: string; unit?: string }> {
   return [
     { key: 'workouts', label: 'Workouts', value: String(totalSessions ?? 0) },
     { key: 'month', label: 'This Month', value: String(sessionsThisMonth ?? 0) },
-    // Still unknown rather than zero: City Rank needs the leaderboard behind the Rank tab,
-    // which is a placeholder. "#0" would be a rank, and a wrong one.
-    { key: 'rank', label: 'City Rank', value: EMPTY },
+    // Unknown rather than zero when not ranked: "#0" would be a rank, and a wrong one.
+    { key: 'rank', label: 'City Rank', value: cityRank === null ? EMPTY : `#${cityRank}` },
     { key: 'streak', label: 'Streak', value: String(weekStreak ?? 0), unit: 'wk' },
   ];
 }

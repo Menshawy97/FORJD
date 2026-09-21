@@ -33,11 +33,31 @@ jest.mock('@/auth/apiClient', () => ({
   // rejected so the loaded stats remain the only signal these assertions depend on.
   getHealthObservationSeries: jest.fn().mockRejectedValue(new Error('no health data in this suite')),
   getReadiness: jest.fn().mockRejectedValue(new Error('no readiness in this suite')),
+  // Home's City Rank tile reads the Activity board; not under test in this suite.
+  getLeaderboard: jest.fn().mockRejectedValue(new Error('no leaderboard in this suite')),
 }));
 
-import { getMacroGoals, getMe, getWorkoutStats, listNutritionLog } from '@/auth/apiClient';
+import type { LeaderboardResponse } from '@forjd/contracts';
+
+import { getLeaderboard, getMacroGoals, getMe, getWorkoutStats, listNutritionLog } from '@/auth/apiClient';
 
 import HomeScreen from '../(tabs)/index';
+
+/** A board with the caller ranked at `rank`, or an empty-state board for any other status. */
+function board(status: LeaderboardResponse['status'], rank = 47): LeaderboardResponse {
+  const ranked = status === 'ranked';
+  return {
+    status,
+    metric: 'activity',
+    period: 'month',
+    city: ranked || status === 'cohort_too_small' ? { name: 'Cairo', slug: 'cairo-eg-360630' } : null,
+    periodLabel: 'Sep 2026',
+    cohortSize: ranked ? 60 : status === 'cohort_too_small' ? 3 : 0,
+    minCohortSize: 5,
+    me: ranked ? { rank, score: 92.7, topPercent: 8, delta: 3 } : null,
+    rows: [],
+  } as LeaderboardResponse;
+}
 
 const METRICS = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -86,14 +106,40 @@ describe('the stat strip counters', () => {
     expect(await screen.findByText('3')).toBeTruthy();
   });
 
-  // City Rank needs the leaderboard behind the Rank tab, which is still a placeholder. An em
-  // dash says "unknown"; "#0" would be a rank, and a wrong one.
-  it('leaves City Rank unknown rather than inventing a rank', async () => {
+  // Phase 10 close-out: City Rank reads the caller's own rank on the Activity board, the same
+  // request and period the Rank tab opens on.
+  it("shows the caller's city rank from this month's Activity board", async () => {
+    (getLeaderboard as jest.Mock).mockResolvedValue(board('ranked', 47));
+
+    const screen = await render(<HomeScreen />);
+
+    expect(await screen.findByText('#47')).toBeTruthy();
+    expect(getLeaderboard).toHaveBeenCalledWith({ metric: 'activity', period: 'month' });
+  });
+
+  // Anything but a ranked board is "unknown", never "#0": not joined, no city, no eligible
+  // session, or a city below five athletes.
+  it.each(['not_opted_in', 'no_city', 'no_eligible_sessions', 'cohort_too_small'] as const)(
+    'leaves City Rank as a dash when the board says %s',
+    async (status) => {
+      (getLeaderboard as jest.Mock).mockResolvedValue(board(status));
+
+      const screen = await render(<HomeScreen />);
+
+      await screen.findByText('42');
+      expect(screen.getByText('City Rank')).toBeTruthy();
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/^#\d+$/)).toBeNull();
+    },
+  );
+
+  it('leaves City Rank as a dash when the leaderboard cannot be reached', async () => {
+    (getLeaderboard as jest.Mock).mockRejectedValue(new Error('offline'));
+
     const screen = await render(<HomeScreen />);
 
     await screen.findByText('42');
-    expect(screen.getByText('City Rank')).toBeTruthy();
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^#\d+$/)).toBeNull();
   });
 
   it('still reads zero for an account that has never trained', async () => {

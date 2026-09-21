@@ -11,6 +11,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   getHealthObservationSeries,
+  getLeaderboard,
   getMacroGoals,
   getMe,
   getProgramEnrollment,
@@ -57,8 +58,8 @@ import { syncPendingSessions } from '@/workouts/sync-sessions';
  * "Recent PR" — and each was exactly a prop, as intended.
  *
  * Still empty, and honestly so: Readiness and the four health metrics need Health Connect /
- * HealthKit (Phase 6), and **City Rank** needs the leaderboard behind the Rank tab, itself
- * still a placeholder.
+ * HealthKit (Phase 6). **City Rank** reads the caller's rank on this month's Activity board
+ * (Phase 10 close-out) and stays a dash for anyone not ranked there.
  *
  * Loading mirrors `nutrition.tsx`: `useFocusEffect` rather than a mount-only effect (logging
  * a meal and coming back must not leave a stale calorie count), `Promise.allSettled` so one
@@ -80,6 +81,7 @@ export default function HomeScreen() {
   const [stats, setStats] = useState<WorkoutStatsResponse | null>(null);
   const [healthSeries, setHealthSeries] = useState<HealthObservationSeriesResponse | null>(null);
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
+  const [cityRank, setCityRank] = useState<number | null>(null);
   const [failedSessions, setFailedSessions] = useState<FailedSyncBannerSession[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -96,15 +98,24 @@ export default function HomeScreen() {
     // on the one screen whose whole subject is today.
     const today = todayLocalDate();
 
-    const [meResult, logResult, goalsResult, statsResult, healthSeriesResult, readinessResult] =
-      await Promise.allSettled([
-        getMe(),
-        listNutritionLog(today),
-        getMacroGoals(),
-        getWorkoutStats(),
-        getHealthObservationSeries(),
-        getReadiness(),
-      ]);
+    const [
+      meResult,
+      logResult,
+      goalsResult,
+      statsResult,
+      healthSeriesResult,
+      readinessResult,
+      leaderboardResult,
+    ] = await Promise.allSettled([
+      getMe(),
+      listNutritionLog(today),
+      getMacroGoals(),
+      getWorkoutStats(),
+      getHealthObservationSeries(),
+      getReadiness(),
+      // The same board the Rank tab opens on, so the two never disagree about a rank.
+      getLeaderboard({ metric: 'activity', period: 'month' }),
+    ]);
 
     if (generation !== loadGeneration.current) return;
 
@@ -116,7 +127,9 @@ export default function HomeScreen() {
     }
 
     // R26: distinguishes "no network reachable at all" from an ordinary new account, without
-    // touching the per-section honest-empty fallback below for a partial failure.
+    // touching the per-section honest-empty fallback below for a partial failure. The
+    // leaderboard is left out on purpose: the banner's meaning predates it and one tile is not
+    // a dashboard.
     const settled = [meResult, logResult, goalsResult, statsResult, healthSeriesResult, readinessResult];
     const allFailed = settled.every((result) => result.status === 'rejected');
     if (allFailed) {
@@ -147,6 +160,13 @@ export default function HomeScreen() {
     setStats(statsResult.status === 'fulfilled' ? statsResult.value : null);
     setHealthSeries(healthSeriesResult.status === 'fulfilled' ? healthSeriesResult.value : null);
     setReadiness(readinessResult.status === 'fulfilled' ? readinessResult.value : null);
+    // The contract guarantees `me` on a ranked board and on no other, so every other status and
+    // a failed request both read as "no rank", never "#0".
+    setCityRank(
+      leaderboardResult.status === 'fulfilled' && leaderboardResult.value.status === 'ranked'
+        ? (leaderboardResult.value.me?.rank ?? null)
+        : null,
+    );
   }, []);
 
   useFocusEffect(
@@ -257,6 +277,7 @@ export default function HomeScreen() {
           totalSessions={stats?.totalSessions ?? null}
           sessionsThisMonth={stats?.sessionsThisMonth ?? null}
           weekStreak={stats?.weekStreak ?? null}
+          cityRank={cityRank}
           sleepMinutes={sleepMinutes}
           hrvMs={hrvMs}
           restingHeartRateBpm={restingHeartRateBpm}

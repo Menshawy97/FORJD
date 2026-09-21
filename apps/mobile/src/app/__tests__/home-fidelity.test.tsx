@@ -43,6 +43,8 @@ jest.mock('@/auth/apiClient', () => ({
   // same reason as getWorkoutStats -- these suites pin honest-empty states.
   getHealthObservationSeries: jest.fn().mockRejectedValue(new Error('no health data in this suite')),
   getReadiness: jest.fn().mockRejectedValue(new Error('no readiness in this suite')),
+  // Home's City Rank tile reads the Activity board; not under test in this suite.
+  getLeaderboard: jest.fn().mockRejectedValue(new Error('no leaderboard in this suite')),
 }));
 
 import { getMacroGoals, getMe, listNutritionLog, getProgramEnrollment } from '@/auth/apiClient';
