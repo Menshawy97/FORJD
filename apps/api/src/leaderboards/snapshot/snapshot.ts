@@ -27,6 +27,37 @@ export function formatSummary(summary: SnapshotSummary): string {
   return `${head}, ${summary.failures.length} failed:\n${failed}\n`;
 }
 
+/**
+ * The whole error chain for the run log. Drizzle's "Failed query" error keeps the Postgres
+ * error on `cause`, and `error.stack` never prints it, so without this a failed run shows the
+ * SQL text but not why it failed. From each cause only `message`, Postgres `code` and `detail`
+ * are read, never anything else the driver attaches. The outer drizzle message itself still
+ * carries the query's params, as it always did. `detail` is driver text and can echo a key's
+ * value (here only user ids and city slugs), so keep that in mind before reusing this elsewhere.
+ */
+export function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+
+  const lines = [error.stack ?? error.message];
+  const seen = new Set<unknown>([error]);
+  let cause = error.cause;
+  while (cause !== undefined && !seen.has(cause)) {
+    seen.add(cause);
+    lines.push(`caused by: ${describeCause(cause)}`);
+    cause = cause instanceof Error ? cause.cause : undefined;
+  }
+  return lines.join("\n");
+}
+
+function describeCause(cause: unknown): string {
+  if (!(cause instanceof Error)) return String(cause);
+  const { code, detail } = cause as { code?: unknown; detail?: unknown };
+  const parts = [cause.message];
+  if (typeof code === "string") parts.push(`(code ${code})`);
+  if (typeof detail === "string") parts.push(detail);
+  return parts.join(" ");
+}
+
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -54,7 +85,7 @@ async function main(): Promise<void> {
 // Importing this file (the spec does) must never open a connection or write to the database.
 if (require.main === module) {
   main().catch((error: unknown) => {
-    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
+    process.stderr.write(`${describeError(error)}\n`);
     process.exitCode = 1;
   });
 }
