@@ -142,3 +142,7 @@ proposed it needs its own decision), a blog, localisation, and a web version of 
     says it, and should be renamed the same way the Home insight card was.
   - Vitest, not Jest, for `apps/web`: it is Astro's own recommendation and shares its Vite config.
   - `sharp` is a direct dependency: Astro 7 no longer installs it for image optimisation.
+  - Two departures from the steps above: the email check (step 7) moved to W4, because the form is
+    switched off in W1 and nothing would call it; the unit-tested module in W1 is the pricing copy
+    instead. Brand values live in `src/styles/global.css` rather than a separate `tokens.css`,
+    since they arrived together with the design's component styles.
