@@ -1,6 +1,6 @@
 # Setting up production
 
-Status: **not provisioned** (checked 2026-09-21). Production is the second of the two free Supabase
+Status: **provisioned and deployed** (2026-09-21): the deploy succeeded, `/api/v1/health` answers, and the snapshot job ran twice. The steps below are kept as the record of how it was done. Production is the second of the two free Supabase
 projects (the free tier allows two; `forjd-dev` serves staging). Everything below is the user's to do:
 each step creates or restores infrastructure or handles a credential, which the assistant is not
 permitted to do here (the roadmap's Phase 6 close says the same about Secret Manager writes).
