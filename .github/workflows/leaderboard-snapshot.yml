@@ -8,7 +8,10 @@ name: Snapshot leaderboard ranks
 # without activity. Both are accepted: a missed week means the arrow reads from the last snapshot
 # that exists, or shows nothing, and the leaderboard itself never depends on this job.
 #
-# The schedule snapshots BOTH environments; a manual dispatch snapshots the one it names. Run a
+# The schedule snapshots STAGING ONLY, for now: production has never been provisioned (its database
+# URL secret does not resolve, so every Monday's production job failed red). Add "production" back to
+# the list in the matrix below once that environment exists. A manual dispatch snapshots the one it
+# names. Run a
 # dispatch on a Monday: the job labels a run with the Monday of its week and replaces that week's
 # rows, so a mid-week dispatch would overwrite the start-of-week baseline with mid-week standings.
 #
@@ -64,7 +67,7 @@ jobs:
       # One environment failing (say production is not provisioned yet) must not stop the other.
       fail-fast: false
       matrix:
-        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["staging","production"]') }}
+        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["staging"]') }}
     env:
       TARGET: ${{ matrix.target }}
 
