@@ -70,6 +70,11 @@ describe('projectRoute', () => {
     ]);
   });
 
+  it('handles a very long run without overflowing the stack', () => {
+    const long = Array.from({ length: 200_000 }, (_, i) => point(31.2 + i * 1e-6, 29.9 + i * 1e-6));
+    expect(projectRoute(long, box)).toHaveLength(200_000);
+  });
+
   it('ignores points that are not finite numbers', () => {
     const projected = projectRoute([point(31.2, 29.9), point(NaN, 29.9), point(31.21, 29.92)], box);
     expect(projected).toHaveLength(2);

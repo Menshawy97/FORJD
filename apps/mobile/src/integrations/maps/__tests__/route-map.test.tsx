@@ -91,6 +91,14 @@ describe('RouteMap', () => {
       expect(screen.getByLabelText('Map of your run route')).toBeTruthy();
     });
 
+    it('uses the callers description for a screen reader when given', async () => {
+      const screen = await render(
+        <RouteMap points={route} height={206} caption="route" accessibilityLabel="Run route, 3.2 km" />,
+      );
+
+      expect(screen.getByLabelText('Run route, 3.2 km')).toBeTruthy();
+    });
+
     it('takes the height it is given', async () => {
       const screen = await render(<RouteMap points={route} height={180} caption="route" />);
 

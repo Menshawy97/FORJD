@@ -39,12 +39,17 @@ export function projectRoute(points: readonly RoutePoint[], box: ProjectionBox):
     return [];
   }
 
-  const latitudes = usable.map((point) => point.latitude);
-  const longitudes = usable.map((point) => point.longitude);
-  const minLat = Math.min(...latitudes);
-  const maxLat = Math.max(...latitudes);
-  const minLon = Math.min(...longitudes);
-  const maxLon = Math.max(...longitudes);
+  // One loop, not Math.min(...array): spreading tens of thousands of points overflows the stack.
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  for (const point of usable) {
+    minLat = Math.min(minLat, point.latitude);
+    maxLat = Math.max(maxLat, point.latitude);
+    minLon = Math.min(minLon, point.longitude);
+    maxLon = Math.max(maxLon, point.longitude);
+  }
   const midLat = (minLat + maxLat) / 2;
   const midLon = (minLon + maxLon) / 2;
   const lonScale = Math.cos((midLat * Math.PI) / 180);

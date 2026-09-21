@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Platform, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, Pattern, Polyline as SvgPolyline, Rect } from 'react-native-svg';
 
@@ -21,8 +21,10 @@ import { projectRoute, type RoutePoint } from './project-route';
  * 1. **Google's street map** on Android, when a Maps key was configured for the build
  *    (`extra.hasMapsKey`) and the native module loads. The route is drawn on top by our own code as
  *    a polyline, so **the route is never sent to Google**; Google's SDK only learns which area is
- *    on screen, which is the privacy trade-off ADR-050 states. Without a connection the tiles do
- *    not load and the route is still drawn on the dark base.
+ *    on screen. That is still real disclosure: its tile requests carry the viewed area at street zoom,
+ *    the phone's IP address and the SDK's own telemetry, so Google learns roughly where a run
+ *    started. ADR-050 states that trade-off. Without a connection the tiles do not load and the
+ *    route is still drawn on the dark base. A wrong SHA-1 on the key also gives a blank map.
  * 2. **The designed striped background** with the route drawn over it, everywhere else: no key, no
  *    native module, or iOS (which has no key until Phase 11 decides one). This is what a run looks
  *    like in Expo Go, in tests, and before the Google Cloud account exists.
@@ -36,6 +38,8 @@ export interface RouteMapProps {
   height: number;
   /** The small monospace caption on the striped background ("live map · route + km markers"). */
   caption: string;
+  /** What a screen reader says, e.g. "Run route, 3.2 km". Defaults to a generic description. */
+  accessibilityLabel?: string;
 }
 
 type MapsSdk = typeof import('react-native-maps');
@@ -82,16 +86,21 @@ const MIN_LATITUDE_DELTA = 0.004;
 const MIN_LONGITUDE_DELTA = 0.006;
 
 function regionFor(points: readonly RoutePoint[]) {
-  const usable = points.filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
-  if (usable.length === 0) {
+  // A single loop, not Math.min(...array): spreading a long run's points can overflow the stack.
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  for (const p of points) {
+    if (!Number.isFinite(p.latitude) || !Number.isFinite(p.longitude)) continue;
+    minLat = Math.min(minLat, p.latitude);
+    maxLat = Math.max(maxLat, p.latitude);
+    minLon = Math.min(minLon, p.longitude);
+    maxLon = Math.max(maxLon, p.longitude);
+  }
+  if (minLat === Infinity) {
     return undefined;
   }
-  const lats = usable.map((p) => p.latitude);
-  const lons = usable.map((p) => p.longitude);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLon = Math.min(...lons);
-  const maxLon = Math.max(...lons);
   return {
     latitude: (minLat + maxLat) / 2,
     longitude: (minLon + maxLon) / 2,
@@ -100,14 +109,14 @@ function regionFor(points: readonly RoutePoint[]) {
   };
 }
 
-export function RouteMap({ points, height, caption }: RouteMapProps) {
+export function RouteMap({ points, height, caption, accessibilityLabel }: RouteMapProps) {
   const maps = Platform.OS === 'android' && hasMapsKey() ? loadSdk() : null;
 
   return (
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel="Map of your run route"
+      accessibilityLabel={accessibilityLabel ?? 'Map of your run route'}
       style={[styles.frame, { height }]}>
       {maps ? (
         <GoogleRoute maps={maps} points={points} />
@@ -118,8 +127,11 @@ export function RouteMap({ points, height, caption }: RouteMapProps) {
   );
 }
 
-function GoogleRoute({ maps, points }: { maps: MapsSdk; points: readonly RoutePoint[] }) {
+const GoogleRoute = memo(function GoogleRoute({ maps, points }: { maps: MapsSdk; points: readonly RoutePoint[] }) {
   const { default: MapView, Polyline, Marker, PROVIDER_GOOGLE } = maps;
+  // Recomputed only when the route changes, not on every render of a screen with a 1 s timer.
+  const region = useMemo(() => regionFor(points), [points]);
+  const coordinates = useMemo(() => [...points], [points]);
   const first = points[0];
   const last = points[points.length - 1];
 
@@ -128,7 +140,7 @@ function GoogleRoute({ maps, points }: { maps: MapsSdk; points: readonly RoutePo
       provider={PROVIDER_GOOGLE}
       style={StyleSheet.absoluteFill}
       customMapStyle={DARK_MAP_STYLE}
-      region={regionFor(points)}
+      region={region}
       scrollEnabled={false}
       zoomEnabled={false}
       pitchEnabled={false}
@@ -138,23 +150,23 @@ function GoogleRoute({ maps, points }: { maps: MapsSdk; points: readonly RoutePo
       showsTraffic={false}
       showsUserLocation={false}>
       {points.length >= 2 ? (
-        <Polyline coordinates={[...points]} strokeColor={colors.accent} strokeWidth={ROUTE_WIDTH} />
+        <Polyline coordinates={coordinates} strokeColor={colors.accent} strokeWidth={ROUTE_WIDTH} />
       ) : null}
       {first ? (
-        <Marker coordinate={first} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker coordinate={first} anchor={{ x: 0.5, y: 0.5 }}>
           <View style={styles.startMarker} />
         </Marker>
       ) : null}
       {last && points.length >= 2 ? (
-        <Marker coordinate={last} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker coordinate={last} anchor={{ x: 0.5, y: 0.5 }}>
           <View style={styles.endMarker} />
         </Marker>
       ) : null}
     </MapView>
   );
-}
+});
 
-function StripedRoute({
+const StripedRoute = memo(function StripedRoute({
   points,
   height,
   caption,
@@ -171,7 +183,10 @@ function StripedRoute({
     }
   };
 
-  const projected = projectRoute(points, { width, height, padding: PADDING });
+  const projected = useMemo(
+    () => projectRoute(points, { width, height, padding: PADDING }),
+    [points, width, height],
+  );
   const start = projected[0];
   const end = projected.length >= 2 ? projected[projected.length - 1] : undefined;
   const line = projected.map((p) => `${p.x},${p.y}`).join(' ');
@@ -218,7 +233,7 @@ function StripedRoute({
       <Text style={styles.caption}>{caption}</Text>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   frame: {
