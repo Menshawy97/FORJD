@@ -95,6 +95,9 @@ beforeEach(() => {
   (listNutritionLog as jest.Mock).mockResolvedValue({ items: [] });
   (getMacroGoals as jest.Mock).mockRejectedValue(new AxiosError('no goals'));
   (getWorkoutStats as jest.Mock).mockResolvedValue(stats());
+  // clearAllMocks keeps implementations, so reset the leaderboard explicitly or a ranked board
+  // from one test would show up in the next.
+  (getLeaderboard as jest.Mock).mockRejectedValue(new Error('no leaderboard in this suite'));
 });
 
 describe('the stat strip counters', () => {
@@ -132,6 +135,16 @@ describe('the stat strip counters', () => {
       expect(screen.queryByText(/^#\d+$/)).toBeNull();
     },
   );
+
+  // The board is a per-city cohort query. A slow one must not hold the rest of Home back.
+  it('fills the other stats while the leaderboard is still loading', async () => {
+    (getLeaderboard as jest.Mock).mockReturnValue(new Promise(() => {}));
+
+    const screen = await render(<HomeScreen />);
+
+    expect(await screen.findByText('42')).toBeTruthy();
+    expect(screen.queryByText(/^#\d+$/)).toBeNull();
+  });
 
   it('leaves City Rank as a dash when the leaderboard cannot be reached', async () => {
     (getLeaderboard as jest.Mock).mockRejectedValue(new Error('offline'));

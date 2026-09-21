@@ -98,24 +98,27 @@ export default function HomeScreen() {
     // on the one screen whose whole subject is today.
     const today = todayLocalDate();
 
-    const [
-      meResult,
-      logResult,
-      goalsResult,
-      statsResult,
-      healthSeriesResult,
-      readinessResult,
-      leaderboardResult,
-    ] = await Promise.allSettled([
-      getMe(),
-      listNutritionLog(today),
-      getMacroGoals(),
-      getWorkoutStats(),
-      getHealthObservationSeries(),
-      getReadiness(),
-      // The same board the Rank tab opens on, so the two never disagree about a rank.
-      getLeaderboard({ metric: 'activity', period: 'month' }),
-    ]);
+    // Started here but deliberately not part of the batch below: it is a per-city cohort query,
+    // heavier than the others, and one tile must not hold the whole launch screen back. It is
+    // the same board the Rank tab opens on, so the two never disagree about a rank. The contract
+    // guarantees `me` on a ranked board and on no other, so every other status and a failed
+    // request both read as "no rank", never "#0".
+    void getLeaderboard({ metric: 'activity', period: 'month' })
+      .then((board) => (board.status === 'ranked' ? (board.me?.rank ?? null) : null))
+      .catch(() => null)
+      .then((rank) => {
+        if (generation === loadGeneration.current) setCityRank(rank);
+      });
+
+    const [meResult, logResult, goalsResult, statsResult, healthSeriesResult, readinessResult] =
+      await Promise.allSettled([
+        getMe(),
+        listNutritionLog(today),
+        getMacroGoals(),
+        getWorkoutStats(),
+        getHealthObservationSeries(),
+        getReadiness(),
+      ]);
 
     if (generation !== loadGeneration.current) return;
 
@@ -160,13 +163,6 @@ export default function HomeScreen() {
     setStats(statsResult.status === 'fulfilled' ? statsResult.value : null);
     setHealthSeries(healthSeriesResult.status === 'fulfilled' ? healthSeriesResult.value : null);
     setReadiness(readinessResult.status === 'fulfilled' ? readinessResult.value : null);
-    // The contract guarantees `me` on a ranked board and on no other, so every other status and
-    // a failed request both read as "no rank", never "#0".
-    setCityRank(
-      leaderboardResult.status === 'fulfilled' && leaderboardResult.value.status === 'ranked'
-        ? (leaderboardResult.value.me?.rank ?? null)
-        : null,
-    );
   }, []);
 
   useFocusEffect(
