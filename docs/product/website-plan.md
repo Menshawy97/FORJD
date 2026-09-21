@@ -129,6 +129,55 @@ Test-first throughout, following the existing auth controller's pattern (`ZodVal
 Blocked on the production API (`docs/product/production-setup.md`, user steps). Then deploy the API
 to production with the new secrets and point the production site at it. Check one real sign-up.
 
+### W6: motion (sections slide up as you scroll)
+
+Asked for on 2026-09-21: "i want to have skills to do animation in the website while the user is
+scrolling i need each section to slide up into the view check for example sayapp.net suggest
+animations for my approval". **The proposals below need the user's sign-off before any of it is
+built.**
+
+**What sayapp.net actually does** (measured in the browser on 2026-09-21, not guessed). No animation
+library: plain CSS plus an `IntersectionObserver` that adds a class.
+
+```css
+.reveal { opacity: 0; transform: translateY(28px);
+          transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+```
+
+Children inside a section are staggered with `transition-delay` in 0.12s steps. Its hero uses the
+same movement as a keyframe animation instead (`translateY(36px)`, 1s, delays 0 / .15s / .3s / .5s),
+and two small cards drift on a 5s loop.
+
+**Proposed for FORJD, for approval:**
+
+1. **Section reveal** — the main ask. Each section fades in while sliding up 28px over 0.7s on that
+   same easing, once, when about 15% of it has entered the viewport. Never replays on scroll back.
+2. **Stagger inside a section** — the eyebrow, heading, body and list step in 0.12s apart, so a
+   section arrives as a sentence rather than a slab. Phone screenshots ride with their section.
+3. **Hero on load** — pill, headline, paragraph and form fade up from 36px at 0, .15s, .3s, .5s,
+   matching the app's own launch feel. The phone cluster settles last.
+4. **The example-week chart draws itself** — bars grow from the baseline and the HRV line traces
+   left to right when the chart scrolls in. It is the one place where motion explains the content
+   rather than decorating it, so it earns more than a fade.
+5. **Restraint elsewhere** — no parallax, no floating cards, no motion on the pricing or privacy
+   pages beyond the section reveal. Legal text should not move.
+
+**Rules for the implementation, whichever of the above is approved.**
+
+- **No animation library.** CSS plus one small `IntersectionObserver` module, unit-tested, in the
+  same spirit as `src/lib/pricing.ts`. Astro ships no framework runtime today and this must not
+  change that.
+- **Everything is readable without JavaScript.** The `.reveal` starting state is applied by script,
+  never in the served HTML, so a crawler, a link preview or a failed script shows finished content
+  rather than a blank page. This is the opposite of what a naive `opacity: 0` in CSS would do.
+- **`prefers-reduced-motion: reduce` disables all of it**, including the hero and the chart. Movement
+  of this size is a real problem for people with vestibular disorders, and sayapp.net does not
+  handle it — do not copy that part.
+- Animate only `opacity` and `transform`, never layout properties, so scrolling stays smooth on a
+  mid-range phone.
+- Verify on the live preview at desktop and phone width, with reduced motion both off and on.
+
 ## Not in scope
 
 Sending the launch email, analytics of any kind on the site (none is planned; if one is ever
