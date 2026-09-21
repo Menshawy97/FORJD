@@ -1,0 +1,39 @@
+---
+import Logo from './Logo.astro';
+
+const links = [
+  { href: '/features', label: 'Features' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/privacy', label: 'Privacy' },
+];
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="FORJD home">
+      <Logo />
+      FORJD
+    </a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Main">
+      {
+        links.map((link) => (
+          <a href={link.href} aria-current={path === link.href ? 'page' : undefined}>
+            {link.label}
+          </a>
+        ))
+      }
+    </nav>
+    <a class="btn sm" href="/#join">Join the waitlist</a>
+  </div>
+</header>
+
+<script>
+  const menuButton = document.getElementById('menu-btn');
+  const nav = document.getElementById('nav');
+  menuButton?.addEventListener('click', () => {
+    const isOpen = nav?.classList.toggle('open') ?? false;
+    menuButton.setAttribute('aria-expanded', String(isOpen));
+  });
+</script>

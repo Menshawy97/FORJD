@@ -1,0 +1,227 @@
+---
+import body from '../assets/screens/body.png';
+import health from '../assets/screens/health.png';
+import home from '../assets/screens/home.png';
+import live from '../assets/screens/live.png';
+import rank from '../assets/screens/rank.png';
+import Phone from '../components/Phone.astro';
+import WaitlistForm from '../components/WaitlistForm.astro';
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="FORJD: Training, Recovery, Progress"
+  description="Log your lifts and runs, bring in sleep and HRV from your wearable, add your InBody scans, and see how they all move together. Coming soon to iPhone and Android."
+>
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <span class="pill"><i></i>Coming soon to iPhone and Android</span>
+        <h1 class="display">Training<span class="dot">.</span><br />Recovery<span class="dot">.</span><br />Progress<span class="dot">.</span></h1>
+        <p class="lede">
+          One place for everything your body is doing. Log your lifts and runs, bring in sleep and HRV from your
+          wearable, add your InBody scans, and see how they all move together.
+        </p>
+        <WaitlistForm id="email-hero" />
+      </div>
+      <div class="cluster">
+        <Phone src={live} alt="" class="p-left" loading="eager" />
+        <Phone src={body} alt="" class="p-right" loading="eager" />
+        <Phone
+          src={home}
+          alt="The FORJD home screen: a readiness score of 87, today's nutrition, weekly stats and a Start Workout button."
+          class="p-center"
+          loading="eager"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="wrap">
+      <div class="thesis-head">
+        <span class="label accent">Why FORJD</span>
+        <h2 class="h2">Your training app, your wearable and your scale have never met.</h2>
+        <p class="lede">
+          Most athletes keep three apps that don't talk to each other. FORJD pulls them into one account, so a heavy
+          week, a bad night's sleep and a new body scan land on the same screen.
+        </p>
+      </div>
+
+      <div class="trio">
+        <div>
+          <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13.4 3.6 6.8 13h4.2l-.6 7.4L17.4 11h-4.4z" stroke="#e9712f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+          <h3>Train</h3>
+          <p>Log sets, runs and HYROX sessions in one workout engine. Follow a program or build your own.</p>
+          <div class="src"><span>Strength</span><span>Running</span><span>HYROX</span><span>Mobility</span></div>
+        </div>
+        <div>
+          <span class="ico g"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19.6S4.4 15 4.4 9.8A3.9 3.9 0 0 1 12 8.2a3.9 3.9 0 0 1 7.6 1.6c0 5.2-7.6 9.8-7.6 9.8z" stroke="#79b98a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+          <h3>Recover</h3>
+          <p>Sleep, HRV and resting heart rate come in from the wearable you already own, and each reading keeps its source.</p>
+          <div class="src"><span>Apple Health</span><span>Health Connect</span><span>WHOOP</span></div>
+        </div>
+        <div>
+          <span class="ico b"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6" stroke="#8fb4c9" stroke-width="1.6" stroke-linecap="round"></path></svg></span>
+          <h3>Measure</h3>
+          <p>Weight, body fat and skeletal muscle mass from every InBody scan, tracked month over month.</p>
+          <div class="src"><span>InBody</span><span>Body composition</span></div>
+        </div>
+      </div>
+
+      <div class="week">
+        <div class="week-top">
+          <div>
+            <span class="label">Example week</span>
+            <h3>The same seven days, finally on one screen</h3>
+          </div>
+          <div class="legend">
+            <span><i style="background:#e9712f"></i>Training volume (kg)</span>
+            <span><i style="background:#79b98a;height:3px;border-radius:2px"></i>HRV (ms)</span>
+            <span><i style="background:#8fb4c9;border-radius:50%"></i>InBody scan</span>
+          </div>
+        </div>
+        <div class="chart-scroll">
+          <svg viewBox="0 0 720 250" role="img" aria-label="Example week. Training volume: Monday 8,400 kg, Wednesday 9,100 kg, Friday 7,800 kg, Sunday 10,200 kg, rest on the other days. HRV ranges from 61 to 72 milliseconds. One InBody scan on Saturday showing 16.4% body fat.">
+            <g font-family="Archivo Variable, Archivo, system-ui, sans-serif" font-size="11" font-weight="500">
+              {/* plot area x 56..664, y 20..190; volume 0..12000 kg, HRV 50..80 ms */}
+              <g stroke="rgba(255,255,255,.06)">
+                <line x1="56" x2="664" y1="190" y2="190"></line>
+                <line x1="56" x2="664" y1="133.3" y2="133.3"></line>
+                <line x1="56" x2="664" y1="76.7" y2="76.7"></line>
+                <line x1="56" x2="664" y1="20" y2="20"></line>
+              </g>
+              <g fill="#5c5c55" text-anchor="end">
+                <text x="48" y="194">0</text><text x="48" y="137.3">4k</text><text x="48" y="80.7">8k</text><text x="48" y="24">12k</text>
+              </g>
+              <g fill="#5c5c55" text-anchor="start">
+                <text x="672" y="194">50</text><text x="672" y="137.3">60</text><text x="672" y="80.7">70</text><text x="672" y="24">80</text>
+              </g>
+              {/* columns centred at 99.4 + i * 86.9, bars 40 wide */}
+              <g fill="#e9712f">
+                <rect x="79.4" y="71" width="40" height="119" rx="5"></rect>
+                <rect x="253.2" y="61.1" width="40" height="128.9" rx="5"></rect>
+                <rect x="427" y="79.5" width="40" height="110.5" rx="5"></rect>
+                <rect x="600.8" y="45.5" width="40" height="144.5" rx="5"></rect>
+              </g>
+              <g fill="#232427">
+                <rect x="166.3" y="182" width="40" height="8" rx="3"></rect>
+                <rect x="340.1" y="182" width="40" height="8" rx="3"></rect>
+                <rect x="513.9" y="182" width="40" height="8" rx="3"></rect>
+              </g>
+              {/* HRV 64 68 61 66 70 72 67 -> y = 190 - (v - 50) * 5.667 */}
+              <polyline fill="none" stroke="#79b98a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" points="99.4,110.7 186.3,88 273.2,127.7 360.1,99.3 447,76.7 533.9,65.3 620.8,93.7"></polyline>
+              <g fill="#101011" stroke="#79b98a" stroke-width="2">
+                <circle cx="99.4" cy="110.7" r="3.5"></circle><circle cx="186.3" cy="88" r="3.5"></circle><circle cx="273.2" cy="127.7" r="3.5"></circle>
+                <circle cx="360.1" cy="99.3" r="3.5"></circle><circle cx="447" cy="76.7" r="3.5"></circle><circle cx="533.9" cy="65.3" r="4.5" fill="#79b98a"></circle><circle cx="620.8" cy="93.7" r="3.5"></circle>
+              </g>
+              <text x="533.9" y="52" fill="#79b98a" text-anchor="middle" font-weight="700" font-size="12">72 ms</text>
+              <circle cx="533.9" cy="162" r="6" fill="#8fb4c9"></circle>
+              <text x="533.9" y="148" fill="#8fb4c9" text-anchor="middle" font-weight="600">16.4% fat</text>
+              <g fill="#8b8b83" text-anchor="middle" font-weight="600" font-size="12">
+                <text x="99.4" y="214">Mon</text><text x="186.3" y="214">Tue</text><text x="273.2" y="214">Wed</text><text x="360.1" y="214">Thu</text>
+                <text x="447" y="214">Fri</text><text x="533.9" y="214">Sat</text><text x="620.8" y="214">Sun</text>
+              </g>
+              <g fill="#5c5c55" text-anchor="middle" font-size="10">
+                <text x="99.4" y="232">Upper</text><text x="186.3" y="232">Rest</text><text x="273.2" y="232">Lower</text><text x="360.1" y="232">Rest</text>
+                <text x="447" y="232">5 km run</text><text x="533.9" y="232">Rest</text><text x="620.8" y="232">HYROX sim</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <p class="week-note">Illustrative numbers, not a real athlete's data.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec desk">
+    <div class="wrap rows">
+      <div class="row">
+        <div class="row-copy">
+          <span class="label accent">Live workouts</span>
+          <h2 class="h2">Built for the gym with no signal.</h2>
+          <p class="body">
+            Every set is saved on your phone first. The basement gym, the flight, the dead spot by the squat rack: your
+            workout never waits on the network, and it syncs when you're back.
+          </p>
+          <ul class="ticks">
+            <li>Last session's weights next to every set</li>
+            <li>A rest timer that carries across the whole workout</li>
+            <li>Live heart rate from your watch while you train</li>
+          </ul>
+        </div>
+        <div class="row-shot"><Phone src={live} alt="A live FORJD workout: bench press sets with previous and target weights, a rest timer and live heart rate." /></div>
+      </div>
+
+      <div class="row flip">
+        <div class="row-copy">
+          <span class="label" style="color:#8bbf96">Readiness</span>
+          <h2 class="h2">Know whether today is a push day.</h2>
+          <p class="body">
+            FORJD reads the sleep, HRV and resting heart rate your wearable already collects, then shows one readiness
+            score on your home screen, with the numbers behind it one tap away.
+          </p>
+          <div class="stat-line num">
+            <div><b style="color:var(--green)">87</b><small>Readiness</small></div>
+            <div><b>7h 42m</b><small>Sleep</small></div>
+            <div><b>68<span style="font-size:14px;color:var(--meta)"> ms</span></b><small>HRV</small></div>
+          </div>
+        </div>
+        <div class="row-shot g"><Phone src={health} alt="The FORJD Health progress tab: sleep, HRV and resting heart rate trends." /></div>
+      </div>
+
+      <div class="row">
+        <div class="row-copy">
+          <span class="label" style="color:var(--sleep)">Body composition</span>
+          <h2 class="h2">Every InBody scan, on one timeline.</h2>
+          <p class="body">
+            Add your InBody results and watch weight, body fat and skeletal muscle mass change next to your training, not
+            on a printout in a drawer.
+          </p>
+          <ul class="ticks">
+            <li>Weight, body fat % and skeletal muscle mass over time</li>
+            <li>Change since your last scan, at a glance</li>
+            <li>Segmental results stored with every scan</li>
+          </ul>
+        </div>
+        <div class="row-shot"><Phone src={body} alt="The FORJD Body progress tab: weight 87.1 kg and body fat 16.4% with charts over five months." /></div>
+      </div>
+
+      <div class="row flip">
+        <div class="row-copy">
+          <span class="label accent">City leaderboards</span>
+          <h2 class="h2">See where you stand in your city.</h2>
+          <p class="body">Rank against athletes where you live, this month or all time. Tap any row to see the profile behind it.</p>
+          <div class="src"><span>Activity</span><span>Strength</span><span>Running</span><span>HYROX</span></div>
+        </div>
+        <div class="row-shot"><Phone src={rank} alt="The FORJD city leaderboard for Alexandria, showing rank 47 and the athletes around it." /></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="wrap">
+      <div class="promise">
+        <span class="shield"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5 5 6.2v5.3c0 4.3 3 7.7 7 9 4-1.3 7-4.7 7-9V6.2z" stroke="#79b98a" stroke-width="1.6" stroke-linejoin="round"></path><path d="m9 12 2.2 2.2L15.2 10" stroke="#79b98a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+        <div>
+          <span class="label">Our privacy promise</span>
+          <h2 class="h3">Your health data never goes to advertisers.</h2>
+          <p>
+            Not to an ad network, not to an analytics tool, not once, not "just for debugging". It's used for one thing:
+            showing you your own training and recovery. Readings from Apple Health, Health Connect and WHOOP are stored
+            with their source, and you can export or delete all of it from the app. <a href="/privacy">Read the privacy policy</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec cta" id="join">
+    <div class="wrap">
+      <span class="label accent">Launching soon</span>
+      <h2 class="h2">Be first in line when FORJD opens.</h2>
+      <p class="lede">One email on launch day. No newsletter.</p>
+      <WaitlistForm id="email-cta" />
+    </div>
+  </div>
+</Base>

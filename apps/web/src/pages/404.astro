@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Page not found | FORJD" description="This page doesn't exist.">
+  <div class="page-head">
+    <div class="wrap">
+      <span class="label accent">404</span>
+      <h1 class="display page-display">Nothing here<span class="dot">.</span></h1>
+      <p class="lede">That address doesn't match a page on this site.</p>
+      <div><a class="btn" href="/">Go to the home page</a></div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .page-display { font-size: clamp(42px, 6vw, 80px); }
+</style>

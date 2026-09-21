@@ -1,6 +1,6 @@
 # Website plan: getforjd.com
 
-Status: **planned** (2026-09-21). Decisions in `docs/decisions/ADR-051-marketing-website-and-waitlist.md`.
+Status: **W0 merged (#221); W1 in review** (2026-09-21). Decisions in `docs/decisions/ADR-051-marketing-website-and-waitlist.md`.
 Design source: `docs/design/website/design-v1.html` (the published preview, with `%%name%%`
 placeholders where the cropped app screenshots were embedded; `crop-screenshots.js` produced them).
 
@@ -127,3 +127,22 @@ to production with the new secrets and point the production site at it. Check on
 
 Sending the launch email, analytics of any kind on the site (none is planned; if one is ever
 proposed it needs its own decision), a blog, localisation, and a web version of the app.
+
+## Progress log
+
+- **W0** (2026-09-21, #221): plan, ADR-051, design source.
+- **W1** (2026-09-21): `apps/web` built from `design-v1.html`: five pages, self-hosted Archivo,
+  screenshots as WebP (about 15 KB each, down from about 110 KB), `og.png`, sitemap, robots, a
+  `web` CI job, and the API job's build scoped to `@forjd/api...` so a website failure can't fail
+  it. Findings on the way:
+  - The yearly saving is 49.96%, not exactly 50%. `pricing.ts` rounds to the nearest percent and
+    tests pin it; the app's "Save 40%" is still wrong.
+  - The design's welcome screenshot lists "AI Insights", so it is not used on the site (the
+    preview image uses Home and the leaderboard instead). The mobile welcome screen itself still
+    says it, and should be renamed the same way the Home insight card was.
+  - Vitest, not Jest, for `apps/web`: it is Astro's own recommendation and shares its Vite config.
+  - `sharp` is a direct dependency: Astro 7 no longer installs it for image optimisation.
+  - Two departures from the steps above: the email check (step 7) moved to W4, because the form is
+    switched off in W1 and nothing would call it; the unit-tested module in W1 is the pricing copy
+    instead. Brand values live in `src/styles/global.css` rather than a separate `tokens.css`,
+    since they arrived together with the design's component styles.

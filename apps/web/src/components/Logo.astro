@@ -1,0 +1,11 @@
+---
+/** The four-bar mark from the mobile design (FORJD Mobile.dc.html, the wordmark glyph). */
+interface Props {
+  size?: number;
+}
+const { size = 26 } = Astro.props;
+---
+
+<svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M4 20V8M9 20V4M14 20v-9M19 20V10" stroke="#e9712f" stroke-width="2.4" stroke-linecap="round"></path>
+</svg>

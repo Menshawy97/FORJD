@@ -1,0 +1,89 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Privacy and terms | FORJD"
+  description="FORJD uses your health data to show you your own training and recovery, and for nothing else. It never reaches an analytics or advertising service."
+>
+  <div class="page-head">
+    <div class="wrap">
+      <span class="label accent">Privacy and terms</span>
+      <h1 class="display page-display">Your body's data<span class="dot">.</span><br />Your call<span class="dot">.</span></h1>
+      <p class="lede">The short version: we use your health data to show you your own training and recovery, and for nothing else.</p>
+    </div>
+  </div>
+
+  <div class="sec legal-sec">
+    <div class="wrap legal-grid">
+      <nav class="toc" aria-label="On this page">
+        <a href="#collect">What we collect</a>
+        <a href="#use">How we use it</a>
+        <a href="#never">What we never do</a>
+        <a href="#control">Your controls</a>
+        <a href="#credits">Data sources</a>
+        <a href="#terms">Terms of use</a>
+      </nav>
+      <div class="doc">
+        <div class="draft">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.01M10.3 4.3 2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" stroke="#c9a03c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <p><b>Draft, not legal text.</b> This page lays out structure and plain-language commitments. It needs review by someone qualified before launch.</p>
+        </div>
+
+        <section id="collect">
+          <h2>What we collect</h2>
+          <ul>
+            <li><strong>Your account:</strong> email address, username, and the profile details you choose to add, such as your city.</li>
+            <li><strong>Training:</strong> the workouts, sets, runs and programs you log in FORJD.</li>
+            <li><strong>Health readings you connect:</strong> sleep, heart rate variability, resting heart rate and steps from Apple Health, Health Connect or WHOOP, only after you give permission on your phone.</li>
+            <li><strong>Body composition:</strong> the InBody results you add.</li>
+            <li><strong>Nutrition:</strong> the foods and meals you log.</li>
+          </ul>
+        </section>
+
+        <section id="use">
+          <h2>How we use it</h2>
+          <p>
+            To run the features you see: your history, charts, readiness score, FORJD Insights and, if you opt in, your
+            place on your city's leaderboard. Each health reading is stored with the app or device it came from, so you
+            can always see where a number originated.
+          </p>
+        </section>
+
+        <section id="never">
+          <h2>What we never do</h2>
+          <div class="callout">
+            <p><strong>Health data never reaches an analytics or advertising service.</strong> Not in the app, not on our servers, not while we're fixing a bug. We don't sell it, rent it or use it to target ads.</p>
+          </div>
+          <p>Data read from Apple Health and Health Connect is used only to provide FORJD's health and fitness features, as both platforms require.</p>
+        </section>
+
+        <section id="control">
+          <h2>Your controls</h2>
+          <ul>
+            <li><strong>Export:</strong> download a copy of your account data from the app.</li>
+            <li><strong>Delete:</strong> delete your account and its data from the app.</li>
+            <li><strong>Disconnect:</strong> revoke Apple Health, Health Connect or WHOOP access at any time.</li>
+            <li><strong>Public profile:</strong> choose what other athletes can see in privacy settings.</li>
+          </ul>
+        </section>
+
+        <section id="credits">
+          <h2>Data sources</h2>
+          <p>City names and locations come from <strong>GeoNames</strong> (geonames.org), used under the Creative Commons Attribution 4.0 licence.</p>
+        </section>
+
+        <section id="terms">
+          <h2>Terms of use</h2>
+          <p>To be written. It will cover accounts, subscriptions and renewals, acceptable use, and the fact that FORJD gives training information, not medical advice.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .page-display { font-size: clamp(42px, 6vw, 80px); }
+  .legal-sec { padding-top: clamp(40px, 5vw, 64px); }
+  .draft { margin-top: 0; }
+</style>
