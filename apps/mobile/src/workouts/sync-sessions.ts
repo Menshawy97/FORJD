@@ -1,9 +1,43 @@
 import type { AxiosError } from 'axios';
 
 import { uploadWorkoutSession } from '@/auth/apiClient';
+import type { SqliteConnection } from '@/store/exercise-catalogue';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 import { sanitizeUploadRequest } from './live-session';
+import { RUN_EXERCISE_PLACEHOLDER_ID } from './live-run';
+import { resolveRunExerciseId } from './run-exercise';
 import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb, UploadRejection } from '@/store/workout-session';
+
+/**
+ * A queued run still carries `RUN_EXERCISE_PLACEHOLDER_ID` (ADR-050) if it was recorded before the
+ * catalogue synced the real "Outdoor Run" id in. Resolved from the on-device catalogue mirror, not
+ * the network (rule 6), so this never blocks on connectivity by itself.
+ *
+ * **Unresolved is a retry, not a failure.** Throwing a plain `Error` (no `.status`) makes
+ * `uploadSession` below treat it as transient, so `drainSyncQueue`'s own backoff tries again later
+ * rather than dropping a run whose catalogue entry has not synced in yet.
+ */
+async function resolveRunExercise(
+  db: SqliteConnection,
+  body: WorkoutSessionUploadRequest,
+): Promise<WorkoutSessionUploadRequest> {
+  if (body.activity !== 'running') {
+    return body;
+  }
+  const exercises = await Promise.all(
+    body.exercises.map(async (exercise) => {
+      if (exercise.exerciseId !== RUN_EXERCISE_PLACEHOLDER_ID) {
+        return exercise;
+      }
+      const realId = await resolveRunExerciseId(db);
+      if (!realId) {
+        throw new Error('Outdoor Run exercise has not synced to this device yet');
+      }
+      return { ...exercise, exerciseId: realId };
+    }),
+  );
+  return { ...body, exercises };
+}
 
 /**
  * Translates an `AxiosError`'s response status onto the typed `UploadRejection` the store
@@ -11,22 +45,25 @@ import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb, Uploa
  * `workout-session.ts` never has to import axios or the API client to tell a deterministic
  * 4xx apart from a transient network failure.
  */
-async function uploadSession(body: WorkoutSessionUploadRequest): Promise<void> {
-  try {
-    // Sanitised here, not only when the session is built, because the queue holds payloads built
-    // by earlier versions: a workout stuck behind a 400 for one out-of-range value saves on retry.
-    await uploadWorkoutSession(sanitizeUploadRequest(body));
-  } catch (error) {
-    const status = (error as Partial<AxiosError>)?.isAxiosError
-      ? (error as AxiosError).response?.status
-      : undefined;
-    if (status === undefined) throw error;
-    const rejection: UploadRejection = Object.assign(
-      new Error(error instanceof Error ? error.message : String(error)),
-      { status },
-    );
-    throw rejection;
-  }
+function makeUploadSession(db: SqliteConnection) {
+  return async function uploadSession(body: WorkoutSessionUploadRequest): Promise<void> {
+    try {
+      const resolved = await resolveRunExercise(db, body);
+      // Sanitised here, not only when the session is built, because the queue holds payloads built
+      // by earlier versions: a workout stuck behind a 400 for one out-of-range value saves on retry.
+      await uploadWorkoutSession(sanitizeUploadRequest(resolved));
+    } catch (error) {
+      const status = (error as Partial<AxiosError>)?.isAxiosError
+        ? (error as AxiosError).response?.status
+        : undefined;
+      if (status === undefined) throw error;
+      const rejection: UploadRejection = Object.assign(
+        new Error(error instanceof Error ? error.message : String(error)),
+        { status },
+      );
+      throw rejection;
+    }
+  };
 }
 
 /**
@@ -49,7 +86,7 @@ export async function syncPendingSessions(): Promise<{ uploaded: string[]; faile
   try {
     const db = await openWorkoutSessionDb();
     await ensureWorkoutSessionSchema(db);
-    return await drainSyncQueue(db, uploadSession);
+    return await drainSyncQueue(db, makeUploadSession(db));
   } catch {
     // Nothing to surface: the queue is durable, and the next trigger tries again.
     return { uploaded: [], failed: [] };
