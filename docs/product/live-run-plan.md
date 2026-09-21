@@ -101,23 +101,36 @@ SHA-1, set as the EAS environment variable `GOOGLE_MAPS_ANDROID_API_KEY`; a deve
 a device walk of tracking, the map and keep-awake; the Health Connect test (R8); and the Play Data
 safety form updated to say precise location is used on the device during a run.
 
-## Where we stopped (2026-09-21)
+## Where we stopped (2026-09-21, updated)
 
-Done and green on `main`: R1 (domain maths), R2 (contract `run`, migration 0022, service consent rule,
-`Outdoor Run` seed exercise), R3 (`getPrecisePermission`, `requestPrecisePermission`,
-`watchPrecisePosition` with an `isCancelled` option, fine location unblocked, background blocked).
+**Merged and green on `main`:** S1, A1, D1, R1, R2, R3, R4. Production is live.
 
-Next, in order: **R4** maps (`react-native-maps` behind `integrations/maps/`, striped fallback, conformance
-rule), **R5** run engine and persistence (reducer over `buildTrack`, SQLite points and snapshot,
-keep-awake, `toRunUploadRequest` using the `Outdoor Run` exercise slug `outdoor-run`), **R6/R7** the two
-screens (audit every value against the screenshots), **R8** watch heart rate (device test before merge),
-**F1** the FAQ, only after the user signs off [faq-copy.md](faq-copy.md).
+**PR #227 (R5, run engine + recovery + upload resolution):** open; its CI was still running when this
+was written. Merge it once green, then confirm CI on `main`.
 
-Callers of `watchPrecisePosition` must pass `isCancelled` and keep a single watch (a double tap or a
-Strict Mode double effect must not start two). iOS "approximate" grants cannot be detected: the 25 m accuracy
-filter in `acceptFix` is what excludes those fixes.
+**In progress: R6 + R7 together, branch `feat/run-screens` (cut from R5's branch), one PR.** They are one flow
+(Finish leads to the summary), so they ship together, in separate commits. Done so far: `features/run/run-format.ts`
+and its tests (duration `21:27`, distance `3.43`, pace `5:03`, speed `11.9`, split bar widths).
 
-Production is live (deploy 2026-09-21, `/api/v1/health` ok) and the leaderboard snapshot ran twice against
-it ("captured 0 cities": no city has five athletes yet). Local Postgres tests need
-`DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd`, because Node resolves `localhost` to
-IPv6 and Docker binds IPv4 only.
+Remaining for R6/R7, all pixel-audited against `live run 1/2.png` and `run done.png` and prototype `s_run()`
+(dc.html 2914-2972) / `s_runDone()` (2973-3006):
+- `features/run/` sections: metric tile, heart-rate card (empty "—" and no sparkline until R8), splits list
+  (`RunStats.splits`, bar via `splitBarPercent`), GPS pill (strong <= 10 m, weak <= 25 m, searching before a fix).
+- `app/run.tsx`: `useKeepAwake()`; on mount `getPrecisePermission` then `requestPrecisePermission` (the person just
+  tapped Start a run); denied or `coarse_only` shows an explanation with Open Settings. `watchPrecisePosition(onFix,
+  { isCancelled })`, one watch only. 1 s tick for elapsed. Snapshot the whole `RunState` (plus `savedAtMs`) into
+  `run_snapshot` every ~10 s and on pause/finish; on reopen restore it **paused** at `savedAtMs` so the time the app was
+  dead is not counted (`run_points` stays unused; the snapshot carries the fixes). The X asks before discarding.
+  Finish: `finishRun`; if `!isRunWorthSaving` offer to discard; otherwise `toRunUploadRequest` (weight best-effort,
+  consents from `readLocationConsent` and the privacy settings), `enqueueSessionUpload`, clear snapshot, fire
+  `syncPendingSessions`, keep the finished run in a small in-memory store for the summary, then navigate to `/run-done`.
+- `app/run-done.tsx` per the screenshot; Train tile `href: '/run'` (`app/(tabs)/train.tsx:53`); Previous Workout shows
+  km for a run.
+- Deviations to record: km only (no miles yet), the X asks before discarding, the run share tile shows "coming soon".
+
+Then R8 (watch heart rate; **needs a physical Android phone before merge**, rule 16), then F1 (FAQ, **needs the
+user's sign-off on `faq-copy.md`**), then close-out docs. Local Postgres tests need
+`DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd` (Node resolves `localhost` to IPv6).
+
+Owed by the user: the FAQ sign-off; a Google Cloud Maps key restricted to `com.forjd.app` + the signing SHA-1, set as
+the EAS variable `GOOGLE_MAPS_ANDROID_API_KEY`; a dev-client build; the device walk of a real run.
