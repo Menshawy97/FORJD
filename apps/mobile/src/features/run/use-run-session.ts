@@ -1,7 +1,7 @@
 import { averageHeartRate } from '@forjd/domain';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, BackHandler } from 'react-native';
 
 import { useToast } from '@/components/toast';
 import {
@@ -134,16 +134,44 @@ export function useRunSession(): RunSession {
     stopWatchRef.current = null;
   }, []);
 
-  // Recover an unfinished run or start a new one, then ask for location and follow the position.
-  useEffect(() => {
-    let cancelled = false;
+  const permissionRef = useRef<RunPermission>('checking');
+  const unmountedRef = useRef(false);
+  const updatePermission = useCallback((next: RunPermission) => {
+    permissionRef.current = next;
+    setPermission(next);
+  }, []);
 
-    const onFix = (fix: PreciseFix) => {
+  const onFix = useCallback(
+    (fix: PreciseFix) => {
       const current = runRef.current;
       if (!current || closedRef.current) return;
       setLastAccuracy({ meters: fix.accuracyMeters });
+      setNowMs(Date.now());
       commit(addFix(current, fix));
-    };
+    },
+    [commit],
+  );
+
+  /** Back from Settings: if location is now allowed and nothing is being followed, follow it. */
+  const recheckPermission = useCallback(async () => {
+    if (closedRef.current || stopWatchRef.current || permissionRef.current === 'checking') return;
+    if (permissionRef.current === 'granted') return;
+    if ((await getPrecisePermission()) !== 'granted') return;
+    const isCancelled = () => unmountedRef.current || closedRef.current;
+    const watch = await watchPrecisePosition(onFix, { isCancelled });
+    if (watch.status !== 'watching') return;
+    if (isCancelled()) {
+      watch.stop();
+      return;
+    }
+    stopWatchRef.current = watch.stop;
+    updatePermission('granted');
+  }, [onFix, updatePermission]);
+
+  // Recover an unfinished run or start a new one, then ask for location and follow the position.
+  useEffect(() => {
+    let cancelled = false;
+    unmountedRef.current = false;
 
     void (async () => {
       let recovered: RunState | null = null;
@@ -166,7 +194,7 @@ export function useRunSession(): RunSession {
         if (cancelled) return;
       }
       if (granted !== 'granted') {
-        setPermission(granted === 'coarse_only' || granted === 'unavailable' ? granted : 'denied');
+        updatePermission(granted === 'coarse_only' || granted === 'unavailable' ? granted : 'denied');
         return;
       }
 
@@ -177,17 +205,18 @@ export function useRunSession(): RunSession {
       }
       if (watch.status === 'watching') {
         stopWatchRef.current = watch.stop;
-        setPermission('granted');
+        updatePermission('granted');
       } else if (watch.status !== 'cancelled') {
-        setPermission(watch.status);
+        updatePermission(watch.status);
       }
     })();
 
     return () => {
       cancelled = true;
+      unmountedRef.current = true;
       stopWatching();
     };
-  }, [commit, getDb, persist, stopWatching]);
+  }, [commit, getDb, onFix, persist, stopWatching, updatePermission]);
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), TICK_MS);
@@ -222,6 +251,11 @@ export function useRunSession(): RunSession {
   // Foreground location stops when the phone locks (ADR-049 #2), so the run pauses with it and says why.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
+      // Back from Settings: pick up a permission the person has just fixed.
+      if (state === 'active') {
+        void recheckPermission();
+        return;
+      }
       if (state !== 'background') return;
       const current = runRef.current;
       if (current?.status !== 'running') return;
@@ -231,9 +265,11 @@ export function useRunSession(): RunSession {
       void persist(next);
     });
     return () => subscription.remove();
-  }, [commit, persist]);
+  }, [commit, persist, recheckPermission]);
 
   const discard = useCallback(async () => {
+    // A run already being saved cannot also be thrown away: the save would still queue it.
+    if (finishingRef.current) return;
     const current = runRef.current;
     closedRef.current = true;
     stopWatching();
@@ -248,11 +284,21 @@ export function useRunSession(): RunSession {
   }, [getDb, stopWatching]);
 
   const confirmDiscard = useCallback(() => {
+    if (finishingRef.current) return;
     Alert.alert('Discard this run?', 'Your run so far will be deleted. This cannot be undone.', [
       { text: 'Keep running', style: 'cancel' },
       { text: 'Discard', style: 'destructive', onPress: () => void discard() },
     ]);
   }, [discard]);
+
+  // Android's back button and gesture ask the same question instead of silently ending the run.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      confirmDiscard();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [confirmDiscard]);
 
   const finish = useCallback(() => {
     const current = runRef.current;
@@ -286,8 +332,9 @@ export function useRunSession(): RunSession {
           healthDataAllowed: false,
           watchCaloriesKcal: null,
         });
-        await enqueueSessionUpload(db, request);
+        // Closed before the enqueue, so a late autosave cannot write the snapshot back afterwards.
         closedRef.current = true;
+        await enqueueSessionUpload(db, request);
         try {
           await clearRunSnapshot(db, finished.id);
         } catch {
@@ -299,6 +346,7 @@ export function useRunSession(): RunSession {
         router.replace('/run-done');
       } catch {
         // Not queued: stay on the run, still running, so Finish can be tried again.
+        closedRef.current = false;
         finishingRef.current = false;
         setIsFinishing(false);
         showToast('Run not saved — try Finish again.');

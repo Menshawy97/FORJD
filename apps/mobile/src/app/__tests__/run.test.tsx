@@ -9,7 +9,7 @@
 // returns a Promise and MUST be awaited.
 import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
-import { Alert, AppState, Linking } from 'react-native';
+import { Alert, AppState, BackHandler, Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockBack = jest.fn();
@@ -362,6 +362,42 @@ describe('RunScreen -- finishing', () => {
     await waitFor(() => expect(screen.getByText('Run not saved — try Finish again.')).toBeTruthy());
     expect(mockReplace).not.toHaveBeenCalled();
     expect(clearRunSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+describe('RunScreen -- review fixes', () => {
+  it('asks before discarding when the Android back button is pressed', async () => {
+    let onBack: () => boolean = () => false;
+    jest.spyOn(BackHandler, 'addEventListener').mockImplementation(((_e: string, handler: () => boolean) => {
+      onBack = handler;
+      return { remove: jest.fn() };
+    }) as never);
+    await render(<RunScreen />);
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+
+    let handled = false;
+    await act(async () => {
+      handled = onBack();
+    });
+
+    expect(handled).toBe(true);
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it('starts following the position when location is allowed after coming back from Settings', async () => {
+    (getPrecisePermission as jest.Mock).mockResolvedValue('denied');
+    await render(<RunScreen />);
+    await waitFor(() => expect(screen.getByText('Location is off for FORJD')).toBeTruthy());
+    expect(watchPrecisePosition).not.toHaveBeenCalled();
+
+    (getPrecisePermission as jest.Mock).mockResolvedValue('granted');
+    await act(async () => {
+      appStateHandler('active');
+    });
+
+    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText('Location is off for FORJD')).toBeNull());
   });
 });
 

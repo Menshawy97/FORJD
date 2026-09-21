@@ -101,6 +101,7 @@ export default function RunScreen() {
           accessibilityRole="button"
           accessibilityLabel="Discard run"
           hitSlop={12}
+          disabled={session.isFinishing}
           onPress={session.confirmDiscard}
           style={{ opacity: 0.6 }}>
           <Icon name="x" size={20} color="#C8C8C0" />
