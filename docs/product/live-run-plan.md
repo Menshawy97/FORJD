@@ -1,6 +1,6 @@
 # The live run — "Start a run" on Train
 
-Status: **in progress** (2026-09-22). R1 to R5 are merged and green on `main`; R6 and R7 are in one PR; R8 and F1 remain.
+Status: **built and merged** (2026-09-22): R1 to R8 and F1. Open points and follow-ups are at the end of this file.
 
 Train's "Start a run" tile (`apps/mobile/src/app/(tabs)/train.tsx:53`, `href: null`) was left inert
 by Phase 2 and Phase 3 because a run needs GPS, and Phase 3H deferred it ("a different modality
@@ -115,24 +115,56 @@ SHA-1, set as the EAS environment variable `GOOGLE_MAPS_ANDROID_API_KEY`; a deve
 a device walk of tracking, the map and keep-awake; the Health Connect test (R8); and the Play Data
 safety form updated to say precise location is used on the device during a run.
 
-## Where we stopped (2026-09-22)
+## Where we stopped (2026-09-22): the live run is built
 
-**Merged and green on `main`:** S1, A1, D1, R1 to R5. Production has migrations up to `0021`; `0022`
-(the run tables) is on staging only, and reaches production on the next manual production deploy.
+**Merged and green on `main`:** S1, A1, D1, R1 to R8 and F1. R1 to R5 are the calculations, the storage, the
+adapters, the map and the engine; R6 and R7 are the two screens (#234); R8 is the watch (#235); F1 is Profile,
+FAQ, from the approved `faq-copy.md`. Production has migrations up to `0021`: `0022` (the run tables) is on
+staging only and reaches production on the next manual production deploy (the user is not touching production in
+another session, so any deploy is ours to dispatch).
 
-**R6 + R7, branch `feat/run-screens`, one PR:** `app/run.tsx` with `features/run/use-run-session.ts`, the run
-sections, `app/run-done.tsx`, Train's tile link and the km line. Reviewed by agents (React, security, silent
-failures, test coverage); their findings are fixed. Known follow-ups, not blocking: the run snapshot is not cleared
-on logout (a second account on the same phone would be offered the first one's unfinished run; strength has the same
-gap); the route rebuilds every second on the live screen (cheap now, worth a memo on very long runs); and
-`run_points` in `store/run-session.ts` is unused (the snapshot carries the fixes).
-
-Next: **R8** (watch heart rate and calories through Health Connect; open the PR green, **do not merge until run on a
-physical Android phone**, rule 16), then **F1** (FAQ, **only after the user signs off `faq-copy.md`**), then close-out
-docs. When R8 lands it must set `healthDataAllowed` from the health-data consent and gate what the snapshot stores.
 Local Postgres tests need `DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd` (Node resolves
-`localhost` to IPv6).
+`localhost` to IPv6). Running the whole mobile Jest suite while other work loads the machine can time out the
+route-tree suites (signup, welcome, profile navigation); they pass alone and in CI.
 
-Owed by the user: the FAQ sign-off; a Google Cloud Maps key restricted to `com.forjd.app` + the signing SHA-1, set as
-the EAS variable `GOOGLE_MAPS_ANDROID_API_KEY`; a dev-client build; the device walk of a real run.
+### Open points (need the user or a device)
 
+1. **Health Connect is unverified on a physical Android phone** (ADR-035, CLAUDE.md rule 16). R8 merged on the
+   user's decision that automated tests, TDD, review agents and green CI are enough. Still to confirm on a phone:
+   the permission dialog appears (the rationale activity the Health Connect plugin needs), heart rate and active
+   energy arrive during and after a run, and the first-run prompt does not fight the location prompt.
+2. **A Google Cloud Maps key**, restricted to `com.forjd.app` and the app signing SHA-1, set as the EAS variable
+   `GOOGLE_MAPS_ANDROID_API_KEY`. Without it the route draws on the striped background.
+3. **A development-client build and a walk of a real run** (tracking, the map, keep-awake, pause when the phone
+   locks, finishing, the summary, the Train line).
+4. **The Play Data safety form** must say precise location is used on the device during a run, and that heart
+   rate and calories are read from Health Connect with consent.
+5. **Citations to check before public launch** (listed in `faq-copy.md`): the full Hopkins (2000) reference, the
+   DiStasio Epley/Brzycki validation, the 2026 ACSM position stand, and the edition of the ACSM Guidelines. The
+   FAQ shows them as written, without the draft's verify flags.
+6. **The FAQ has no design** (the prototype has none). It reuses the settings pieces; if you want a designed
+   version, give a screenshot.
+7. **Production Maps and deploy timing:** dispatch the production deploy when the run is ready to ship, so `0022`
+   and the run upload reach production together.
+
+### Follow-ups (known gaps, none blocking)
+
+- **Run snapshot at sign-out.** The crash-recovery snapshot (with every GPS fix, and heart rate when consent was
+  on) is not cleared on logout, so a second account on the same phone could be offered the first account's
+  unfinished run. The strength session snapshot has the same gap. Clear both in `clearSession`.
+- **Leftover snapshot of a queued run.** Recovery now drops a snapshot whose run is still in the upload queue, but
+  one whose run has already uploaded (a crash between enqueue and clear, then a successful sync) could still be
+  offered. Fix by also checking the server, or by enqueueing and clearing in one SQLite transaction.
+- **Source-blind calories.** The watch energy is summed across every source that writes to Health Connect, so a
+  phone and a watch both writing could double-count; rule 10 says to preserve source. Filter by data origin.
+- **Failures shown as silence.** `sync()` reports a revoked permission in `failedMetricTypes`; the run reads that
+  as "no watch". A one-time "Heart rate unavailable, check Health Connect" hint would be honest.
+- **Stale consent write after sign-out.** Home writes the health consent copy after `getMe`; a response that lands
+  after `clearSession` could put the old account's yes back. Check a session still exists before writing (the
+  location consent copy has the same narrow race). The server still drops health fields either way.
+- **Live-screen cost on long runs.** The route array is rebuilt every second; memoise it on the fixes.
+- **`run_points`** in `store/run-session.ts` is unused (the snapshot carries the fixes); remove it or use it.
+- **Miles.** The run screens are kilometres only; there is no miles option yet.
+- **Share card.** The summary's share tile says "coming soon"; the run share card ("Route & Splits") is unbuilt.
+- **Discard of a run whose snapshot clear fails** is silent; the screen closes and the run could come back. Tell the
+  person, or retry on the next database open.
