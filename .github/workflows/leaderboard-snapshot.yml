@@ -96,5 +96,9 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @forjd/domain --filter @forjd/contracts build
-          export DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
+          DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
+          # Read from Secret Manager at run time, so GitHub does not know to mask it; a printed
+          # error must never show the connection string.
+          echo "::add-mask::${DATABASE_URL}"
+          export DATABASE_URL
           pnpm --filter @forjd/api leaderboard:snapshot
