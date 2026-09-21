@@ -55,13 +55,21 @@ ADRs: [044](../decisions/ADR-044-is-live-tracked-means-run-through-the-live-runn
    starts with the network off (rule 6).
 2. **A pixel check of the Rank tab and the athlete profile** against their screenshots on a device.
 3. **`gh workflow run leaderboard-snapshot.yml` on a Monday**, then confirm arrows appear the following
-   week and that a re-run replaces rather than duplicates rows.
+   week and that a re-run replaces rather than duplicates rows. *Run on Monday 2026-09-21:* staging
+   succeeded with `captured 0 cities (0 rows)` (no city has five opted-in athletes yet, so there is
+   nothing to replace and no arrow to see). **Production fails, and not because its schema is behind:**
+   its database URL secret does not resolve (`getaddrinfo EAI_AGAIN base`), and `deploy-api.yml` with
+   `target=production` fails at the migration step for the same reason. Production has never been
+   provisioned (the roadmap's note under the Phase 6 session close says as much): the `forjd-prod`
+   Supabase project is paused and its secrets are missing or invalid. The Monday cron's production job
+   stays red until it is set up, by decision (the user chose to prepare production rather than skip it).
+   Steps, all the user's: [production-setup.md](production-setup.md).
 4. **The container build check** (`docker build`, then confirm the city snapshot is in the image). The
    Docker engine was unavailable while building this; the compiled-`dist` CI step covers the same risk.
-5. **The "How is this calculated?" copy** on the Rank screen needs the user's sign-off before it ships,
-   because it carries the WHO citation into the product. It is not built yet.
-6. **Home's City Rank tile** still reads an em dash; it can now read the caller's rank from the same
-   endpoint.
+5. **The "How is this calculated?" copy** became a **Profile → FAQ** page covering every calculation
+   and its citation ([faq-copy.md](faq-copy.md)). It needs the user's sign-off before it is built,
+   because it carries the WHO and other citations into the product.
+6. ~~Home's City Rank tile still reads an em dash.~~ Done: it reads the caller's rank (PR #216).
 
 ## Testing on a phone (what tripped us up)
 

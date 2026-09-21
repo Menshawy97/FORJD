@@ -160,9 +160,13 @@ source for the Play Data safety form. Keep it current.
 
 ## Leaderboard/location privacy (Phase 10)
 
-Location is a coarse position read once, when an opted-in athlete's workout starts —
-"when in use," never background tracking (ADR-048). The app asks for the permission
-exactly once, on the Location screen, and declares coarse location only. The position
+For the leaderboard, location is a coarse position read once, when an opted-in athlete's
+workout starts — "when in use," never background tracking (ADR-048). The app asks for that
+permission exactly once, on the Location screen, and the leaderboard path uses coarse
+location only. **The run screen is the one exception (ADR-049):** while a run is open, and
+only then, it uses a precise, foreground-only position on the device to measure distance,
+pace and a route. The route stays in the phone's local database and is never uploaded; only
+a summary is (ADR-050), and background location stays blocked. The leaderboard position
 is sent to our own server, which resolves it to a city from a vendored dataset
 (ADR-045) and **discards the coordinates: no latitude or longitude column exists
 anywhere**. Only the city and its slug are stored, on the `WorkoutSession`, never on
