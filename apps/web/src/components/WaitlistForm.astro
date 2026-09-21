@@ -3,14 +3,16 @@
  * The waitlist form, shown switched off until the API's POST /api/v1/waitlist exists
  * (website-plan.md, W3 and W4). Every control is disabled, so it sends nothing and stores nothing.
  */
-interface Props {
+import type { HTMLAttributes } from 'astro/types';
+
+interface Props extends HTMLAttributes<'div'> {
   id: string;
 }
 
-const { id } = Astro.props;
+const { id, ...rest } = Astro.props;
 ---
 
-<div class="waitlist-block">
+<div class="waitlist-block" {...rest}>
   <form class="waitlist" aria-describedby={`${id}-note`}>
     <input
       id={id}

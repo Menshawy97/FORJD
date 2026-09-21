@@ -16,15 +16,15 @@ import Base from '../layouts/Base.astro';
   <div class="hero">
     <div class="wrap">
       <div class="hero-copy">
-        <span class="pill"><i></i>Coming soon to iPhone and Android</span>
-        <h1 class="display">Training<span class="dot">.</span><br />Recovery<span class="dot">.</span><br />Progress<span class="dot">.</span></h1>
-        <p class="lede">
+        <span class="pill" data-hero><i></i>Coming soon to iPhone and Android</span>
+        <h1 class="display" data-hero style="--reveal-delay:150ms">Training<span class="dot">.</span><br />Recovery<span class="dot">.</span><br />Progress<span class="dot">.</span></h1>
+        <p class="lede" data-hero style="--reveal-delay:300ms">
           One place for everything your body is doing. Log your lifts and runs, bring in sleep and HRV from your
           wearable, add your InBody scans, and see how they all move together.
         </p>
-        <WaitlistForm id="email-hero" />
+        <WaitlistForm id="email-hero" data-hero style="--reveal-delay:500ms" />
       </div>
-      <div class="cluster">
+      <div class="cluster" data-hero style="--reveal-delay:650ms">
         <Phone src={live} alt="" class="p-left" loading="eager" />
         <Phone src={body} alt="" class="p-right" loading="eager" />
         <Phone
@@ -40,28 +40,28 @@ import Base from '../layouts/Base.astro';
   <div class="sec">
     <div class="wrap">
       <div class="thesis-head">
-        <span class="label accent">Why FORJD</span>
-        <h2 class="h2">Your training app, your wearable and your scale have never met.</h2>
-        <p class="lede">
+        <span class="label accent" data-reveal>Why FORJD</span>
+        <h2 class="h2" data-reveal data-stagger="1">Your training app, your wearable and your scale have never met.</h2>
+        <p class="lede" data-reveal data-stagger="2">
           Most athletes keep three apps that don't talk to each other. FORJD pulls them into one account, so a heavy
           week, a bad night's sleep and a new body scan land on the same screen.
         </p>
       </div>
 
       <div class="trio">
-        <div>
+        <div data-reveal>
           <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13.4 3.6 6.8 13h4.2l-.6 7.4L17.4 11h-4.4z" stroke="#e9712f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
           <h3>Train</h3>
           <p>Log sets, runs and HYROX sessions in one workout engine. Follow a program or build your own.</p>
           <div class="src"><span>Strength</span><span>Running</span><span>HYROX</span><span>Mobility</span></div>
         </div>
-        <div>
+        <div data-reveal data-stagger="1">
           <span class="ico g"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19.6S4.4 15 4.4 9.8A3.9 3.9 0 0 1 12 8.2a3.9 3.9 0 0 1 7.6 1.6c0 5.2-7.6 9.8-7.6 9.8z" stroke="#79b98a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
           <h3>Recover</h3>
           <p>Sleep, HRV and resting heart rate come in from the wearable you already own, and each reading keeps its source.</p>
           <div class="src"><span>Apple Health</span><span>Health Connect</span><span>WHOOP</span></div>
         </div>
-        <div>
+        <div data-reveal data-stagger="2">
           <span class="ico b"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6" stroke="#8fb4c9" stroke-width="1.6" stroke-linecap="round"></path></svg></span>
           <h3>Measure</h3>
           <p>Weight, body fat and skeletal muscle mass from every InBody scan, tracked month over month.</p>
@@ -69,7 +69,7 @@ import Base from '../layouts/Base.astro';
         </div>
       </div>
 
-      <div class="week">
+      <div class="week" data-reveal>
         <div class="week-top">
           <div>
             <span class="label">Example week</span>
@@ -82,7 +82,7 @@ import Base from '../layouts/Base.astro';
           </div>
         </div>
         <div class="chart-scroll">
-          <svg viewBox="0 0 720 250" role="img" aria-label="Example week. Training volume: Monday 8,400 kg, Wednesday 9,100 kg, Friday 7,800 kg, Sunday 10,200 kg, rest on the other days. HRV ranges from 61 to 72 milliseconds. One InBody scan on Saturday showing 16.4% body fat.">
+          <svg data-chart viewBox="0 0 720 250" role="img" aria-label="Example week. Training volume: Monday 8,400 kg, Wednesday 9,100 kg, Friday 7,800 kg, Sunday 10,200 kg, rest on the other days. HRV ranges from 61 to 72 milliseconds. One InBody scan on Saturday showing 16.4% body fat.">
             <g font-family="Archivo Variable, Archivo, system-ui, sans-serif" font-size="11" font-weight="500">
               {/* plot area x 56..664, y 20..190; volume 0..12000 kg, HRV 50..80 ms */}
               <g stroke="rgba(255,255,255,.06)">
@@ -99,10 +99,10 @@ import Base from '../layouts/Base.astro';
               </g>
               {/* columns centred at 99.4 + i * 86.9, bars 40 wide */}
               <g fill="#e9712f">
-                <rect x="79.4" y="71" width="40" height="119" rx="5"></rect>
-                <rect x="253.2" y="61.1" width="40" height="128.9" rx="5"></rect>
-                <rect x="427" y="79.5" width="40" height="110.5" rx="5"></rect>
-                <rect x="600.8" y="45.5" width="40" height="144.5" rx="5"></rect>
+                <rect x="79.4" y="71" width="40" height="119" rx="5" data-chart-bar></rect>
+                <rect x="253.2" y="61.1" width="40" height="128.9" rx="5" data-chart-bar style="--reveal-delay:100ms"></rect>
+                <rect x="427" y="79.5" width="40" height="110.5" rx="5" data-chart-bar style="--reveal-delay:200ms"></rect>
+                <rect x="600.8" y="45.5" width="40" height="144.5" rx="5" data-chart-bar style="--reveal-delay:300ms"></rect>
               </g>
               <g fill="#232427">
                 <rect x="166.3" y="182" width="40" height="8" rx="3"></rect>
@@ -110,7 +110,7 @@ import Base from '../layouts/Base.astro';
                 <rect x="513.9" y="182" width="40" height="8" rx="3"></rect>
               </g>
               {/* HRV 64 68 61 66 70 72 67 -> y = 190 - (v - 50) * 5.667 */}
-              <polyline fill="none" stroke="#79b98a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" points="99.4,110.7 186.3,88 273.2,127.7 360.1,99.3 447,76.7 533.9,65.3 620.8,93.7"></polyline>
+              <polyline data-chart-line fill="none" stroke="#79b98a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" points="99.4,110.7 186.3,88 273.2,127.7 360.1,99.3 447,76.7 533.9,65.3 620.8,93.7"></polyline>
               <g fill="#101011" stroke="#79b98a" stroke-width="2">
                 <circle cx="99.4" cy="110.7" r="3.5"></circle><circle cx="186.3" cy="88" r="3.5"></circle><circle cx="273.2" cy="127.7" r="3.5"></circle>
                 <circle cx="360.1" cy="99.3" r="3.5"></circle><circle cx="447" cy="76.7" r="3.5"></circle><circle cx="533.9" cy="65.3" r="4.5" fill="#79b98a"></circle><circle cx="620.8" cy="93.7" r="3.5"></circle>
@@ -138,70 +138,70 @@ import Base from '../layouts/Base.astro';
     <div class="wrap rows">
       <div class="row">
         <div class="row-copy">
-          <span class="label accent">Live workouts</span>
-          <h2 class="h2">Built for the gym with no signal.</h2>
-          <p class="body">
+          <span class="label accent" data-reveal>Live workouts</span>
+          <h2 class="h2" data-reveal data-stagger="1">Built for the gym with no signal.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Every set is saved on your phone first. The basement gym, the flight, the dead spot by the squat rack: your
             workout never waits on the network, and it syncs when you're back.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>Last session's weights next to every set</li>
             <li>A rest timer that carries across the whole workout</li>
             <li>Live heart rate from your watch while you train</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={live} alt="A live FORJD workout: bench press sets with previous and target weights, a rest timer and live heart rate." /></div>
+        <div class="row-shot"><Phone src={live} data-reveal data-stagger="1" alt="A live FORJD workout: bench press sets with previous and target weights, a rest timer and live heart rate." /></div>
       </div>
 
       <div class="row flip">
         <div class="row-copy">
-          <span class="label" style="color:#8bbf96">Readiness</span>
-          <h2 class="h2">Know whether today is a push day.</h2>
-          <p class="body">
+          <span class="label" style="color:#8bbf96" data-reveal>Readiness</span>
+          <h2 class="h2" data-reveal data-stagger="1">Know whether today is a push day.</h2>
+          <p class="body" data-reveal data-stagger="2">
             FORJD reads the sleep, HRV and resting heart rate your wearable already collects, then shows one readiness
             score on your home screen, with the numbers behind it one tap away.
           </p>
-          <div class="stat-line num">
+          <div class="stat-line num" data-reveal data-stagger="3">
             <div><b style="color:var(--green)">87</b><small>Readiness</small></div>
             <div><b>7h 42m</b><small>Sleep</small></div>
             <div><b>68<span style="font-size:14px;color:var(--meta)"> ms</span></b><small>HRV</small></div>
           </div>
         </div>
-        <div class="row-shot g"><Phone src={health} alt="The FORJD Health progress tab: sleep, HRV and resting heart rate trends." /></div>
+        <div class="row-shot g"><Phone src={health} data-reveal data-stagger="1" alt="The FORJD Health progress tab: sleep, HRV and resting heart rate trends." /></div>
       </div>
 
       <div class="row">
         <div class="row-copy">
-          <span class="label" style="color:var(--sleep)">Body composition</span>
-          <h2 class="h2">Every InBody scan, on one timeline.</h2>
-          <p class="body">
+          <span class="label" style="color:var(--sleep)" data-reveal>Body composition</span>
+          <h2 class="h2" data-reveal data-stagger="1">Every InBody scan, on one timeline.</h2>
+          <p class="body" data-reveal data-stagger="2">
             Add your InBody results and watch weight, body fat and skeletal muscle mass change next to your training, not
             on a printout in a drawer.
           </p>
-          <ul class="ticks">
+          <ul class="ticks" data-reveal data-stagger="3">
             <li>Weight, body fat % and skeletal muscle mass over time</li>
             <li>Change since your last scan, at a glance</li>
             <li>Segmental results stored with every scan</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={body} alt="The FORJD Body progress tab: weight 87.1 kg and body fat 16.4% with charts over five months." /></div>
+        <div class="row-shot"><Phone src={body} data-reveal data-stagger="1" alt="The FORJD Body progress tab: weight 87.1 kg and body fat 16.4% with charts over five months." /></div>
       </div>
 
       <div class="row flip">
         <div class="row-copy">
-          <span class="label accent">City leaderboards</span>
-          <h2 class="h2">See where you stand in your city.</h2>
-          <p class="body">Rank against athletes where you live, this month or all time. Tap any row to see the profile behind it.</p>
-          <div class="src"><span>Activity</span><span>Strength</span><span>Running</span><span>HYROX</span></div>
+          <span class="label accent" data-reveal>City leaderboards</span>
+          <h2 class="h2" data-reveal data-stagger="1">See where you stand in your city.</h2>
+          <p class="body" data-reveal data-stagger="2">Rank against athletes where you live, this month or all time. Tap any row to see the profile behind it.</p>
+          <div class="src" data-reveal data-stagger="3"><span>Activity</span><span>Strength</span><span>Running</span><span>HYROX</span></div>
         </div>
-        <div class="row-shot"><Phone src={rank} alt="The FORJD city leaderboard for Alexandria, showing rank 47 and the athletes around it." /></div>
+        <div class="row-shot"><Phone src={rank} data-reveal data-stagger="1" alt="The FORJD city leaderboard for Alexandria, showing rank 47 and the athletes around it." /></div>
       </div>
     </div>
   </div>
 
   <div class="sec">
     <div class="wrap">
-      <div class="promise">
+      <div class="promise" data-reveal>
         <span class="shield"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5 5 6.2v5.3c0 4.3 3 7.7 7 9 4-1.3 7-4.7 7-9V6.2z" stroke="#79b98a" stroke-width="1.6" stroke-linejoin="round"></path><path d="m9 12 2.2 2.2L15.2 10" stroke="#79b98a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
         <div>
           <span class="label">Our privacy promise</span>
@@ -218,10 +218,10 @@ import Base from '../layouts/Base.astro';
 
   <div class="sec cta" id="join">
     <div class="wrap">
-      <span class="label accent">Launching soon</span>
-      <h2 class="h2">Be first in line when FORJD opens.</h2>
-      <p class="lede">One email on launch day. No newsletter.</p>
-      <WaitlistForm id="email-cta" />
+      <span class="label accent" data-reveal>Launching soon</span>
+      <h2 class="h2" data-reveal data-stagger="1">Be first in line when FORJD opens.</h2>
+      <p class="lede" data-reveal data-stagger="2">One email on launch day. No newsletter.</p>
+      <WaitlistForm id="email-cta" data-reveal data-stagger="3" />
     </div>
   </div>
 </Base>
