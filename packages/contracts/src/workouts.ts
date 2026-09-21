@@ -1,5 +1,6 @@
 import {
   PERCEIVED_EFFORTS,
+  RUN_CALORIE_SOURCES,
   WORKOUT_BLOCK_TYPES,
   WORKOUT_SESSION_STATUSES,
   WORKOUT_SET_TYPES,
@@ -250,6 +251,45 @@ const workoutSessionExerciseInputSchema = z.object({
 });
 
 /**
+ * One full kilometre of a run. The bounds are generous, not typical (R10): no honest kilometre is
+ * refused, but a runaway value is.
+ */
+const runSplitInputSchema = z.object({
+  /** 1 for the first kilometre. */
+  index: z.number().int().min(1).max(200),
+  distanceMeters: z.number().min(0).max(200_000),
+  durationSeconds: z.number().int().min(0).max(86_400),
+  /** Only ever set when the person allowed health data (ADR-043, ADR-050). */
+  avgHeartRateBpm: z.number().int().min(30).max(250).nullable(),
+});
+
+/**
+ * The summary of a GPS run (ADR-050): what the phone measured, without the route. **The route (the
+ * GPS points) is never uploaded** (ADR-049), and no coordinate of it appears here.
+ *
+ * Heart rate and calories are health data. The server drops them, keeping the rest of the run,
+ * when the person's health-data consent is off (ADR-043), so an upload from the offline queue never
+ * fails and loses a finished run.
+ */
+export const runSummaryInputSchema = z
+  .object({
+    distanceMeters: z.number().min(0).max(200_000),
+    /** Time spent moving; paused time is not included. */
+    movingSeconds: z.number().int().min(0).max(86_400),
+    elevationGainMeters: z.number().min(0).max(10_000).nullable(),
+    avgHeartRateBpm: z.number().int().min(30).max(250).nullable(),
+    caloriesKcal: z.number().int().min(0).max(20_000).nullable(),
+    caloriesSource: z.enum(RUN_CALORIE_SOURCES).nullable(),
+    // .max(200): one split per kilometre, the same explicit cap (R10) as the other arrays.
+    splits: z.array(runSplitInputSchema).max(200),
+  })
+  .refine((run) => run.caloriesKcal === null || run.caloriesSource !== null, {
+    message: 'caloriesSource is required when caloriesKcal is given',
+    path: ['caloriesSource'],
+  });
+export type RunSummaryInput = z.infer<typeof runSummaryInputSchema>;
+
+/**
  * Body for `POST /workouts/sessions` (Phase E) -- a completed (or paused/cancelled) session,
  * uploaded once the device regains connectivity. The network is never in the critical path of
  * the live session itself (CLAUDE.md rule 6); this is the sync call that happens afterwards.
@@ -259,7 +299,7 @@ const workoutSessionExerciseInputSchema = z.object({
  * after a dropped response is a second POST with the same `id` -- the service's job (Phase E)
  * is to return the existing session for a repeated id rather than creating a second one.
  */
-export const workoutSessionUploadRequestSchema = z.object({
+const workoutSessionUploadBaseSchema = z.object({
   id: z.string().uuid(),
   templateId: z.string().uuid().nullable().optional(),
   name: z.string().trim().min(1).max(120),
@@ -295,7 +335,17 @@ export const workoutSessionUploadRequestSchema = z.object({
   // .max(100): an explicit cap (R10) -- generous for even HYROX/circuit-style sessions with
   // many distinct movements.
   exercises: z.array(workoutSessionExerciseInputSchema).max(100),
+  /**
+   * The summary of a GPS run (ADR-050). Additive and optional, so an older app build that never
+   * sends it is unaffected (rule 7). Only a running session may carry one.
+   */
+  run: runSummaryInputSchema.nullable().optional(),
 });
+
+export const workoutSessionUploadRequestSchema = workoutSessionUploadBaseSchema.refine(
+  (upload) => upload.run == null || upload.activity === 'running',
+  { message: 'run is only valid on a running session', path: ['run'] },
+);
 export type WorkoutSessionUploadRequest = z.infer<typeof workoutSessionUploadRequestSchema>;
 
 /** One performed set, as returned in a session's detail response. */

@@ -6,6 +6,7 @@ import {
   ExerciseMeasure,
   PERCEIVED_EFFORTS,
   PerceivedEffort,
+  RunCalorieSource,
   WORKOUT_SESSION_STATUSES,
   WORKOUT_SET_TYPES,
   WorkoutSession,
@@ -25,6 +26,8 @@ import {
   WorkoutSessionExerciseRow,
   WorkoutSessionRow,
   WorkoutSetRow,
+  workoutRunSplits,
+  workoutRunSummaries,
   workoutSessionExercises,
   workoutSessions,
   workoutSets,
@@ -56,6 +59,28 @@ export interface CreateWorkoutSessionExerciseInput {
   sets: CreateWorkoutSetInput[];
 }
 
+/** One full kilometre of a run (ADR-050). */
+export interface CreateRunSplitInput {
+  index: number;
+  distanceMeters: number;
+  durationSeconds: number;
+  avgHeartRateBpm: number | null;
+}
+
+/**
+ * A GPS run's summary (ADR-050). The service has already dropped heart rate and calories when the
+ * person's health-data consent was off, so this stores exactly what it is given.
+ */
+export interface CreateRunSummaryInput {
+  distanceMeters: number;
+  movingSeconds: number;
+  elevationGainMeters: number | null;
+  avgHeartRateBpm: number | null;
+  caloriesKcal: number | null;
+  caloriesSource: RunCalorieSource | null;
+  splits: CreateRunSplitInput[];
+}
+
 export interface CreateWorkoutSessionInput {
   /** Client-generated at session start; also the sync idempotency key. */
   id: string;
@@ -73,6 +98,8 @@ export interface CreateWorkoutSessionInput {
   citySlug: string | null;
   isLiveTracked: boolean;
   exercises: CreateWorkoutSessionExerciseInput[];
+  /** Only a running session has one. Written in the same transaction, on the first write only. */
+  run?: CreateRunSummaryInput | null;
 }
 
 /** The last row of the previous page -- ordered by `startedAt` descending, not `name`. */
@@ -215,6 +242,9 @@ export class WorkoutSessionsRepository {
       }
 
       const exercises = await this.insertSessionExerciseTree(tx, insertedSession.id, input.exercises);
+      if (input.run) {
+        await this.insertRunSummary(tx, insertedSession.id, input.run);
+      }
       return { ...this.toSession(insertedSession), exercises };
     });
   }
@@ -579,6 +609,35 @@ export class WorkoutSessionsRepository {
       ...this.toSessionExercise(row),
       sets: setsByExerciseId.get(row.id) ?? [],
     }));
+  }
+
+  /** The run summary and its splits, inside the session's own transaction so a run is never half stored. */
+  private async insertRunSummary(
+    tx: Database,
+    sessionId: string,
+    run: CreateRunSummaryInput,
+  ): Promise<void> {
+    await tx.insert(workoutRunSummaries).values({
+      sessionId,
+      distanceMeters: run.distanceMeters.toString(),
+      movingSeconds: run.movingSeconds,
+      elevationGainMeters: run.elevationGainMeters?.toString() ?? null,
+      avgHeartRateBpm: run.avgHeartRateBpm,
+      caloriesKcal: run.caloriesKcal,
+      caloriesSource: run.caloriesSource,
+    });
+
+    if (run.splits.length > 0) {
+      await tx.insert(workoutRunSplits).values(
+        run.splits.map((split) => ({
+          sessionId,
+          splitIndex: split.index,
+          distanceMeters: split.distanceMeters.toString(),
+          durationSeconds: split.durationSeconds,
+          avgHeartRateBpm: split.avgHeartRateBpm,
+        })),
+      );
+    }
   }
 
   /** Batch-inserts a fresh session exercise/set tree -- shared by `upsertSession`'s first-write path. */

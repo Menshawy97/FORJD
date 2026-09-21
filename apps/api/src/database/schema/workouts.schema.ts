@@ -328,6 +328,54 @@ export type WorkoutSetRow = typeof workoutSets.$inferSelect;
 export type NewWorkoutSetRow = typeof workoutSets.$inferInsert;
 
 /* ------------------------------------------------------------------------------------------
+ * Run summaries (ADR-050): what the phone measured on a GPS run, without the route.
+ *
+ * A run is an ordinary `workout_sessions` row (activity `running`) with one distance set, so the
+ * leaderboard and volume queries already count it. These two tables hold the extra detail. **The
+ * route is never stored** (ADR-049): no latitude or longitude column exists here or anywhere.
+ * Heart rate and calories are health data (ADR-043) and are null when the person's health-data
+ * consent was off at upload.
+ * ---------------------------------------------------------------------------------------- */
+
+/** One row per run session, deleted with it. `session_id` is the key, so a retry cannot add a second. */
+export const workoutRunSummaries = pgTable("workout_run_summaries", {
+  sessionId: uuid("session_id")
+    .primaryKey()
+    .references(() => workoutSessions.id, { onDelete: "cascade" }),
+  /** Always metres. */
+  distanceMeters: numeric("distance_meters", { precision: 10, scale: 2 }).notNull(),
+  /** Time spent moving; paused time is not included. */
+  movingSeconds: integer("moving_seconds").notNull(),
+  /** Climbing only, in metres; null when the phone reported no altitude. */
+  elevationGainMeters: numeric("elevation_gain_meters", { precision: 7, scale: 1 }),
+  avgHeartRateBpm: integer("avg_heart_rate_bpm"),
+  caloriesKcal: integer("calories_kcal"),
+  /** One of RUN_CALORIE_SOURCES in @forjd/domain; set whenever `calories_kcal` is. */
+  caloriesSource: text("calories_source"),
+});
+
+export type WorkoutRunSummaryRow = typeof workoutRunSummaries.$inferSelect;
+
+/** One full kilometre of a run. */
+export const workoutRunSplits = pgTable(
+  "workout_run_splits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => workoutSessions.id, { onDelete: "cascade" }),
+    /** 1 for the first kilometre. */
+    splitIndex: integer("split_index").notNull(),
+    distanceMeters: numeric("distance_meters", { precision: 10, scale: 2 }).notNull(),
+    durationSeconds: integer("duration_seconds").notNull(),
+    avgHeartRateBpm: integer("avg_heart_rate_bpm"),
+  },
+  (table) => [uniqueIndex("workout_run_splits_session_index_key").on(table.sessionId, table.splitIndex)],
+);
+
+export type WorkoutRunSplitRow = typeof workoutRunSplits.$inferSelect;
+
+/* ------------------------------------------------------------------------------------------
  * Program half (Phase 3K): a named, multi-week plan the athlete follows.
  *
  * `docs/product/phase-3k-plan.md` explains why this is `programs -> program_workouts` and not

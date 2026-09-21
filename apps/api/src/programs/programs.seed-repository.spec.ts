@@ -17,7 +17,7 @@ import {
 import { ExercisesRepository } from "../exercises/exercises.repository";
 import { SNAPSHOT_PATH, parseSnapshot } from "../exercises/ingest/load";
 import { ProgramsSeedRepository, UnresolvedExerciseError } from "./programs.seed-repository";
-import { CURATED_EXERCISES } from "./seed/curated-exercises";
+import { CURATED_EXERCISES, OUTDOOR_RUN_EXERCISE } from "./seed/curated-exercises";
 import { EXERCISE_SLUG_BY_NAME, SEED_PROGRAMS, SeedProgram } from "./seed/program-catalogue";
 import { seedPrograms } from "./seed/seed";
 
@@ -209,6 +209,21 @@ describe("ProgramsSeedRepository", () => {
       expect(rows.find((row) => row.slug === "5k-run")?.measure).toBe("distance");
       // The correction this phase exists for: the fan bike, not free-exercise-db's bicycle crunch.
       expect(rows.find((row) => row.slug === "assault-bike")?.category).toBe("cross_training");
+    });
+
+    it("adds the Outdoor Run exercise the run screen logs against, apart from the programs' four", async () => {
+      const [row] = await db.select().from(exercises).where(inArray(exercises.slug, [OUTDOOR_RUN_EXERCISE.slug]));
+
+      expect(row).toMatchObject({
+        slug: "outdoor-run",
+        name: "Outdoor Run",
+        category: "running",
+        measure: "distance",
+        source: "forjd-curated",
+        ownerUserId: null,
+      });
+      // Not one of the four: no program uses it, so the programs' exactness checks stay strict.
+      expect(CURATED_EXERCISES.map((exercise) => exercise.slug)).not.toContain("outdoor-run");
     });
 
     it("gives each program a catalogue template per workout, in the design's order", async () => {

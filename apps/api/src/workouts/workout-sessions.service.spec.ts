@@ -181,6 +181,105 @@ describe("WorkoutSessionsService", () => {
       expect(repository.upsertCalls[0]?.exercises[0]?.measure).toBe("weight");
     });
 
+    describe("a run summary (ADR-050)", () => {
+      const run: NonNullable<WorkoutSessionUploadRequest["run"]> = {
+        distanceMeters: 5012.4,
+        movingSeconds: 1500,
+        elevationGainMeters: 24.5,
+        avgHeartRateBpm: 152,
+        caloriesKcal: 298,
+        caloriesSource: "watch",
+        splits: [
+          { index: 1, distanceMeters: 1000, durationSeconds: 304, avgHeartRateBpm: 148 },
+          { index: 2, distanceMeters: 1000, durationSeconds: 311, avgHeartRateBpm: null },
+        ],
+      };
+      const runBody: WorkoutSessionUploadRequest = { ...validBody, activity: "running", isLiveTracked: true, run };
+
+      it("passes the whole summary on when the person allowed health data", async () => {
+        const repository = makeWorkoutsRepository();
+        const privacy = makePrivacyService({ healthDataConsent: true });
+
+        await makeService(repository, makeExercisesRepository(), privacy).upload(owner, runBody);
+
+        expect(repository.upsertCalls[0]?.run).toEqual(run);
+        expect(privacy.calls).toEqual([ownerId]);
+      });
+
+      it("keeps distance, time, elevation and split times but drops heart rate and calories without consent", async () => {
+        const repository = makeWorkoutsRepository();
+        const privacy = makePrivacyService({ healthDataConsent: false });
+
+        await makeService(repository, makeExercisesRepository(), privacy).upload(owner, runBody);
+
+        expect(repository.upsertCalls[0]?.run).toEqual({
+          distanceMeters: 5012.4,
+          movingSeconds: 1500,
+          elevationGainMeters: 24.5,
+          avgHeartRateBpm: null,
+          caloriesKcal: null,
+          caloriesSource: null,
+          splits: [
+            { index: 1, distanceMeters: 1000, durationSeconds: 304, avgHeartRateBpm: null },
+            { index: 2, distanceMeters: 1000, durationSeconds: 311, avgHeartRateBpm: null },
+          ],
+        });
+      });
+
+      it("treats estimated calories the same way, so the server keeps no health figure without consent", async () => {
+        const repository = makeWorkoutsRepository();
+        const estimated = { ...run, caloriesSource: "estimate" as const, avgHeartRateBpm: null, splits: [] };
+
+        await makeService(repository).upload(owner, { ...runBody, run: estimated });
+
+        expect(repository.upsertCalls[0]?.run?.caloriesKcal).toBeNull();
+        expect(repository.upsertCalls[0]?.run?.caloriesSource).toBeNull();
+      });
+
+      it("fails closed when consent cannot be read, and still stores the run", async () => {
+        const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+        const repository = makeWorkoutsRepository();
+        const privacy = { get: () => Promise.reject(new Error("db down")) } as unknown as PrivacyService;
+
+        await makeService(repository, makeExercisesRepository(), privacy).upload(owner, runBody);
+
+        expect(repository.upsertCalls[0]?.run?.avgHeartRateBpm).toBeNull();
+        expect(repository.upsertCalls[0]?.run?.caloriesKcal).toBeNull();
+        expect(repository.upsertCalls[0]?.run?.distanceMeters).toBe(5012.4);
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
+      });
+
+      it("does not read consent for a run with no health figures in it", async () => {
+        const repository = makeWorkoutsRepository();
+        const privacy = makePrivacyService();
+        const bare = {
+          distanceMeters: 3000,
+          movingSeconds: 1000,
+          elevationGainMeters: null,
+          avgHeartRateBpm: null,
+          caloriesKcal: null,
+          caloriesSource: null,
+          splits: [{ index: 1, distanceMeters: 1000, durationSeconds: 300, avgHeartRateBpm: null }],
+        };
+
+        await makeService(repository, makeExercisesRepository(), privacy).upload(owner, { ...runBody, run: bare });
+
+        expect(repository.upsertCalls[0]?.run).toEqual(bare);
+        expect(privacy.calls).toEqual([]);
+      });
+
+      it("sends no summary for a session that had none", async () => {
+        const repository = makeWorkoutsRepository();
+        const privacy = makePrivacyService();
+
+        await makeService(repository, makeExercisesRepository(), privacy).upload(owner, validBody);
+
+        expect(repository.upsertCalls[0]?.run ?? null).toBeNull();
+        expect(privacy.calls).toEqual([]);
+      });
+    });
+
     it("rejects with a 400 when a referenced exercise is not visible", async () => {
       const repository = makeWorkoutsRepository();
       const exercisesRepository = makeExercisesRepository(new Map());
