@@ -53,7 +53,7 @@ function fakeObserver() {
 
 /**
  * A stand-in for an Element. The tests deliberately need no DOM: apps/web runs Vitest in
- * its default node environment (pricing.test.ts is pure), and the controller only passes
+ * its default node environment, and the controller only passes
  * targets through to the observer, so an opaque object exercises it honestly without
  * pulling jsdom into the dependency tree.
  */
