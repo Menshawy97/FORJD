@@ -5,7 +5,7 @@
  * testing — whether to animate at all, and how far apart staggered children start —
  * plus a thin wrapper over IntersectionObserver that guarantees an element is revealed
  * exactly once. It is deliberately free of `document` and `window` lookups so it can be
- * unit-tested in Vitest's node environment, the same way src/lib/pricing.ts is.
+ * unit-tested in Vitest's node environment, the same way any other pure module in src/lib/ is.
  *
  * The numbers come from measuring sayapp.net rather than guessing: a 0.7s transition on
  * cubic-bezier(.16, 1, .3, 1), children stepped 0.12s apart. See the W6 section of

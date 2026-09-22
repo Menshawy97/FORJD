@@ -1,9 +1,19 @@
 ---
-/**
- * The waitlist form, shown switched off until the API's POST /api/v1/waitlist exists
- * (website-plan.md, W3 and W4). Every control is disabled, so it sends nothing and stores nothing.
- */
 import type { HTMLAttributes } from 'astro/types';
+
+/**
+ * The waitlist form (ADR-051, W4). Posts to `POST /api/v1/waitlist` behind a Cloudflare
+ * Turnstile check, and shows the identical confirmation for a new address and a repeat --
+ * the API is deliberately built so it cannot tell the two apart to a caller (W3b).
+ *
+ * `PUBLIC_API_URL` and `PUBLIC_TURNSTILE_SITE_KEY` are Astro `PUBLIC_*` env vars (inlined at
+ * build time, so per Cloudflare Pages *deployment*, not runtime-configurable): unset locally,
+ * they fall back to the staging API and Cloudflare's own published "always passes, visibly
+ * marked as a test" site key, so `pnpm dev` works end to end with no setup. The Pages preview
+ * environment points PUBLIC_API_URL at staging and production at production (W4 step 2).
+ */
+const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://forjd-api-staging-772363715082.us-central1.run.app';
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
 interface Props extends HTMLAttributes<'div'> {
   id: string;
@@ -12,7 +22,7 @@ interface Props extends HTMLAttributes<'div'> {
 const { id, ...rest } = Astro.props;
 ---
 
-<div class="waitlist-block" {...rest}>
+<div class="waitlist-block" data-waitlist-form data-api-url={apiUrl} data-sitekey={turnstileSiteKey} {...rest}>
   <form class="waitlist" aria-describedby={`${id}-note`}>
     <input
       id={id}
@@ -21,9 +31,150 @@ const { id, ...rest } = Astro.props;
       placeholder="you@example.com"
       autocomplete="email"
       aria-label="Email address"
-      disabled
+      required
     />
-    <button class="btn" type="submit" disabled>Sign-ups open soon</button>
+    <button class="btn" type="submit">Join the waitlist</button>
   </form>
-  <p class="form-note" id={`${id}-note`}>The waitlist opens shortly. Check back here before launch.</p>
+  <div class="cf-turnstile" data-turnstile-container></div>
+  <p class="form-note" id={`${id}-note`} role="status" aria-live="polite" data-waitlist-note>
+    One email on launch day. No newsletter.
+  </p>
 </div>
+
+<script>
+  import { isLikelyEmail, messageForStatus, normalizeEmail } from '../lib/waitlist-form';
+
+  declare global {
+    interface Window {
+      turnstile?: {
+        render: (
+          container: string | HTMLElement,
+          options: {
+            sitekey: string;
+            appearance?: string;
+            callback?: (token: string) => void;
+            'error-callback'?: () => void;
+          },
+        ) => string;
+        reset: (widgetId?: string) => void;
+        remove: (widgetId?: string) => void;
+      };
+      onTurnstileLoad?: () => void;
+    }
+  }
+
+  const TURNSTILE_SCRIPT_ID = 'forjd-turnstile-script';
+
+  function loadTurnstileScript(): Promise<void> {
+    if (window.turnstile) return Promise.resolve();
+    return new Promise((resolve) => {
+      const existing = document.getElementById(TURNSTILE_SCRIPT_ID) as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener('load', () => resolve(), { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = TURNSTILE_SCRIPT_ID;
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      script.async = true;
+      script.defer = true;
+      script.addEventListener('load', () => resolve(), { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
+  function setNote(block: HTMLElement, message: string, tone: 'default' | 'error' | 'success'): void {
+    const note = block.querySelector<HTMLElement>('[data-waitlist-note]');
+    if (!note) return;
+    note.textContent = message;
+    note.style.color = tone === 'error' ? 'var(--error)' : tone === 'success' ? 'var(--green)' : '';
+  }
+
+  function setBusy(form: HTMLFormElement, busy: boolean): void {
+    const button = form.querySelector('button');
+    const input = form.querySelector('input');
+    if (button) button.disabled = busy;
+    if (input) input.disabled = busy;
+    if (button) button.textContent = busy ? 'Joining…' : 'Join the waitlist';
+  }
+
+  async function wireForm(block: HTMLElement): Promise<void> {
+    const form = block.querySelector('form');
+    const input = block.querySelector<HTMLInputElement>('input[type="email"]');
+    const container = block.querySelector<HTMLElement>('[data-turnstile-container]');
+    if (!form || !input || !container) return;
+    // Guards against Vite HMR re-running this script against a container Turnstile already
+    // rendered into during dev -- a real page load only ever reaches this once.
+    if (container.dataset.rendered === 'true') return;
+    container.dataset.rendered = 'true';
+
+    const apiUrl = block.dataset.apiUrl ?? '';
+    const sitekey = block.dataset.sitekey ?? '';
+
+    await loadTurnstileScript();
+    if (!window.turnstile) return; // script failed to load; form still works, submit will just fail closed server-side
+
+    let currentToken = '';
+    const widgetId = window.turnstile.render(container, {
+      sitekey,
+      // Truly invisible unless Cloudflare decides an interactive challenge is needed --
+      // "invisible" is not a real Turnstile `size` value (it errors); this is the documented
+      // way to get the same effect.
+      appearance: 'interaction-only',
+      callback: (token) => {
+        currentToken = token;
+      },
+      'error-callback': () => {
+        currentToken = '';
+      },
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const email = normalizeEmail(input.value);
+      if (!isLikelyEmail(email)) {
+        setNote(block, "That doesn't look like an email address.", 'error');
+        input.focus();
+        return;
+      }
+
+      setBusy(form, true);
+      setNote(block, 'Checking…', 'default');
+
+      try {
+        if (!currentToken) {
+          window.turnstile?.reset(widgetId);
+          setNote(block, "Couldn't verify you're not a robot. Try again.", 'error');
+          return;
+        }
+
+        const response = await fetch(`${apiUrl}/api/v1/waitlist`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, turnstileToken: currentToken }),
+        });
+
+        const outcome = messageForStatus(response.status);
+        setNote(block, outcome.message, outcome.kind === 'accepted' ? 'success' : 'error');
+        if (outcome.kind === 'accepted') {
+          form.reset();
+        }
+      } catch {
+        setNote(block, messageForStatus(0).message, 'error');
+      } finally {
+        setBusy(form, false);
+        currentToken = '';
+        window.turnstile?.reset(widgetId);
+      }
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-waitlist-form]').forEach((block) => {
+    void wireForm(block);
+  });
+</script>
+
+<style>
+  .cf-turnstile { margin-top: 4px; }
+</style>

@@ -5,6 +5,7 @@ import home from '../assets/screens/home.png';
 import nutrition from '../assets/screens/nutrition.png';
 import live from '../assets/screens/live.png';
 import rank from '../assets/screens/rank.png';
+import sources from '../assets/screens/sources.png';
 import Phone from '../components/Phone.astro';
 import WaitlistForm from '../components/WaitlistForm.astro';
 import Base from '../layouts/Base.astro';
@@ -12,7 +13,7 @@ import Base from '../layouts/Base.astro';
 
 <Base
   title="FORJD: Training, Recovery, Progress"
-  description="Log your lifts and runs, bring in sleep and HRV from your wearable, add your InBody scans, and see how they all move together. Coming soon to iPhone and Android."
+  description="Your training, recovery, nutrition and body composition -- finally connected, and explained. Coming soon to iPhone and Android."
 >
   <div class="hero">
     <div class="wrap">
@@ -20,8 +21,8 @@ import Base from '../layouts/Base.astro';
         <span class="pill" data-hero><i></i>Coming soon to iPhone and Android</span>
         <h1 class="display" data-hero style="--reveal-delay:150ms">Training<span class="dot">.</span><br />Recovery<span class="dot">.</span><br />Progress<span class="dot">.</span></h1>
         <p class="lede" data-hero style="--reveal-delay:300ms">
-          One place for everything your body is doing. Log your lifts and runs, bring in sleep and HRV from your
-          wearable, add your InBody scans, and see how they all move together.
+          Your training, recovery, nutrition and body composition -- finally connected. One app brings in
+          your lifts, runs, sleep, meals and InBody scans, and shows you how they move together.
         </p>
         <WaitlistForm id="email-hero" data-hero style="--reveal-delay:500ms" />
       </div>
@@ -41,33 +42,40 @@ import Base from '../layouts/Base.astro';
   <div class="sec">
     <div class="wrap">
       <div class="thesis-head">
-        <span class="label accent" data-reveal>Why FORJD</span>
-        <h2 class="h2" data-reveal data-stagger="1">Your training app, your wearable and your scale have never met.</h2>
+        <span class="label" style="color:var(--sleep)" data-reveal>The problem</span>
+        <h2 class="h2" data-reveal data-stagger="1">Training, recovery and body data live in separate apps. None of them talk.</h2>
         <p class="lede" data-reveal data-stagger="2">
-          Most athletes keep three apps that don't talk to each other. FORJD pulls them into one account, so a heavy
-          week, a bad night's sleep and a new body scan land on the same screen.
+          A lift goes into one app. Sleep and HRV land in another. Body composition sits in a PDF from your
+          last scan. Nothing connects them, so the relationship between a hard training week and a bad
+          night's sleep is something you have to notice yourself -- if you notice it at all.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="wrap">
+      <div class="thesis-head">
+        <span class="label accent" data-reveal>How FORJD works</span>
+        <h2 class="h2" data-reveal data-stagger="1">FORJD connects everything, and shows you how it relates.</h2>
+        <p class="lede" data-reveal data-stagger="2">
+          One account. Every signal lands on the same timeline, so a heavy week, a bad night and a new scan
+          are never separate stories.
         </p>
       </div>
 
-      <div class="trio">
-        <div data-reveal>
-          <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13.4 3.6 6.8 13h4.2l-.6 7.4L17.4 11h-4.4z" stroke="#e9712f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
-          <h3>Train</h3>
-          <p>Log sets, runs and HYROX sessions in one workout engine. Follow a program or build your own.</p>
-          <div class="src"><span>Strength</span><span>Running</span><span>HYROX</span><span>Mobility</span></div>
-        </div>
-        <div data-reveal data-stagger="1">
-          <span class="ico g"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19.6S4.4 15 4.4 9.8A3.9 3.9 0 0 1 12 8.2a3.9 3.9 0 0 1 7.6 1.6c0 5.2-7.6 9.8-7.6 9.8z" stroke="#79b98a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
-          <h3>Recover</h3>
-          <p>Sleep, HRV and resting heart rate come in from the wearable you already own, and each reading keeps its source.</p>
-          <div class="src"><span>Apple Health</span><span>Health Connect</span><span>WHOOP</span></div>
-        </div>
-        <div data-reveal data-stagger="2">
-          <span class="ico b"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6" stroke="#8fb4c9" stroke-width="1.6" stroke-linecap="round"></path></svg></span>
-          <h3>Measure</h3>
-          <p>Weight, body fat and skeletal muscle mass from every InBody scan, tracked month over month.</p>
-          <div class="src"><span>InBody</span><span>Body composition</span></div>
-        </div>
+      <div class="flow" data-reveal data-stagger="1">
+        <div class="flow-step"><i class="dot" style="background:var(--accent)"></i><span>Train</span></div>
+        <svg class="flow-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div class="flow-step"><i class="dot" style="background:var(--green)"></i><span>Recover</span></div>
+        <svg class="flow-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div class="flow-step"><i class="dot" style="background:var(--feature)"></i><span>Fuel</span></div>
+        <svg class="flow-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div class="flow-step"><i class="dot" style="background:var(--sleep)"></i><span>Measure</span></div>
+        <svg class="flow-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div class="flow-step"><i class="dot" style="background:var(--gold)"></i><span>Understand</span></div>
+        <svg class="flow-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div class="flow-step"><i class="dot" style="background:var(--text)"></i><span>Progress</span></div>
       </div>
 
       <div class="week" data-reveal>
@@ -139,7 +147,7 @@ import Base from '../layouts/Base.astro';
     <div class="wrap rows">
       <div class="row">
         <div class="row-copy">
-          <span class="label accent" data-reveal>Live workouts</span>
+          <span class="label accent" data-reveal>Train</span>
           <h2 class="h2" data-reveal data-stagger="1">Built for the gym with no signal.</h2>
           <p class="body" data-reveal data-stagger="2">
             Every set is saved on your phone first. The basement gym, the flight, the dead spot by the squat rack: your
@@ -156,7 +164,7 @@ import Base from '../layouts/Base.astro';
 
       <div class="row flip">
         <div class="row-copy">
-          <span class="label" style="color:#8bbf96" data-reveal>Readiness</span>
+          <span class="label" style="color:#8bbf96" data-reveal>Recover</span>
           <h2 class="h2" data-reveal data-stagger="1">Know whether today is a push day.</h2>
           <p class="body" data-reveal data-stagger="2">
             FORJD reads the sleep, HRV and resting heart rate your wearable already collects, then shows one readiness
@@ -173,7 +181,7 @@ import Base from '../layouts/Base.astro';
 
       <div class="row">
         <div class="row-copy">
-          <span class="label accent" data-reveal>Nutrition</span>
+          <span class="label" style="color:var(--feature)" data-reveal>Nutrition</span>
           <h2 class="h2" data-reveal data-stagger="1">Calories and macros without a second app.</h2>
           <p class="body" data-reveal data-stagger="2">
             Log meals by breakfast, lunch, snack and dinner, set your own targets, and save the meals you eat every week
@@ -184,13 +192,18 @@ import Base from '../layouts/Base.astro';
             <li>Saved meals for the things you eat often</li>
             <li>Search foods or add your own</li>
           </ul>
+          <div class="stat-line num" data-reveal data-stagger="4">
+            <div><b style="color:var(--feature)">488</b><small>kcal logged</small></div>
+            <div><b>2,400</b><small>kcal goal</small></div>
+            <div><b>4</b><small>meal slots</small></div>
+          </div>
         </div>
         <div class="row-shot"><Phone src={nutrition} data-reveal data-stagger="1" alt="The FORJD nutrition screen: 488 of 2,400 kcal with protein, carbs and fat progress bars." /></div>
       </div>
 
       <div class="row flip">
         <div class="row-copy">
-          <span class="label" style="color:var(--sleep)" data-reveal>Body composition</span>
+          <span class="label" style="color:var(--sleep)" data-reveal>Measure</span>
           <h2 class="h2" data-reveal data-stagger="1">Every InBody scan, on one timeline.</h2>
           <p class="body" data-reveal data-stagger="2">
             Add your InBody results and watch weight, body fat and skeletal muscle mass change next to your training, not
@@ -207,7 +220,46 @@ import Base from '../layouts/Base.astro';
 
       <div class="row">
         <div class="row-copy">
-          <span class="label accent" data-reveal>City leaderboards</span>
+          <span class="label" style="color:var(--gold)" data-reveal>Understand</span>
+          <h2 class="h2" data-reveal data-stagger="1">The story behind the numbers, not just the numbers.</h2>
+          <p class="body" data-reveal data-stagger="2">
+            FORJD Insight turns your own training history into one plain sentence -- built from your numbers, never a
+            template. Every note is backed by the same training-science literature the app cites, and it never tells you
+            to push through pain or ignore fatigue.
+          </p>
+          <ul class="ticks" data-reveal data-stagger="3">
+            <li>Built from your own volume, frequency and lift trends</li>
+            <li>One instruction at most, never a diagnosis</li>
+            <li>Rules-based on published research, not a model guessing</li>
+          </ul>
+        </div>
+        <div class="row-shot">
+          <div class="insight-card" data-reveal data-stagger="1">
+            <span class="insight-tag">FORJD Insight</span>
+            <p>Training volume is up 12% this week, in line with your usual frequency. Your squat has run past target
+              reps for two sessions -- try adding 2-5% next time.</p>
+            <span class="insight-note">Illustrative example, from real numbers.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row flip">
+        <div class="row-copy">
+          <span class="label accent" data-reveal>Your devices</span>
+          <h2 class="h2" data-reveal data-stagger="1">Keep your devices. Keep your data. FORJD brings it together.</h2>
+          <p class="body" data-reveal data-stagger="2">
+            Connect Apple Health, Health Connect or WHOOP -- whichever you already use. If two devices record the same
+            reading, FORJD keeps both and shows you which one it trusts, and never quietly overwrites one with the
+            other. Add body composition by photographing your InBody result sheet.
+          </p>
+          <div class="src" data-reveal data-stagger="3"><span>Apple Health</span><span>Health Connect</span><span>WHOOP</span><span>InBody</span></div>
+        </div>
+        <div class="row-shot g"><Phone src={sources} data-reveal data-stagger="1" alt="The FORJD connected sources screen listing Apple Health, Health Connect and WHOOP." /></div>
+      </div>
+
+      <div class="row">
+        <div class="row-copy">
+          <span class="label accent" data-reveal>Compete</span>
           <h2 class="h2" data-reveal data-stagger="1">See where you stand in your city.</h2>
           <p class="body" data-reveal data-stagger="2">Rank against athletes where you live, this month or all time. Tap any row to see the profile behind it.</p>
           <div class="src" data-reveal data-stagger="3"><span>Activity</span><span>Strength</span><span>Running</span><span>HYROX</span></div>
@@ -243,3 +295,23 @@ import Base from '../layouts/Base.astro';
     </div>
   </div>
 </Base>
+
+<style>
+  .flow { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 10px 6px; margin-top: 40px; }
+  .flow-step { display: flex; align-items: center; gap: 8px; background: var(--chip); border: 1px solid var(--line-faint); border-radius: 999px; padding: 10px 16px 10px 12px; }
+  .flow-step .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .flow-step span { font-weight: 700; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); }
+  .flow-arrow { color: var(--legal); flex: none; }
+  @media (max-width: 640px) {
+    .flow-arrow { display: none; }
+    .flow { gap: 8px; }
+  }
+
+  .insight-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px 26px; max-width: 380px; }
+  .insight-tag {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--gold); background: rgba(201, 160, 60, .12); border-radius: 999px; padding: 5px 11px;
+  }
+  .insight-card p { margin-top: 16px; font-size: 16px; line-height: 1.5; color: var(--text-2); }
+  .insight-note { display: block; margin-top: 16px; font-size: 12px; color: var(--legal); }
+</style>
