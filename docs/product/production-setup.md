@@ -1,9 +1,44 @@
 # Setting up production
 
-Status: **provisioned and deployed** (2026-09-21): the deploy succeeded, `/api/v1/health` answers, and the snapshot job ran twice. The steps below are kept as the record of how it was done. Production is the second of the two free Supabase
-projects (the free tier allows two; `forjd-dev` serves staging). Everything below is the user's to do:
-each step creates or restores infrastructure or handles a credential, which the assistant is not
-permitted to do here (the roadmap's Phase 6 close says the same about Secret Manager writes).
+Status: **provisioned, migrated and deployed** (2026-09-22): production is on migration `0022` (the run
+tables), `/api/v1/health` answers `database: up`, and the exercise/nutrition catalogues and programs are
+seeded. The steps below are kept as the record of how it was done. Production is the second of the two
+free Supabase projects (the free tier allows two; `forjd-dev` serves staging). Everything below is the
+user's to do: each step creates or restores infrastructure or handles a credential, which the assistant is
+not permitted to do here (the roadmap's Phase 6 close says the same about Secret Manager writes).
+
+## Migration log
+
+- **2026-09-21:** first deploy, migrations up to `0021`.
+- **2026-09-22:** dispatched `deploy-api.yml -f target=production` (run
+  [35700835056](https://github.com/Menshawy97/FORJD/actions/runs/35700835056)) to bring the live-run tables
+  (`0022`, `workout_run_summaries` / `workout_run_splits`) onto production, so R1–R8's server side matches
+  what mobile already ships. `db:migrate` reported "migrations applied successfully", the catalogue/nutrition
+  loaders and program seed ran, and `/api/v1/health` confirmed `database: up` immediately after. Future
+  sessions: production tracks whatever migration `main` is on; check `apps/api/drizzle/meta/_journal.json`'s
+  latest entry against the deploy's `db:migrate` output before assuming it's current.
+
+## Known gap: exercise-media mirroring fails on production
+
+The same run's **"Mirror exercise media"** step failed (job still reports success — that step's failure is
+not fatal to the deploy):
+
+```
+InternalServerErrorException: Bucket setup failed: new row violates row-level security policy
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @forjd/api@0.0.0 exercises:mirror-media
+```
+
+`SupabaseStorageProvider.ensureBucket` (`apps/api/src/storage/providers/supabase-storage.provider.ts`)
+calls `client.storage.createBucket('exercise-media', ...)` with the service-role key from
+`forjd-production-supabase-service-role-key`. A service-role key should bypass Storage RLS entirely, so this
+points at one of: the secret actually holds the `anon` key rather than `service_role` (check Project
+Settings → API on `forjd-prod`, ref `lzhwyvrtkmgtjruvjins`), or a custom RLS policy on `storage.buckets` in
+the production project that staging's `forjd-dev` doesn't have. Compare the two projects' Storage policies,
+or just re-check which key was pasted into the secret in step 3 below.
+
+**Not blocking today**: exercise data and workouts function without mirrored media; only the exercise
+images/animations are missing on production until this is fixed. Loader idempotency means a re-run of this
+step later will fill in only what's still missing, once the RLS or key issue is resolved.
 
 ## What is wrong today
 
