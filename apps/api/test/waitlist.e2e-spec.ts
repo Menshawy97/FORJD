@@ -15,9 +15,12 @@ const email = `e2e-waitlist-${suiteId}@example.com`;
 
 /**
  * `POST /api/v1/waitlist` over real HTTP with the real throttler (ADR-051, W3b, plan step 7).
- * The five requests below spend exactly the endpoint's 5-per-10-minutes budget, in the order
- * the plan itself lists them, so the fifth is the one the throttler turns away -- the same
- * budget-spending shape `auth-resend-confirmation.e2e-spec.ts` uses.
+ *
+ * The limit is 5 calls per 10 minutes, and it counts every call, including ones a body check
+ * later refuses (guards run before pipes) -- the same shape `auth-resend-confirmation.e2e-spec.ts`
+ * uses. Four of the plan's five scenarios (accepted, duplicate, bad email, bad token) spend
+ * calls 1-4 of that budget; the fifth test sends the 5th call (still inside the budget, so it
+ * must still succeed) immediately followed by a 6th, which is the one the throttler turns away.
  */
 describe('Waitlist sign-up (e2e)', () => {
   let app: INestApplication;
@@ -100,7 +103,12 @@ describe('Waitlist sign-up (e2e)', () => {
     expect(rows).toHaveLength(0);
   });
 
-  it('turns away a fifth call inside ten minutes', async () => {
+  it('lets the fifth call through, then turns away the sixth', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/waitlist')
+      .send({ email, turnstileToken: 'good-token' })
+      .expect(202);
+
     await request(app.getHttpServer())
       .post('/api/v1/waitlist')
       .send({ email, turnstileToken: 'good-token' })
