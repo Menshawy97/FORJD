@@ -174,10 +174,25 @@ jobs:
           # env var (this exact failure, with NVIDIA_API_KEY, is what first surfaced this
           # pattern). OpenAI is the production vendor as of ADR-033; NVIDIA_API_KEY was
           # deliberately never carried into this deploy target beyond development.
+          #
+          # ALLOWED_WEB_ORIGINS (ADR-051 point 6, W4): set only for production, to the two
+          # fixed getforjd.com hostnames. Staging is deliberately left unset -- Cloudflare
+          # Pages gives every preview deployment its own random subdomain
+          # (<hash>.forjd-web.pages.dev), so there is no single fixed origin to allowlist
+          # there, and cors.ts's array match has no wildcard support today. Staging keeps
+          # reflecting any origin, which cors.ts's own docblock explains is safe because this
+          # API never turns on `credentials`.
+          #
+          # The `^@^` prefix on --set-env-vars switches gcloud's pair delimiter from `,` to
+          # `@`, because ALLOWED_WEB_ORIGINS' own value is itself a comma-separated list.
+          ALLOWED_WEB_ORIGINS_ENV=""
+          if [ "$TARGET" = "production" ]; then
+            ALLOWED_WEB_ORIGINS_ENV="@ALLOWED_WEB_ORIGINS=https://getforjd.com,https://www.getforjd.com"
+          fi
           gcloud run deploy "forjd-api-${TARGET}" \
             --image "$IMAGE" \
             --region "${{ vars.GCP_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest,OPENAI_API_KEY=forjd-${TARGET}-openai-api-key:latest" \
-            --set-env-vars "EXERCISE_MEDIA_BASE_URL=${SUPABASE_URL_VALUE}/storage/v1/object/public/exercise-media"
+            --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest,OPENAI_API_KEY=forjd-${TARGET}-openai-api-key:latest,TURNSTILE_SECRET_KEY=forjd-${TARGET}-turnstile-secret-key:latest" \
+            --set-env-vars "^@^EXERCISE_MEDIA_BASE_URL=${SUPABASE_URL_VALUE}/storage/v1/object/public/exercise-media${ALLOWED_WEB_ORIGINS_ENV}"
