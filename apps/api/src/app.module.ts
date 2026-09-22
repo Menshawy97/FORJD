@@ -20,6 +20,7 @@ import { UsersModule } from './users/users.module';
 import { AccountModule } from './users/account.module';
 import { StorageModule } from './storage/storage.module';
 import { WorkoutsModule } from './workouts/workouts.module';
+import { WaitlistModule } from './waitlist/waitlist.module';
 import { validateEnv } from './common/config/env-validation';
 
 @Module({
@@ -59,6 +60,7 @@ import { validateEnv } from './common/config/env-validation';
     NutritionModule,
     StorageModule,
     WorkoutsModule,
+    WaitlistModule,
   ],
   // Registering ThrottlerModule alone does nothing — the guard has to be bound, or the
   // @Throttle decorators on AuthController are inert decoration.

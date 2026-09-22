@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import request from 'supertest';
@@ -56,7 +57,7 @@ describe('CORS for the Expo dev client (e2e)', () => {
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    applyCors(app);
+    applyCors(app, app.get(ConfigService));
     await app.init();
   });
 

@@ -22,9 +22,10 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api/v1');
   configureApp(app);
-  applyCors(app);
 
   const config = app.get(ConfigService);
+  applyCors(app, config);
+
   const port = config.get<number>('PORT', 3000);
 
   await app.listen(port);

@@ -1,6 +1,6 @@
 # Website plan: getforjd.com
 
-Status: **W0-W2 done, W6 motion done, W3a done. The site is live at https://getforjd.com. W3b is next, blocked on migration `0022`** (2026-09-21).
+Status: **W0-W2 done, W6 motion done, W3a and W3b done. The site is live at https://getforjd.com. W4 is next (wiring the form).** (2026-09-22).
 Decisions in `docs/decisions/ADR-051-marketing-website-and-waitlist.md`.
 Design source: `docs/design/website/design-v1.html` (the published preview, with `%%name%%`
 placeholders where the cropped app screenshots were embedded; `crop-screenshots.js` produced them).
@@ -77,10 +77,12 @@ live pages, HTTPS, the redirect and a pull-request preview build.
 
 ### W3: `POST /api/v1/waitlist` (API vertical slice)
 
-**W3a is done (#231). Split, because the migration is blocked.** Migration `0022` (the live-run session) was still not on
-`main` on 2026-09-21, and two sessions must not claim the same migration number. **W3a** is everything
-that touches no table: the contract (step 1) and the Turnstile adapter (step 3). **W3b** is the rest
-(steps 2, 4-8), and starts by rebasing onto a `main` that has `0022`.
+**Both halves are done.** W3a (#231) was everything that touches no table: the contract
+(step 1) and the Turnstile adapter (step 3), split out because migration `0022` (the live-run
+session) had not yet landed and two sessions must not claim the same migration number. Once
+`0022` reached `main` on 2026-09-22, W3b (steps 2, 4-7) followed: the `waitlist_signups`
+migration, the repository and service, the public controller, and the CORS allowlist. Step 8
+(the deploy secrets) waits for W4's user step, which creates them.
 
 Test-first throughout, following the existing auth controller's pattern (`ZodValidationPipe`,
 `@Throttle`).
@@ -293,3 +295,17 @@ proposed it needs its own decision), a blog, localisation, and a web version of 
     revert those and keep only the new file.
   - For W3b: the controller must set a request body limit, and take the caller address only from the
     trusted proxy header (`CF-Connecting-IP`), never a raw `X-Forwarded-For`.
+- **W3b** (2026-09-22): the rest of the waitlist. `waitlist_signups` (migration 0023: id, email
+  unique, source default 'website', created_at) with no RLS -- `docs/architecture/security.md`
+  (ADR-038) corrected the plan's original "RLS enabled with no policies": the API reaches Postgres
+  directly with `DATABASE_URL`'s role, never through the PostgREST path RLS gates, so adding it
+  would only be bypassed, not a second layer. `WaitlistRepository.signUp` inserts with
+  `on conflict (email) do nothing`; `WaitlistService` verifies Turnstile first, then stores, and
+  returns the identical `{ status: 'accepted' }` for a new address and a repeat. The controller is
+  public (no guard), `202`, `@Throttle({ limit: 5, ttl: 600_000 })`, keyed by `req.ip` (trustworthy
+  because `trust-proxy.ts` already tells Express to trust exactly Cloud Run's one hop). `cors.ts`
+  now reads `ALLOWED_WEB_ORIGINS` (comma-separated): set, it allowlists; unset (every environment
+  today), it reflects any origin exactly as before, so nothing changes until W4 sets the variable.
+  e2e test spends the endpoint's 5-request budget across the plan's own five cases -- accepted,
+  duplicate, bad email, bad token, rate-limited -- in that order, so the fifth call is the one that
+  hits 429. Step 8 (`deploy-api.yml`'s secrets) is left for W4, which creates them first.

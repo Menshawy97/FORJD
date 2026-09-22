@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { INestApplication } from '@nestjs/common';
 
 import { applyCors } from './cors';
@@ -10,24 +11,28 @@ import { applyCors } from './cors';
  * an e2e request only proves *one* origin was allowed, not that the policy is exactly the
  * shape intended.
  *
- * The assertion is deliberately exact (`toHaveBeenCalledWith`, not `objectContaining`).
- * `origin: true` reflects whatever Origin the caller sent, which is safe here only because
- * this API authenticates with a Bearer token rather than a cookie — there is no ambient
- * credential for a hostile page to ride. If someone later adds cookie/session auth, that
- * combination becomes a CSRF hole, and pinning the exact object means this test fails and
- * forces the conversation instead of silently permitting it.
+ * ADR-051 point 6 narrows CORS to an allowlist read from `ALLOWED_WEB_ORIGINS`
+ * (comma-separated), for production and staging. Everywhere that variable is unset --
+ * today's dev machines, and any environment that has not opted in -- the behaviour is
+ * unchanged from before: reflect whatever `Origin` the caller sent, which the docblock in
+ * `cors.ts` explains is safe only because this API never turns on `credentials`.
  *
- * Noted 2026-09-16 (R11, audit-remediation-plan.md): this is the exact day this combination
- * was re-confirmed safe and worth pinning. DO NOT add `credentials: true` to `applyCors`
- * while `origin` stays `true`/reflected without re-deriving this from scratch — see the
- * paragraph above for why. Narrow `origin` to an explicit allowlist first.
+ * Noted 2026-09-16 (R11, audit-remediation-plan.md): this is the exact day the
+ * reflect-without-credentials combination was re-confirmed safe and worth pinning. DO NOT
+ * add `credentials: true` to `applyCors` while any origin path still reflects rather than
+ * allowlists, without re-deriving this from scratch -- see `cors.ts`'s own docblock.
  */
 describe('applyCors', () => {
-  it('reflects any origin, and allows only the methods and headers the client uses', () => {
+  const config = (allowedWebOrigins?: string) =>
+    ({
+      get: (_key: string, fallback: string) => allowedWebOrigins ?? fallback,
+    }) as unknown as ConfigService;
+
+  it('reflects any origin when ALLOWED_WEB_ORIGINS is unset, same as before this ADR', () => {
     const enableCors = jest.fn();
     const app = { enableCors } as unknown as INestApplication;
 
-    applyCors(app);
+    applyCors(app, config());
 
     expect(enableCors).toHaveBeenCalledTimes(1);
     expect(enableCors).toHaveBeenCalledWith({
@@ -37,15 +42,35 @@ describe('applyCors', () => {
     });
   });
 
-  it('does not enable credentials, which is what makes reflecting any origin safe', () => {
+  it('narrows to an explicit allowlist when ALLOWED_WEB_ORIGINS is set', () => {
     const enableCors = jest.fn();
     const app = { enableCors } as unknown as INestApplication;
 
-    applyCors(app);
+    applyCors(app, config('https://getforjd.com,https://www.getforjd.com'));
+
+    const options = enableCors.mock.calls[0][0] as Record<string, unknown>;
+    expect(options.origin).toEqual(['https://getforjd.com', 'https://www.getforjd.com']);
+  });
+
+  it('trims whitespace and drops empty entries, so a trailing comma cannot allow every origin', () => {
+    const enableCors = jest.fn();
+    const app = { enableCors } as unknown as INestApplication;
+
+    applyCors(app, config(' https://getforjd.com , https://www.getforjd.com, '));
+
+    const options = enableCors.mock.calls[0][0] as Record<string, unknown>;
+    expect(options.origin).toEqual(['https://getforjd.com', 'https://www.getforjd.com']);
+  });
+
+  it('does not enable credentials, in either mode', () => {
+    const enableCors = jest.fn();
+    const app = { enableCors } as unknown as INestApplication;
+
+    applyCors(app, config('https://getforjd.com'));
 
     // Asserted separately and by name because this is the single property that decides
-    // whether `origin: true` is reasonable or a vulnerability: with `credentials: true` the
-    // browser would attach cookies to cross-site requests from any page on the internet.
+    // whether reflecting or allowlisting an origin is reasonable or a vulnerability: with
+    // `credentials: true` the browser would attach cookies to cross-site requests.
     const options = enableCors.mock.calls[0][0] as Record<string, unknown>;
     expect(options.credentials).toBeUndefined();
   });
