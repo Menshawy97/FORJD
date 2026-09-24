@@ -7,6 +7,7 @@ import {
   bodyScanListResponseSchema,
   bodyScanSeriesResponseSchema,
   createManualBodyScanRequestSchema,
+  measurementBounds,
 } from "./index";
 
 const NINE_METRICS = [
@@ -121,7 +122,8 @@ describe("body contracts", () => {
       ["bmi", 10, 80],
       ["basal_metabolic_rate_kcal", 500, 5000],
       ["inbody_score", 0, 100],
-      ["right_arm", 0.5, 30],
+      ["right_arm", 0.5, 50],
+      ["trunk", 0.5, 90],
     ])("accepts %s at both ends of its documented range (%d - %d)", (metric, min, max) => {
       expect(confirmBodyScanRequestSchema.safeParse(withMeasurement(metric, min)).success).toBe(true);
       expect(confirmBodyScanRequestSchema.safeParse(withMeasurement(metric, max)).success).toBe(true);
@@ -229,5 +231,37 @@ describe("scan source on the history list", () => {
       scans: [{ id: "11111111-1111-1111-1111-111111111111", measuredAt: "2026-09-24T09:15:00.000Z", weightKg: 82.4, bodyFatPercent: 12.1 }],
     };
     expect(bodyScanListResponseSchema.safeParse(list).success).toBe(false);
+  });
+});
+
+/**
+ * Device report: a real InBody 120 sheet printed trunk lean mass 30.5 kg and the save was
+ * rejected -- the trunk ceiling was 30 kg, which a muscular adult's trunk routinely exceeds.
+ */
+describe("segmental lean mass bounds", () => {
+  it("accepts the real sheet's 30.5 kg trunk, and a large athlete's 45 kg", () => {
+    for (const value of [30.5, 45]) {
+      const result = confirmBodyScanRequestSchema.safeParse({
+        measuredAt: "2026-01-15T09:00:00.000Z",
+        measurements: [{ metric: "trunk", value, unit: "kg", confidence: 0.99 }],
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("still rejects an impossible trunk mass", () => {
+    const result = confirmBodyScanRequestSchema.safeParse({
+      measuredAt: "2026-01-15T09:00:00.000Z",
+      measurements: [{ metric: "trunk", value: 300, unit: "kg", confidence: 0.99 }],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("measurementBounds", () => {
+  it("returns the range a value breaks, so the app can say which field and why", () => {
+    expect(measurementBounds("weight_kg", 5000)).toEqual([20, 400]);
+    expect(measurementBounds("trunk", 30.5)).toBeNull();
+    expect(measurementBounds("weight_kg", 82.4)).toBeNull();
   });
 });

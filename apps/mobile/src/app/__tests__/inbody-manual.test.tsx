@@ -102,3 +102,17 @@ describe('manual InBody entry', () => {
     expect(createManualBodyScan).not.toHaveBeenCalled();
   });
 });
+
+describe('manual InBody entry -- value limits', () => {
+  it('names an out-of-range value on its own row and sends nothing', async () => {
+    const { getByLabelText, getByRole, findByText } = await render(<InBodyManualScreen />);
+
+    await fireEvent.changeText(getByLabelText('Weight'), '82.4');
+    await fireEvent.changeText(getByLabelText('Body fat percentage'), '12.1');
+    await fireEvent.changeText(getByLabelText('Right arm'), '55');
+    await fireEvent.press(getByRole('button', { name: 'Save' }));
+
+    expect(await findByText('Must be between 0.5 and 50 kg')).toBeTruthy();
+    expect(createManualBodyScan).not.toHaveBeenCalled();
+  });
+});
