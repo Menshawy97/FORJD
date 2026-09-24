@@ -56,6 +56,16 @@ This document, ADR-051 and the design source under `docs/design/website/`. No CI
    `design-v1.html` section by section, audited against it value by value.
 4. Screenshots: crop with `crop-screenshots.js` into `apps/web/src/assets/screens/`, rendered through
    `astro:assets` `<Image>` so they ship as sized WebP.
+
+   **Replaced 2026-09-24.** The design captures had drifted from the app (old logo, single-ring
+   calorie circle). The ten screens are now captures of the real app, rendered
+   with Expo web in headless Chromium against a demo account ("Omar H.", Alexandria) served from
+   fixtures that validate against `@forjd/contracts`, then framed at 3x (1188 x 2481) and shipped
+   as 1x/2x/3x WebP by `Phone.astro`. The top ember glow was checked pixel-for-pixel against the
+   old captures (within one level of 255). Two screens are marketing-only states the app does not
+   show today: Home's insight text, and Apple Health and Health Connect as connectable on the
+   Connect screen (the app says "Coming soon" for both). `public/og.png` was rebuilt from the new
+   Home and Rank screens with `scripts/make-og.mjs`.
 5. Search basics: per-page `<title>` and description, Open Graph image, `@astrojs/sitemap`,
    `robots.txt`, canonical URLs on `https://getforjd.com`.
 6. `WaitlistForm` renders disabled with "Sign-ups open soon" until W4.

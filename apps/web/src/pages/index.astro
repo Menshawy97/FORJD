@@ -31,7 +31,7 @@ import Base from '../layouts/Base.astro';
         <Phone src={body} alt="" class="p-right" loading="eager" />
         <Phone
           src={home}
-          alt="The FORJD home screen: a readiness score of 87, today's nutrition, weekly stats and a Start Workout button."
+          alt="The FORJD home screen: a readiness score of 87, today's nutrition, weekly stats, an insight and a Start Workout button."
           class="p-center"
           loading="eager"
         />
@@ -159,7 +159,7 @@ import Base from '../layouts/Base.astro';
             <li>Live heart rate from your watch while you train</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={live} data-reveal data-stagger="1" alt="A live FORJD workout: bench press sets with previous and target weights, a rest timer and live heart rate." /></div>
+        <div class="row-shot"><Phone src={live} data-reveal data-stagger="1" alt="A live FORJD workout: bench press sets with weights and reps, two sets ticked off, and a rest timer." /></div>
       </div>
 
       <div class="row flip">
@@ -176,7 +176,7 @@ import Base from '../layouts/Base.astro';
             <div><b>68<span style="font-size:14px;color:var(--meta)"> ms</span></b><small>HRV</small></div>
           </div>
         </div>
-        <div class="row-shot g"><Phone src={health} data-reveal data-stagger="1" alt="The FORJD Health progress tab: sleep, HRV and resting heart rate trends." /></div>
+        <div class="row-shot g"><Phone src={health} data-reveal data-stagger="1" alt="The FORJD Health progress tab: sleep, HRV, heart rate and resting heart rate trends over 30 days." /></div>
       </div>
 
       <div class="row">
@@ -198,7 +198,7 @@ import Base from '../layouts/Base.astro';
             <div><b>4</b><small>meal slots</small></div>
           </div>
         </div>
-        <div class="row-shot"><Phone src={nutrition} data-reveal data-stagger="1" alt="The FORJD nutrition screen: 488 of 2,400 kcal with protein, carbs and fat progress bars." /></div>
+        <div class="row-shot"><Phone src={nutrition} data-reveal data-stagger="1" alt="The FORJD nutrition screen: 1,275 of 2,600 kcal with protein, carbs and fat rings and bars." /></div>
       </div>
 
       <div class="row flip">
@@ -215,7 +215,7 @@ import Base from '../layouts/Base.astro';
             <li>Segmental results stored with every scan</li>
           </ul>
         </div>
-        <div class="row-shot"><Phone src={body} data-reveal data-stagger="1" alt="The FORJD Body progress tab: weight 87.1 kg and body fat 16.4% with charts over five months." /></div>
+        <div class="row-shot"><Phone src={body} data-reveal data-stagger="1" alt="The FORJD Body progress tab: weight 86.6 kg and body fat 15.6% with InBody trends since the first scan." /></div>
       </div>
 
       <div class="row">
@@ -264,7 +264,7 @@ import Base from '../layouts/Base.astro';
           <p class="body" data-reveal data-stagger="2">Rank against athletes where you live, this month or all time. Tap any row to see the profile behind it.</p>
           <div class="src" data-reveal data-stagger="3"><span>Activity</span><span>Strength</span><span>Running</span><span>HYROX</span></div>
         </div>
-        <div class="row-shot"><Phone src={rank} data-reveal data-stagger="1" alt="The FORJD city leaderboard for Alexandria, showing rank 47 and the athletes around it." /></div>
+        <div class="row-shot"><Phone src={rank} data-reveal data-stagger="1" alt="The FORJD city leaderboard for Alexandria, showing rank 18 and the athletes around it." /></div>
       </div>
     </div>
   </div>

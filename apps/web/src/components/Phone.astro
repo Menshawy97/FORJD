@@ -4,8 +4,9 @@ import type { HTMLAttributes } from 'astro/types';
 import { Image } from 'astro:assets';
 
 /**
- * An app screenshot in its phone frame. The PNGs in src/assets/screens are the design's own
- * captures, cropped to the frame by docs/design/website/crop-screenshots.js (396 x 827 each).
+ * An app screenshot in its phone frame. The PNGs in src/assets/screens are captures of the real
+ * app at 3x (1188 x 2481 each, a 396 x 827 frame), see docs/product/website-plan.md. They ship as
+ * 1x/2x/3x WebP so a phone or retina screen gets pixels to match its density, not a 1x upscale.
  */
 interface Props extends HTMLAttributes<'div'> {
   src: ImageMetadata;
@@ -18,5 +19,14 @@ const { src, alt, class: className, loading = 'lazy', ...rest } = Astro.props;
 ---
 
 <div class:list={['phone', className]} {...rest}>
-  <Image src={src} alt={alt} width={396} height={827} format="webp" loading={loading} />
+  <Image
+    src={src}
+    alt={alt}
+    width={396}
+    height={827}
+    densities={[1, 2, 3]}
+    format="webp"
+    quality={90}
+    loading={loading}
+  />
 </div>
