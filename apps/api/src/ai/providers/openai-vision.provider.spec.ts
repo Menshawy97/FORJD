@@ -97,6 +97,22 @@ describe("OpenAiVisionProvider", () => {
     expect(create).toHaveBeenCalledTimes(3);
   });
 
+  it("names the finish reason when the model returns no content, so a token-budget cut-off is diagnosable", async () => {
+    create.mockResolvedValue({ choices: [{ message: { content: null }, finish_reason: "length" }] });
+
+    await expect(provider.extractBodyScan(Buffer.from("fake"), "image/jpeg")).rejects.toMatchObject({
+      message: expect.stringContaining("finish_reason: length"),
+    });
+  });
+
+  it("says the finish reason is unknown when the vendor returns no choices at all", async () => {
+    create.mockResolvedValue({ choices: [] });
+
+    await expect(provider.extractBodyScan(Buffer.from("fake"), "image/jpeg")).rejects.toMatchObject({
+      message: expect.stringContaining("finish_reason: unknown"),
+    });
+  });
+
   it("treats a null content response the same as a parse failure and retries", async () => {
     create.mockResolvedValue(fakeCompletion(null));
 

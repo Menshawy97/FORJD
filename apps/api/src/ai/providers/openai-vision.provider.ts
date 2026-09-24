@@ -61,9 +61,12 @@ export class OpenAiVisionProvider implements VisionProvider {
           ],
         });
 
-        const text = response.choices[0]?.message?.content;
+        const choice = response.choices[0];
+        const text = choice?.message?.content;
         if (!text) {
-          lastError = new Error("no content in vision model response");
+          // "length" means the model spent its token allowance (reasoning counts against it)
+          // before answering -- a budget problem, not a transport one, so the log says which.
+          lastError = new Error(`no content in vision model response (finish_reason: ${choice?.finish_reason ?? "unknown"})`);
           continue;
         }
 

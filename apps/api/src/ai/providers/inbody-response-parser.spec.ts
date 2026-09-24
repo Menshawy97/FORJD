@@ -177,3 +177,65 @@ describe("parseInBodyExtractionResponse: printed values and units (ADR-053)", ()
     expect(result.fields.weight_kg).toEqual({ value: null, confidence: 0, readingNote: "" });
   });
 });
+
+describe("parseInBodyExtractionResponse: printed-value coercion (ADR-053)", () => {
+  it("keeps the model's own note after the conversion note", () => {
+    const text = JSON.stringify({
+      fields: { weight: { value: 120.5, unit: "lb", confidence: 0.8, reading_note: "Glare on the last digit." } },
+    });
+
+    expect(parseInBodyExtractionResponse(text).fields.weight_kg.readingNote).toBe(
+      "Converted from 120.5 lb. Glare on the last digit.",
+    );
+  });
+
+  it("coerces a non-number confidence to 0 and a non-string note to empty", () => {
+    const text = JSON.stringify({ fields: { weight: { value: 70, unit: "kg", confidence: "high", reading_note: 5 } } });
+
+    expect(parseInBodyExtractionResponse(text).fields.weight_kg).toEqual({ value: 70, confidence: 0, readingNote: "" });
+  });
+
+  it("treats a non-string unit as missing", () => {
+    const text = JSON.stringify({ fields: { weight: { value: 70, unit: 1, confidence: 0.99, reading_note: "" } } });
+
+    expect(parseInBodyExtractionResponse(text).fields.weight_kg.confidence).toBe(0.5);
+  });
+
+  it("tolerates a missing segmental block and missing header fields", () => {
+    const result = parseInBodyExtractionResponse(
+      JSON.stringify({ inbody_model: 570, test_date: false, fields: { weight: { value: 70, unit: "kg", confidence: 0.9 } } }),
+    );
+
+    expect(result.inbodyModel).toBeNull();
+    expect(result.testDate).toBeNull();
+    expect(result.imageQualityNotes).toBe("");
+    expect(result.segmental.trunk).toEqual({ value: null, confidence: 0, readingNote: "" });
+  });
+
+  it("keeps header fields that are present", () => {
+    const result = parseInBodyExtractionResponse(
+      JSON.stringify({
+        inbody_model: "270",
+        test_date: "2026-01-15",
+        image_quality_notes: "Slight blur",
+        fields: { weight: { value: 70, unit: "kg", confidence: 0.9, reading_note: "" } },
+      }),
+    );
+
+    expect(result).toMatchObject({ inbodyModel: "270", testDate: "2026-01-15", imageQualityNotes: "Slight blur" });
+  });
+
+  it("detects the printed shape from a unit alone, even when no printed-only key is present", () => {
+    const result = parseInBodyExtractionResponse(
+      JSON.stringify({ fields: { bmi: { value: 24.1, unit: "kg/m2", confidence: 0.95 }, broken: null } }),
+    );
+
+    expect(result.fields.bmi.value).toBe(24.1);
+  });
+
+  it("reads a response with no fields at all as the original shape, all null", () => {
+    const result = parseInBodyExtractionResponse(JSON.stringify({ image_quality_notes: "Not an InBody sheet" }));
+
+    expect(result.fields.weight_kg).toEqual({ value: null, confidence: 0, readingNote: "" });
+  });
+});
