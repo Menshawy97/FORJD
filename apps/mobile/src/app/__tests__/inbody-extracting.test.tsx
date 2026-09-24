@@ -4,10 +4,12 @@ import { fireEvent, render as rtlRender } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+const mockPush = jest.fn();
+
 jest.mock('expo-router', () => {
   const react = require('react');
   return {
-    router: { push: jest.fn(), back: jest.fn() },
+    router: { push: (...args: unknown[]) => mockPush(...args), back: jest.fn() },
     useFocusEffect: (callback: () => void | (() => void)) => {
       react.useEffect(() => callback(), []);
     },
@@ -25,6 +27,7 @@ jest.mock('@/auth/apiClient', () => ({
   listBodyScans: jest.fn(),
 }));
 
+import { AxiosError, AxiosHeaders } from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 
 import { extractBodyScan, listBodyScans } from '@/auth/apiClient';
@@ -64,5 +67,56 @@ describe('InBody photo extraction', () => {
 
     finishExtraction({});
     await pressed;
+  });
+});
+
+/** The API's refusal when the account has not turned on AI insights (body.service.ts). */
+function consentRefusal(): AxiosError {
+  return new AxiosError('Request failed with status code 403', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status: 403,
+    statusText: 'Forbidden',
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+    data: {
+      statusCode: 403,
+      error: 'Forbidden',
+      message: 'AI features consent is required to process a body scan photo',
+    },
+  });
+}
+
+describe('InBody photo extraction refused', () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+    (listBodyScans as jest.Mock).mockResolvedValue({ scans: [] });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///sheet.jpg' }],
+    });
+  });
+
+  // Device feedback: with AI insights off, the server refuses the photo (403) and the app said
+  // "try again with better lighting" -- blaming the photo for a setting.
+  it('explains that AI insights must be on, and opens Privacy from a button', async () => {
+    (extractBodyScan as jest.Mock).mockRejectedValue(consentRefusal());
+
+    const { findByText, findByRole, queryByText } = await render(<InBodyScreen />);
+    await fireEvent.press(await findByText('Choose from library instead'));
+
+    expect(await findByText(/Turn on AI insights in Privacy to continue/)).toBeTruthy();
+    expect(queryByText(/better lighting/)).toBeNull();
+
+    await fireEvent.press(await findByRole('button', { name: 'Open Privacy settings' }));
+    expect(mockPush).toHaveBeenCalledWith('/privacy');
+  });
+
+  it('keeps the photo-quality message for any other failure', async () => {
+    (extractBodyScan as jest.Mock).mockRejectedValue(new Error('Network Error'));
+
+    const { findByText, queryByText } = await render(<InBodyScreen />);
+    await fireEvent.press(await findByText('Choose from library instead'));
+
+    expect(await findByText(/better lighting/)).toBeTruthy();
+    expect(queryByText(/Turn on AI insights/)).toBeNull();
   });
 });
