@@ -1,7 +1,7 @@
 # Height and age on InBody scans: plan
 
-Status: **draft, waiting for the user's approval** (the plan, the references in §4 and the
-screen replica in §3 before any UI is built).
+Status: **approved by the user on 2026-09-25** (the plan and the references in §4). Still owed
+before building: the screen replica in §3, and answers to the §4.5 questions.
 
 ## 1. Decisions made with the user
 
