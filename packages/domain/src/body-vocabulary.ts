@@ -86,11 +86,12 @@ export const SEGMENTAL_SITE_DISPLAY_NAMES: Record<SegmentalSite, string> = {
  * Health providers (and the source-priority read-time policy `health-data.md` describes)
  * have somewhere to land without a schema change.
  */
-export const SCAN_SOURCES = ["inbody"] as const;
+export const SCAN_SOURCES = ["inbody", "manual"] as const;
 export type ScanSource = (typeof SCAN_SOURCES)[number];
 
 export const SCAN_SOURCE_DISPLAY_NAMES: Record<ScanSource, string> = {
   inbody: "InBody",
+  manual: "Manual",
 };
 
 /**
