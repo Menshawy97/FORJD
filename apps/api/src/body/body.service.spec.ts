@@ -252,3 +252,94 @@ describe("BodyService -- photo re-encode boundary rejects bad uploads before sha
     expect(visionProvider.extractBodyScan).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Manual entry (docs/product/manual-inbody-entry-plan.md): values typed in with no photo.
+ * Nothing goes to the vision model or to storage, so -- unlike extract/confirm -- no AI
+ * consent is required; the values are the user's own, so each is stored at confidence 1.
+ */
+describe("BodyService -- manual entry", () => {
+  const user: User = { id: "user-1", email: "athlete@example.com" } as User;
+
+  function build() {
+    const privacyService = { get: jest.fn() };
+    const visionProvider = { extractBodyScan: jest.fn() };
+    const storageProvider = { upload: jest.fn() };
+    const bodyRepository = {
+      createScan: jest.fn().mockResolvedValue("scan-9"),
+      getScanById: jest.fn().mockResolvedValue({
+        id: "scan-9",
+        measuredAt: new Date("2026-09-24T09:15:00.000Z"),
+        source: "manual",
+        measurements: [{ metric: "weight_kg", value: 82.4, unit: "kg", confidence: 1 }],
+      }),
+      listScansForUser: jest.fn(),
+    };
+    const service = new BodyService(
+      visionProvider as unknown as VisionProvider,
+      storageProvider as unknown as StorageProvider,
+      bodyRepository as unknown as BodyRepository,
+      privacyService as unknown as PrivacyService,
+    );
+    return { service, privacyService, visionProvider, storageProvider, bodyRepository };
+  }
+
+  const request = {
+    measuredAt: "2026-09-24T09:15:00.000Z",
+    measurements: [
+      { metric: "weight_kg" as const, value: 82.4, unit: "kg" },
+      { metric: "body_fat_percent" as const, value: 12.1, unit: "%" },
+    ],
+  };
+
+  it("saves with source 'manual', no photo, and confidence 1 per value", async () => {
+    const { service, bodyRepository } = build();
+
+    await service.createManual(user, request);
+
+    expect(bodyRepository.createScan).toHaveBeenCalledWith(
+      "user-1",
+      new Date("2026-09-24T09:15:00.000Z"),
+      "manual",
+      null,
+      [
+        { metric: "weight_kg", value: 82.4, unit: "kg", confidence: 1 },
+        { metric: "body_fat_percent", value: 12.1, unit: "%", confidence: 1 },
+      ],
+    );
+  });
+
+  it("never reads AI consent, calls the vision model, or touches storage", async () => {
+    const { service, privacyService, visionProvider, storageProvider } = build();
+
+    await service.createManual(user, request);
+
+    expect(privacyService.get).not.toHaveBeenCalled();
+    expect(visionProvider.extractBodyScan).not.toHaveBeenCalled();
+    expect(storageProvider.upload).not.toHaveBeenCalled();
+  });
+
+  it("returns the saved scan with its manual source", async () => {
+    const { service } = build();
+
+    await expect(service.createManual(user, request)).resolves.toMatchObject({ id: "scan-9", source: "manual" });
+  });
+
+  it("reports a stored scan's real source rather than assuming InBody", async () => {
+    const { service } = build();
+
+    await expect(service.getScan(user, "scan-9")).resolves.toMatchObject({ source: "manual" });
+  });
+
+  it("includes each scan's source on the history list", async () => {
+    const { service, bodyRepository } = build();
+    bodyRepository.listScansForUser.mockResolvedValue([
+      { id: "scan-9", measuredAt: new Date("2026-09-24T09:15:00.000Z"), source: "manual", measurements: [] },
+      { id: "scan-1", measuredAt: new Date("2026-08-11T09:15:00.000Z"), source: "inbody", measurements: [] },
+    ]);
+
+    const list = await service.listScans(user);
+
+    expect(list.scans.map((scan) => scan.source)).toEqual(["manual", "inbody"]);
+  });
+});

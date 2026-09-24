@@ -14,6 +14,7 @@ describe("BodyController", () => {
     service = {
       extract: jest.fn(),
       confirm: jest.fn(),
+      createManual: jest.fn(),
       listScans: jest.fn(),
       getSeries: jest.fn(),
       getScan: jest.fn(),
@@ -107,6 +108,23 @@ describe("BodyController", () => {
       expect(service.getScan).toHaveBeenCalledWith(request.user, someScanId);
       const callerArg = service.getScan.mock.calls[0]?.[0];
       expect(callerArg).toBe(request.user);
+    });
+  });
+
+  describe("createManual", () => {
+    it("forwards request.user and the validated body to the service", async () => {
+      const request = fakeAuthenticatedRequest();
+      const body = {
+        measuredAt: "2026-09-24T09:15:00.000Z",
+        measurements: [
+          { metric: "weight_kg" as const, value: 82.4, unit: "kg" },
+          { metric: "body_fat_percent" as const, value: 12.1, unit: "%" },
+        ],
+      };
+
+      await controller.createManual(request, body);
+
+      expect(service.createManual).toHaveBeenCalledWith(request.user, body);
     });
   });
 });

@@ -168,3 +168,69 @@ describe("BodyRepository -- reads are scoped by userId (H9)", () => {
     expect(keysForA).not.toContain("user-b/photo.webp");
   });
 });
+
+/** Manual entry (docs/product/manual-inbody-entry-plan.md): a scan with no photo at all. */
+describe("BodyRepository -- manual entries (no photo)", () => {
+  const connectionString = process.env.DATABASE_URL ?? "postgresql://forjd:forjd_local_dev@localhost:5432/forjd";
+  let pool: Pool;
+  let db: NodePgDatabase<Record<string, never>>;
+  let repository: BodyRepository;
+  let userId: string;
+
+  beforeAll(async () => {
+    pool = new Pool({ connectionString });
+    db = drizzle(pool) as NodePgDatabase<Record<string, never>>;
+    repository = new BodyRepository(db);
+    const [row] = await db
+      .insert(users)
+      .values({ email: `bodyrepo-manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com` })
+      .returning();
+    if (!row) throw new Error("insert did not return a row");
+    userId = row.id;
+  });
+
+  afterAll(async () => {
+    await db.delete(users).where(eq(users.id, userId));
+    await pool.end();
+  });
+
+  it("saves a manual scan with no photo key and reads it back with its source", async () => {
+    const scanId = await repository.createScan(userId, new Date("2026-09-24T09:15:00.000Z"), "manual", null, [
+      { metric: "weight_kg" as BodyMetric, value: 82.4, unit: "kg", confidence: 1 },
+      { metric: "body_fat_percent" as BodyMetric, value: 12.1, unit: "%", confidence: 1 },
+    ]);
+
+    const scan = await repository.getScanById(userId, scanId);
+    expect(scan?.source).toBe("manual");
+    expect(scan?.measurements).toHaveLength(2);
+    const [row] = await db.select({ photoKey: bodyScans.photoKey }).from(bodyScans).where(eq(bodyScans.id, scanId));
+    expect(row?.photoKey).toBeNull();
+  });
+
+  // The user's question: manual entries are not kept when the account goes. Rows and values
+  // are removed by the cascade; only the photo-file step has nothing to do for them.
+  it("deletes a user's manual entries, and their values, with the account", async () => {
+    const [other] = await db
+      .insert(users)
+      .values({ email: `bodyrepo-manual-del-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com` })
+      .returning();
+    if (!other) throw new Error("insert did not return a row");
+    const scanId = await repository.createScan(other.id, new Date("2026-09-24T09:15:00.000Z"), "manual", null, [
+      { metric: "weight_kg" as BodyMetric, value: 82.4, unit: "kg", confidence: 1 },
+      { metric: "body_fat_percent" as BodyMetric, value: 12.1, unit: "%", confidence: 1 },
+    ]);
+
+    await db.delete(users).where(eq(users.id, other.id));
+
+    expect(await db.select().from(bodyScans).where(eq(bodyScans.id, scanId))).toHaveLength(0);
+    expect(await db.select().from(bodyMeasurements).where(eq(bodyMeasurements.scanId, scanId))).toHaveLength(0);
+  });
+
+  it("lists only photo files for deletion -- a manual entry has none", async () => {
+    await repository.createScan(userId, new Date("2026-09-20T09:00:00.000Z"), "inbody", `${userId}/photo.webp`, [
+      { metric: "weight_kg" as BodyMetric, value: 83, unit: "kg", confidence: 0.99 },
+    ]);
+
+    await expect(repository.listScanPhotoKeysForUser(userId)).resolves.toEqual([`${userId}/photo.webp`]);
+  });
+});
