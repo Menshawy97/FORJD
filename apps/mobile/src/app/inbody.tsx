@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
@@ -15,6 +16,20 @@ import { setPendingScan } from '@/store/pending-scan';
 import { colors } from '@/theme/tokens';
 
 const CAMERA_PERMISSION_MESSAGE = 'Camera access is needed to photograph your InBody sheet.';
+const PHOTO_UNREADABLE_MESSAGE = 'Could not read that photo. Try again with better lighting.';
+const AI_CONSENT_MESSAGE = 'Reading your scan uses AI. Turn on AI insights in Privacy to continue.';
+
+/**
+ * The API refuses to send a scan photo to the AI provider until the account has turned on AI
+ * insights (body.service.ts `requireAiConsent`, a 403). That is a setting, not a bad photo, so
+ * it gets its own message and a way to the setting -- matched on the consent wording as well as
+ * the status, because a 403 from the auth guard means something else entirely.
+ */
+function isAiConsentRefusal(cause: unknown): boolean {
+  if (!isAxiosError(cause) || cause.response?.status !== 403) return false;
+  const message = (cause.response.data as { message?: unknown } | undefined)?.message;
+  return typeof message === 'string' && message.toLowerCase().includes('consent');
+}
 
 /**
  * `s_inbody()` (`FORJD Mobile.dc.html:2248`), matched against
@@ -33,6 +48,7 @@ export default function InBodyScreen() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
   const [extracting, setExtracting] = useState(false);
+  const [needsAiConsent, setNeedsAiConsent] = useState(false);
   const toast = useToast();
   const loadGeneration = useRef(0);
 
@@ -48,6 +64,9 @@ export default function InBodyScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Coming back from Privacy is a fresh attempt: drop the notice rather than guess whether
+      // the setting was turned on.
+      setNeedsAiConsent(false);
       void load();
       return () => {
         loadGeneration.current += 1;
@@ -57,12 +76,17 @@ export default function InBodyScreen() {
 
   const runExtraction = async (photoUri: string) => {
     setExtracting(true);
+    setNeedsAiConsent(false);
     try {
       const extracted = await extractBodyScan(photoUri);
       setPendingScan({ photoUri, extracted });
       router.push('/inbody-confirm');
-    } catch {
-      toast.show('Could not read that photo. Try again with better lighting.');
+    } catch (cause) {
+      if (isAiConsentRefusal(cause)) {
+        setNeedsAiConsent(true);
+      } else {
+        toast.show(PHOTO_UNREADABLE_MESSAGE);
+      }
     } finally {
       setExtracting(false);
     }
@@ -143,6 +167,34 @@ export default function InBodyScreen() {
             </>
           )}
         </Pressable>
+
+        {needsAiConsent && (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{
+              marginTop: 12,
+              padding: 14,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(233,113,47,.35)',
+              backgroundColor: 'rgba(233,113,47,.08)',
+              gap: 10,
+            }}>
+            <Text style={{ fontFamily: 'Archivo', fontSize: 13, lineHeight: 13 * 1.45, color: colors.text }}>
+              {AI_CONSENT_MESSAGE}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open Privacy settings"
+              onPress={() => router.push('/privacy')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ alignSelf: 'flex-start' }}>
+              <Text style={{ fontFamily: 'Archivo', fontSize: 13, fontWeight: '600', color: colors.accent }}>
+                Open Privacy settings
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         <Pressable accessibilityRole="button" onPress={pickFromLibrary} style={{ marginTop: 10, alignSelf: 'center' }}>
           <Text style={{ fontFamily: 'Archivo', fontSize: 12, color: colors.accent }}>
