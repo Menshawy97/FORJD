@@ -75,13 +75,13 @@ p { margin: 0; }
 .brand-edge { position: absolute; top: -4px; bottom: -4px; left: 100%; width: 2px; background: var(--accent); opacity: 0; }
 
 /* Animation #4 "Reveal" from the FORJD Logo canvas (ADR-052), played once. The canvas loops it
-   every 4.4s; this is its 0-64% stretch (2.82s) with the loop's fade-out dropped, so every
+   every 4.4s; this is its 0-64% stretch with the loop's fade-out dropped, sped up to 2s at the user's request (the canvas runs it over 2.82s), so every
    keyframe below is the canvas's percentage divided by .64. The mark starts centred over the
    lockup: translateX = (gap 8 + wordmark 76) / 2, as the canvas's 183 = (36 + 330) / 2.
    Only runs when brand-intro.ts's head snippet adds the class -- a first visit or a reload. */
-html.brand-intro .top .brand-mark { animation: brand-mark 2.82s cubic-bezier(.7,0,.2,1) both; }
-html.brand-intro .top .brand-word { animation: brand-word 2.82s cubic-bezier(.7,0,.2,1) both; }
-html.brand-intro .top .brand-edge { animation: brand-edge 2.82s cubic-bezier(.7,0,.2,1) both; }
+html.brand-intro .top .brand-mark { animation: brand-mark 2s cubic-bezier(.7,0,.2,1) both; }
+html.brand-intro .top .brand-word { animation: brand-word 2s cubic-bezier(.7,0,.2,1) both; }
+html.brand-intro .top .brand-edge { animation: brand-edge 2s cubic-bezier(.7,0,.2,1) both; }
 @keyframes brand-mark {
   0% { opacity: 0; transform: translateX(42px) scale(.6); }
   21.9% { opacity: 1; transform: translateX(42px) scale(1); }
