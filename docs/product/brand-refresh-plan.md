@@ -36,7 +36,7 @@ First commit of PR 1: this plan as `docs/product/brand-refresh-plan.md` + ADR-05
 1. `src/components/Logo.astro` → new symbol (keeps `size` prop, `aria-hidden`).
 2. New `src/components/Wordmark.astro` — the wordmark SVG, `fill="currentColor"`, `role="img" aria-label="FORJD"`.
 3. `Header.astro`: brand link = mark + wordmark wrapper (with the edge bar element). Scale #4 to the 68px header: mark 28px, wordmark 15px tall (~82px wide), gap 8px; start offset = (gap + wordmark width)/2, the same ratio 183 = (36+330)/2 uses.
-4. `global.css`: #4 keyframes, iteration 1, `fill-mode: both`, ~2.6 s (the 0–64% portion of the 4.4 s cycle; loop fade dropped), active only under `html.brand-intro`. `global.css:72` `.brand` text styles replaced.
+4. `global.css`: #4 keyframes, iteration 1, `fill-mode: both`, the 0–64% portion of the 4.4 s cycle (loop fade dropped), sped up to 2 s at the user's request, active only under `html.brand-intro`. `global.css:72` `.brand` text styles replaced.
 5. `src/lib/brand-intro.ts` pure `shouldPlayIntro({navType, referrer, origin, reducedMotion})`; inlined into `Base.astro` `<head>` as a pre-paint script that adds `brand-intro` for `reload` or a non-same-origin referrer, never under reduced motion.
 6. `Footer.astro`: static symbol + wordmark.
 7. `public/favicon.svg` → DARK tile (32×32, rx 7, `#1B1B1D`, 1px `#2A2A2D`, ember symbol ~18px). `scripts/make-icons.mjs` (like `make-og.mjs`, uses `sharp`) → `public/apple-touch-icon.png` 180×180; linked in `Base.astro`.

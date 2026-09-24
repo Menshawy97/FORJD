@@ -1,11 +1,11 @@
 ---
-/** The four-bar mark from the mobile design (FORJD Mobile.dc.html, the wordmark glyph). */
+/** The FORJD symbol (ADR-052), from the FORJD Logo canvas. Decorative: the link around it names it. */
 interface Props {
   size?: number;
 }
-const { size = 26 } = Astro.props;
+const { size = 28 } = Astro.props;
 ---
 
-<svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M4 20V8M9 20V4M14 20v-9M19 20V10" stroke="#e9712f" stroke-width="2.4" stroke-linecap="round"></path>
+<svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
+  <path fill="#E9712F" d="M8 8H60V24H24V42H60V58H24V92H8ZM64.5 8H92V66A26 26 0 0 1 66 92H40V76H66A10 10 0 0 0 76 66V24H64.5Z"></path>
 </svg>

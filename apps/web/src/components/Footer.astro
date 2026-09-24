@@ -1,5 +1,6 @@
 ---
 import Logo from './Logo.astro';
+import Wordmark from './Wordmark.astro';
 
 const year = new Date().getFullYear();
 ---
@@ -7,9 +8,9 @@ const year = new Date().getFullYear();
 <footer>
   <div class="wrap">
     <div class="footer-brand">
-      <a class="brand" href="/">
-        <Logo size={24} />
-        FORJD
+      <a class="brand" href="/" aria-label="FORJD home">
+        <Logo size={26} />
+        <Wordmark height={13} />
       </a>
       <p>Training, recovery and progress in one place. Coming soon to iPhone and Android.</p>
     </div>
