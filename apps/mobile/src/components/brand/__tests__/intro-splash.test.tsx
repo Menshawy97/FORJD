@@ -1,7 +1,13 @@
 import { AccessibilityInfo } from 'react-native';
 import { act, render } from '@testing-library/react-native';
 
-import { INTRO_DURATION_MS, INTRO_REDUCED_MOTION_MS, IntroSplash } from '../intro-splash';
+import {
+  INTRO_DURATION_MS,
+  INTRO_MARK_SIZE,
+  INTRO_REDUCED_MOTION_MS,
+  INTRO_WORDMARK_HEIGHT,
+  IntroSplash,
+} from '../intro-splash';
 
 /** Animation #9 "Readiness ring", trimmed to ~3.3s (ADR-052). */
 describe('IntroSplash', () => {
@@ -24,6 +30,20 @@ describe('IntroSplash', () => {
     // The overlay itself (one element to a screen reader) and the wordmark inside it.
     expect(getAllByLabelText('FORJD')).toHaveLength(2);
     expect(getByLabelText('FORJD symbol')).toBeTruthy();
+  });
+
+  // Device feedback: the canvas's 800px-artboard sizes (300 ring, 140 mark, 300-wide wordmark)
+  // read too big and off-centre on a phone, because the ring's box held empty space below the
+  // mark once the ring faded. Same design, smaller, and the lockup that remains is what is centred.
+  it('draws a phone-sized lockup, with the ring around the mark taking no layout space', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
+    const { getByLabelText, getAllByLabelText, getByTestId } = await render(<IntroSplash onDone={jest.fn()} />);
+
+    expect(getByLabelText('FORJD symbol').props.width).toBe(INTRO_MARK_SIZE);
+    const wordmark = getAllByLabelText('FORJD').find((node) => node.props.testID !== 'intro-splash');
+    expect(wordmark?.props.height).toBe(INTRO_WORDMARK_HEIGHT);
+    expect(INTRO_MARK_SIZE).toBeLessThanOrEqual(96);
+    expect(getByTestId('intro-ring')).toHaveStyle({ position: 'absolute' });
   });
 
   it('calls onDone once the animation has finished, not before', async () => {
