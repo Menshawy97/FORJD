@@ -75,14 +75,18 @@ export function IntroSplash({ onDone }: IntroSplashProps) {
 
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
     let animation: Animated.CompositeAnimation | undefined;
+    // Armed before asking about reduce motion, not after: the overlay covers the whole app, so
+    // its exit must never depend on a native accessibility call settling. If that call hangs,
+    // the intro still ends on time (unanimated, but the app is reachable).
+    let timer: ReturnType<typeof setTimeout> = setTimeout(onDone, INTRO_DURATION_MS);
 
     const play = (reduceMotion: boolean) => {
       if (cancelled) return;
       if (reduceMotion) {
         // The finished lockup, no motion, then straight on.
         [arc, ringOut, markIn, wordIn].forEach((value) => value.setValue(1));
+        clearTimeout(timer);
         timer = setTimeout(onDone, INTRO_REDUCED_MOTION_MS);
         return;
       }
@@ -94,22 +98,26 @@ export function IntroSplash({ onDone }: IntroSplashProps) {
         step(fadeOut, FADE_START_MS, INTRO_DURATION_MS - FADE_START_MS, Easing.linear),
       ]);
       animation.start();
-      timer = setTimeout(onDone, INTRO_DURATION_MS);
     };
 
     AccessibilityInfo.isReduceMotionEnabled().then(play, () => play(false));
     return () => {
       cancelled = true;
       animation?.stop();
-      if (timer) clearTimeout(timer);
+      clearTimeout(timer);
     };
     // onDone is read once: the intro plays a single time per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
+    // One modal element to a screen reader: the Welcome/Home screen is already mounted beneath,
+    // and without this a swipe could land on controls the overlay hides and blocks.
     <Animated.View
       testID="intro-splash"
+      accessible
+      accessibilityLabel="FORJD"
+      accessibilityViewIsModal
       style={[StyleSheet.absoluteFill, styles.root, { opacity: range(fadeOut, 1, 0) }]}>
       <View style={styles.column}>
         <View style={styles.ringBox}>

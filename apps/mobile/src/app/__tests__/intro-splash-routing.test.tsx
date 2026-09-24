@@ -34,7 +34,9 @@ describe('cold-start intro', () => {
     const { findByTestId, findByText } = await rendered;
 
     await findByTestId('intro-splash');
-    await findByText(/Training\./);
+    // The intro is a modal to screen readers, so the screen beneath counts as hidden while it
+    // is up -- which is the point; the query has to ask for hidden elements to see it.
+    await findByText(/Training\./, { includeHiddenElements: true });
     expect(rendered.getPathname()).toBe('/welcome');
     // Only marked when the intro finishes, so a layout re-mount mid-intro still shows it.
     expect(shouldShowIntro()).toBe(true);
@@ -48,7 +50,7 @@ describe('cold-start intro', () => {
     const { findByTestId, findByText } = await rendered;
 
     await findByTestId('intro-splash');
-    await findByText('Home');
+    await findByText('Home', { includeHiddenElements: true });
   });
 
   it('does not play again once it has played in this process', async () => {

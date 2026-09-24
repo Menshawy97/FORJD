@@ -47,12 +47,22 @@ describe('InBody photo extraction', () => {
       canceled: false,
       assets: [{ uri: 'file:///sheet.jpg' }],
     });
-    (extractBodyScan as jest.Mock).mockReturnValue(new Promise(() => {}));
+    // Settled by the test itself: the press handler awaits the extraction, and RNTL's async
+    // fireEvent waits on it, so a promise that never settles would hang the test.
+    let finishExtraction: (value: unknown) => void = () => {};
+    (extractBodyScan as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        finishExtraction = resolve;
+      }),
+    );
 
     const { findByText, findByLabelText, queryByText } = await render(<InBodyScreen />);
-    await fireEvent.press(await findByText('Choose from library instead'));
+    const pressed = fireEvent.press(await findByText('Choose from library instead'));
 
     expect(await findByLabelText('Loading')).toBeTruthy();
     expect(queryByText('Take photo or upload')).toBeNull();
+
+    finishExtraction({});
+    await pressed;
   });
 });

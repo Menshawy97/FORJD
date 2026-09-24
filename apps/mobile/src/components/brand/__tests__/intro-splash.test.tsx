@@ -19,9 +19,10 @@ describe('IntroSplash', () => {
 
   it('shows the symbol and the wordmark', async () => {
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
-    const { getByLabelText } = await render(<IntroSplash onDone={jest.fn()} />);
+    const { getAllByLabelText, getByLabelText } = await render(<IntroSplash onDone={jest.fn()} />);
 
-    expect(getByLabelText('FORJD')).toBeTruthy();
+    // The overlay itself (one element to a screen reader) and the wordmark inside it.
+    expect(getAllByLabelText('FORJD')).toHaveLength(2);
     expect(getByLabelText('FORJD symbol')).toBeTruthy();
   });
 
@@ -39,6 +40,27 @@ describe('IntroSplash', () => {
       jest.advanceTimersByTime(100);
     });
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('still finishes on time if the reduce-motion check never answers', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockReturnValue(new Promise(() => {}));
+    const onDone = jest.fn();
+    await render(<IntroSplash onDone={onDone} />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(INTRO_DURATION_MS);
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('is one modal element to a screen reader, so the screen beneath is not reachable', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
+    const { getByTestId } = await render(<IntroSplash onDone={jest.fn()} />);
+
+    const root = getByTestId('intro-splash');
+    expect(root.props.accessibilityViewIsModal).toBe(true);
+    expect(root.props.accessible).toBe(true);
+    expect(root.props.accessibilityLabel).toBe('FORJD');
   });
 
   it('finishes quickly and without motion when reduce motion is on', async () => {
