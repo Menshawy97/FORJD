@@ -1,10 +1,11 @@
-import { BODY_METRICS, KG_PER_LB, SEGMENTAL_SITES } from "@forjd/domain";
+import { SEGMENTAL_SITES } from "@forjd/domain";
 
 import { buildInBodyExtractionPrompt } from "./inbody-extraction-prompt";
+import { PRINTED_FIELDS, PRINTED_UNITS } from "./inbody-extraction-schema";
 
 /**
- * These assert properties of the prompt (ADR-032's decisions), not a frozen string -- that
- * job belongs to tests/fixtures/inbody/extraction-prompt.golden.txt and its CI diff gate
+ * These assert properties of the prompt (ADR-032, ADR-053), not a frozen string -- that job
+ * belongs to tests/fixtures/inbody/extraction-prompt.golden.txt and its CI diff gate
  * (`pnpm --filter @forjd/api prompt:golden`). A property test keeps holding after a
  * deliberate, reviewed regeneration of the golden file; the diff gate is what catches an
  * *unintended* change.
@@ -12,34 +13,37 @@ import { buildInBodyExtractionPrompt } from "./inbody-extraction-prompt";
 describe("buildInBodyExtractionPrompt", () => {
   const prompt = buildInBodyExtractionPrompt();
 
-  it("names every BODY_METRICS key -- the regression guard for the prompt covering 14 fields, not 9", () => {
-    for (const metric of BODY_METRICS) {
-      expect(prompt).toContain(`"${metric}"`);
+  it("names every printed field and every segmental site the schema asks for", () => {
+    for (const { key } of Object.values(PRINTED_FIELDS)) {
+      expect(prompt).toContain(key);
     }
-  });
-
-  it("names every SEGMENTAL_SITES key", () => {
     for (const site of SEGMENTAL_SITES) {
-      expect(prompt).toContain(`"${site}"`);
+      expect(prompt).toContain(site);
     }
   });
 
-  it("uses distinct example confidence values, never a uniform one (ADR-032 decision 4)", () => {
-    const confidences = [...prompt.matchAll(/"confidence":\s*([\d.]+)/g)].map((m) => Number(m[1]));
-    // 9 BODY_METRICS + 5 SEGMENTAL_SITES example entries.
-    expect(confidences).toHaveLength(BODY_METRICS.length + SEGMENTAL_SITES.length);
-    expect(new Set(confidences).size).toBeGreaterThan(1);
+  it("names every unit the schema accepts", () => {
+    for (const unit of PRINTED_UNITS) {
+      expect(prompt).toContain(`"${unit}"`);
+    }
   });
 
-  it("states the exact KG_PER_LB conversion factor, matching @forjd/domain's own constant", () => {
-    expect(prompt).toContain(String(KG_PER_LB));
+  // ADR-053: the model read lb digits correctly and then skipped the conversion; the parser now
+  // converts, so the prompt must stop asking the model to.
+  it("asks for printed values and units, not converted ones", () => {
+    expect(prompt).toMatch(/do not convert units/i);
   });
 
-  it("states that a conversion is never a reason for value to be null (ADR-032 decision 6)", () => {
-    expect(prompt).toMatch(/conversion is not a reason for value to be null/i);
+  it("warns off the numbers that are not the current value", () => {
+    expect(prompt).toMatch(/normal ranges/i);
+    expect(prompt).toMatch(/Body Composition History/);
+    expect(prompt).toMatch(/TBW\/LBM/);
   });
 
-  it("labels the worked example as fake filler, not real data", () => {
-    expect(prompt).toMatch(/fake filler/i);
+  // Different InBody machines print different sets of values (the 770 has no score and shows
+  // visceral fat as an area); an absent field must come back null, never estimated.
+  it("tells the model a field the sheet does not print is null", () => {
+    expect(prompt).toMatch(/never fill a field the sheet does not print/i);
+    expect(prompt).toMatch(/Visceral Fat AREA/);
   });
 });

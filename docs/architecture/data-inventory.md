@@ -11,7 +11,7 @@ feature changes what is collected, update this file in the same PR.
 |---|---|---|
 | Supabase | Email, password hash, auth ID, avatar and InBody image files, and the whole Postgres database | Always. Supabase is the auth, storage and database host. |
 | Google / Apple (sign-in) | The user's own Google or Apple account identity, only when they choose that sign-in | Added by Phase 8 slices 8F/8G. FORJD receives an ID token with email and a stable subject ID, never a password. |
-| OpenAI (`gpt-4o-mini`) | The InBody scan photo | Only after the user grants AI consent (`privacy_settings.ai_features_consent`). Enforced in `BodyService.requireAiConsent`. |
+| OpenAI (`gpt-5.4-mini`, ADR-053) | The InBody scan photo | Only after the user grants AI consent (`privacy_settings.ai_features_consent`). Enforced in `BodyService.requireAiConsent`. |
 | WHOOP | OAuth exchange; FORJD reads recovery, sleep and workout data from WHOOP | Only after the user connects WHOOP. |
 | Sentry (server only) | Error reports with the user ID stripped unless crash diagnostics is on | The mobile app has no Sentry SDK. |
 | NVIDIA | Nothing. A provider class exists but is not wired up. | Development only. |
