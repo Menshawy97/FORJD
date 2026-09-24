@@ -64,7 +64,7 @@ describe('login screen - success', () => {
     });
 
     const rendered = renderApp({ initialUrl: '/login' });
-    const { findByText, findByPlaceholderText } = await rendered;
+    const { findByText, findByLabelText, findByPlaceholderText } = await rendered;
 
     fireEvent.changeText(
       await findByPlaceholderText('james.mitchell@example.com'),
@@ -76,7 +76,7 @@ describe('login screen - success', () => {
 
     // Home's wordmark: the marker that the tabs shell has taken over. It replaced
     // 'home — coming soon' when Home stopped being a placeholder screen.
-    await findByText('FORJD');
+    await findByLabelText('FORJD');
 
     expect(login).toHaveBeenCalledTimes(1);
     expect(login).toHaveBeenCalledWith({ email: 'user@example.com', password: 'Str0ng!Pass' });

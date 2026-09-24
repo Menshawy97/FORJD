@@ -21,3 +21,8 @@ configure({ asyncUtilTimeout: 10000 });
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
+
+// ADR-052: the root layout plays a ~3.3s intro over the app on a cold start. Route-tree tests
+// are about the screen underneath, so every test file starts with the intro already played;
+// `intro-splash-routing.test.tsx` resets it to exercise the real cold start.
+require('../src/components/brand/intro-gate').markIntroShown();

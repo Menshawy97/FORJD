@@ -17,7 +17,9 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'dark',
   ios: {
     bundleIdentifier: 'com.forjd.app',
-    icon: './assets/expo.icon',
+    // ADR-052: the same DARK-tile PNG as every other platform (this used to point at the Expo
+    // template's untouched Icon Composer bundle, which still drew the Expo logo).
+    icon: './assets/images/icon.png',
     // The nutrition share-card's background-photo picker is the first feature to call
     // `expo-image-picker`'s `launchCameraAsync` -- the existing gallery-only usages
     // (edit-profile.tsx, pick-username.tsx) never needed this string. iOS refuses camera
@@ -36,7 +38,7 @@ const config: ExpoConfig = {
   android: {
     package: 'com.forjd.app',
     adaptiveIcon: {
-      backgroundColor: '#08090A',
+      backgroundColor: '#1B1B1D',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -103,7 +105,9 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#08090A',
+        // ADR-052: Ink, the #9 intro's own background, with a transparent image -- the native
+        // splash hands over to the intro's first frame without a visible change.
+        backgroundColor: '#101011',
         image: './assets/images/splash-icon.png',
         imageWidth: 76,
       },

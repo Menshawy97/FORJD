@@ -10,6 +10,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { listPrograms } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { LogoLoader } from '@/components/brand/logo-loader';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
@@ -129,8 +130,15 @@ export default function ProgramsScreen() {
 
         {/*
           An empty result is a real state -- filtering to a category with no programs -- and says
-          so rather than showing a spinner that never resolves. `null` is "still loading".
+          so rather than showing a loader that never resolves. `null` is "still loading", which shows
+          ADR-052's logo loader.
         */}
+        {!error && programs === null ? (
+          <View className="mt-10 items-center">
+            <LogoLoader />
+          </View>
+        ) : null}
+
         {!error && programs !== null && programs.length === 0 ? (
           <Text className="font-archivo text-[13px]" style={{ color: '#94948B' }}>
             No programs in this category yet.

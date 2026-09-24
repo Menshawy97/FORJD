@@ -7,6 +7,8 @@ import { consumeSessionExpired } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { pressGhost, pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
+import { LogoMark } from '@/components/brand/logo-mark';
+import { Wordmark } from '@/components/brand/wordmark';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -41,14 +43,6 @@ const FEATURES: Array<{ icon: IconName; text: string }> = [
 
 const FEATURE_ICON_SIZE = 19;
 
-/** The four-bar chart mark beside the wordmark: 5.5px bars, heights 11/26/9/20, 3px gap. */
-const WORDMARK_BARS: Array<{ height: number; color: string }> = [
-  { height: 11, color: colors.accent },
-  { height: 26, color: colors.accent },
-  { height: 9, color: colors.accentDark },
-  { height: 20, color: colors.accent },
-];
-
 export default function WelcomeScreen() {
   // Lazy initializer: this must consume the flag exactly once, at mount, not on every
   // render -- a `useState(consumeSessionExpired())` call form would re-invoke it whenever
@@ -61,21 +55,11 @@ export default function WelcomeScreen() {
       <View className="flex-1 px-welcome-x pb-10">
         <View style={{ height: 70 }} />
 
-        <View className="flex-row items-center" style={{ gap: 11 }}>
-          <View className="flex-row items-end" style={{ height: 26, gap: 3 }}>
-            {WORDMARK_BARS.map((bar, index) => (
-              <View
-                key={index}
-                style={{
-                  width: 5.5,
-                  height: bar.height,
-                  backgroundColor: bar.color,
-                  borderRadius: 1.5,
-                }}
-              />
-            ))}
-          </View>
-          <Text className="font-archivo text-wordmark-welcome font-extrabold text-text">FORJD</Text>
+        {/* ADR-052's lockup, in the proportions of the FORJD Logo canvas's primary lockup
+            (symbol 120 : wordmark 67 tall), sized to the old row's 26-30px height. */}
+        <View className="flex-row items-center" style={{ gap: 12 }}>
+          <LogoMark size={30} />
+          <Wordmark height={17} />
         </View>
 
         <Text className="mt-[34px] font-archivo text-welcome-headline font-bold text-text">

@@ -8,7 +8,7 @@ import { Redirect, Stack, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -20,6 +20,8 @@ import {
   subscribeToDateOfBirthGate,
 } from '@/auth/date-of-birth-gate';
 import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secureStorage';
+import { markIntroShown, shouldShowIntro } from '@/components/brand/intro-gate';
+import { IntroSplash } from '@/components/brand/intro-splash';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
@@ -56,6 +58,12 @@ export default function RootLayout() {
     Archivo: require('../../assets/fonts/Archivo-Variable.ttf'),
   });
   const [authChecked, setAuthChecked] = useState(false);
+  // Read once per mount; the gate itself remembers across re-mounts within this process.
+  const [showIntro, setShowIntro] = useState(shouldShowIntro);
+  const finishIntro = useCallback(() => {
+    markIntroShown();
+    setShowIntro(false);
+  }, []);
   const authenticated = useSyncExternalStore(subscribeToSession, getCachedHasSession, getCachedHasSession);
 
   useEffect(() => {
@@ -131,6 +139,10 @@ export default function RootLayout() {
           <Stack screenOptions={stackScreenOptions} />
           {!authenticated && <AuthGate />}
           {authenticated && <AuthenticatedGate />}
+          {/* ADR-052's cold-start intro (#9), drawn over the router rather than being a route
+              of its own: the gates above still decide where the user lands, and that screen
+              is already mounted underneath when the intro fades. */}
+          {showIntro && <IntroSplash onDone={finishIntro} />}
         </MealDraftProvider>
       </ThemeProvider>
     </SafeAreaProvider>

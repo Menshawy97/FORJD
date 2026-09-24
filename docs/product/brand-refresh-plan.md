@@ -48,7 +48,8 @@ New `src/components/brand/`:
 - `brand-paths.ts` — symbol, pulse pieces, wordmark path strings (single source).
 - `logo-mark.tsx` (`size`, `color`), `wordmark.tsx` (`width`, `color`, `accessibilityLabel="FORJD"`).
 - `logo-loader.tsx` (#3) — four stacked `Animated.View`s, one piece-`Svg` each, opacity via built-in `Animated` loops (native driver) with per-piece delays and `Easing.bezier(.4,0,.2,1)`. Default 44px; `accessibilityRole="progressbar"`, label "Loading". Reduce-motion → static.
-- `intro-splash.tsx` (#9) — full-screen `#101011`; Reanimated `useAnimatedProps` on an animated `Circle` for `strokeDashoffset`; mark/word/container via animated styles; `onDone` at 3.3 s (reduce-motion: static lockup, 800 ms). Transforms always present (no conditional transform key).
+- `intro-splash.tsx` (#9) — full-screen `#101011`; `onDone` at 3.3 s (reduce-motion: static lockup, 800 ms). Transforms always present (no conditional transform key). **Built on the built-in `Animated` API, not Reanimated** (changed during build): the root layout loads in every route-tree test, where expo-router's testing library replaces Reanimated with an empty module. Opacity/transforms use the native driver; only the arc's `strokeDashoffset` is JS-driven, for 1.5 s.
+- `intro-gate.ts` — module-scope "already played in this process" flag; `jest/testing-library-setup.js` marks it played so route-tree tests start on their screen.
 
 Wiring:
 1. `src/app/_layout.tsx`: `introDone` state; once fonts+auth resolve, render today's Stack/gates plus `{!introDone && <IntroSplash onDone=… />}` as an absolute-fill overlay. Routing is untouched, so the intro precedes Welcome (signed out) or Home (signed in); in-memory state → every cold start, not on resume.
@@ -66,3 +67,7 @@ Wiring:
 
 ## Finish (per PR)
 code-reviewer + typescript-reviewer agents, fix HIGH+, push, PR, CI green, merge, then `gh run list --branch main` / `gh run watch` until `main` is green.
+
+## Found during build
+- `metro.config.js` blocked every path containing `.claude/worktrees/`, which includes the app's own files when Metro runs *inside* a worktree ("Unable to resolve expo-router/entry"). Anchored the pattern to the current workspace root.
+- Expo **web** still cannot bundle in this repo (expo-sqlite's web worker: "Worker chunk not found"), unrelated to this work, so the intro was previewed as an HTML mirror of the component and verified on native via `expo export`.

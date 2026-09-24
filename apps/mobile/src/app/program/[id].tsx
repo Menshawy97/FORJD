@@ -11,6 +11,7 @@ import {
   stopFollowingProgram,
 } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { LogoLoader } from '@/components/brand/logo-loader';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
@@ -136,9 +137,13 @@ export default function ProgramOverviewScreen() {
       <ScreenBackground>
         <Header title="Program" onBack={() => router.back()} />
         <View className="flex-1 items-center justify-center px-screen-x">
-          <Text className="text-center font-archivo text-[13px]" style={{ color: '#94948B' }}>
-            {error ?? 'Loading…'}
-          </Text>
+          {error ? (
+            <Text className="text-center font-archivo text-[13px]" style={{ color: '#94948B' }}>
+              {error}
+            </Text>
+          ) : (
+            <LogoLoader />
+          )}
         </View>
         <TabBar active="train" />
       </ScreenBackground>

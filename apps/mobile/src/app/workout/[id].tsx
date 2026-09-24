@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { getWorkoutTemplate } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { LogoLoader } from '@/components/brand/logo-loader';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
@@ -158,7 +159,9 @@ export default function WorkoutDetailScreen() {
         {error ? (
           <Text className="mt-6 font-archivo text-[13px] text-dimmer">{error}</Text>
         ) : !template ? (
-          <Text className="mt-6 font-archivo text-[13px] text-dimmer">Loading…</Text>
+          <View className="mt-10 items-center">
+            <LogoLoader />
+          </View>
         ) : (
           <>
             <View className="mb-4 flex-row items-center" style={{ gap: 8 }}>

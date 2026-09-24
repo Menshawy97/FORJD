@@ -407,3 +407,15 @@ describe('load failures', () => {
     expect(await findByText('Could not load this workout.')).toBeTruthy();
   });
 });
+
+// ADR-052: longer waits show animation #3, the pulsing FORJD symbol, not a line of text.
+describe('while the template loads', () => {
+  it('shows the logo loader', async () => {
+    (getWorkoutTemplate as jest.Mock).mockReturnValue(new Promise(() => {}));
+
+    const { findByLabelText, queryByText } = await render(<WorkoutDetailScreen />);
+
+    expect(await findByLabelText('Loading')).toBeTruthy();
+    expect(queryByText('Loading…')).toBeNull();
+  });
+});

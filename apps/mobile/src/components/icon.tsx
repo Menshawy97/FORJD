@@ -152,14 +152,6 @@ const GLYPHS = {
   // at all -- so its call site passes `filled` together with `strokeWidth={0}`. Rendering it
   // with the shared 1.6px outline would draw a visibly fatter triangle than the design.
   play: { viewBox: '0 0 24 24', shapes: [path('M8 5.5 18 12 8 18.5z')] },
-  // Home's four-bar mark beside the FORJD wordmark. Not the same glyph as `bars` above,
-  // which is three bars and is what Home's own Steps metric uses -- the wordmark mark has a
-  // fourth bar and a heavier 2.4 stroke.
-  wordmark: {
-    viewBox: '0 0 24 24',
-    strokeWidth: 2.4,
-    shapes: [path('M4 20V8M9 20V4M14 20v-9M19 20V10')],
-  },
   // Home's Sleep metric.
   moon: {
     viewBox: '0 0 24 24',

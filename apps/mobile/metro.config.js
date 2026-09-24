@@ -62,7 +62,14 @@ config.resolver.blockList = [
   // whole dev server, not a resolution error blockList would normally guard against.
   // Confirmed live: this app never imports anything from a sibling worktree, so excluding
   // the entire directory from Metro's scan is safe and costs nothing.
-  /[\\/]\.claude[\\/]worktrees[\\/]/,
+  //
+  // Anchored to *this* workspace root, not any `.claude/worktrees/` segment: when Metro runs
+  // from inside a worktree, every one of the app's own paths contains that segment too, and
+  // an unanchored pattern blocked the app's entry point ("Unable to resolve
+  // expo-router/entry").
+  new RegExp(
+    `^${workspaceRoot.split(/[\\/]/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\\\/]')}[\\\\/]\\.claude[\\\\/]worktrees[\\\\/]`,
+  ),
 ];
 
 // Deliberately NOT setting disableHierarchicalLookup / a custom nodeModulesPaths here.

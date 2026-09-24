@@ -15,6 +15,7 @@ import {
   listWorkoutTemplates,
 } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { LogoLoader } from '@/components/brand/logo-loader';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { TypeChip } from '@/components/type-chip';
@@ -434,7 +435,9 @@ export default function TrainScreen() {
           {error ? (
             <Text className="mt-4 font-archivo text-[13px] text-dimmer">{error}</Text>
           ) : templates === null ? (
-            <Text className="mt-4 font-archivo text-[13px] text-dimmer">Loading…</Text>
+            <View className="mt-6 items-center">
+              <LogoLoader />
+            </View>
           ) : templates.length === 0 ? (
             <Text className="mt-4 font-archivo text-[13px] text-dimmer">
               No workouts yet. Tap + to build your first.

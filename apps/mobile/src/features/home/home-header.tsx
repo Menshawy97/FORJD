@@ -1,11 +1,13 @@
 import { Pressable, Text, View } from 'react-native';
 
+import { LogoMark } from '@/components/brand/logo-mark';
+import { Wordmark } from '@/components/brand/wordmark';
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme/tokens';
 
 /**
  * Home's header. Unlike every other screen this one does not use `components/header.tsx` --
- * the prototype gives Home a bespoke header (a four-bar mark, the FORJD wordmark, a greeting
+ * the prototype gives Home a bespoke header (the ADR-052 symbol and drawn wordmark, a greeting
  * beneath it, and a bell on the right) rather than the shared title-and-back-chevron row.
  * `profile.tsx` is the precedent for a tab screen owning its own header.
  *
@@ -24,9 +26,9 @@ export function HomeHeader({ firstName }: HomeHeaderProps) {
   return (
     <View className="flex-row items-start justify-between px-screen-x pb-2">
       <View className="flex-row items-center gap-[10px]">
-        <Icon name="wordmark" size={22} color={colors.accent} />
-        <View className="gap-1">
-          <Text className="font-archivo text-wordmark-home font-extrabold text-text">FORJD</Text>
+        <LogoMark size={26} />
+        <View className="gap-[6px]">
+          <Wordmark height={14} />
           {firstName === null ? null : (
             <Text className="font-archivo text-home-meta font-medium text-metadata">
               {`Hi, ${firstName}`}
