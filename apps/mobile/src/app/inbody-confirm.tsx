@@ -18,6 +18,7 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { parseSheetDate } from '@/features/body/sheet-date';
 import { takePendingScan, type PendingScan } from '@/store/pending-scan';
 import { colors } from '@/theme/tokens';
 
@@ -105,7 +106,8 @@ export default function InBodyConfirmScreen() {
       setSegmentalValues(initialSegmental);
 
       const now = new Date();
-      setScanDate(scan.extracted.testDate ? new Date(scan.extracted.testDate) : now);
+      // An unreadable or missing sheet date falls back to today, never "NaN/NaN/NaN".
+      setScanDate(parseSheetDate(scan.extracted.testDate) ?? now);
       setScanTime(now);
     }, []),
   );
