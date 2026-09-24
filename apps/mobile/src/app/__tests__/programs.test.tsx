@@ -115,3 +115,15 @@ describe('ProgramsScreen', () => {
     expect(await findByText('Could not load programs. Please try again.')).toBeTruthy();
   });
 });
+
+// ADR-052: longer waits show animation #3, the pulsing FORJD symbol -- this screen showed
+// nothing at all while `programs` was still null.
+describe('ProgramsScreen while loading', () => {
+  it('shows the logo loader', async () => {
+    mockList.mockReturnValue(new Promise(() => {}));
+
+    const { findByLabelText } = await render(<ProgramsScreen />);
+
+    expect(await findByLabelText('Loading')).toBeTruthy();
+  });
+});

@@ -69,7 +69,7 @@ describe('swipe-back stack reset - login', () => {
     });
 
     const rendered = renderApp({ initialUrl: '/welcome' });
-    const { findByText, findByPlaceholderText } = await rendered;
+    const { findByText, findByLabelText, findByPlaceholderText } = await rendered;
     await findByText(/Training\./);
 
     await act(async () => router.push('/login'));
@@ -84,7 +84,7 @@ describe('swipe-back stack reset - login', () => {
 
     // Home's wordmark: the marker that the tabs shell has taken over. It replaced
     // 'home — coming soon' when Home stopped being a placeholder screen.
-    await findByText('FORJD');
+    await findByLabelText('FORJD');
 
     expect(router.canDismiss()).toBe(false);
   });

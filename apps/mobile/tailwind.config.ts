@@ -204,9 +204,6 @@ export default {
         'tab-label': ['10px', { lineHeight: '1' }],
         'inline-error': ['12px', { lineHeight: '1' }],
         legal: ['11.5px', { lineHeight: '1.5' }],
-        wordmark: ['22px', { lineHeight: '1', letterSpacing: '.02em' }],
-        // The welcome screen sits at the top of the handoff's 21-23px wordmark range.
-        'wordmark-welcome': ['23px', { lineHeight: '1', letterSpacing: '.02em' }],
         'chart-axis': ['10px', { lineHeight: '1' }],
         // Values below are measured off the prototype and are not (yet) named in
         // 02-design-tokens.md's typography table — they are added here rather than inlined
@@ -223,10 +220,8 @@ export default {
         logout: ['13px', { lineHeight: '1' }],
         'plan-badge': ['10px', { lineHeight: '1', letterSpacing: '.03em' }],
 
-        // Home dashboard. The wordmark is 21px here, one pixel under the 22px `wordmark`
-        // the auth screens use -- a real difference in the prototype, not a rounding of it.
-        'wordmark-home': ['21px', { lineHeight: '1', letterSpacing: '.02em' }],
-        // The greeting under the wordmark and the date line above the first card.
+        // Home dashboard. (The typeset wordmark sizes that lived here went with ADR-052's drawn
+        // wordmark.) The greeting under the wordmark and the date line above the first card.
         'home-meta': ['12.5px', { lineHeight: '1' }],
         // Home's small caption size, shared by the stat labels, the metric units, the macro
         // chips on the nutrition card, the readiness chips and the weekday letters.

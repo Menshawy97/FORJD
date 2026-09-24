@@ -60,8 +60,13 @@ describe('welcome screen - design fidelity', () => {
     // SVG on this screen, since `ScreenBackground` paints the ember atmosphere with a
     // full-bleed <Svg> sized `"100%"`. Counting every RNSVGSvgView would turn this into an
     // assertion about how many SVGs the app happens to render.
+    // ADR-052's lockup (symbol + drawn wordmark) is excluded by its labels for the same reason.
+    const BRAND_LABELS = ['FORJD', 'FORJD symbol'];
     const svgs = nodes.filter(
-      (node) => node.type === 'RNSVGSvgView' && typeof node.props.width === 'number',
+      (node) =>
+        node.type === 'RNSVGSvgView' &&
+        typeof node.props.width === 'number' &&
+        !BRAND_LABELS.includes(node.props.accessibilityLabel as string),
     );
     expect(svgs).toHaveLength(3);
     for (const svg of svgs) {
@@ -70,9 +75,9 @@ describe('welcome screen - design fidelity', () => {
   });
 
   it('keeps the wordmark and the three feature captions', async () => {
-    const { findByText } = await renderApp({ initialUrl: '/welcome' });
+    const { findByText, findByLabelText } = await renderApp({ initialUrl: '/welcome' });
 
-    await findByText('FORJD');
+    await findByLabelText('FORJD');
     await findByText('Strength · Running · Cross Training · Mobility');
     await findByText('Sleep · HRV · Recovery · Body Composition');
     await findByText('AI Insights · City Leaderboards · Analytics');

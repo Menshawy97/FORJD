@@ -218,3 +218,17 @@ describe('ProgramOverviewScreen', () => {
     expect(await findByText('Could not load this program. Please try again.')).toBeTruthy();
   });
 });
+
+// ADR-052: longer waits show animation #3, the pulsing FORJD symbol, not a line of text.
+describe('ProgramOverviewScreen while loading', () => {
+  it('shows the logo loader', async () => {
+    mockGet.mockReturnValue(new Promise(() => {}));
+    mockEnrollment.mockReturnValue(new Promise(() => {}));
+    mockSessions.mockReturnValue(new Promise(() => {}));
+
+    const { findByLabelText, queryByText } = await render(<ProgramOverviewScreen />);
+
+    expect(await findByLabelText('Loading')).toBeTruthy();
+    expect(queryByText('Loading…')).toBeNull();
+  });
+});

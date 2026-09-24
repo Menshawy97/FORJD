@@ -244,3 +244,15 @@ describe('navigation', () => {
     });
   });
 });
+
+// ADR-052: longer waits show animation #3, the pulsing FORJD symbol, not a line of text.
+describe('while the list loads', () => {
+  it('shows the logo loader', async () => {
+    (listWorkoutTemplates as jest.Mock).mockReturnValue(new Promise(() => {}));
+
+    const { findByLabelText, queryByText } = await render(<TrainScreen />);
+
+    expect(await findByLabelText('Loading')).toBeTruthy();
+    expect(queryByText('Loading…')).toBeNull();
+  });
+});

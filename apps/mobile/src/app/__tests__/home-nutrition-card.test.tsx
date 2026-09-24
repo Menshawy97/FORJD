@@ -194,7 +194,7 @@ describe('Nutrition Today card', () => {
     const screen = await render(<HomeScreen />);
 
     await waitFor(() => expect(listNutritionLog).toHaveBeenCalled());
-    expect(screen.getByText('FORJD')).toBeTruthy();
+    expect(screen.getByLabelText('FORJD')).toBeTruthy();
     expect(screen.getByText('0 kcal')).toBeTruthy();
     expect(screen.getByText('Start Workout')).toBeTruthy();
   });

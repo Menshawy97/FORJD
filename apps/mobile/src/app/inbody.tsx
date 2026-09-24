@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { BodyScanSummary } from '@forjd/contracts';
 
 import { extractBodyScan, listBodyScans } from '@/auth/apiClient';
+import { LogoLoader } from '@/components/brand/logo-loader';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
@@ -124,7 +125,7 @@ export default function InBodyScreen() {
             gap: 13,
           }}>
           {extracting ? (
-            <ActivityIndicator color={colors.accent} />
+            <LogoLoader size={56} />
           ) : (
             <>
               <Icon name="upload" color="#8b8b83" size={26} />

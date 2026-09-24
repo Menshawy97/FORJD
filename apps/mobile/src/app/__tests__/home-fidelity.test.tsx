@@ -85,7 +85,7 @@ describe('Home header', () => {
   it('renders the wordmark and greets the user by first name', async () => {
     const screen = await render(<HomeScreen />);
 
-    expect(screen.getByText('FORJD')).toBeTruthy();
+    expect(screen.getByLabelText('FORJD')).toBeTruthy();
     await waitFor(() => expect(screen.getByText('Hi, James')).toBeTruthy());
   });
 
@@ -97,7 +97,7 @@ describe('Home header', () => {
     const screen = await render(<HomeScreen />);
 
     await waitFor(() => expect(getMe).toHaveBeenCalled());
-    expect(screen.getByText('FORJD')).toBeTruthy();
+    expect(screen.getByLabelText('FORJD')).toBeTruthy();
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });
 
