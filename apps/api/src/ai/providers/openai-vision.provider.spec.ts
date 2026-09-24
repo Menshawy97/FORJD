@@ -37,7 +37,7 @@ describe("OpenAiVisionProvider", () => {
     provider = new OpenAiVisionProvider(client as never);
   });
 
-  it("parses a clean response and calls the vendor with gpt-4o-mini and a data: image URL", async () => {
+  it("parses a clean response and calls the vendor with gpt-5.4-mini, structured output and a high-detail image", async () => {
     create.mockResolvedValueOnce(
       fakeCompletion(
         JSON.stringify({
@@ -55,11 +55,13 @@ describe("OpenAiVisionProvider", () => {
     expect(create).toHaveBeenCalledTimes(1);
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "gpt-4o-mini",
+        model: "gpt-5.4-mini",
+        max_completion_tokens: expect.any(Number),
+        response_format: expect.objectContaining({ type: "json_schema", json_schema: expect.objectContaining({ strict: true }) }),
         messages: [
           expect.objectContaining({
             content: expect.arrayContaining([
-              expect.objectContaining({ type: "image_url", image_url: { url: expect.stringMatching(/^data:image\/jpeg;base64,/) } }),
+              expect.objectContaining({ type: "image_url", image_url: { url: expect.stringMatching(/^data:image\/jpeg;base64,/), detail: "high" } }),
             ]),
           }),
         ],

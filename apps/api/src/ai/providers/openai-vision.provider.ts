@@ -2,6 +2,7 @@ import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common
 import OpenAI from "openai";
 
 import { buildInBodyExtractionPrompt } from "./inbody-extraction-prompt";
+import { buildInBodyExtractionSchema } from "./inbody-extraction-schema";
 import { parseInBodyExtractionResponse } from "./inbody-response-parser";
 import { OPENAI_VISION_CLIENT } from "./openai-vision-client";
 import type { ExtractedBodyScan, VisionProvider } from "./vision-provider.interface";
@@ -19,16 +20,18 @@ import type { ExtractedBodyScan, VisionProvider } from "./vision-provider.interf
  * of the extraction logic. The golden fixtures in `tests/fixtures/inbody/` therefore already
  * cover this file's prompt and parsing behaviour.
  *
- * Model: `gpt-4o-mini`, chosen for cost -- the cheapest OpenAI model confirmed to support
- * image input via the standard chat completions API at the time this was written
- * ($0.15 / 1M input tokens, $0.60 / 1M output tokens). OpenAI's pricing page changes
- * frequently and was not fully trustworthy to automated verification during this session
- * (some fetched model names could not be corroborated); if a cheaper vision-capable model is
- * confirmed later, this is the one line to change.
+ * Model: `gpt-5.4-mini` (ADR-053), chosen by measuring against the hand-checked sample sheets
+ * in `scripts/spikes/inbody-samples/`: 88-91% of values exactly right with this prompt, against
+ * 51-59% for the previous `gpt-4o-mini`, at about the same cost per scan (~$0.005 -- older
+ * models are billed far more tokens per image) and ~4 s per scan. `detail: "high"` because
+ * InBody sheets are dense small print, and a strict JSON schema (`response_format`) so the
+ * answer is always well-formed; the retry loop below still covers transport failures.
  */
 @Injectable()
 export class OpenAiVisionProvider implements VisionProvider {
-  private static readonly MODEL = "gpt-4o-mini";
+  private static readonly MODEL = "gpt-5.4-mini";
+  /** Generous: the answer is ~600 tokens, and a truncated JSON answer is a failed scan. */
+  private static readonly MAX_COMPLETION_TOKENS = 4096;
   private static readonly MAX_ATTEMPTS = 3;
 
   constructor(@Inject(OPENAI_VISION_CLIENT) private readonly client: OpenAI) {}
@@ -42,13 +45,17 @@ export class OpenAiVisionProvider implements VisionProvider {
       try {
         const response = await this.client.chat.completions.create({
           model: OpenAiVisionProvider.MODEL,
-          max_tokens: 2048,
+          max_completion_tokens: OpenAiVisionProvider.MAX_COMPLETION_TOKENS,
+          response_format: {
+            type: "json_schema",
+            json_schema: { name: "inbody_extraction", strict: true, schema: buildInBodyExtractionSchema() },
+          },
           messages: [
             {
               role: "user",
               content: [
                 { type: "text", text: prompt },
-                { type: "image_url", image_url: { url: dataUrl } },
+                { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
               ],
             },
           ],

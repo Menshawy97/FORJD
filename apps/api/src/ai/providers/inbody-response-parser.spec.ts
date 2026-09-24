@@ -89,3 +89,91 @@ describe("parseInBodyExtractionResponse: defensive coercion", () => {
     expect(result.imageQualityNotes).toBe("");
   });
 });
+
+/**
+ * ADR-053: the model now reports each value as printed, with its printed unit, and the parser
+ * does the arithmetic. The evaluation behind that ADR found the model reading an lb sheet's
+ * digits correctly and then skipping the conversion -- the single biggest error class -- so the
+ * conversion moved out of the prompt and into code, where it is exact every time.
+ */
+describe("parseInBodyExtractionResponse: printed values and units (ADR-053)", () => {
+  const printed = (fields: Record<string, unknown>, segmental: Record<string, unknown> = {}) =>
+    JSON.stringify({ inbody_model: "770", test_date: "2016-08-23", fields, segmental, image_quality_notes: "" });
+  const field = (value: number | null, unit: string | null, confidence = 0.95, reading_note = "") => ({
+    value,
+    unit,
+    confidence,
+    reading_note,
+  });
+
+  it("converts lb weight-type values to kg and says so", () => {
+    const result = parseInBodyExtractionResponse(
+      printed(
+        { weight: field(163.3, "lb"), skeletal_muscle_mass: field(87.5, "lb"), body_fat_mass: field(13.4, "lb") },
+        { right_arm: field(9.04, "lb") },
+      ),
+    );
+
+    expect(result.fields.weight_kg.value).toBe(74.07);
+    expect(result.fields.skeletal_muscle_mass_kg.value).toBe(39.69);
+    expect(result.fields.body_fat_mass_kg.value).toBe(6.08);
+    expect(result.segmental.right_arm.value).toBe(4.1);
+    expect(result.fields.weight_kg.readingNote).toMatch(/163\.3 lb/);
+    expect(result.fields.weight_kg.confidence).toBe(0.95);
+  });
+
+  it("keeps kg values exactly as printed", () => {
+    const result = parseInBodyExtractionResponse(printed({ weight: field(82.4, "kg"), body_fat_percent: field(12.1, "%") }));
+
+    expect(result.fields.weight_kg.value).toBe(82.4);
+    expect(result.fields.body_fat_percent.value).toBe(12.1);
+    expect(result.fields.weight_kg.readingNote).toBe("");
+  });
+
+  it("converts Total Body Water printed in lb to litres, and keeps it printed in L", () => {
+    expect(parseInBodyExtractionResponse(printed({ total_body_water: field(66.4, "lb") })).fields.total_body_water_l.value).toBe(
+      30.12,
+    );
+    expect(parseInBodyExtractionResponse(printed({ total_body_water: field(53, "L") })).fields.total_body_water_l.value).toBe(53);
+  });
+
+  it("maps every printed field onto its canonical metric", () => {
+    const result = parseInBodyExtractionResponse(
+      printed({
+        visceral_fat_level: field(3, "level"),
+        bmi: field(24.1, "kg/m2"),
+        basal_metabolic_rate: field(1934, "kcal"),
+        inbody_score: field(88, "points"),
+      }),
+    );
+
+    expect(result.fields.visceral_fat_level.value).toBe(3);
+    expect(result.fields.bmi.value).toBe(24.1);
+    expect(result.fields.basal_metabolic_rate_kcal.value).toBe(1934);
+    expect(result.fields.inbody_score.value).toBe(88);
+  });
+
+  // Different InBody machines print different layouts and units; a value whose unit the parser
+  // cannot vouch for is kept (the user can confirm it) but never pre-filled as if trustworthy.
+  it("keeps a value with a missing unit but caps its confidence below the pre-fill threshold", () => {
+    const result = parseInBodyExtractionResponse(printed({ weight: field(70.2, null, 0.99) }));
+
+    expect(result.fields.weight_kg.value).toBe(70.2);
+    expect(result.fields.weight_kg.confidence).toBe(0.5);
+    expect(result.fields.weight_kg.readingNote).toMatch(/unit/i);
+  });
+
+  it("does the same for a unit that does not belong to the field", () => {
+    const result = parseInBodyExtractionResponse(printed({ body_fat_percent: field(12.1, "kg", 0.97) }));
+
+    expect(result.fields.body_fat_percent.value).toBe(12.1);
+    expect(result.fields.body_fat_percent.confidence).toBe(0.5);
+  });
+
+  it("leaves a field the sheet does not print as null with no confidence", () => {
+    const result = parseInBodyExtractionResponse(printed({ inbody_score: field(null, null, 0.9) }));
+
+    expect(result.fields.inbody_score).toEqual({ value: null, confidence: 0, readingNote: "" });
+    expect(result.fields.weight_kg).toEqual({ value: null, confidence: 0, readingNote: "" });
+  });
+});

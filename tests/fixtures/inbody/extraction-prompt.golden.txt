@@ -1,112 +1,52 @@
-This is a photograph of an InBody body-composition result sheet. InBody
-machines print weight-related fields (Weight, Skeletal Muscle Mass, Body Fat Mass) in
-either kg OR lb depending on the machine's configured unit — never assume which.
+This is a photo of an InBody body-composition result sheet (a printout, or a photo of a screen
+or app). Transcribe the CURRENT test's values exactly as printed, with the unit printed beside
+each one. Do not convert units and do not do any arithmetic: report the printed number and its
+printed unit, and the app converts.
 
-Read these values, converting to the units below if the sheet prints a different unit:
-- Weight (kg) — if the sheet shows lb, multiply by 0.45359237 to get kg.
-- Skeletal Muscle Mass (kg) — same lb-to-kg conversion if needed.
-- Body Fat Mass (kg) — same lb-to-kg conversion if needed.
-- Percent Body Fat (%)
-- Visceral Fat Level
-- Total Body Water (L)
-- BMI
-- Basal Metabolic Rate (kcal)
-- InBody Score
+Fields (set value to null and unit to null when the sheet does not print it):
+- weight: Weight. unit "kg" or "lb".
+- skeletal_muscle_mass: Skeletal Muscle Mass (SMM). unit "kg" or "lb".
+- body_fat_mass: Body Fat Mass. unit "kg" or "lb".
+- body_fat_percent: Percent Body Fat (PBF). unit "%".
+- visceral_fat_level: Visceral Fat Level. unit "level".
+- total_body_water: Total Body Water. unit "L" or "lb".
+- bmi: BMI. unit "kg/m2".
+- basal_metabolic_rate: Basal Metabolic Rate. unit "kcal".
+- inbody_score: InBody Score. unit "points".
 
-Also read the "Segmental Lean Analysis" section (five body parts, always in kg,
-same lb-to-kg conversion rule if the sheet prints lb there):
-- Right arm, Left arm, Trunk, Right leg, Left leg
+Notes on specific fields:
+- visceral_fat_level is a plain level number (e.g. "Level 3"). Many sheets instead show
+  Visceral Fat AREA (VFA) in cm², often as a graph: that is a different measurement, so return
+  null.
+- inbody_score is printed as "NN/100 Points". Several machines (e.g. InBody 770) and most
+  screen/app reports print no score at all: then return null. Never estimate one.
+- total_body_water is printed in L, or in lb on machines configured for lb.
+
+Segmental Lean Analysis, per body part: right_arm, left_arm, trunk, right_leg, left_leg. Each shows a mass and a
+percentage; report the mass with its unit ("kg" or "lb"), never the percentage.
+
+Where the real value is, and the numbers that are NOT it:
+- Prefer the "Body Composition Analysis" table and the value printed at the end of each
+  "Muscle-Fat Analysis" / "Obesity Analysis" bar. If a value is printed twice, both copies
+  must agree; if they don't, re-read both.
+- IGNORE normal ranges, printed in brackets or as "a ~ b" (e.g. "42.3~51.7").
+- IGNORE the numbers along the top of the bar graphs (axis ticks such as 55 70 85 100).
+- IGNORE the "Body Composition History" table: it lists OLDER tests.
+- IGNORE target/control values ("Target Weight", "Weight Control", "Fat Control").
+- IGNORE ratios and percentages that are not the field itself: "TBW/LBM" (e.g. 73.1 %) is not
+  the InBody Score, "ECW/TBW" (e.g. 0.380) is not Total Body Water, and the segmental "%" rows
+  are not masses.
+- Values often sit in the right-hand column rather than the main tables: Basal Metabolic Rate
+  ("1838 kcal") usually appears under "Research Parameters" or on its own line there, and the
+  InBody Score and Visceral Fat Level at the top right. Check that column before returning null.
 
 Rules:
-- Transcribe only what is printed. Never compute or infer a value from the others.
-- If a field is not on this sheet or you cannot read it, set value to null.
-- If you converted a value from lb to kg, say so in reading_note.
-- Never report an lb number as if it were kg.
-- A conversion is not a reason for value to be null. If the sheet printed lb, you can
-  read the number, and you know the conversion factor: multiply it out and report the
-  resulting kg number as value. Only use null when you cannot read the printed number at
-  all — never as a way to avoid doing the multiplication.
-- Set confidence honestly, per field.
+- Copy digits exactly, including decimals. Never round, estimate, or derive a value from others.
+- Never fill a field the sheet does not print: null is correct and expected there.
+- confidence is your honest probability (0 to 1) that the transcribed value is exactly right.
+  Use 0.9 or above only when the digits are sharp and unambiguous; lower it for blur, glare,
+  small print, or hesitation between two readings, and explain the doubt in reading_note.
 
-Respond with ONLY a JSON object shaped exactly like this example, nothing else.
-Every number in this example is fake filler from an unrelated sheet:
-
-{
-  "inbody_model": "570",
-  "test_date": "2026-01-15",
-  "fields": {
-    "weight_kg": {
-      "value": 10,
-      "confidence": 0.99,
-      "reading_note": ""
-    },
-    "skeletal_muscle_mass_kg": {
-      "value": 17.3,
-      "confidence": 0.62,
-      "reading_note": ""
-    },
-    "body_fat_mass_kg": {
-      "value": 24.6,
-      "confidence": 0.85,
-      "reading_note": ""
-    },
-    "body_fat_percent": {
-      "value": 31.9,
-      "confidence": 0.97,
-      "reading_note": ""
-    },
-    "visceral_fat_level": {
-      "value": 39.2,
-      "confidence": 0.71,
-      "reading_note": ""
-    },
-    "total_body_water_l": {
-      "value": 46.5,
-      "confidence": 0.9,
-      "reading_note": ""
-    },
-    "bmi": {
-      "value": 53.8,
-      "confidence": 0.55,
-      "reading_note": ""
-    },
-    "basal_metabolic_rate_kcal": {
-      "value": 61.1,
-      "confidence": 0.93,
-      "reading_note": ""
-    },
-    "inbody_score": {
-      "value": 68.4,
-      "confidence": 0.8,
-      "reading_note": ""
-    }
-  },
-  "segmental": {
-    "right_arm": {
-      "value": 3,
-      "confidence": 0.9,
-      "reading_note": ""
-    },
-    "left_arm": {
-      "value": 9.1,
-      "confidence": 0.88,
-      "reading_note": ""
-    },
-    "trunk": {
-      "value": 15.2,
-      "confidence": 0.95,
-      "reading_note": ""
-    },
-    "right_leg": {
-      "value": 21.299999999999997,
-      "confidence": 0.86,
-      "reading_note": ""
-    },
-    "left_leg": {
-      "value": 27.4,
-      "confidence": 0.83,
-      "reading_note": ""
-    }
-  },
-  "image_quality_notes": ""
-}
+Answer with a single JSON object: "inbody_model" and "test_date" (strings as printed, or null),
+"fields" and "segmental" (each entry {"value", "unit", "confidence", "reading_note"}, keyed as
+listed above), and "image_quality_notes" (a string).
