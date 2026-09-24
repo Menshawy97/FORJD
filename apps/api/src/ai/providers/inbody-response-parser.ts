@@ -11,6 +11,53 @@ import type { ExtractedBodyScan, ExtractedMeasurement } from "./vision-provider.
  */
 export const UNVERIFIED_UNIT_CONFIDENCE = 0.5;
 
+/**
+ * Sheets print the test date in whatever form the machine uses ("2025.08.02. 13:10",
+ * "2025/8/2", ISO), and the model passes it through. Normalise to YYYY-MM-DD, or null when it
+ * is not a real calendar date -- the confirm screen then falls back to today.
+ */
+export function normalizeTestDate(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const match = raw.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  if (!match) return null;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return `${match[1]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Body Fat Mass vs Weight x PBF: absolute slack for the sheet's own 0.1 rounding, or 3%. */
+const FAT_MASS_TOLERANCE_KG = 0.5;
+const FAT_MASS_TOLERANCE_RATIO = 0.03;
+
+/**
+ * InBody's own arithmetic: Body Fat Mass = Weight x Percent Body Fat / 100. A reading that
+ * breaks it means one of the two fat values was misread (on a real InBody 120 sheet the model
+ * took PBF's 25.0 as Body Fat Mass, printed 21.9, at 99% confidence). Neither value is changed
+ * -- the user sees what was read -- but both drop below the pre-fill threshold with a reason,
+ * so the confirm screen asks for a check instead of presenting a wrong number as settled.
+ */
+function flagInconsistentBodyFat(fields: Record<BodyMetric, ExtractedMeasurement>): void {
+  const weight = fields.weight_kg.value;
+  const fatMass = fields.body_fat_mass_kg.value;
+  const percent = fields.body_fat_percent.value;
+  if (weight === null || fatMass === null || percent === null) return;
+
+  const expected = (weight * percent) / 100;
+  const tolerance = Math.max(FAT_MASS_TOLERANCE_KG, expected * FAT_MASS_TOLERANCE_RATIO);
+  if (Math.abs(fatMass - expected) <= tolerance) return;
+
+  const note = `This doesn't match weight × body fat % (${round2(expected)} kg), so please check it.`;
+  for (const metric of ["body_fat_mass_kg", "body_fat_percent"] as const) {
+    const field = fields[metric];
+    fields[metric] = {
+      value: field.value,
+      confidence: Math.min(field.confidence, UNVERIFIED_UNIT_CONFIDENCE),
+      readingNote: field.readingNote ? `${note} ${field.readingNote}` : note,
+    };
+  }
+}
+
 type RawMeasurement = { value?: unknown; unit?: unknown; confidence?: unknown; reading_note?: unknown };
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -100,13 +147,14 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
       const printed = PRINTED_FIELDS[metric];
       fields[metric] = readPrinted((raw.fields as Record<string, RawMeasurement>)[printed.key], printed.units);
     }
+    flagInconsistentBodyFat(fields);
     const segmental = {} as Record<SegmentalSite, ExtractedMeasurement>;
     for (const site of SEGMENTAL_SITES) {
       segmental[site] = readPrinted((raw.segmental as Record<string, RawMeasurement> | undefined)?.[site], SEGMENTAL_UNITS);
     }
     return {
       inbodyModel: typeof raw.inbody_model === "string" ? raw.inbody_model : null,
-      testDate: typeof raw.test_date === "string" ? raw.test_date : null,
+      testDate: normalizeTestDate(raw.test_date),
       fields,
       segmental,
       imageQualityNotes: typeof raw.image_quality_notes === "string" ? raw.image_quality_notes : "",
@@ -135,7 +183,7 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
 
   return {
     inbodyModel: typeof raw.inbody_model === "string" ? raw.inbody_model : null,
-    testDate: typeof raw.test_date === "string" ? raw.test_date : null,
+    testDate: normalizeTestDate(raw.test_date),
     fields,
     segmental,
     imageQualityNotes: typeof raw.image_quality_notes === "string" ? raw.image_quality_notes : "",
