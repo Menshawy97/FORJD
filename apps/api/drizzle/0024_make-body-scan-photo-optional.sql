@@ -1,0 +1,1 @@
+ALTER TABLE "body_scans" ALTER COLUMN "photo_key" DROP NOT NULL;
