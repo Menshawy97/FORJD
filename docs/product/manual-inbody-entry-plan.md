@@ -50,3 +50,26 @@ history tag).
 Rule 10 (preserve source) is met at the scan level: every measurement belongs to a scan whose
 `source` is `inbody` or `manual`, so the two are always distinguishable. Both are the user's
 own body-composition record; the read path treats them alike, and nothing overwrites anything.
+
+## After device testing (PR #247)
+
+Two problems surfaced on the user's iPhone, both fixed:
+
+- **Saving a real scan failed.** The sheet printed a trunk lean mass of 30.5 kg, above the old
+  30 kg segmental limit, so the API returned a 400 that the app reported as a connection error.
+  The limits now come from the user's own ceilings: each arm and leg **0.5–50 kg**, trunk
+  **0.5–90 kg** (`BODY_MEASUREMENT_VALUE_BOUNDS`, `packages/contracts/src/body.ts`).
+- **Per-field range errors before sending.** Both the Confirm-scan and manual-entry screens now
+  check every value against the same bounds before saving (`measurementBounds` in contracts,
+  `rangeError` in `apps/mobile/src/features/body/range-error.ts`). An out-of-range value turns
+  its box red with "Must be between X and Y unit" and nothing is sent, so a limit can no longer
+  masquerade as a network failure.
+- **The "Enter values manually" row rendered broken on device** while looking right on web and
+  in tests: its box-model styles lived in a `Pressable` style callback. They now use NativeWind
+  `className`, with only the pressed opacity left in the callback.
+
+## Account deletion
+
+Manual entries are removed with the account, like scanned ones: the `users` cascade deletes the
+scan rows and their values. Only the photo-file cleanup step has nothing to do for them, because
+a manual entry has no photo. `body.repository.spec.ts` proves the rows and values are gone.
