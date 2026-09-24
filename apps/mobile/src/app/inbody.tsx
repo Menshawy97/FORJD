@@ -1,7 +1,7 @@
 import { isAxiosError } from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { BodyScanSummary } from '@forjd/contracts';
 
@@ -51,6 +51,16 @@ export default function InBodyScreen() {
   const [needsAiConsent, setNeedsAiConsent] = useState(false);
   const toast = useToast();
   const loadGeneration = useRef(0);
+  const { saved } = useLocalSearchParams<{ saved?: string }>();
+
+  // Arriving from the manual-entry form after a save (approved design, state 4).
+  useEffect(() => {
+    if (saved === 'manual') {
+      toast.show('Values saved to history');
+      router.setParams({ saved: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per arrival, keyed on the param.
+  }, [saved]);
 
   const load = useCallback(async () => {
     const generation = (loadGeneration.current += 1);
@@ -202,6 +212,34 @@ export default function InBodyScreen() {
           </Text>
         </Pressable>
 
+        {/* Manual entry (docs/product/manual-inbody-entry-plan.md, approved replica, state 1). */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Enter values manually. No photo — type in your results"
+          onPress={() => router.push('/inbody-manual')}
+          style={({ pressed }) => ({
+            marginTop: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            paddingVertical: 13,
+            paddingHorizontal: 14,
+            backgroundColor: '#17181A',
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 14,
+            opacity: pressed ? 0.8 : 1,
+          })}>
+          <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: '#1c1d20', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="pencil" color={colors.accent} size={18} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: 'Archivo', fontSize: 13.5, fontWeight: '600', color: colors.text }}>Enter values manually</Text>
+            <Text style={{ marginTop: 5, fontFamily: 'Archivo', fontSize: 11.5, color: colors.dim }}>No photo — type in your results</Text>
+          </View>
+          <Icon name="chevron" color="#8b8b83" size={17} />
+        </Pressable>
+
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 24, marginBottom: 2 }}>
           <Text
             style={{
@@ -276,13 +314,33 @@ export default function InBodyScreen() {
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                    <Icon name="scale" color="#8b8b83" size={18} />
+                    <Icon name={scan.source === 'manual' ? 'pencil' : 'scale'} color="#8b8b83" size={18} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Archivo', fontSize: 13.5, fontWeight: '600', color: colors.text }}>
-                    {formatScanDate(scan.measuredAt)}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                    <Text style={{ fontFamily: 'Archivo', fontSize: 13.5, fontWeight: '600', color: colors.text }}>
+                      {formatScanDate(scan.measuredAt)}
+                    </Text>
+                    {scan.source === 'manual' ? (
+                      <Text
+                        style={{
+                          fontFamily: 'Archivo',
+                          fontSize: 8.5,
+                          fontWeight: '600',
+                          letterSpacing: 0.1 * 8.5,
+                          textTransform: 'uppercase',
+                          color: '#b4b4ac',
+                          backgroundColor: 'rgba(255,255,255,.07)',
+                          borderRadius: 5,
+                          overflow: 'hidden',
+                          paddingVertical: 3,
+                          paddingHorizontal: 5,
+                        }}>
+                        Manual
+                      </Text>
+                    ) : null}
+                  </View>
                   <Text
                     style={{
                       marginTop: 5,

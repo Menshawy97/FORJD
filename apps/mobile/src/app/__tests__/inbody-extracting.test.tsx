@@ -5,11 +5,13 @@ import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockPush = jest.fn();
+let mockSearchParams: Record<string, string> = {};
 
 jest.mock('expo-router', () => {
   const react = require('react');
   return {
-    router: { push: (...args: unknown[]) => mockPush(...args), back: jest.fn() },
+    router: { push: (...args: unknown[]) => mockPush(...args), back: jest.fn(), setParams: jest.fn() },
+    useLocalSearchParams: () => mockSearchParams,
     useFocusEffect: (callback: () => void | (() => void)) => {
       react.useEffect(() => callback(), []);
     },
@@ -118,5 +120,40 @@ describe('InBody photo extraction refused', () => {
 
     expect(await findByText(/better lighting/)).toBeTruthy();
     expect(queryByText(/Turn on AI insights/)).toBeNull();
+  });
+});
+
+describe('manual entry on the InBody screen', () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+    mockSearchParams = {};
+    (listBodyScans as jest.Mock).mockResolvedValue({
+      scans: [
+        { id: '11111111-1111-1111-1111-111111111111', measuredAt: '2026-09-24T09:15:00.000Z', source: 'manual', weightKg: 82.4, bodyFatPercent: 12.1 },
+        { id: '22222222-2222-2222-2222-222222222222', measuredAt: '2026-08-11T09:15:00.000Z', source: 'inbody', weightKg: 87.1, bodyFatPercent: 16.4 },
+      ],
+    });
+  });
+
+  it('offers "Enter values manually", which opens the form', async () => {
+    const { findByRole } = await render(<InBodyScreen />);
+
+    await fireEvent.press(await findByRole('button', { name: /Enter values manually/ }));
+
+    expect(mockPush).toHaveBeenCalledWith('/inbody-manual');
+  });
+
+  it('tags a manual entry in the history, and only that one', async () => {
+    const { findAllByText, findByText } = await render(<InBodyScreen />);
+
+    await findByText('87.1 kg · 16.4%');
+    expect(await findAllByText('Manual')).toHaveLength(1);
+  });
+
+  it('confirms a manual save when it lands back here', async () => {
+    mockSearchParams = { saved: 'manual' };
+    const { findByText } = await render(<InBodyScreen />);
+
+    expect(await findByText('Values saved to history')).toBeTruthy();
   });
 });
