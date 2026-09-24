@@ -239,3 +239,94 @@ describe("parseInBodyExtractionResponse: printed-value coercion (ADR-053)", () =
     expect(result.fields.weight_kg).toEqual({ value: null, confidence: 0, readingNote: "" });
   });
 });
+
+/**
+ * Found on a real sheet (InBody 120): the date is printed "2025.08.02. 13:10" and the model
+ * passed it through verbatim, which the app could not parse ("NaN-NaN-NaN" on the confirm
+ * screen). The parser now normalises every printed date to YYYY-MM-DD, or null.
+ */
+describe("parseInBodyExtractionResponse: test date normalisation", () => {
+  const withDate = (test_date: unknown) =>
+    JSON.stringify({ test_date, fields: { weight: { value: 70, unit: "kg", confidence: 0.9, reading_note: "" } } });
+
+  it.each([
+    ["2025.08.02", "2025-08-02"],
+    ["2025.08.02. 13:10", "2025-08-02"],
+    ["2025-08-02", "2025-08-02"],
+    ["2025/8/2", "2025-08-02"],
+    ["2026-09-24T09:15:00Z", "2026-09-24"],
+  ])("reads %s as %s", (printed, expected) => {
+    expect(parseInBodyExtractionResponse(withDate(printed)).testDate).toBe(expected);
+  });
+
+  it.each([["not a date"], ["2025.13.40"], ["08.02"], [""], [null]])("returns null for %p rather than an unparseable string", (printed) => {
+    expect(parseInBodyExtractionResponse(withDate(printed)).testDate).toBeNull();
+  });
+});
+
+/**
+ * Also found on that sheet: Body Fat Mass (printed 21.9 kg) came back as 25 at 99%
+ * confidence -- the model took Percent Body Fat (25.0 %) instead. InBody's own arithmetic ties
+ * the three together (Body Fat Mass = Weight x PBF / 100), so a reading that breaks it is not
+ * pre-filled as if checked: both values drop below the pre-fill threshold with an explanation.
+ */
+describe("parseInBodyExtractionResponse: weight / body fat consistency check", () => {
+  const sheet = (weight: number, bodyFatMass: number, pbf: number, unit = "kg") =>
+    JSON.stringify({
+      fields: {
+        weight: { value: weight, unit, confidence: 0.99, reading_note: "" },
+        body_fat_mass: { value: bodyFatMass, unit, confidence: 0.99, reading_note: "" },
+        body_fat_percent: { value: pbf, unit: "%", confidence: 0.99, reading_note: "" },
+      },
+    });
+
+  it("flags the real misread: 87.6 kg at 25.0 % cannot have 25 kg of fat mass", () => {
+    const result = parseInBodyExtractionResponse(sheet(87.6, 25, 25.0));
+
+    expect(result.fields.body_fat_mass_kg.value).toBe(25);
+    expect(result.fields.body_fat_mass_kg.confidence).toBe(0.5);
+    expect(result.fields.body_fat_percent.confidence).toBe(0.5);
+    expect(result.fields.body_fat_mass_kg.readingNote).toMatch(/doesn't match/i);
+    expect(result.fields.weight_kg.confidence).toBe(0.99);
+  });
+
+  it("leaves a consistent sheet alone (87.6 kg, 21.9 kg, 25.0 %)", () => {
+    const result = parseInBodyExtractionResponse(sheet(87.6, 21.9, 25.0));
+
+    expect(result.fields.body_fat_mass_kg.confidence).toBe(0.99);
+    expect(result.fields.body_fat_percent.confidence).toBe(0.99);
+  });
+
+  it("allows for the sheet's own rounding", () => {
+    // 82.4 x 12.1 % = 9.97; the sheet prints 10.0.
+    expect(parseInBodyExtractionResponse(sheet(82.4, 10.0, 12.1)).fields.body_fat_mass_kg.confidence).toBe(0.99);
+  });
+
+  it("checks after lb conversion (163.3 lb, 13.4 lb, 8.2 %)", () => {
+    expect(parseInBodyExtractionResponse(sheet(163.3, 13.4, 8.2, "lb")).fields.body_fat_mass_kg.confidence).toBe(0.99);
+  });
+
+  it("does nothing when one of the three is missing", () => {
+    const text = JSON.stringify({
+      fields: {
+        weight: { value: 87.6, unit: "kg", confidence: 0.99, reading_note: "" },
+        body_fat_mass: { value: 25, unit: "kg", confidence: 0.99, reading_note: "" },
+      },
+    });
+    expect(parseInBodyExtractionResponse(text).fields.body_fat_mass_kg.confidence).toBe(0.99);
+  });
+});
+
+describe("parseInBodyExtractionResponse: consistency note alongside the model's own", () => {
+  it("puts the mismatch first and keeps the model's note after it", () => {
+    const text = JSON.stringify({
+      fields: {
+        weight: { value: 87.6, unit: "kg", confidence: 0.99, reading_note: "" },
+        body_fat_mass: { value: 25, unit: "kg", confidence: 0.99, reading_note: "Faint print." },
+        body_fat_percent: { value: 25, unit: "%", confidence: 0.99, reading_note: "" },
+      },
+    });
+
+    expect(parseInBodyExtractionResponse(text).fields.body_fat_mass_kg.readingNote).toMatch(/^This doesn't match .* Faint print\.$/);
+  });
+});
