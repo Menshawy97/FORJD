@@ -74,7 +74,7 @@ const O='#e9712f', GRN='#79b98a', W='#f6f5f3', DIM='#9a9a92',
 |---|---|---|
 | `#E9712F` | accent — primary action, active tab, strength data | `AppColors.accent` |
 | `#F4894C` | accent hover | `AppColors.accentHover` |
-| `#A84D1D` | accent shade — third bar of the wordmark, ring gap | `AppColors.accentDark` |
+| `#A84D1D` | accent shade — ring gap (the "third bar of the wordmark" use ended with ADR-052) | `AppColors.accentDark` |
 | `#79B98A` | positive / recovery / completed set | `AppColors.green` |
 | `#8BBF96` | label on the readiness card | — |
 | `#88A88F`, `#7E9A85` | supporting copy on the readiness card | — |

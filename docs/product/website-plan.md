@@ -51,7 +51,7 @@ This document, ADR-051 and the design source under `docs/design/website/`. No CI
 2. `@fontsource-variable/archivo` for the font (self-hosted, ADR-051); brand tokens in one
    `src/styles/tokens.css`, values copied from `design-v1.html`'s `:root`, which came from
    `design_handoff_forjd_mobile/02-design-tokens.md`.
-3. Components: `Header`, `Footer`, `Phone` (screenshot in a frame), `WaitlistForm`, `Logo`.
+3. Components: `Header`, `Footer`, `Phone` (screenshot in a frame), `WaitlistForm`, `Logo`, `Wordmark` (the ADR-052 identity).
    Pages: `/`, `/features`, `/pricing`, `/privacy`, plus a `404`. Content ported from
    `design-v1.html` section by section, audited against it value by value.
 4. Screenshots: crop with `crop-screenshots.js` into `apps/web/src/assets/screens/`, rendered through
