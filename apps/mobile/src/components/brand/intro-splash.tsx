@@ -32,12 +32,22 @@ const FADE_START_MS = 3000;
 export const INTRO_DURATION_MS = 3300;
 export const INTRO_REDUCED_MOTION_MS = 800;
 
-const RING_SIZE = 300;
-const RING_RADIUS = 140;
-const RING_STROKE = 6;
+// Phone-sized (device feedback): the canvas draws this on an 800px artboard -- 300 ring,
+// 140 mark, 300-wide wordmark -- which filled a phone and read off-centre. Every size below is
+// the canvas's scaled by 88/140, except the wordmark, taken a step smaller so the lockup sits
+// comfortably inside the screen, and the mark-to-name gap, closed up because the ring no longer
+// reserves layout space: it is drawn around the mark, so the lockup left once it fades -- mark
+// over name -- is exactly what is centred.
+export const INTRO_MARK_SIZE = 88;
+export const INTRO_WORDMARK_HEIGHT = 30;
+const RING_SIZE = 188;
+const RING_RADIUS = 88;
+const RING_STROKE = 4;
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-const MARK_SIZE = 140;
-const WORDMARK_HEIGHT = 55;
+const MARK_SIZE = INTRO_MARK_SIZE;
+const WORDMARK_HEIGHT = INTRO_WORDMARK_HEIGHT;
+const RING_OFFSET = (MARK_SIZE - RING_SIZE) / 2;
+const TAGLINE_SIZE = 9.5;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -120,10 +130,11 @@ export function IntroSplash({ onDone }: IntroSplashProps) {
       accessibilityViewIsModal
       style={[StyleSheet.absoluteFill, styles.root, { opacity: range(fadeOut, 1, 0) }]}>
       <View style={styles.column}>
-        <View style={styles.ringBox}>
+        <View style={styles.markBox}>
           <Animated.View
+            testID="intro-ring"
             style={[
-              StyleSheet.absoluteFill,
+              styles.ring,
               { opacity: range(ringOut, 1, 0), transform: [{ scale: range(ringOut, 1, 1.12) }] },
             ]}>
             <Svg
@@ -154,7 +165,7 @@ export function IntroSplash({ onDone }: IntroSplashProps) {
           </Animated.View>
           <Animated.View
             style={[
-              styles.mark,
+              StyleSheet.absoluteFill,
               {
                 // The canvas's overshooting bezier would push opacity past 1: clamp it, but
                 // keep the scale's bounce.
@@ -177,16 +188,16 @@ export function IntroSplash({ onDone }: IntroSplashProps) {
 
 const styles = StyleSheet.create({
   root: { backgroundColor: colors.screenBg, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  column: { alignItems: 'center', gap: 44 },
-  ringBox: { width: RING_SIZE, height: RING_SIZE },
-  mark: {
-    position: 'absolute',
-    left: (RING_SIZE - MARK_SIZE) / 2,
-    top: (RING_SIZE - MARK_SIZE) / 2,
-    width: MARK_SIZE,
-    height: MARK_SIZE,
+  column: { alignItems: 'center', gap: 32 },
+  markBox: { width: MARK_SIZE, height: MARK_SIZE },
+  ring: { position: 'absolute', left: RING_OFFSET, top: RING_OFFSET, width: RING_SIZE, height: RING_SIZE },
+  words: { alignItems: 'center', gap: 12 },
+  // 500 weight, .34em tracking as in the canvas; RN letterSpacing is in px, so .34 x size.
+  tagline: {
+    fontFamily: 'Archivo',
+    fontSize: TAGLINE_SIZE,
+    fontWeight: '500',
+    letterSpacing: TAGLINE_SIZE * 0.34,
+    color: '#8C8C91',
   },
-  words: { alignItems: 'center', gap: 20 },
-  // 13px / 500 / .34em in the canvas; RN letterSpacing is in px, so .34 x 13.
-  tagline: { fontFamily: 'Archivo', fontSize: 13, fontWeight: '500', letterSpacing: 13 * 0.34, color: '#8C8C91' },
 });
