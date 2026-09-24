@@ -6,6 +6,7 @@ import {
   bodyScanResponseSchema,
   bodyScanListResponseSchema,
   bodyScanSeriesResponseSchema,
+  createManualBodyScanRequestSchema,
 } from "./index";
 
 const NINE_METRICS = [
@@ -148,7 +149,7 @@ describe("body contracts", () => {
   it("bodyScanListResponseSchema accepts a history list with nullable headline fields", () => {
     const response = {
       scans: [
-        { id: "11111111-1111-1111-1111-111111111111", measuredAt: "2026-01-15T09:00:00.000Z", weightKg: 84.6, bodyFatPercent: null },
+        { id: "11111111-1111-1111-1111-111111111111", measuredAt: "2026-01-15T09:00:00.000Z", source: "inbody", weightKg: 84.6, bodyFatPercent: null },
       ],
     };
     expect(bodyScanListResponseSchema.safeParse(response).success).toBe(true);
@@ -165,5 +166,68 @@ describe("body contracts", () => {
       ],
     };
     expect(bodyScanSeriesResponseSchema.safeParse(response).success).toBe(true);
+  });
+});
+
+/**
+ * Manual entry (docs/product/manual-inbody-entry-plan.md): the user types values in with no
+ * photo. Weight and body fat % are required (the user's choice); the rest are optional and
+ * bounded exactly like a confirmed scan's values.
+ */
+describe("createManualBodyScanRequestSchema", () => {
+  const request = (measurements: Array<{ metric: string; value: number; unit: string }>) => ({
+    measuredAt: "2026-09-24T09:15:00.000Z",
+    measurements,
+  });
+  const weight = { metric: "weight_kg", value: 82.4, unit: "kg" };
+  const bodyFat = { metric: "body_fat_percent", value: 12.1, unit: "%" };
+
+  it("accepts weight and body fat % on their own", () => {
+    expect(createManualBodyScanRequestSchema.safeParse(request([weight, bodyFat])).success).toBe(true);
+  });
+
+  it("accepts optional values and segmental masses alongside them", () => {
+    const result = createManualBodyScanRequestSchema.safeParse(
+      request([weight, bodyFat, { metric: "skeletal_muscle_mass_kg", value: 41.8, unit: "kg" }, { metric: "trunk", value: 25, unit: "kg" }]),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    ["weight", [bodyFat]],
+    ["body fat %", [weight]],
+  ])("rejects a request without %s", (_label, measurements) => {
+    expect(createManualBodyScanRequestSchema.safeParse(request(measurements)).success).toBe(false);
+  });
+
+  it("rejects the same metric twice", () => {
+    expect(createManualBodyScanRequestSchema.safeParse(request([weight, bodyFat, weight])).success).toBe(false);
+  });
+
+  it("applies the same physiological bounds as a confirmed scan", () => {
+    expect(createManualBodyScanRequestSchema.safeParse(request([{ ...weight, value: 5000 }, bodyFat])).success).toBe(false);
+  });
+
+  it("carries no confidence: the user typed every value", () => {
+    const parsed = createManualBodyScanRequestSchema.parse(request([{ ...weight, confidence: 0.2 } as never, bodyFat]));
+    expect(parsed.measurements[0]).not.toHaveProperty("confidence");
+  });
+});
+
+describe("scan source on the history list", () => {
+  it("accepts a manual scan summary and reports its source", () => {
+    const list = {
+      scans: [
+        { id: "11111111-1111-1111-1111-111111111111", measuredAt: "2026-09-24T09:15:00.000Z", source: "manual", weightKg: 82.4, bodyFatPercent: 12.1 },
+      ],
+    };
+    expect(bodyScanListResponseSchema.parse(list).scans[0]?.source).toBe("manual");
+  });
+
+  it("requires the source, so the app can always tell a manual entry from a scan", () => {
+    const list = {
+      scans: [{ id: "11111111-1111-1111-1111-111111111111", measuredAt: "2026-09-24T09:15:00.000Z", weightKg: 82.4, bodyFatPercent: 12.1 }],
+    };
+    expect(bodyScanListResponseSchema.safeParse(list).success).toBe(false);
   });
 });

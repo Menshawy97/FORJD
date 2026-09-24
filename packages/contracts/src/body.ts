@@ -79,6 +79,23 @@ const BODY_MEASUREMENT_VALUE_BOUNDS: Partial<
   left_leg: [0.5, 30],
 };
 
+/** Shared by confirmed and manual entries: a value outside its metric's bounds is rejected. */
+function checkMeasurementBounds(
+  measurement: { metric: (typeof BODY_METRICS)[number] | (typeof SEGMENTAL_SITES)[number]; value: number },
+  ctx: z.RefinementCtx,
+): void {
+  const bounds = BODY_MEASUREMENT_VALUE_BOUNDS[measurement.metric];
+  if (!bounds) return;
+  const [min, max] = bounds;
+  if (measurement.value < min || measurement.value > max) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["value"],
+      message: `${measurement.metric} must be between ${min} and ${max}`,
+    });
+  }
+}
+
 export const confirmedMeasurementSchema = z
   .object({
     metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
@@ -86,18 +103,7 @@ export const confirmedMeasurementSchema = z
     unit: z.string(),
     confidence: z.number().min(0).max(1),
   })
-  .superRefine((measurement, ctx) => {
-    const bounds = BODY_MEASUREMENT_VALUE_BOUNDS[measurement.metric];
-    if (!bounds) return;
-    const [min, max] = bounds;
-    if (measurement.value < min || measurement.value > max) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["value"],
-        message: `${measurement.metric} must be between ${min} and ${max}`,
-      });
-    }
-  });
+  .superRefine(checkMeasurementBounds);
 export type ConfirmedMeasurement = z.infer<typeof confirmedMeasurementSchema>;
 
 /**
@@ -114,6 +120,42 @@ export const confirmBodyScanRequestSchema = z.object({
   measurements: z.array(confirmedMeasurementSchema).min(1).max(20),
 });
 export type ConfirmBodyScanRequest = z.infer<typeof confirmBodyScanRequestSchema>;
+
+/** A typed-in value: no confidence, because nothing was inferred -- the user entered it. */
+export const manualMeasurementSchema = z
+  .object({
+    metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
+    value: z.number(),
+    unit: z.string(),
+  })
+  .superRefine(checkMeasurementBounds);
+export type ManualMeasurement = z.infer<typeof manualMeasurementSchema>;
+
+/** The two values a manual entry must include (docs/product/manual-inbody-entry-plan.md). */
+export const MANUAL_REQUIRED_METRICS = ["weight_kg", "body_fat_percent"] as const;
+
+/**
+ * Request body for `POST /body-scans/manual` -- InBody results typed in with no photo. Plain
+ * JSON (there is no file part), bounded like a confirmed scan, weight and body fat % required,
+ * and each metric at most once.
+ */
+export const createManualBodyScanRequestSchema = z
+  .object({
+    measuredAt: z.string().datetime(),
+    measurements: z.array(manualMeasurementSchema).min(MANUAL_REQUIRED_METRICS.length).max(20),
+  })
+  .superRefine((request, ctx) => {
+    const metrics = request.measurements.map((m) => m.metric);
+    for (const required of MANUAL_REQUIRED_METRICS) {
+      if (!metrics.includes(required)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["measurements"], message: `${required} is required` });
+      }
+    }
+    if (new Set(metrics).size !== metrics.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["measurements"], message: "each metric may appear only once" });
+    }
+  });
+export type CreateManualBodyScanRequest = z.infer<typeof createManualBodyScanRequestSchema>;
 
 export const bodyMeasurementResponseSchema = z.object({
   metric: z.union([bodyMetricSchema, segmentalSiteSchema]),
@@ -137,6 +179,8 @@ export type BodyScanResponse = z.infer<typeof bodyScanResponseSchema>;
 export const bodyScanSummarySchema = z.object({
   id: z.string().uuid(),
   measuredAt: z.string().datetime(),
+  /** So the history row can tag a manual entry (pencil icon + "Manual"). */
+  source: scanSourceSchema,
   weightKg: z.number().nullable(),
   bodyFatPercent: z.number().nullable(),
 });

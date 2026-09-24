@@ -169,6 +169,13 @@
       "when": 1790064061144,
       "tag": "0023_add-waitlist-signups",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790275978358,
+      "tag": "0024_make-body-scan-photo-optional",
+      "breakpoints": true
     }
   ]
 }

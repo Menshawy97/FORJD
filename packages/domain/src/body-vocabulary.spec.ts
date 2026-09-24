@@ -90,3 +90,12 @@ describe("shouldPrefill", () => {
     expect(CONFIDENCE_PREFILL_THRESHOLD).toBe(0.9);
   });
 });
+
+describe("SCAN_SOURCES", () => {
+  // Manual entry (docs/product/manual-inbody-entry-plan.md): typed-in values are a source of
+  // their own, so they are never mistaken for a photographed scan (CLAUDE.md rule 10).
+  it("distinguishes a photographed InBody scan from a manual entry", () => {
+    expect(SCAN_SOURCES).toEqual(["inbody", "manual"]);
+    expect(SCAN_SOURCE_DISPLAY_NAMES.manual).toBe("Manual");
+  });
+});

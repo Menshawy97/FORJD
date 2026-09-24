@@ -68,6 +68,7 @@ import type {
   BodyScanResponse,
   BodyScanSeriesResponse,
   ConfirmBodyScanRequest,
+  CreateManualBodyScanRequest,
   ExtractBodyScanResponse,
   HealthConnectionListResponse,
   LeaderboardQuery,
@@ -623,6 +624,15 @@ export async function confirmBodyScan(
   const response = await apiClient.post<BodyScanResponse>('/body-scans', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return response.data;
+}
+
+/**
+ * `POST /body-scans/manual` -- InBody values the user typed in, with no photo
+ * (docs/product/manual-inbody-entry-plan.md). Plain JSON: there is no file to send.
+ */
+export async function createManualBodyScan(body: CreateManualBodyScanRequest): Promise<BodyScanResponse> {
+  const response = await apiClient.post<BodyScanResponse>('/body-scans/manual', body);
   return response.data;
 }
 

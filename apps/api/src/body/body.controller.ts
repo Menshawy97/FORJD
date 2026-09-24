@@ -12,8 +12,9 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
-import { confirmBodyScanRequestSchema } from "@forjd/contracts";
+import { confirmBodyScanRequestSchema, createManualBodyScanRequestSchema } from "@forjd/contracts";
 import type {
+  CreateManualBodyScanRequest,
   BodyScanListResponse,
   BodyScanResponse,
   BodyScanSeriesResponse,
@@ -21,6 +22,7 @@ import type {
 } from "@forjd/contracts";
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
 import { BodyService, MAX_SCAN_PHOTO_BYTES, UploadedScanPhoto } from "./body.service";
 
 @Controller("body-scans")
@@ -74,6 +76,19 @@ export class BodyController {
     }
 
     return this.bodyService.confirm(request.user, file, result.data);
+  }
+
+  /**
+   * InBody results typed in with no photo (docs/product/manual-inbody-entry-plan.md). Plain JSON,
+   * so the standard `ZodValidationPipe`; throttled like `confirm`, the other write path.
+   */
+  @Post("manual")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  createManual(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(createManualBodyScanRequestSchema)) body: CreateManualBodyScanRequest,
+  ): Promise<BodyScanResponse> {
+    return this.bodyService.createManual(request.user, body);
   }
 
   @Get()

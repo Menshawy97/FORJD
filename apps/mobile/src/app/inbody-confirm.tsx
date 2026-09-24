@@ -1,7 +1,6 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import {
   BODY_METRICS,
   BODY_METRIC_DISPLAY_NAMES,
@@ -18,29 +17,11 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { combineDateAndTime, ScanDateTimeFields } from '@/features/body/scan-date-time';
+import { ScanValueRow } from '@/features/body/scan-value-row';
 import { parseSheetDate } from '@/features/body/sheet-date';
 import { takePendingScan, type PendingScan } from '@/store/pending-scan';
 import { colors } from '@/theme/tokens';
-
-const AMBER = '#c9a03c';
-const AMBER_TEXT = '#a08a4e';
-const AMBER_BORDER = 'rgba(201,160,60,.45)';
-
-/** MM/DD/YYYY -- the design's own date-box format (`confirm-inbody.png`: "08/19/2026"). */
-function formatDateBox(d: Date): string {
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${mm}/${dd}/${d.getFullYear()}`;
-}
-
-/** h:mm AM/PM -- the design's own time-box format ("09:38 AM"). */
-function formatTimeBox(d: Date): string {
-  let hours = d.getHours();
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const period = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  return `${hours}:${minutes} ${period}`;
-}
 
 /** "2026-08-19" -- the banner's own date format ("Extracted from your photo on 2026-08-19, 09:38"). */
 function formatBannerDate(d: Date): string {
@@ -75,8 +56,6 @@ export default function InBodyConfirmScreen() {
   const [segmentalValues, setSegmentalValues] = useState<Record<string, string>>({});
   const [scanDate, setScanDate] = useState(new Date());
   const [scanTime, setScanTime] = useState(new Date());
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
@@ -120,12 +99,6 @@ export default function InBodyConfirmScreen() {
     );
   }
 
-  const measuredAt = () => {
-    const combined = new Date(scanDate);
-    combined.setHours(scanTime.getHours(), scanTime.getMinutes(), 0, 0);
-    return combined;
-  };
-
   const save = async () => {
     const bodyMeasurements = BODY_METRICS.map((metric) => {
       const raw = values[metric]?.trim();
@@ -164,97 +137,13 @@ export default function InBodyConfirmScreen() {
 
     setSaving(true);
     try {
-      await confirmBodyScan(pending.photoUri, { measuredAt: measuredAt().toISOString(), measurements });
+      await confirmBodyScan(pending.photoUri, { measuredAt: combineDateAndTime(scanDate, scanTime).toISOString(), measurements });
       router.replace('/inbody');
     } catch {
       toast.show('Could not save this scan. Check your connection and try again.');
     } finally {
       setSaving(false);
     }
-  };
-
-  const editRow = (
-    label: string,
-    unit: string,
-    confidence: number | undefined,
-    value: string,
-    onChange: (text: string) => void,
-  ) => {
-    const confident = confidence != null && confidence >= 0.9;
-    return (
-      <View
-        key={label}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: 'rgba(255,255,255,.05)',
-        }}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ fontFamily: 'Archivo', fontSize: 13.5, fontWeight: '500', color: colors.text }}>
-            {label}
-          </Text>
-          {confidence != null ? (
-            <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ width: 40, height: 3, borderRadius: 2, backgroundColor: '#26272a', overflow: 'hidden' }}>
-                <View
-                  style={{
-                    width: `${Math.round(confidence * 100)}%`,
-                    height: 3,
-                    backgroundColor: confident ? colors.green : AMBER,
-                  }}
-                />
-              </View>
-              <Text
-                style={{
-                  fontFamily: 'Archivo',
-                  fontSize: 10,
-                  fontWeight: '500',
-                  color: confident ? '#6d8f76' : AMBER_TEXT,
-                }}>
-                {Math.round(confidence * 100)}% confidence
-              </Text>
-            </View>
-          ) : null}
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-            backgroundColor: '#151517',
-            borderWidth: 1,
-            borderColor: confidence != null && confidence < 0.9 ? AMBER_BORDER : colors.border,
-            borderRadius: 9,
-            paddingVertical: 8,
-            paddingHorizontal: 11,
-          }}>
-          <TextInput
-            value={value}
-            onChangeText={onChange}
-            keyboardType="decimal-pad"
-            placeholder="—"
-            placeholderTextColor={colors.dim}
-            style={{
-              width: 52,
-              padding: 0,
-              textAlign: 'right',
-              fontFamily: 'Archivo',
-              fontSize: 15,
-              fontWeight: '700',
-              color: colors.text,
-            }}
-          />
-          {unit ? (
-            <Text style={{ fontFamily: 'Archivo', fontSize: 11, fontWeight: '500', color: colors.dim }}>
-              {unit}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-    );
   };
 
   return (
@@ -291,68 +180,14 @@ export default function InBodyConfirmScreen() {
           </Text>
         </View>
 
-        {/* Scan date & time */}
-        <Text
-          style={{
-            fontFamily: 'Archivo',
-            fontSize: 9.5,
-            fontWeight: '600',
-            letterSpacing: 0.1 * 9.5,
-            textTransform: 'uppercase',
-            color: '#94948B',
-            marginBottom: 9,
-          }}>
-          Scan date & time
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 9 }}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setDatePickerOpen(true)}
-            style={{ flex: 1, backgroundColor: '#151517', borderWidth: 1, borderColor: colors.border, borderRadius: 11, padding: 13 }}>
-            <Text style={{ fontFamily: 'Archivo', fontSize: 10.5, fontWeight: '500', color: colors.dim, marginBottom: 8 }}>
-              Read from sheet
-            </Text>
-            <Text style={{ fontFamily: 'Archivo', fontSize: 14, fontWeight: '700', color: colors.text }}>
-              {formatDateBox(scanDate)}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setTimePickerOpen(true)}
-            style={{ width: 118, backgroundColor: '#151517', borderWidth: 1, borderColor: colors.border, borderRadius: 11, padding: 13 }}>
-            <Text style={{ fontFamily: 'Archivo', fontSize: 10.5, fontWeight: '500', color: colors.dim, marginBottom: 8 }}>
-              Time
-            </Text>
-            <Text style={{ fontFamily: 'Archivo', fontSize: 14, fontWeight: '700', color: colors.text }}>
-              {formatTimeBox(scanTime)}
-            </Text>
-          </Pressable>
-        </View>
-        {datePickerOpen ? (
-          <DateTimePicker
-            value={scanDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'compact' : 'default'}
-            onChange={(_event, picked) => {
-              setDatePickerOpen(false);
-              if (picked) setScanDate(picked);
-            }}
-          />
-        ) : null}
-        {timePickerOpen ? (
-          <DateTimePicker
-            value={scanTime}
-            mode="time"
-            display={Platform.OS === 'ios' ? 'compact' : 'default'}
-            onChange={(_event, picked) => {
-              setTimePickerOpen(false);
-              if (picked) setScanTime(picked);
-            }}
-          />
-        ) : null}
-        <Text style={{ margin: 0, marginTop: 9, fontFamily: 'Archivo', fontSize: 11.5, lineHeight: 11.5 * 1.5, color: '#7a7a72' }}>
-          Data is stored against this date, not the day you uploaded it.
-        </Text>
+        <ScanDateTimeFields
+          date={scanDate}
+          time={scanTime}
+          onDateChange={setScanDate}
+          onTimeChange={setScanTime}
+          dateLabel="Read from sheet"
+          note="Data is stored against this date, not the day you uploaded it."
+        />
 
         {/* Extracted values */}
         <Text
@@ -368,15 +203,16 @@ export default function InBodyConfirmScreen() {
           }}>
           Extracted values
         </Text>
-        {BODY_METRICS.map((metric: BodyMetric) =>
-          editRow(
-            BODY_METRIC_DISPLAY_NAMES[metric],
-            BODY_METRIC_UNITS[metric],
-            pending.extracted.fields[metric].confidence,
-            values[metric] ?? '',
-            (text) => setValues((v) => ({ ...v, [metric]: text })),
-          ),
-        )}
+        {BODY_METRICS.map((metric: BodyMetric) => (
+          <ScanValueRow
+            key={metric}
+            label={BODY_METRIC_DISPLAY_NAMES[metric]}
+            unit={BODY_METRIC_UNITS[metric]}
+            confidence={pending.extracted.fields[metric].confidence}
+            value={values[metric] ?? ''}
+            onChange={(text) => setValues((v) => ({ ...v, [metric]: text }))}
+          />
+        ))}
 
         {/* Segmental lean analysis -- no confidence bar shown, per the design */}
         <Text
@@ -392,15 +228,15 @@ export default function InBodyConfirmScreen() {
           }}>
           Segmental lean analysis
         </Text>
-        {SEGMENTAL_SITES.map((site: SegmentalSite) =>
-          editRow(
-            SEGMENTAL_SITE_DISPLAY_NAMES[site],
-            'kg',
-            undefined,
-            segmentalValues[site] ?? '',
-            (text) => setSegmentalValues((v) => ({ ...v, [site]: text })),
-          ),
-        )}
+        {SEGMENTAL_SITES.map((site: SegmentalSite) => (
+          <ScanValueRow
+            key={site}
+            label={SEGMENTAL_SITE_DISPLAY_NAMES[site]}
+            unit="kg"
+            value={segmentalValues[site] ?? ''}
+            onChange={(text) => setSegmentalValues((v) => ({ ...v, [site]: text }))}
+          />
+        ))}
 
         {/* CTA */}
         <View style={{ marginTop: 22, gap: 11 }}>

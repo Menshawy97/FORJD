@@ -53,7 +53,8 @@ export class BodyRepository {
     userId: string,
     measuredAt: Date,
     source: string,
-    photoKey: string,
+    /** Null for a manual entry, which has no photo. */
+    photoKey: string | null,
     measurements: NewMeasurementInput[],
   ): Promise<string> {
     return this.db.transaction(async (tx) => {
@@ -143,7 +144,9 @@ export class BodyRepository {
    */
   async listScanPhotoKeysForUser(userId: string): Promise<string[]> {
     const rows = await this.db.select({ photoKey: bodyScans.photoKey }).from(bodyScans).where(eq(bodyScans.userId, userId));
-    return rows.map((row) => row.photoKey);
+    // Only photo *files* are listed here. A manual entry has no file in storage; its scan row
+    // and values are still deleted with the account, by the cascade on body_scans.user_id.
+    return rows.map((row) => row.photoKey).filter((key): key is string => key !== null);
   }
 
   async getSeriesForUser(userId: string): Promise<MetricSeriesRow[]> {

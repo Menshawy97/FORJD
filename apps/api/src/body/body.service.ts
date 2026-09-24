@@ -1,8 +1,9 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import type { BodyMetric, SegmentalSite, User } from "@forjd/domain";
+import type { BodyMetric, ScanSource, SegmentalSite, User } from "@forjd/domain";
 import type {
+  CreateManualBodyScanRequest,
   BodyScanListResponse,
   BodyScanResponse,
   BodyScanSeriesResponse,
@@ -29,6 +30,9 @@ export const INBODY_BUCKET = "inbody";
 
 /** Larger than the avatar's 5 MiB / 512px -- a photographed document needs to stay legible
  *  at a size a vision model (and, on the scan-detail screen, a human) can actually read. */
+/** A typed-in value is exactly what the user meant: nothing was inferred. */
+export const MANUAL_ENTRY_CONFIDENCE = 1;
+
 export const MAX_SCAN_PHOTO_BYTES = 10 * 1024 * 1024;
 const SCAN_PHOTO_MAX_DIMENSION = 1600;
 const SCAN_PHOTO_WEBP_QUALITY = 85;
@@ -95,7 +99,7 @@ export class BodyService {
     return {
       id: scan.id,
       measuredAt: scan.measuredAt.toISOString(),
-      source: "inbody",
+      source: scan.source as ScanSource,
       measurements: scan.measurements.map((m) => ({
         metric: m.metric as BodyMetric | SegmentalSite,
         value: m.value,
@@ -103,6 +107,18 @@ export class BodyService {
         confidence: m.confidence,
       })),
     };
+  }
+
+  /**
+   * InBody results typed in by the user, with no photo (docs/product/manual-inbody-entry-plan.md).
+   * Nothing reaches the vision model or storage, so -- unlike `extract`/`confirm` -- there is
+   * no AI-consent gate. Each value is stored at confidence 1: the user entered it, nothing was
+   * inferred. The `manual` source keeps it distinguishable from a photographed scan (rule 10).
+   */
+  async createManual(user: User, request: CreateManualBodyScanRequest): Promise<BodyScanResponse> {
+    const measurements = request.measurements.map((m) => ({ ...m, confidence: MANUAL_ENTRY_CONFIDENCE }));
+    const scanId = await this.bodyRepository.createScan(user.id, new Date(request.measuredAt), "manual", null, measurements);
+    return this.getScan(user, scanId);
   }
 
   async listScans(user: User): Promise<BodyScanListResponse> {
@@ -114,6 +130,7 @@ export class BodyService {
         return {
           id: scan.id,
           measuredAt: scan.measuredAt.toISOString(),
+          source: scan.source as ScanSource,
           weightKg: byMetric.get("weight_kg") ?? null,
           bodyFatPercent: byMetric.get("body_fat_percent") ?? null,
         };
@@ -128,7 +145,7 @@ export class BodyService {
     return {
       id: scan.id,
       measuredAt: scan.measuredAt.toISOString(),
-      source: "inbody",
+      source: scan.source as ScanSource,
       measurements: scan.measurements.map((m) => ({
         metric: m.metric as BodyMetric | SegmentalSite,
         value: m.value,

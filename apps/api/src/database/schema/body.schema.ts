@@ -39,13 +39,14 @@ export const bodyScans = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     measuredAt: timestamp("measured_at", { withTimezone: true }).notNull(),
-    /** One of SCAN_SOURCES in @forjd/domain -- "inbody" is the only value Phase 5 writes. */
+    /** One of SCAN_SOURCES in @forjd/domain: "inbody" (a confirmed photo) or "manual" (typed in). */
     source: text("source").notNull(),
     /**
      * The StorageProvider key for the confirmed photo in the private `inbody` bucket
      * (`getSignedUrl`, never `getPublicUrl` -- a scan photo is not public like an avatar).
+     * Null for a manual entry, which has no photo (docs/product/manual-inbody-entry-plan.md).
      */
-    photoKey: text("photo_key").notNull(),
+    photoKey: text("photo_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("body_scans_user_measured_idx").on(table.userId, table.measuredAt)],
