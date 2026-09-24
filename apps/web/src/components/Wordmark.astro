@@ -1,0 +1,21 @@
+---
+/** The drawn FORJD wordmark (ADR-052), from the FORJD Logo canvas. Bone #EDEBE6 on dark. */
+interface Props {
+  height?: number;
+  color?: string;
+}
+const { height = 14, color = '#EDEBE6' } = Astro.props;
+const width = Math.round((height * 544) / 100 * 10) / 10;
+---
+
+<svg class="wordmark" width={width} height={height} viewBox="0 0 544 100" role="img" aria-label="FORJD">
+  <g fill={color}>
+    <path d="M0 0H70V16H16V42H56V58H16V100H0Z"></path>
+    <path fill-rule="evenodd" d="M128 0H168A30 30 0 0 1 198 30V70A30 30 0 0 1 168 100H128A30 30 0 0 1 98 70V30A30 30 0 0 1 128 0ZM128 16H168A14 14 0 0 1 182 30V70A14 14 0 0 1 168 84H128A14 14 0 0 1 114 70V30A14 14 0 0 1 128 16Z"></path>
+    <path d="M226 0H242V100H226Z"></path>
+    <path fill-rule="evenodd" d="M226 0H288A26 26 0 0 1 314 26V32A26 26 0 0 1 288 58H226ZM242 16H288A10 10 0 0 1 298 26V32A10 10 0 0 1 288 42H242Z"></path>
+    <path d="M272 50H292L316 100H296Z"></path>
+    <path d="M354 0H424V70A30 30 0 0 1 394 100H344V84H394A14 14 0 0 0 408 70V16H354Z"></path>
+    <path fill-rule="evenodd" d="M452 0H514A30 30 0 0 1 544 30V70A30 30 0 0 1 514 100H452ZM468 16H514A14 14 0 0 1 528 30V70A14 14 0 0 1 514 84H468Z"></path>
+  </g>
+</svg>
