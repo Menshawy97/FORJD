@@ -17,6 +17,7 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { rangeError } from '@/features/body/range-error';
 import { combineDateAndTime, ScanDateTimeFields } from '@/features/body/scan-date-time';
 import { ScanValueRow } from '@/features/body/scan-value-row';
 import { parseSheetDate } from '@/features/body/sheet-date';
@@ -57,6 +58,7 @@ export default function InBodyConfirmScreen() {
   const [scanDate, setScanDate] = useState(new Date());
   const [scanTime, setScanTime] = useState(new Date());
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<BodyMetric | SegmentalSite, string>>>({});
   const toast = useToast();
 
   useFocusEffect(
@@ -129,6 +131,16 @@ export default function InBodyConfirmScreen() {
     const measurements = [...bodyMeasurements, ...segMeasurements].filter(
       (m): m is NonNullable<typeof m> => m !== null,
     );
+
+    // The server's own limits, checked here so an out-of-range value is named on its row
+    // rather than failing the whole save with a message that blamed the connection.
+    const outOfRange: Partial<Record<BodyMetric | SegmentalSite, string>> = {};
+    for (const m of measurements) {
+      const problem = rangeError(m.metric, m.value, m.unit);
+      if (problem) outOfRange[m.metric] = problem;
+    }
+    setErrors(outOfRange);
+    if (Object.keys(outOfRange).length > 0) return;
 
     if (measurements.length === 0) {
       toast.show('Enter at least one value before saving.');
@@ -211,6 +223,7 @@ export default function InBodyConfirmScreen() {
             confidence={pending.extracted.fields[metric].confidence}
             value={values[metric] ?? ''}
             onChange={(text) => setValues((v) => ({ ...v, [metric]: text }))}
+            error={errors[metric]}
           />
         ))}
 
@@ -235,6 +248,7 @@ export default function InBodyConfirmScreen() {
             unit="kg"
             value={segmentalValues[site] ?? ''}
             onChange={(text) => setSegmentalValues((v) => ({ ...v, [site]: text }))}
+            error={errors[site]}
           />
         ))}
 

@@ -16,6 +16,7 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { rangeError } from '@/features/body/range-error';
 import { combineDateAndTime, ScanDateTimeFields } from '@/features/body/scan-date-time';
 import { ScanValueRow } from '@/features/body/scan-value-row';
 import { colors } from '@/theme/tokens';
@@ -53,7 +54,7 @@ export default function InBodyManualScreen() {
   const [segmentalValues, setSegmentalValues] = useState<Record<string, string>>({});
   const [date, setDate] = useState(() => new Date());
   const [time, setTime] = useState(() => new Date());
-  const [errors, setErrors] = useState<Partial<Record<BodyMetric, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<BodyMetric | SegmentalSite, string>>>({});
   const [saving, setSaving] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const toast = useToast();
@@ -64,13 +65,23 @@ export default function InBodyManualScreen() {
   };
 
   const save = async () => {
-    const missing: Partial<Record<BodyMetric, string>> = {};
+    const missing: Partial<Record<BodyMetric | SegmentalSite, string>> = {};
     for (const [metric, message] of Object.entries(REQUIRED) as [BodyMetric, string][]) {
       if (parseValue(values[metric]) === null) missing[metric] = message;
     }
+    for (const metric of BODY_METRICS) {
+      const value = parseValue(values[metric]);
+      const problem = value === null ? null : rangeError(metric, value, BODY_METRIC_UNITS[metric]);
+      if (problem) missing[metric] = problem;
+    }
+    for (const site of SEGMENTAL_SITES) {
+      const value = parseValue(segmentalValues[site]);
+      const problem = value === null ? null : rangeError(site, value, 'kg');
+      if (problem) missing[site] = problem;
+    }
     if (Object.keys(missing).length > 0) {
       setErrors(missing);
-      // Both required values sit at the top of the list, so that is where the user needs to be.
+      // The required values sit at the top of the list; start there so the first red row is in view.
       scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
@@ -158,7 +169,11 @@ export default function InBodyManualScreen() {
             label={SEGMENTAL_SITE_DISPLAY_NAMES[site]}
             unit="kg"
             value={segmentalValues[site] ?? ''}
-            onChange={(text) => setSegmentalValues((current) => ({ ...current, [site]: text }))}
+            onChange={(text) => {
+              setSegmentalValues((current) => ({ ...current, [site]: text }));
+              if (errors[site]) setErrors((current) => ({ ...current, [site]: undefined }));
+            }}
+            error={errors[site]}
           />
         ))}
 

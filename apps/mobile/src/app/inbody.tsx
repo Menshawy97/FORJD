@@ -217,23 +217,14 @@ export default function InBodyScreen() {
           accessibilityRole="button"
           accessibilityLabel="Enter values manually. No photo — type in your results"
           onPress={() => router.push('/inbody-manual')}
-          style={({ pressed }) => ({
-            marginTop: 14,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            paddingVertical: 13,
-            paddingHorizontal: 14,
-            backgroundColor: '#17181A',
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 14,
-            opacity: pressed ? 0.8 : 1,
-          })}>
-          <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: '#1c1d20', alignItems: 'center', justifyContent: 'center' }}>
+          // Box model in className, not a style callback: the callback version rendered correctly
+          // in tests and on web but collapsed into a vertical stack on a physical iPhone.
+          className="mt-[14px] flex-row items-center gap-3 rounded-[14px] border border-border bg-[#17181A] px-[14px] py-[13px]"
+          style={({ pressed }) => pressed && { opacity: 0.8 }}>
+          <View className="h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-[#1c1d20]">
             <Icon name="pencil" color={colors.accent} size={18} />
           </View>
-          <View style={{ flex: 1 }}>
+          <View className="flex-1">
             <Text style={{ fontFamily: 'Archivo', fontSize: 13.5, fontWeight: '600', color: colors.text }}>Enter values manually</Text>
             <Text style={{ marginTop: 5, fontFamily: 'Archivo', fontSize: 11.5, color: colors.dim }}>No photo — type in your results</Text>
           </View>

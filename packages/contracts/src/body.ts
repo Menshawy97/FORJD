@@ -72,22 +72,37 @@ const BODY_MEASUREMENT_VALUE_BOUNDS: Partial<
   bmi: [10, 80],
   basal_metabolic_rate_kcal: [500, 5000],
   inbody_score: [0, 100],
-  right_arm: [0.5, 30],
-  left_arm: [0.5, 30],
-  trunk: [0.5, 30],
-  right_leg: [0.5, 30],
-  left_leg: [0.5, 30],
+  // Segmental lean mass. Raised after a real sheet's 30.5 kg trunk was rejected by the old 30 kg
+  // ceiling; the user set these to leave generous room for large, muscular athletes.
+  right_arm: [0.5, 50],
+  left_arm: [0.5, 50],
+  trunk: [0.5, 90],
+  right_leg: [0.5, 50],
+  left_leg: [0.5, 50],
 };
+
+/**
+ * The [min, max] range a value breaks, or null when it is within range (or the metric has no
+ * range). Exported so the app can check before saving and point at the exact field, instead of
+ * the server rejecting the whole scan.
+ */
+export function measurementBounds(
+  metric: (typeof BODY_METRICS)[number] | (typeof SEGMENTAL_SITES)[number],
+  value: number,
+): [number, number] | null {
+  const bounds = BODY_MEASUREMENT_VALUE_BOUNDS[metric];
+  if (!bounds) return null;
+  return value < bounds[0] || value > bounds[1] ? bounds : null;
+}
 
 /** Shared by confirmed and manual entries: a value outside its metric's bounds is rejected. */
 function checkMeasurementBounds(
   measurement: { metric: (typeof BODY_METRICS)[number] | (typeof SEGMENTAL_SITES)[number]; value: number },
   ctx: z.RefinementCtx,
 ): void {
-  const bounds = BODY_MEASUREMENT_VALUE_BOUNDS[measurement.metric];
-  if (!bounds) return;
-  const [min, max] = bounds;
-  if (measurement.value < min || measurement.value > max) {
+  const bounds = measurementBounds(measurement.metric, measurement.value);
+  if (bounds) {
+    const [min, max] = bounds;
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["value"],
