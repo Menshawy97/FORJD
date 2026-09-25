@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import type { HealthMetricType, HealthSource } from "@forjd/domain";
 
 import { Database, DRIZZLE } from "../database/database.module";
@@ -120,12 +120,17 @@ export class HealthDataRepository {
       conditions.push(gte(healthObservations.startTime, window.since));
     }
 
-    const rows = await this.db
+    // Newest first, then capped, then put back in time order (whole-app review 8.5, L4-2/L9a-4).
+    // Ascending-then-limit kept the OLDEST `limit` rows once an account had more than that, so the
+    // latest weight behind suggested targets and the recent-readings charts went silently stale.
+    // Every caller still receives rows oldest first, as before.
+    const newestFirst = await this.db
       .select()
       .from(healthObservations)
       .where(and(...conditions))
-      .orderBy(healthObservations.startTime)
+      .orderBy(desc(healthObservations.startTime))
       .limit(window.limit);
+    const rows = [...newestFirst].reverse();
 
     return rows.map((r) => ({
       id: r.id,

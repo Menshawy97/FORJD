@@ -146,5 +146,25 @@ describe("HealthDataRepository", () => {
 
       expect(rows).toHaveLength(2);
     });
+
+    it("keeps the NEWEST rows when there are more than the limit, returned oldest first (review 8.5, L4-2/L9a-4)", async () => {
+      // Five daily readings, limit three. The cap must drop the oldest, not the most recent: a
+      // "latest weight" or a recent-readings chart built from the oldest rows is silently stale.
+      const userId = await makeUser("newest-first");
+      await repository.ingestObservations(
+        userId,
+        Array.from({ length: 5 }, (_, i) =>
+          observation({
+            value: i,
+            startTime: new Date(Date.UTC(2026, 0, i + 1)),
+            endTime: new Date(Date.UTC(2026, 0, i + 1)),
+          }),
+        ),
+      );
+
+      const rows = await repository.getObservationsForUser(userId, { metricTypes: ["hrv"], since: null, limit: 3 });
+
+      expect(rows.map((row) => row.value)).toEqual([2, 3, 4]);
+    });
   });
 });
