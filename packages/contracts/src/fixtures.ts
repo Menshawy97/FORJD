@@ -900,7 +900,7 @@ export const responseFixtures = {
           // The profile's own height, and its age on the scan date (born 1990-07-04).
           heightCm: 172.5,
           ageYears: 36,
-          measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97 }],
+          measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97, calculated: false }],
         },
       ],
       nutritionLogEntries: [

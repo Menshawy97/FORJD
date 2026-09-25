@@ -148,7 +148,8 @@
           "metric": "weight_kg",
           "value": 84.6,
           "unit": "kg",
-          "confidence": 0.97
+          "confidence": 0.97,
+          "calculated": false
         }
       ]
     }
