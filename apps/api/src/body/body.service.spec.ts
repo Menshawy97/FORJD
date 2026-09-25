@@ -86,6 +86,8 @@ describe("BodyService -- AI consent gate (C2)", () => {
   describe("confirm", () => {
     const request = {
       measuredAt: "2026-01-15T09:00:00.000Z",
+      heightCm: 178,
+      ageYears: 31,
       measurements: [{ metric: "weight_kg" as const, value: 84.6, unit: "kg", confidence: 0.97 }],
     };
 
@@ -286,6 +288,8 @@ describe("BodyService -- manual entry", () => {
 
   const request = {
     measuredAt: "2026-09-24T09:15:00.000Z",
+    heightCm: 178,
+    ageYears: 31,
     measurements: [
       { metric: "weight_kg" as const, value: 82.4, unit: "kg" },
       { metric: "body_fat_percent" as const, value: 12.1, unit: "%" },
@@ -306,7 +310,7 @@ describe("BodyService -- manual entry", () => {
         { metric: "weight_kg", value: 82.4, unit: "kg", confidence: 1 },
         { metric: "body_fat_percent", value: 12.1, unit: "%", confidence: 1 },
       ],
-      { heightCm: null, ageYears: null },
+      { heightCm: 178, ageYears: 31 },
     );
   });
 
@@ -347,7 +351,8 @@ describe("BodyService -- manual entry", () => {
 
 /**
  * Height and age on a scan (docs/product/scan-height-age-plan.md §2): passed through to the scan
- * row on both save paths, and stated on every read (null for a scan saved without them).
+ * row on both save paths (required on both since slice C), and stated on every read (null for a
+ * scan saved before they existed).
  */
 describe("BodyService -- scan height and age", () => {
   const user: User = { id: "user-1", email: "athlete@example.com" } as User;
@@ -404,14 +409,6 @@ describe("BodyService -- scan height and age", () => {
     await service.confirm(user, file, { ...confirm, heightCm: 178.5, ageYears: 31 });
 
     expect(bodyRepository.createScan.mock.calls[0]?.[5]).toEqual({ heightCm: 178.5, ageYears: 31 });
-  });
-
-  it("stores null for either one the request leaves out (allowed until slice C)", async () => {
-    const { service, bodyRepository } = build();
-
-    await service.confirm(user, file, { ...confirm, heightCm: 178.5 });
-
-    expect(bodyRepository.createScan.mock.calls[0]?.[5]).toEqual({ heightCm: 178.5, ageYears: null });
   });
 
   it.each([

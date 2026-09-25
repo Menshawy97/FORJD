@@ -11,9 +11,9 @@ jest.mock('expo-router', () => ({
   router: { replace: (...args: unknown[]) => mockReplace(...args), back: jest.fn(), push: jest.fn() },
 }));
 
-jest.mock('@/auth/apiClient', () => ({ createManualBodyScan: jest.fn() }));
+jest.mock('@/auth/apiClient', () => ({ createManualBodyScan: jest.fn(), getMe: jest.fn() }));
 
-import { createManualBodyScan } from '@/auth/apiClient';
+import { createManualBodyScan, getMe } from '@/auth/apiClient';
 
 import InBodyManualScreen from '../inbody-manual';
 
@@ -26,20 +26,26 @@ function render(ui: ReactElement) {
   return rtlRender(<SafeAreaProvider initialMetrics={METRICS}>{ui}</SafeAreaProvider>);
 }
 
+function signedIn(profile: { heightCm: number | null; dateOfBirth: string | null } = { heightCm: 175, dateOfBirth: '1994-03-12' }) {
+  (getMe as jest.Mock).mockResolvedValue({ id: 'user-1', email: 'a@b.c', profile, privacy: {} });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   (createManualBodyScan as jest.Mock).mockResolvedValue({ id: 'scan-9', source: 'manual' });
+  signedIn();
 });
 
 describe('manual InBody entry', () => {
-  it('starts empty, titled "Enter values", with only weight marked required', async () => {
-    const { getByText, getAllByText, getByLabelText } = await render(<InBodyManualScreen />);
+  it('starts titled "Enter values", with height, age and weight required', async () => {
+    const { getByText, getAllByText, getByLabelText, findByLabelText } = await render(<InBodyManualScreen />);
+    await findByLabelText('Height');
 
     expect(getByText('Enter values')).toBeTruthy();
-    expect(getAllByText('Required')).toHaveLength(1);
+    expect(getAllByText('Required')).toHaveLength(3);
     expect(getByLabelText('Weight').props.value).toBe('');
     expect(getByLabelText('Body fat percentage').props.value).toBe('');
-    expect(getByText(/is required — add any others/)).toBeTruthy();
+    expect(getByText(/are required — add any others/)).toBeTruthy();
   });
 
   // The user's rule (2026-09-25): body fat % is optional.
@@ -51,6 +57,8 @@ describe('manual InBody entry', () => {
 
     expect(createManualBodyScan).toHaveBeenCalledWith({
       measuredAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      heightCm: 175,
+      ageYears: expect.any(Number),
       measurements: [{ metric: 'weight_kg', value: 82.4, unit: 'kg' }],
     });
     expect(queryByText('Enter your body fat %')).toBeNull();
@@ -77,6 +85,8 @@ describe('manual InBody entry', () => {
 
     expect(createManualBodyScan).toHaveBeenCalledWith({
       measuredAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      heightCm: 175,
+      ageYears: expect.any(Number),
       measurements: [
         { metric: 'weight_kg', value: 82.4, unit: 'kg' },
         { metric: 'skeletal_muscle_mass_kg', value: 41.8, unit: 'kg' },
@@ -121,5 +131,45 @@ describe('manual InBody entry -- value limits', () => {
 
     expect(await findByText('Must be between 0.5 and 50 kg')).toBeTruthy();
     expect(createManualBodyScan).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Height and age (docs/product/scan-height-age-plan.md §3, replica approved 2026-09-25): at the
+ * top of the values, filled from the profile and marked required, like weight.
+ */
+describe('manual InBody entry -- height and age', () => {
+  it('fills both from the profile, saying where they came from', async () => {
+    const { findByLabelText, getAllByText } = await render(<InBodyManualScreen />);
+
+    expect((await findByLabelText('Height')).props.value).toBe('175');
+    expect((await findByLabelText('Age')).props.value).toMatch(/^\d+$/);
+    expect(getAllByText('From your profile')).toHaveLength(2);
+  });
+
+  it('asks for a height when the profile has none, and sends nothing', async () => {
+    signedIn({ heightCm: null, dateOfBirth: '1994-03-12' });
+    const { findByLabelText, getByLabelText, getByRole, findByText } = await render(<InBodyManualScreen />);
+    await findByLabelText('Height');
+
+    await fireEvent.changeText(getByLabelText('Weight'), '82.4');
+    await fireEvent.press(getByRole('button', { name: 'Save' }));
+
+    expect(await findByText('Enter your height')).toBeTruthy();
+    expect(createManualBodyScan).not.toHaveBeenCalled();
+  });
+
+  it("offers to update the profile after saving when the typed height differs from it", async () => {
+    const { findByLabelText, getByLabelText, getByRole } = await render(<InBodyManualScreen />);
+    await findByLabelText('Height');
+
+    await fireEvent.changeText(getByLabelText('Height'), '177.8');
+    await fireEvent.changeText(getByLabelText('Weight'), '82.4');
+    await fireEvent.press(getByRole('button', { name: 'Save' }));
+
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/inbody',
+      params: { saved: 'manual', heightPrompt: '177.8', profileHeight: '175' },
+    });
   });
 });

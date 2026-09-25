@@ -86,6 +86,8 @@ describe("body contracts", () => {
   it("confirmBodyScanRequestSchema accepts a segmental site as a measurement metric", () => {
     const payload = {
       measuredAt: "2026-01-15T09:00:00.000Z",
+      heightCm: 178,
+      ageYears: 31,
       measurements: [{ metric: "right_arm", value: 3.62, unit: "kg", confidence: 0.9 }],
     };
     expect(confirmBodyScanRequestSchema.safeParse(payload).success).toBe(true);
@@ -100,6 +102,8 @@ describe("body contracts", () => {
   it("confirmBodyScanRequestSchema accepts a real confirmed payload", () => {
     const payload = {
       measuredAt: "2026-01-15T09:00:00.000Z",
+      heightCm: 178,
+      ageYears: 31,
       measurements: [
         { metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 },
         { metric: "body_fat_percent", value: 18.2, unit: "%", confidence: 0.98 },
@@ -111,6 +115,8 @@ describe("body contracts", () => {
   it("confirmBodyScanRequestSchema rejects an unknown metric", () => {
     const payload = {
       measuredAt: "2026-01-15T09:00:00.000Z",
+      heightCm: 178,
+      ageYears: 31,
       measurements: [{ metric: "not_a_real_metric", value: 1, unit: "", confidence: 0.9 }],
     };
     expect(confirmBodyScanRequestSchema.safeParse(payload).success).toBe(false);
@@ -121,6 +127,8 @@ describe("body contracts", () => {
   describe("per-metric physiological bounds on confirmed measurements", () => {
     const withMeasurement = (metric: string, value: number) => ({
       measuredAt: "2026-01-15T09:00:00.000Z",
+      heightCm: 178,
+      ageYears: 31,
       measurements: [{ metric, value, unit: "kg", confidence: 0.9 }],
     });
 
@@ -193,6 +201,8 @@ describe("body contracts", () => {
 describe("createManualBodyScanRequestSchema", () => {
   const request = (measurements: Array<{ metric: string; value: number; unit: string }>) => ({
     measuredAt: "2026-09-24T09:15:00.000Z",
+    heightCm: 178,
+    ageYears: 31,
     measurements,
   });
   const weight = { metric: "weight_kg", value: 82.4, unit: "kg" };
@@ -259,6 +269,8 @@ describe("segmental lean mass bounds", () => {
     for (const value of [30.5, 45]) {
       const result = confirmBodyScanRequestSchema.safeParse({
         measuredAt: "2026-01-15T09:00:00.000Z",
+        heightCm: 178,
+        ageYears: 31,
         measurements: [{ metric: "trunk", value, unit: "kg", confidence: 0.99 }],
       });
       expect(result.success).toBe(true);
@@ -268,6 +280,8 @@ describe("segmental lean mass bounds", () => {
   it("still rejects an impossible trunk mass", () => {
     const result = confirmBodyScanRequestSchema.safeParse({
       measuredAt: "2026-01-15T09:00:00.000Z",
+      heightCm: 178,
+      ageYears: 31,
       measurements: [{ metric: "trunk", value: 300, unit: "kg", confidence: 0.99 }],
     });
     expect(result.success).toBe(false);
@@ -284,9 +298,9 @@ describe("measurementBounds", () => {
 
 /**
  * Height and age on a scan (docs/product/scan-height-age-plan.md §2). Stored on the scan itself,
- * never as BODY_METRICS rows, so they never become Body-tab trend lines. Optional on the two
- * create requests until the app sends them (slice C makes them required, in the same PR as the
- * screens), nullable on every read because scans saved before this change have neither.
+ * never as BODY_METRICS rows, so they never become Body-tab trend lines. Required on the two
+ * create requests (slice C, with the screens that send them), nullable on every read because
+ * scans saved before this change have neither.
  */
 describe("scan height and age", () => {
   const confirm = (extra: Record<string, unknown>) => ({
@@ -319,11 +333,19 @@ describe("scan height and age", () => {
     expect(parsed.ageYears).toBe(31);
   });
 
+  // Slice C: the app sends both from the confirm and manual screens, so a save without them is
+  // refused, naming the field.
   it.each([
     ["confirm", confirmBodyScanRequestSchema, confirm],
     ["manual", createManualBodyScanRequestSchema, manual],
-  ] as const)("%s request still saves without them, so today's app keeps working until slice C", (_label, schema, build) => {
-    expect(schema.safeParse(build({})).success).toBe(true);
+  ] as const)("%s request is refused without height or age, naming the missing field", (_label, schema, build) => {
+    const withoutHeight = schema.safeParse(build({ ageYears: 31 }));
+    expect(withoutHeight.success).toBe(false);
+    expect(issue(withoutHeight, "heightCm")).toBe("heightCm is required");
+
+    const withoutAge = schema.safeParse(build({ heightCm: 178 }));
+    expect(withoutAge.success).toBe(false);
+    expect(issue(withoutAge, "ageYears")).toBe("ageYears is required");
   });
 
   it.each([

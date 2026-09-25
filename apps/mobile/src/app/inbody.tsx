@@ -12,6 +12,7 @@ import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
 import { formatScanDate } from '@/features/body/format-scan-date';
+import { ProfileHeightPrompt } from '@/features/body/profile-height-prompt';
 import { setPendingScan } from '@/store/pending-scan';
 import { colors } from '@/theme/tokens';
 
@@ -51,7 +52,21 @@ export default function InBodyScreen() {
   const [needsAiConsent, setNeedsAiConsent] = useState(false);
   const toast = useToast();
   const loadGeneration = useRef(0);
-  const { saved } = useLocalSearchParams<{ saved?: string }>();
+  const { saved, heightPrompt, profileHeight } = useLocalSearchParams<{
+    saved?: string;
+    heightPrompt?: string;
+    profileHeight?: string;
+  }>();
+  // After a save whose height differs from the profile's (scan-height-age-plan.md §1). Held in
+  // state so clearing the params keeps it open, and it is shown once per save.
+  const [heightOffer, setHeightOffer] = useState<{ scan: string; profile: string } | null>(null);
+
+  useEffect(() => {
+    if (!heightPrompt) return;
+    setHeightOffer({ scan: heightPrompt, profile: profileHeight ?? '' });
+    router.setParams({ heightPrompt: undefined, profileHeight: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per arrival, keyed on the param.
+  }, [heightPrompt]);
 
   // Arriving from the manual-entry form after a save (approved design, state 4).
   useEffect(() => {
@@ -373,6 +388,16 @@ export default function InBodyScreen() {
           </Pressable>
         ) : null}
       </ScrollView>
+      {heightOffer ? (
+        <ProfileHeightPrompt
+          scanHeight={heightOffer.scan}
+          profileHeight={heightOffer.profile}
+          onDone={(updated) => {
+            setHeightOffer(null);
+            if (updated) toast.show('Profile height updated');
+          }}
+        />
+      ) : null}
       <Toast {...toast} />
     </ScreenBackground>
   );

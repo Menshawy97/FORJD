@@ -80,7 +80,7 @@ describe("Body scans (e2e)", () => {
     request(app.getHttpServer())
       .post("/api/v1/body-scans")
       .set("Authorization", `Bearer ${token}`)
-      .field("data", JSON.stringify({ measuredAt: "2026-01-15T09:00:00.000Z", measurements }))
+      .field("data", JSON.stringify({ measuredAt: "2026-01-15T09:00:00.000Z", heightCm: 178, ageYears: 31, measurements }))
       .attach("file", TINY_PNG, "scan.png");
 
   beforeAll(async () => {
@@ -267,9 +267,16 @@ describe("Body scans (e2e)", () => {
       expect(detail.body).toMatchObject({ heightCm: 178.5, ageYears: 31 });
     });
 
-    it("still saves without them, as null, until the app sends them (slice C)", async () => {
-      const saved = await manual({}).expect(201);
-      expect(saved.body).toMatchObject({ heightCm: null, ageYears: null });
+    it("refuses a save without them, naming the missing field (slice C)", async () => {
+      const withoutHeight = await manual({ ageYears: 31 }).expect(400);
+      expect(JSON.stringify(withoutHeight.body)).toContain("heightCm is required");
+      const withoutAge = await manual({ heightCm: 178 }).expect(400);
+      expect(JSON.stringify(withoutAge.body)).toContain("ageYears is required");
+    });
+
+    it("stores the confirmed scan's height and age too", async () => {
+      const confirmed = await confirm([{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 }]).expect(201);
+      expect(confirmed.body).toMatchObject({ heightCm: 178, ageYears: 31 });
     });
 
     it("rejects an out-of-range height with a message naming the field and range", async () => {
@@ -426,7 +433,7 @@ describe("Body scans -- transaction integrity on a forced measurement-insert fai
     request(app.getHttpServer())
       .post("/api/v1/body-scans")
       .set("Authorization", "Bearer tx-token")
-      .field("data", JSON.stringify({ measuredAt: "2026-01-15T09:00:00.000Z", measurements }))
+      .field("data", JSON.stringify({ measuredAt: "2026-01-15T09:00:00.000Z", heightCm: 178, ageYears: 31, measurements }))
       .attach("file", TINY_PNG, "scan.png");
 
   beforeAll(async () => {

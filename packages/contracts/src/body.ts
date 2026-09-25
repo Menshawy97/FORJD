@@ -138,25 +138,24 @@ export const SCAN_AGE_YEARS_BOUNDS = [MINIMUM_AGE_YEARS, 110] as const;
 const rangeMessage = (field: string, [min, max]: readonly [number, number]) => `${field} must be between ${min} and ${max}`;
 
 const scanHeightCmSchema = z
-  .number()
+  .number({ required_error: "heightCm is required" })
   .min(SCAN_HEIGHT_CM_BOUNDS[0], rangeMessage("heightCm", SCAN_HEIGHT_CM_BOUNDS))
   .max(SCAN_HEIGHT_CM_BOUNDS[1], rangeMessage("heightCm", SCAN_HEIGHT_CM_BOUNDS));
 
 const scanAgeYearsSchema = z
-  .number()
+  .number({ required_error: "ageYears is required" })
   .int("ageYears must be a whole number of years")
   .min(SCAN_AGE_YEARS_BOUNDS[0], rangeMessage("ageYears", SCAN_AGE_YEARS_BOUNDS))
   .max(SCAN_AGE_YEARS_BOUNDS[1], rangeMessage("ageYears", SCAN_AGE_YEARS_BOUNDS));
 
 /**
- * Optional on both create requests *for now*: the app only starts sending them with the screens
- * in slice C, and a required field before then would make every InBody save from today's app
- * fail (and break a shipped v1 endpoint, rule 7). Slice C makes them required in the same PR as
- * the screens that send them.
+ * Required on both create requests: the confirm and manual screens send both (slice C), pre-filled
+ * from the sheet or the profile. Slice A accepted them as optional until those screens shipped, so
+ * no InBody save from an older app ever failed on them in between.
  */
 const scanProfileFields = {
-  heightCm: scanHeightCmSchema.optional(),
-  ageYears: scanAgeYearsSchema.optional(),
+  heightCm: scanHeightCmSchema,
+  ageYears: scanAgeYearsSchema,
 };
 
 /**
