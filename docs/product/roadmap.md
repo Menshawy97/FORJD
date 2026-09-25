@@ -7,7 +7,116 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
-## Current status (last updated 2026-09-19)
+## Current status (last updated 2026-09-25)
+
+**Phases 1-5 and 7 are complete (Phase 0 bar Spike B), as are the audit remediation (29/29), Phase 8's engineering
+and Phase 10's leaderboards.** `main` is green. Since the 2026-09-19 update, #201-#260 merged
+(this audit checked every one against the plans). All of it was work this file did not mention:
+
+| Work | Plan / ADR | PRs | State |
+|---|---|---|---|
+| Phase 10 leaderboards, 10B-10N, and the Home City Rank tile | [phase-10-plan.md](phase-10-plan.md), ADR-044-048 | #201-#216 | Merged. Device test of location owed |
+| **Live run**: GPS runs, the route map, crash recovery, live and complete screens, watch heart rate through Health Connect (R1-R8), Profile → FAQ (F1) | [live-run-plan.md](live-run-plan.md), ADR-049, ADR-050, [faq-copy.md](faq-copy.md) | #218-#220, #222, #225, #227, #234-#236 | Merged. Device walk, Maps key and Health Connect test owed |
+| **Production** provisioned, migrated and deployed | [production-setup.md](production-setup.md) | #223, #237 | Live. Exercise-media mirroring fails there (known gap) |
+| **Website** getforjd.com: W1-W3, W6 motion, the form wired (#239, which also removed pricing and added Support), the real-app screenshots | [website-plan.md](website-plan.md), ADR-051 | #221, #224, #226, #228-#233, #238, #239, e23a1ec | Live, W4 part done. The form code is wired, but the privacy page has no "Waitlist" section yet (W4 step 3), and one real sign-up has not been checked end to end (W4 step 4, W5) |
+| **Brand refresh**: new logo, cold-start intro, logo loader, icons | [brand-refresh-plan.md](brand-refresh-plan.md), ADR-052 | #240-#242, then the tab-bar tweak | Merged. Device check of icon and splash owed |
+| **InBody reading on gpt-5.4-mini**, printed units converted in code; date and body-fat checks; a clear refusal when AI insights is off | ADR-053 | #243-#245 | Merged |
+| **Manual InBody entry** (body fat % optional) | [manual-inbody-entry-plan.md](manual-inbody-entry-plan.md) | #246-#248, #252 | Merged and device-tested (#247) |
+| **Height and age on scans**, slices A-G: extraction, required on create, BMI/BMR checked and filled in, FFMI, run calories from active energy, **suggested calorie and macro targets** with activity level and body goal (incl. body recomposition) on sign-up and in Profile | [scan-height-age-plan.md](scan-height-age-plan.md) | #249-#260 | Merged. Eval re-run and a device check owed |
+
+**Health Connect is now called by a screen.** The 6F adapter merged before any device test
+(ADR-035), on the condition that no UI would call `connect()`/`sync()` until the phone test.
+R8's run screen (`features/run/run-health.ts`) now does, merged on the user's 2026-09-22
+decision. **So the physical Android phone test is the most urgent owed item**: it is the only
+check on code users will run.
+
+### Owed, and only the user can do them
+
+- **Devices:** the Health Connect phone test (ADR-035; R8); a dev-client build, then a walk of a
+  real run, of location on the Rank tab, of Google sign-in, of the new icon and splash, and of
+  the slice C-G screens.
+- **Credentials and accounts:** a Google Maps key restricted to the app (EAS variable
+  `GOOGLE_MAPS_ANDROID_API_KEY`); Google Cloud + Supabase Google provider; Apple Developer
+  account; Play Console; the live WHOOP OAuth round-trip (ADR-037).
+- **Production:** Supabase access-token lifetime to 900 s; custom SMTP on the production
+  Supabase project; the service-role key or Storage policy behind the media-mirror failure;
+  `API_BASE_URL` for the production profile in `apps/mobile/eas.json` (still a placeholder).
+- **Data and judgement:** `pnpm --filter @forjd/api inbody:eval` with an OpenAI key, which must
+  still score ≥ 88%, after adding `heightCm`/`ageYears` to each truth file; hand-labelling
+  Spike B; the FAQ citations listed in `faq-copy.md`; the lawyer (privacy policy, terms, consent
+  wording); the Play Data safety form (precise location during runs, heart rate and calories
+  from Health Connect); the support address and privacy-policy URL for the store listings and
+  the placeholder "Contact Us" and "Privacy Policy" rows; the dogfood gate.
+
+### Known engineering gaps (in plans, not yet scheduled until now)
+
+They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed there:
+
+- **Privacy:** the run and strength crash-recovery snapshots are not cleared on sign-out, so a
+  second account on the phone could be offered the first account's unfinished run. The same
+  kind of race: a late `getMe` can rewrite the health or location consent copy after sign-out.
+- **Rule 10:** watch calories are summed across every Health Connect data origin (possible
+  double count); filter by origin.
+- **Honest failures:** a revoked Health Connect permission reads as "no watch".
+- **Run follow-ups:** a leftover snapshot of an already-uploaded run; the route rebuilt every
+  second; the unused `run_points` table; no miles option; the run share card ("coming soon").
+- **Website:** the privacy page's "Waitlist" section (W4 step 3). `WaitlistForm.astro` falls back
+  to the staging API and Turnstile's always-pass test key when `PUBLIC_API_URL` /
+  `PUBLIC_TURNSTILE_SITE_KEY` are unset, so confirm both are set for the production Pages build.
+- **Readiness:** Phase 7 decision E's baseline-crossover surfacing.
+- **Tooling:** Expo web cannot bundle (expo-sqlite's web worker), so UI previews rely on HTML
+  mirrors or a device; `crash_diagnostics` strips only the user id (data inventory).
+- **Product decisions still open:** Free versus Pro, subscriptions (RevenueCat, deferred with
+  Phase 10, needs Play Console), terms of use, the launch email service, and Phase 11's iOS
+  health library ADR.
+
+## Phase 8.5 — Whole-app agent review (new, before the Android beta)
+
+**Why:** 60 PRs landed in a week, across seven plans, mostly verified by CI alone. The last
+whole-repo audit (2026-09-10, 29 slices) predates the live run, the leaderboards, the website,
+production, and every InBody and nutrition change since. External testers should meet an app
+that a fresh, thorough review has passed, not only the per-PR checks.
+
+**Shape:** read-only review agents in parallel, one lane each, over the whole repo at one pinned
+`main` SHA. Each writes its findings to `docs/reviews/2026-XX-<lane>.md`: the file and line, a
+concrete failing scenario, severity (blocker / high / medium / low), and the CLAUDE.md rule or
+ADR it breaks. No lane edits code.
+
+| Lane | Looks at |
+|---|---|
+| 1. Architecture conformance | CLAUDE.md rules 1-17 beyond what the grep check catches: domain purity, the provider abstractions, `integrations/` isolation, versioning, recompute-not-patch, source preservation |
+| 2. Security and authorization | NestJS guards on every route (rule 12), object-level access, input validation, secrets, CORS, the waitlist, Turnstile, the WHOOP webhook, rate limits, the token lifetime |
+| 3. Privacy and health data | rule 15 end to end, consent enforcement (ADR-043), deletion and export completeness against `data-inventory.md`, sign-out clean-up, logs and crash reports, location precision (ADR-048/049) |
+| 4. API correctness | services, repositories, migrations vs schema, transactions, idempotency, time zones and dates, jobs (leaderboard snapshot, aggregation), error paths |
+| 5. Mobile correctness | offline-first sessions and runs (rule 6), the queue and crash recovery, navigation and back paths, state after sign-out, units, loading and error states |
+| 6. Domain calculations | every formula against its citation (FAQ, `body-calculations.ts`, `nutrition-targets.ts`, `run-calculations.ts`, readiness, activity score), edge cases, rounding |
+| 7. InBody pipeline | prompt, parser, the confidence thresholds, unit conversion, the golden fixtures and eval coverage, the confirm and manual screens |
+| 8. Accessibility and UI | roles and labels, touch targets, contrast, font scaling, small screens, consistency with the approved designs |
+| 9. Performance and reliability | slow queries and missing indexes, N+1 reads, list rendering, long-run memory, bundle size, cold start |
+| 10. Tests | coverage gaps, weak assertions, flaky patterns (leaking renders, unawaited promises), missing contract tests for adapters (rule 8) |
+| 11. Docs and ADR consistency | every `docs/architecture/*.md`, plan status line and ADR against the code; stale statements; decisions that exist only in code |
+| 12. Website and dependencies | `apps/web` (privacy copy, form, headers), dependency versions and advisories, the Expo SDK 57 pin (ADR-027), CI and deploy workflows |
+
+**Steps:**
+
+1. **8.5A Plan (docs only):** pin the SHA, write the lane briefs and the findings template in
+   `docs/product/whole-app-review-plan.md`.
+2. **8.5B Review:** run the twelve lanes. A second agent verifies every blocker and high
+   finding independently (reproduce it or show the code path); findings that are not verified
+   drop to "unconfirmed" and are not fixed blind.
+3. **8.5C Triage with the user:** one table of verified findings plus the known gaps above:
+   fix now, schedule into a later phase, or close with a reason. Duplicates merged.
+4. **8.5D Fix slices:** grouped by area, test-first (a failing test that shows the finding,
+   then the fix), each its own PR, merged with `main` green, the same method as the 2026-09-10
+   audit remediation (ADR-038).
+5. **8.5E Close:** re-run lanes 1-3 on the new `main`; update this roadmap, the architecture
+   docs and any ADR the fixes changed.
+
+**Exit criteria:** no open blocker or high finding; every medium has a fix or a scheduled home;
+lanes 1-3 re-run clean; the owed device tests above done, or explicitly carried into the beta
+with the user's agreement.
+
+## Status as of 2026-09-19 (history)
 
 **Phases 0-7 are complete and the 29-slice audit remediation is done (29/29 merged, ADR-038).**
 `main` is green; nothing is open on GitHub. Recent work outside the phase list: the food
@@ -2390,11 +2499,15 @@ failure).
 | Dogfood gate | 16-17 | Real training with the app | Not started |
 | 4 — Progress (Strength) | 18-21 | Progress-tab Strength view: PRs, 1RM trend, volume, calendar, muscle split, FORJD Insight | **Complete** — [planned](phase-4-plan.md). Re-numbered from the original "Programs" row, which shipped inside Phase 3K instead; this slot was re-planned to Progress-Strength because Phase 5/6 were both externally blocked (see `phase-4-plan.md`'s context) |
 | 5 — InBody | 22-24 | Upload, vision extraction, confirmation | **Complete** (development-vendor scope — see `phase-4-plan.md`'s session-close entry and ADR-032) |
-| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **In progress** — [planned](phase-6-plan.md); 6A-6F merged, readiness scoring (ADR-031, Accepted) and light-up-the-UI merged (#131, #132); 6F (`HealthConnectProvider`) is still **device-unverified** — merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md); a physical Android phone test is still owed before any UI screen calls `connect()`/`.sync()` on it (nothing does yet) |
+| 6 — Health Connect + analytics | 25-28 | HealthProvider, aggregation, dashboards | **Engineering complete, device-unverified** — [planned](phase-6-plan.md); 6A-6F merged, readiness scoring (ADR-031, Accepted) and light-up-the-UI merged (#131, #132). 6F (`HealthConnectProvider`) merged pre-device per [ADR-035](../decisions/ADR-035-6f-merge-exception-rule-16.md), and since R8 (#235) the run screen calls `connect()`/`sync()` on it, so the physical Android phone test is now the top owed item |
 | 7 — WHOOP | 29-30 | OAuth, webhooks, adapter | **Complete** — [planned](phase-7-plan.md); 7A-7H done, [ADR-037](../decisions/ADR-037-whoop-integration-shape.md) records the closing shape. Owed: the live WHOOP OAuth round-trip (decision 1), the Phase 6F Health Connect device test (ADR-035, unrelated), decision E's readiness-baseline-crossover surfacing |
 | Audit remediation | — | Fix the 2026-09-10 whole-repo audit, test-first | **Complete** — [plan](audit-remediation-plan.md); 29 of 29 slices merged as of 2026-09-17. Pulled account deletion and data export forward out of Phase 8 |
 | 8 — Privacy & beta prep | 31-34 | Legal, consent, Play closed testing clock | **Engineering complete** — [planned](phase-8-plan.md); engineering-only parts (age gate, health consent, social sign-in, data inventory, real deletion/export); legal, Play Console and store accounts stay with the user |
-| Limited Android beta | 35 | 12+ testers | Not started |
+| Live run | — | GPS runs, route map, crash recovery, watch heart rate | **Complete** — [plan](live-run-plan.md); R1-R8 and F1 merged (ADR-049, ADR-050). Owed: Maps key, dev-client run walk, Health Connect test, Play Data safety form |
+| Website + brand | — | getforjd.com and waitlist; new logo and intro | **Live** — [website plan](website-plan.md) (ADR-051), [brand plan](brand-refresh-plan.md) (ADR-052). Owed: one real sign-up checked end to end, the terms of use, a privacy-page review |
+| InBody + nutrition accuracy | — | gpt-5.4-mini reading, manual entry, height and age, BMI/BMR/FFMI, run calories, suggested targets | **Complete** — ADR-053, [manual entry](manual-inbody-entry-plan.md), [height and age](scan-height-age-plan.md) slices A-G (#243-#260). Owed: the `inbody:eval` re-run (≥ 88%), a device check |
+| 8.5 — Whole-app agent review | 2-3 | Twelve parallel review lanes, verified findings, test-first fix slices | **Not started** — see the section near the top of this file. Must finish before the beta |
+| Limited Android beta | 35 | 12+ testers | Not started. Needs Phase 8.5 closed, Play Console, and the owed device tests |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
 | 11 — iOS track (parallel with 10) | 40-46 | AppleHealthProvider, Codemagic, TestFlight → App Store | Not started |
