@@ -684,8 +684,18 @@ export class NutritionRepository {
       .from(nutritionLogEntries)
       .where(eq(nutritionLogEntries.id, input.id))
       .limit(1);
-    // Another account's id: refuse rather than return (or reveal) their entry.
-    if (!existing || existing.userId !== userId) {
+    // A replay must be the same request. Another account's id, or this account's id reused for a
+    // different food, day, meal or amount, is refused with one message, rather than answering
+    // "logged" with an older entry (or revealing someone else's).
+    const sameRequest =
+      existing !== undefined &&
+      existing.userId === userId &&
+      existing.foodId === input.foodId &&
+      existing.loggedDate === input.loggedDate &&
+      existing.slot === input.slot &&
+      existing.servingLabel === input.servingLabel &&
+      Number(existing.grams) === input.grams;
+    if (!sameRequest) {
       throw new ConflictException("This log entry id is already in use.");
     }
     return this.toLogEntry(existing);

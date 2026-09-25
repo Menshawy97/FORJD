@@ -405,6 +405,21 @@ describe("NutritionRepository", () => {
       expect(day.filter((entry) => entry.id === input.id)).toHaveLength(1);
     });
 
+    it("refuses the same client id sent again with a different food, rather than returning the first entry", async () => {
+      const userId = await makeUser("log-id-different");
+      const [first, second] = await Promise.all([
+        repository.createCatalogueFood(catalogueInput(`log-id-a-${randomUUID()}`)),
+        repository.createCatalogueFood(catalogueInput(`log-id-b-${randomUUID()}`)),
+      ]);
+      createdFoodIds.push(first.id, second.id);
+      const id = randomUUID();
+      const base = { id, slot: "lunch" as const, loggedDate: "2026-09-25", servingLabel: "100 g", grams: 100 };
+
+      await repository.logEntry(userId, { ...base, foodId: first.id });
+
+      await expect(repository.logEntry(userId, { ...base, foodId: second.id })).rejects.toThrow(ConflictException);
+    });
+
     it("refuses a client id another account already used, rather than returning their entry", async () => {
       const owner = await makeUser("log-id-owner");
       const stranger = await makeUser("log-id-stranger");
