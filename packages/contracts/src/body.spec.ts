@@ -158,6 +158,21 @@ describe("body contracts", () => {
     });
   });
 
+  it("bodyScanResponseSchema states whether each value was calculated (scan-height-age-plan §4.1–4.2)", () => {
+    const response = (measurement: Record<string, unknown>) => ({
+      id: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      measuredAt: "2026-09-25T09:00:00.000Z",
+      source: "manual",
+      heightCm: 178,
+      ageYears: 31,
+      measurements: [measurement],
+    });
+    const bmi = { metric: "bmi", value: 26, unit: "", confidence: 1 };
+
+    expect(bodyScanResponseSchema.safeParse(response({ ...bmi, calculated: true })).success).toBe(true);
+    expect(bodyScanResponseSchema.safeParse(response(bmi)).success).toBe(false);
+  });
+
   it("bodyScanResponseSchema accepts a confirmed scan", () => {
     const response = {
       id: "11111111-1111-1111-1111-111111111111",
@@ -165,7 +180,7 @@ describe("body contracts", () => {
       source: "inbody",
       heightCm: 178,
       ageYears: 31,
-      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 }],
+      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97, calculated: false }],
     };
     expect(bodyScanResponseSchema.safeParse(response).success).toBe(true);
   });
@@ -383,7 +398,7 @@ describe("scan height and age", () => {
       source: "manual",
       heightCm: null,
       ageYears: null,
-      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 1 }],
+      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 1, calculated: false }],
     };
     expect(bodyScanResponseSchema.safeParse(response).success).toBe(true);
   });
@@ -393,7 +408,7 @@ describe("scan height and age", () => {
       id: "11111111-1111-1111-1111-111111111111",
       measuredAt: "2026-01-15T09:00:00.000Z",
       source: "inbody",
-      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 }],
+      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97, calculated: false }],
     };
     expect(bodyScanResponseSchema.safeParse(response).success).toBe(false);
   });

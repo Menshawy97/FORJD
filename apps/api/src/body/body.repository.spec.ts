@@ -300,3 +300,45 @@ describe("BodyRepository -- scan height and age", () => {
     expect(scans.some((s) => s.heightCm === null && s.ageYears === null)).toBe(true);
   });
 });
+
+/**
+ * The calculated marker (docs/product/scan-height-age-plan.md §4.1–4.2): a value the server
+ * worked out is stored apart from a read or typed one, and read back that way (rule 10).
+ */
+describe("BodyRepository -- calculated values", () => {
+  const connectionString = process.env.DATABASE_URL ?? "postgresql://forjd:forjd_local_dev@localhost:5432/forjd";
+  let pool: Pool;
+  let db: NodePgDatabase<Record<string, never>>;
+  let repository: BodyRepository;
+  let userId: string;
+
+  beforeAll(async () => {
+    pool = new Pool({ connectionString });
+    db = drizzle(pool) as NodePgDatabase<Record<string, never>>;
+    repository = new BodyRepository(db);
+    const [row] = await db
+      .insert(users)
+      .values({ email: `bodyrepo-calc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com` })
+      .returning();
+    if (!row) throw new Error("insert did not return a row");
+    userId = row.id;
+  });
+
+  afterAll(async () => {
+    await db.delete(users).where(eq(users.id, userId));
+    await pool.end();
+  });
+
+  it("stores a calculated value as calculated, and everything else as not", async () => {
+    const scanId = await repository.createScan(userId, new Date("2026-09-25T09:00:00.000Z"), "manual", null, [
+      { metric: "weight_kg" as BodyMetric, value: 86.6, unit: "kg", confidence: 1 },
+      { metric: "bmi" as BodyMetric, value: 27.4, unit: "", confidence: 1, calculated: true },
+    ]);
+
+    const byMetric = new Map((await repository.getScanById(userId, scanId))?.measurements.map((m) => [m.metric, m]));
+    expect(byMetric.get("weight_kg")?.calculated).toBe(false);
+    expect(byMetric.get("bmi")?.calculated).toBe(true);
+    const [listed] = await repository.listScansForUser(userId);
+    expect(listed?.measurements.find((m) => m.metric === "bmi")?.calculated).toBe(true);
+  });
+});

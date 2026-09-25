@@ -1,5 +1,18 @@
 import { SCAN_AGE_YEARS_BOUNDS, SCAN_HEIGHT_CM_BOUNDS } from "@forjd/contracts";
-import { BODY_METRICS, CM_PER_INCH, KG_PER_LB, SEGMENTAL_SITES, type BodyMetric, type SegmentalSite } from "@forjd/domain";
+import {
+  BODY_METRICS,
+  CM_PER_INCH,
+  KG_PER_LB,
+  SEGMENTAL_SITES,
+  bmiDisagrees,
+  bmiFrom,
+  bmrDisagrees,
+  fatFreeMassKg,
+  katchMcArdleBmrKcal,
+  shouldPrefill,
+  type BodyMetric,
+  type SegmentalSite,
+} from "@forjd/domain";
 
 import { AGE_UNITS, HEIGHT_UNITS, PRINTED_FIELDS, SEGMENTAL_UNITS } from "./inbody-extraction-schema";
 import type { ExtractedBodyScan, ExtractedMeasurement } from "./vision-provider.interface";
@@ -57,6 +70,51 @@ function flagInconsistentBodyFat(fields: Record<BodyMetric, ExtractedMeasurement
       readingNote: field.readingNote ? `${note} ${field.readingNote}` : note,
     };
   }
+}
+
+/** A reading another check can lean on: present and confident enough to pre-fill. */
+function trusted(reading: ExtractedMeasurement): number | null {
+  return reading.value !== null && shouldPrefill(reading.confidence) ? reading.value : null;
+}
+
+/**
+ * BMI is weight ÷ height² (scan-height-age-plan.md §4.1). A read BMI that breaks it by more than
+ * the sheet's rounding was misread (a real sheet's 25.3 came back as 29.3), so it is held for a
+ * check. Only confident weight and height readings are used: a doubtful one says nothing.
+ */
+function flagInconsistentBmi(fields: Record<BodyMetric, ExtractedMeasurement>, height: ExtractedMeasurement): void {
+  const weightKg = trusted(fields.weight_kg);
+  const heightCm = trusted(height);
+  const bmi = fields.bmi;
+  if (bmi.value === null || weightKg === null || heightCm === null) return;
+
+  const computed = bmiFrom(weightKg, heightCm);
+  if (!bmiDisagrees(bmi.value, computed)) return;
+  fields.bmi = needsCheck(bmi, `This doesn't match weight ÷ height² (${computed}), so please check it.`);
+}
+
+/**
+ * InBody prints BMR as 370 + 21.6 × fat-free mass (scan-height-age-plan.md §4.2). A read BMR more
+ * than 5% off it is held for a check. Runs after the body fat check, so a fat value that check
+ * doubted is not trusted here either.
+ */
+function flagInconsistentBmr(fields: Record<BodyMetric, ExtractedMeasurement>): void {
+  const bmr = fields.basal_metabolic_rate_kcal;
+  const weightKg = trusted(fields.weight_kg);
+  if (bmr.value === null || weightKg === null) return;
+  const fatFree = fatFreeMassKg({
+    weightKg,
+    bodyFatMassKg: trusted(fields.body_fat_mass_kg),
+    bodyFatPercent: trusted(fields.body_fat_percent),
+  });
+  if (fatFree === null) return;
+
+  const computed = katchMcArdleBmrKcal(fatFree);
+  if (!bmrDisagrees(bmr.value, computed)) return;
+  fields.basal_metabolic_rate_kcal = needsCheck(
+    bmr,
+    `This doesn't match 370 + 21.6 × fat-free mass (${computed.toLocaleString("en-US")} kcal), so please check it.`,
+  );
 }
 
 type RawMeasurement = { value?: unknown; unit?: unknown; confidence?: unknown; reading_note?: unknown };
@@ -215,6 +273,9 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
       fields[metric] = readPrinted((raw.fields as Record<string, RawMeasurement>)[printed.key], printed.units);
     }
     flagInconsistentBodyFat(fields);
+    const heightCm = readHeight(raw.height as RawHeight | undefined);
+    flagInconsistentBmi(fields, heightCm);
+    flagInconsistentBmr(fields);
     const segmental = {} as Record<SegmentalSite, ExtractedMeasurement>;
     for (const site of SEGMENTAL_SITES) {
       segmental[site] = readPrinted((raw.segmental as Record<string, RawMeasurement> | undefined)?.[site], SEGMENTAL_UNITS);
@@ -224,7 +285,7 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
       testDate: normalizeTestDate(raw.test_date),
       fields,
       segmental,
-      heightCm: readHeight(raw.height as RawHeight | undefined),
+      heightCm,
       ageYears: readAge(raw.age as RawMeasurement | undefined),
       imageQualityNotes: typeof raw.image_quality_notes === "string" ? raw.image_quality_notes : "",
     };

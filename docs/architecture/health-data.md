@@ -60,8 +60,15 @@ protein mass, phase angle, ...) should not require a schema migration:
 
 ```
 BodyCompositionMeasurement
-  id, user_id, measured_at, source, measurement_type, value, unit, confidence
+  id, user_id, measured_at, source, measurement_type, value, unit, confidence, calculated
 ```
+
+`calculated` marks a value the server worked out because the scan had none: BMI from weight and
+the scan's height, BMR from fat-free mass by the formula InBody prints (370 + 21.6 × FFM). It is
+stored beside read and typed values but never passed off as one of them (rule 10). The extraction
+path also uses the same arithmetic to check what it read: a sheet BMI more than 0.5 from weight ÷
+height², or a BMR more than 5% from the formula, is held below the pre-fill threshold for the
+user to check (`docs/product/scan-height-age-plan.md` §4.1–4.2).
 
 ## InBody photo pipeline
 

@@ -183,6 +183,13 @@
       "when": 1790298419172,
       "tag": "0025_add-body-scan-height-age",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790311051451,
+      "tag": "0026_add-body-measurement-calculated",
+      "breakpoints": true
     }
   ]
 }

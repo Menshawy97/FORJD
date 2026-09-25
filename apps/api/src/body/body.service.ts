@@ -1,7 +1,16 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import type { BodyMetric, ScanSource, SegmentalSite, User } from "@forjd/domain";
+import {
+  BODY_METRIC_UNITS,
+  bmiFrom,
+  fatFreeMassKg,
+  katchMcArdleBmrKcal,
+  type BodyMetric,
+  type ScanSource,
+  type SegmentalSite,
+  type User,
+} from "@forjd/domain";
 import type {
   CreateManualBodyScanRequest,
   BodyScanListResponse,
@@ -14,7 +23,7 @@ import type {
 import { STORAGE_PROVIDER, StorageProvider } from "../storage/providers/storage-provider.interface";
 import { VISION_PROVIDER, VisionProvider } from "../ai/providers/vision-provider.interface";
 import { PrivacyService } from "../privacy/privacy.service";
-import { BodyRepository, ScanProfileInput, ScanWithMeasurementsRow } from "./body.repository";
+import { BodyRepository, NewMeasurementInput, ScanProfileInput, ScanWithMeasurementsRow } from "./body.repository";
 
 /** Mirrors `UploadedAvatarFile` in `avatar-upload.service.ts` -- the minimal shape
  *  `FileInterceptor`'s memory storage actually attaches, not `Express.Multer.File`. */
@@ -44,6 +53,40 @@ function scanProfileOf(request: { heightCm: number; ageYears: number }): ScanPro
   return { heightCm: request.heightCm, ageYears: request.ageYears };
 }
 
+/** A value worked out here is arithmetic on values the user confirmed, not a reading. */
+const CALCULATED_CONFIDENCE = 1;
+
+/**
+ * A scan's measurements plus what can be worked out from them and the scan's height
+ * (docs/product/scan-height-age-plan.md §4.1–4.2): a missing BMI from weight and height, and a
+ * missing BMR from fat-free mass by the formula InBody prints (370 + 21.6 × FFM). A value the
+ * sheet or the user gave is never replaced, and a filled-in one is marked calculated (rule 10).
+ */
+export function withCalculatedValues(measurements: NewMeasurementInput[], heightCm: number): NewMeasurementInput[] {
+  const valueOf = (metric: BodyMetric): number | null => measurements.find((m) => m.metric === metric)?.value ?? null;
+  const weightKg = valueOf("weight_kg");
+  if (weightKg === null) return measurements;
+
+  const calculated = (metric: BodyMetric, value: number): NewMeasurementInput => ({
+    metric,
+    value,
+    unit: BODY_METRIC_UNITS[metric],
+    confidence: CALCULATED_CONFIDENCE,
+    calculated: true,
+  });
+  const added: NewMeasurementInput[] = [];
+  if (valueOf("bmi") === null) added.push(calculated("bmi", bmiFrom(weightKg, heightCm)));
+  const fatFree = fatFreeMassKg({
+    weightKg,
+    bodyFatMassKg: valueOf("body_fat_mass_kg"),
+    bodyFatPercent: valueOf("body_fat_percent"),
+  });
+  if (valueOf("basal_metabolic_rate_kcal") === null && fatFree !== null) {
+    added.push(calculated("basal_metabolic_rate_kcal", katchMcArdleBmrKcal(fatFree)));
+  }
+  return [...measurements, ...added];
+}
+
 /** One scan as the API returns it. Confirm, scan detail and the account export share this so they
  *  cannot drift. */
 export function toBodyScanResponse(scan: ScanWithMeasurementsRow): BodyScanResponse {
@@ -58,6 +101,7 @@ export function toBodyScanResponse(scan: ScanWithMeasurementsRow): BodyScanRespo
       value: m.value,
       unit: m.unit,
       confidence: m.confidence,
+      calculated: m.calculated,
     })),
   };
 }
@@ -121,7 +165,7 @@ export class BodyService {
       measuredAt,
       "inbody",
       ref.key,
-      request.measurements,
+      withCalculatedValues(request.measurements, request.heightCm),
       scanProfileOf(request),
     );
 
@@ -144,7 +188,7 @@ export class BodyService {
       new Date(request.measuredAt),
       "manual",
       null,
-      measurements,
+      withCalculatedValues(measurements, request.heightCm),
       scanProfileOf(request),
     );
     return this.getScan(user, scanId);

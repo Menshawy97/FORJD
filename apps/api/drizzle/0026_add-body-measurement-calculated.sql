@@ -1,0 +1,1 @@
+ALTER TABLE "body_measurements" ADD COLUMN "calculated" boolean DEFAULT false NOT NULL;

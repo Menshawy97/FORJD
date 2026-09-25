@@ -182,7 +182,9 @@ describe("Body scans (e2e)", () => {
     ];
 
     const confirmed = await confirm(measurements).expect(201);
-    expect(confirmed.body.measurements).toHaveLength(2);
+    // The two confirmed values, plus BMI and BMR worked out from them (scan-height-age-plan §4.1–4.2).
+    expect(confirmed.body.measurements).toHaveLength(4);
+    expect(confirmed.body.measurements.filter((m: { calculated: boolean }) => !m.calculated)).toHaveLength(2);
     const scanId = confirmed.body.id as string;
 
     const detail = await request(app.getHttpServer())
@@ -190,7 +192,7 @@ describe("Body scans (e2e)", () => {
       .set("Authorization", "Bearer owner-token")
       .expect(200);
     expect(detail.body.id).toBe(scanId);
-    expect(detail.body.measurements).toHaveLength(2);
+    expect(detail.body.measurements).toHaveLength(4);
 
     const list = await request(app.getHttpServer())
       .get("/api/v1/body-scans")
@@ -287,6 +289,26 @@ describe("Body scans (e2e)", () => {
     it("rejects an age below the account minimum", async () => {
       const response = await manual({ heightCm: 178, ageYears: 12 }).expect(400);
       expect(JSON.stringify(response.body)).toContain("ageYears must be between 16 and 110");
+    });
+
+    // scan-height-age-plan.md §4.1–4.2: a scan without BMI or BMR gets both worked out, and says so.
+    it("fills in a missing BMI and BMR, marked calculated, and keeps them on the scan's detail", async () => {
+      const saved = await manual({ heightCm: 178, ageYears: 31 }).expect(201);
+      const byMetric = (body: { measurements: Array<{ metric: string }> }) =>
+        Object.fromEntries(body.measurements.map((m) => [m.metric, m]));
+
+      // 82.4 kg / 1.78 m² = 26.0; fat-free 82.4 × (1 − 12.1%) = 72.4 kg: 370 + 21.6 × 72.4 = 1,934 kcal.
+      expect(byMetric(saved.body)).toMatchObject({
+        weight_kg: { value: 82.4, calculated: false },
+        bmi: { value: 26, unit: "", calculated: true },
+        basal_metabolic_rate_kcal: { value: 1934, unit: "kcal", calculated: true },
+      });
+
+      const detail = await request(app.getHttpServer())
+        .get(`/api/v1/body-scans/${saved.body.id as string}`)
+        .set("Authorization", "Bearer owner-token")
+        .expect(200);
+      expect(byMetric(detail.body).bmi).toMatchObject({ value: 26, calculated: true });
     });
   });
 });

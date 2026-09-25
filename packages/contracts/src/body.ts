@@ -217,6 +217,9 @@ export const bodyMeasurementResponseSchema = z.object({
   value: z.number(),
   unit: z.string(),
   confidence: z.number(),
+  /** True for a value the server worked out because the scan had none: BMI from weight and height,
+   *  BMR from fat-free mass (docs/product/scan-height-age-plan.md §4.1–4.2). Never measured. */
+  calculated: z.boolean(),
 });
 export type BodyMeasurementResponse = z.infer<typeof bodyMeasurementResponseSchema>;
 
