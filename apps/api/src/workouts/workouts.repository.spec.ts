@@ -594,6 +594,31 @@ describe("WorkoutsRepository", () => {
         return minimalSession(owner, exerciseId, { activity: "running", run });
       };
 
+      it("reads the summary and splits back for the account export, splits in order (review 8.5, L3-2)", async () => {
+        const input = await runSession("run-read-back");
+        const created = await repository.upsertSession(input);
+        createdSessionIds.push(created.id);
+
+        const runs = await repository.findRunSummariesForSessions([input.id, randomUUID()]);
+
+        expect(runs.size).toBe(1);
+        const stored = runs.get(input.id);
+        expect(stored).toMatchObject({
+          movingSeconds: 1500,
+          avgHeartRateBpm: 152,
+          caloriesKcal: 298,
+          caloriesSource: "estimate",
+        });
+        expect(stored?.distanceMeters).toBeCloseTo(5012.4, 1);
+        expect(stored?.elevationGainMeters).toBeCloseTo(24.5, 1);
+        expect(stored?.splits.map((split) => split.index)).toEqual([1, 2]);
+        expect(stored?.splits[1]?.avgHeartRateBpm).toBeNull();
+      });
+
+      it("reads nothing for no sessions, without a query", async () => {
+        await expect(repository.findRunSummariesForSessions([])).resolves.toEqual(new Map());
+      });
+
       it("stores the summary and its splits with the session", async () => {
         const input = await runSession("run-store");
         const created = await repository.upsertSession(input);

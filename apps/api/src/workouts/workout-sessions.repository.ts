@@ -81,6 +81,9 @@ export interface CreateRunSummaryInput {
   splits: CreateRunSplitInput[];
 }
 
+/** A run summary as read back -- the same shape as the one written. */
+export type StoredRunSummary = CreateRunSummaryInput;
+
 export interface CreateWorkoutSessionInput {
   /** Client-generated at session start; also the sync idempotency key. */
   id: string;
@@ -264,6 +267,47 @@ export class WorkoutSessionsRepository {
 
     const exercises = await this.readSessionExerciseTree(this.db, sessionRow.id);
     return { ...this.toSession(sessionRow), exercises };
+  }
+
+  /**
+   * The stored run summary and splits for each of these sessions that has one, keyed by session id
+   * (whole-app review 8.5, L3-2). Written by `insertRunSummary` but, until this, read by nothing:
+   * the account export left every run's distance, splits, heart rate and calories out. Two queries
+   * for any number of sessions, not two per session.
+   */
+  async findRunSummariesForSessions(sessionIds: string[]): Promise<Map<string, StoredRunSummary>> {
+    const result = new Map<string, StoredRunSummary>();
+    if (sessionIds.length === 0) return result;
+
+    const [summaries, splits] = await Promise.all([
+      this.db.select().from(workoutRunSummaries).where(inArray(workoutRunSummaries.sessionId, sessionIds)),
+      this.db
+        .select()
+        .from(workoutRunSplits)
+        .where(inArray(workoutRunSplits.sessionId, sessionIds))
+        .orderBy(workoutRunSplits.sessionId, workoutRunSplits.splitIndex),
+    ]);
+
+    for (const row of summaries) {
+      result.set(row.sessionId, {
+        distanceMeters: Number(row.distanceMeters),
+        movingSeconds: row.movingSeconds,
+        elevationGainMeters: row.elevationGainMeters === null ? null : Number(row.elevationGainMeters),
+        avgHeartRateBpm: row.avgHeartRateBpm,
+        caloriesKcal: row.caloriesKcal,
+        caloriesSource: row.caloriesSource as StoredRunSummary["caloriesSource"],
+        splits: [],
+      });
+    }
+    for (const split of splits) {
+      result.get(split.sessionId)?.splits.push({
+        index: split.splitIndex,
+        distanceMeters: Number(split.distanceMeters),
+        durationSeconds: split.durationSeconds,
+        avgHeartRateBpm: split.avgHeartRateBpm,
+      });
+    }
+    return result;
   }
 
   /**

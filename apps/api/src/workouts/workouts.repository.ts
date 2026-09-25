@@ -5,6 +5,7 @@ import { Database, DRIZZLE } from "../database/database.module";
 import {
   CreateWorkoutSessionInput,
   ListWorkoutSessionsFilter,
+  StoredRunSummary,
   WorkoutExerciseHistoryRow,
   WorkoutSessionPage,
   WorkoutSessionsRepository,
@@ -104,6 +105,10 @@ export class WorkoutsRepository {
 
   upsertSession(input: CreateWorkoutSessionInput): Promise<WorkoutSession> {
     return this.sessions.upsertSession(input);
+  }
+
+  findRunSummariesForSessions(sessionIds: string[]): Promise<Map<string, StoredRunSummary>> {
+    return this.sessions.findRunSummariesForSessions(sessionIds);
   }
 
   findSessionByIdForUser(id: string, userId: string): Promise<WorkoutSession | null> {

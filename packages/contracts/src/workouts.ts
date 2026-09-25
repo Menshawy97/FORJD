@@ -381,6 +381,29 @@ export const workoutSessionExerciseResponseSchema = z.object({
 export type WorkoutSessionExerciseResponse = z.infer<typeof workoutSessionExerciseResponseSchema>;
 
 /** A session in full, for the summary/history-detail screen. */
+/**
+ * A stored run's summary and splits, as returned (whole-app review 8.5, L3-2: the account export had
+ * no way to include them). The same fields the upload sends (`runSummaryInputSchema`); heart rate
+ * and calories are whatever the server kept under the person's health-data consent. No route.
+ */
+export const runSummaryResponseSchema = z.object({
+  distanceMeters: z.number(),
+  movingSeconds: z.number().int(),
+  elevationGainMeters: z.number().nullable(),
+  avgHeartRateBpm: z.number().int().nullable(),
+  caloriesKcal: z.number().int().nullable(),
+  caloriesSource: z.enum(RUN_CALORIE_SOURCES).nullable(),
+  splits: z.array(
+    z.object({
+      index: z.number().int(),
+      distanceMeters: z.number(),
+      durationSeconds: z.number().int(),
+      avgHeartRateBpm: z.number().int().nullable(),
+    }),
+  ),
+});
+export type RunSummaryResponse = z.infer<typeof runSummaryResponseSchema>;
+
 export const workoutSessionResponseSchema = z.object({
   id: z.string().uuid(),
   templateId: z.string().uuid().nullable(),
@@ -396,6 +419,8 @@ export const workoutSessionResponseSchema = z.object({
   citySlug: z.string().nullable(),
   isLiveTracked: z.boolean(),
   exercises: z.array(workoutSessionExerciseResponseSchema),
+  /** A run's summary, `null` for a session with none. Optional so existing responses stay valid (rule 7). */
+  run: runSummaryResponseSchema.nullable().optional(),
 });
 export type WorkoutSessionResponse = z.infer<typeof workoutSessionResponseSchema>;
 
