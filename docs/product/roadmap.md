@@ -116,6 +116,69 @@ ADR it breaks. No lane edits code.
 lanes 1-3 re-run clean; the owed device tests above done, or explicitly carried into the beta
 with the user's agreement.
 
+## Phase 12 — Background running, notifications and widgets (new)
+
+**Why:** today FORJD works only while it is on screen. A run pauses when the phone locks
+(ADR-049 made that deliberate); a strength session shows nothing outside the app except the
+rest-timer buzz (ADR-026); the Notifications screen's five toggles are saved on the phone and
+nothing reads them (`store/notification-preferences`; the server's
+`preferences.notifications_enabled` column is unwired); there are no widgets. These are the
+features athletes expect from a training app, and the pocket-locked run is the likeliest beta
+complaint.
+
+**What exists to build on:** `expo-notifications` behind an injected seam
+(`workouts/rest-notifications.ts`, ADR-026); wall-clock timers that survive backgrounding; run and
+session crash recovery (R5); the offline upload queue (rule 6); the designed Notifications screen
+(`docs/design/slice2-screen-specs.md` §5).
+
+**Sequencing (recommended):** 12A-12C before the Android beta, straight after Phase 8.5, because
+runs and workouts must survive a locked phone. 12D-12H after the beta, informed by what testers
+ask for. iOS parts follow Phase 11's library decision (ADR-007: no Mac).
+
+### Decisions to settle first (each an ADR, docs-only PR)
+
+1. **Background run tracking** (supersedes ADR-049 point 2). Recommended: an Android foreground
+   service of type `location`, started from the visible run screen, with an ongoing notification
+   (time, distance, pace, Pause/Finish). Android treats that as foreground access, so the aim is
+   to avoid `ACCESS_BACKGROUND_LOCATION` and its Play review. A spike must confirm `expo-location`
+   (`startLocationUpdatesAsync` with `foregroundService`, plus `expo-task-manager`) does this
+   without its plugin adding the background permission. iOS: the `location` background mode
+   with When In Use (the blue pill), never Always. Store forms and FAQ copy updated.
+2. **Push notification transport.** Recommended: Expo push service or FCM direct (FCM/APNs keys
+   server-side only, rule 5), behind a `NotificationProvider` in `apps/api/src/integrations/push/`
+   (rules 3-4). APNs needs the Apple Developer account.
+3. **What a notification may say** (rule 15, ADR-043). Push text passes through Google and Apple,
+   so it carries no health values ("Your recovery changed, open FORJD", not "HRV fell 22%"). Local
+   notifications, built on the phone, may show values. Health-based alerts need health-data
+   consent.
+4. **Widgets library.** Android: `react-native-android-widget` (config plugin, JSX widgets) or
+   native; iOS WidgetKit needs a Swift extension, so it waits for Phase 11 (possibly
+   `expo-apple-targets` through Codemagic).
+
+### Slices
+
+| Slice | What | Notes |
+|---|---|---|
+| 12A | **Background run.** The foreground service and ongoing notification; GPS continues with the screen off; the notification's Pause/Finish act on the run engine; crash recovery covers a killed service | ADR from decision 1. Keep-awake becomes optional. Physical-device test mandatory, including Doze and battery-saver, and OEM battery killers (Samsung, Xiaomi) |
+| 12B | **Strength session in the background.** An ongoing notification for a live session (current exercise, set, rest countdown via the wall clock), tap to return; the rest buzz folds into it | Local only, no network (rule 6). Android first; iOS Live Activities belong to Phase 11 |
+| 12C | **Background upload.** `expo-background-task` drains the offline queue (sessions, runs, InBody) without opening the app | Idempotent uploads already exist; test the retry path |
+| 12D | **Notification preferences move server-side.** Contract, migration (a `notification_preferences` shape per category, quiet hours, time zone), `GET/PATCH /api/v1/users/me/notifications`; the screen reads and writes them; the device copy becomes a cache | Additive (rule 7). Quiet hours get the editor the design stubs |
+| 12E | **Local scheduled notifications:** workout reminders on program days (30 min before), the weekly summary (Sunday evening) | No server needed; rescheduled when the program or the preferences change |
+| 12F | **Push:** device-token registration (`device_push_tokens` table, deleted on sign-out and account deletion, in the export and the data inventory), `NotificationProvider` + a fake for tests, then the server-side senders: leaderboard moves (after the Monday snapshot), PR celebrations (on upload) | ADR from decisions 2-3. Contract tests for the adapter (rule 8) |
+| 12G | **Recovery alerts:** Health Connect background read (`READ_HEALTH_DATA_IN_BACKGROUND`) or the next foreground sync, readiness recomputed (rule 9), an alert when HRV or sleep drops sharply | Health-data consent required; no values in push text; rule 16 device test |
+| 12H | **Android home-screen widgets:** today's workout or program day, readiness, calories and macros left, City rank. Fed from a snapshot the app writes locally; no network inside the widget; a setting to hide health values from the home screen | ADR from decision 4. Replica first, per the approval rule |
+
+**Across the phase:** every native API behind an injected seam (the ADR-026 pattern) so Jest
+covers the logic; every slice's permission asked at the moment it is needed, never at launch; a
+refusal leaves the app working as it does today; Play Data safety and the privacy policy updated
+for each new permission; `data-inventory.md` updated for push tokens and preferences.
+
+**Exit criteria:** a run and a strength session each survive 30 minutes on a locked physical
+Android phone with correct data; every toggle on the Notifications screen does what it says; push
+and widget payloads verified to carry no health values beyond what the user opted into; no
+background location permission in the Android manifest (`aapt dump permissions`) unless an ADR
+accepted it.
+
 ## Status as of 2026-09-19 (history)
 
 **Phases 0-7 are complete and the 29-slice audit remediation is done (29/29 merged, ADR-038).**
@@ -2507,10 +2570,11 @@ failure).
 | Website + brand | — | getforjd.com and waitlist; new logo and intro | **Live** — [website plan](website-plan.md) (ADR-051), [brand plan](brand-refresh-plan.md) (ADR-052). Owed: one real sign-up checked end to end, the terms of use, a privacy-page review |
 | InBody + nutrition accuracy | — | gpt-5.4-mini reading, manual entry, height and age, BMI/BMR/FFMI, run calories, suggested targets | **Complete** — ADR-053, [manual entry](manual-inbody-entry-plan.md), [height and age](scan-height-age-plan.md) slices A-G (#243-#260). Owed: the `inbody:eval` re-run (≥ 88%), a device check |
 | 8.5 — Whole-app agent review | 2-3 | Twelve parallel review lanes, verified findings, test-first fix slices | **Not started** — see the section near the top of this file. Must finish before the beta |
-| Limited Android beta | 35 | 12+ testers | Not started. Needs Phase 8.5 closed, Play Console, and the owed device tests |
+| Limited Android beta | 35 | 12+ testers | Not started. Needs Phase 8.5 closed, 12A-12C (recommended), Play Console, and the owed device tests |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
 | 11 — iOS track (parallel with 10) | 40-46 | AppleHealthProvider, Codemagic, TestFlight → App Store | Not started |
+| 12 — Background, notifications, widgets | 4-6 | Background run and session, push and local notifications, Android widgets | **Not started** — see its section near the top of this file. 12A-12C (background run, session, upload) recommended before the beta; 12D-12H after it; iOS parts follow Phase 11 |
 | Dual-platform public launch | ~47 | Both stores | Not started |
 
 ## Decisions that shaped this sequencing
