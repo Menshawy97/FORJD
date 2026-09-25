@@ -1,5 +1,6 @@
 // Manual InBody entry (docs/product/manual-inbody-entry-plan.md, design approved by the user):
-// the Confirm-scan layout starting empty, weight and body fat % required, no photo, no AI.
+// the Confirm-scan layout starting empty, weight required (body fat % optional since 2026-09-25),
+// no photo, no AI.
 import { fireEvent, render as rtlRender } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -31,32 +32,38 @@ beforeEach(() => {
 });
 
 describe('manual InBody entry', () => {
-  it('starts empty, titled "Enter values", with weight and body fat % marked required', async () => {
+  it('starts empty, titled "Enter values", with only weight marked required', async () => {
     const { getByText, getAllByText, getByLabelText } = await render(<InBodyManualScreen />);
 
     expect(getByText('Enter values')).toBeTruthy();
-    expect(getAllByText('Required')).toHaveLength(2);
+    expect(getAllByText('Required')).toHaveLength(1);
     expect(getByLabelText('Weight').props.value).toBe('');
     expect(getByLabelText('Body fat percentage').props.value).toBe('');
+    expect(getByText(/is required — add any others/)).toBeTruthy();
   });
 
-  it('refuses to save without body fat %, says why, and sends nothing', async () => {
-    const { getByLabelText, getByRole, findByText } = await render(<InBodyManualScreen />);
+  // The user's rule (2026-09-25): body fat % is optional.
+  it('saves with weight alone, without asking for body fat %', async () => {
+    const { getByLabelText, getByRole, queryByText } = await render(<InBodyManualScreen />);
 
     await fireEvent.changeText(getByLabelText('Weight'), '82.4');
     await fireEvent.press(getByRole('button', { name: 'Save' }));
 
-    expect(await findByText('Enter your body fat %')).toBeTruthy();
-    expect(createManualBodyScan).not.toHaveBeenCalled();
+    expect(createManualBodyScan).toHaveBeenCalledWith({
+      measuredAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      measurements: [{ metric: 'weight_kg', value: 82.4, unit: 'kg' }],
+    });
+    expect(queryByText('Enter your body fat %')).toBeNull();
   });
 
-  it('asks for both when both are missing', async () => {
-    const { getByRole, findByText } = await render(<InBodyManualScreen />);
+  it('asks only for weight when nothing is entered, and sends nothing', async () => {
+    const { getByRole, findByText, queryByText } = await render(<InBodyManualScreen />);
 
     await fireEvent.press(getByRole('button', { name: 'Save' }));
 
     expect(await findByText('Enter your weight')).toBeTruthy();
-    expect(await findByText('Enter your body fat %')).toBeTruthy();
+    expect(queryByText('Enter your body fat %')).toBeNull();
+    expect(createManualBodyScan).not.toHaveBeenCalled();
   });
 
   it('saves the typed values with their units, then returns to InBody to confirm it', async () => {

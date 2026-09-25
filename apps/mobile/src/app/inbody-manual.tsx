@@ -21,10 +21,10 @@ import { combineDateAndTime, ScanDateTimeFields } from '@/features/body/scan-dat
 import { ScanValueRow } from '@/features/body/scan-value-row';
 import { colors } from '@/theme/tokens';
 
-/** Weight and body fat % must be entered (the user's rule); everything else is optional. */
+/** Weight must be entered (the user's rule); everything else, body fat % included since
+ *  2026-09-25, is optional. */
 const REQUIRED: Partial<Record<BodyMetric, string>> = {
   weight_kg: 'Enter your weight',
-  body_fat_percent: 'Enter your body fat %',
 };
 
 const SECTION_LABEL = {
@@ -46,8 +46,9 @@ function parseValue(raw: string | undefined): number | null {
 /**
  * Manual InBody entry (docs/product/manual-inbody-entry-plan.md): the user types their results
  * in, with no photo and no AI. The layout is the Confirm-scan screen's, starting empty, as the
- * user approved in the design replica: no confidence bars, weight and body fat % labelled
- * "Required", and a red box with a reason when one is missing at save.
+ * user approved in the design replica: no confidence bars, weight labelled "Required" (body fat %
+ * too until 2026-09-25, when the user made it optional), and a red box with a reason when it is
+ * missing at save.
  */
 export default function InBodyManualScreen() {
   const [values, setValues] = useState<Record<string, string>>({});
@@ -135,8 +136,8 @@ export default function InBodyManualScreen() {
           </View>
           <Text style={{ flex: 1, fontFamily: 'Archivo', fontSize: 12, lineHeight: 12 * 1.5, color: '#c8c8c0' }}>
             Type the values from your InBody result.{' '}
-            <Text style={{ color: colors.text, fontWeight: '600' }}>Weight and body fat %</Text> are required — add any
-            others your sheet shows.
+            <Text style={{ color: colors.text, fontWeight: '600' }}>Weight</Text> is required — add any others
+            your sheet shows.
           </Text>
         </View>
 

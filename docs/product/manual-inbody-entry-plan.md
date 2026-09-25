@@ -8,8 +8,8 @@ original design handoff). Decisions made with the user:
 |---|---|
 | Where | A row on the InBody screen, under the upload box: "Enter values manually" / "No photo — type in your results" (history-row style, pencil icon). |
 | Form | The Confirm-scan layout, starting empty, titled "Enter values". No confidence bars. |
-| Required | Weight **and** body fat % (labelled "Required"); everything else optional. |
-| Validation | Save with a required value missing: that row's value box turns red (`#b8422f`) with "Enter your weight" / "Enter your body fat %"; nothing is sent. |
+| Required | Weight (labelled "Required"); everything else optional. **Changed 2026-09-25:** body fat % was required too; the user made it optional. |
+| Validation | Save with weight missing: its value box turns red (`#b8422f`) with "Enter your weight"; nothing is sent. |
 | History | Mixed in by date, pencil tile instead of the scale, and a "MANUAL" tag after the date. Compare and charts include it. |
 | After saving | Back to the InBody screen with the toast "Values saved to history". |
 

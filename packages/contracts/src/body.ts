@@ -185,13 +185,14 @@ export const manualMeasurementSchema = z
   .superRefine(checkMeasurementBounds);
 export type ManualMeasurement = z.infer<typeof manualMeasurementSchema>;
 
-/** The two values a manual entry must include (docs/product/manual-inbody-entry-plan.md). */
-export const MANUAL_REQUIRED_METRICS = ["weight_kg", "body_fat_percent"] as const;
+/** The values a manual entry must include (docs/product/manual-inbody-entry-plan.md). Weight
+ *  only: body fat % became optional on 2026-09-25, the user's rule. */
+export const MANUAL_REQUIRED_METRICS = ["weight_kg"] as const;
 
 /**
  * Request body for `POST /body-scans/manual` -- InBody results typed in with no photo. Plain
- * JSON (there is no file part), bounded like a confirmed scan, weight and body fat % required,
- * and each metric at most once.
+ * JSON (there is no file part), bounded like a confirmed scan, weight required, and each metric
+ * at most once.
  */
 export const createManualBodyScanRequestSchema = z
   .object({
