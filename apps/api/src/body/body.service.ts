@@ -92,6 +92,8 @@ export class BodyService {
       testDate: extracted.testDate,
       fields: extracted.fields,
       segmental: extracted.segmental,
+      heightCm: extracted.heightCm,
+      ageYears: extracted.ageYears,
       imageQualityNotes: extracted.imageQualityNotes,
     };
   }

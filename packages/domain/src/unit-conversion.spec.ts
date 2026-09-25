@@ -1,4 +1,5 @@
 import {
+  CM_PER_INCH,
   distanceForDisplay,
   distanceFromDisplay,
   nextDistanceUnit,
@@ -85,5 +86,13 @@ describe('unit conversion', () => {
       expect(nextWeightUnit(nextWeightUnit('kg'))).toBe('kg');
       expect(nextDistanceUnit(nextDistanceUnit('m'))).toBe('m');
     });
+  });
+});
+
+describe('CM_PER_INCH', () => {
+  // The international inch, exactly: 5 ft 10 in is 70 in, 177.8 cm.
+  it('is the exact international inch', () => {
+    expect(CM_PER_INCH).toBe(2.54);
+    expect(70 * CM_PER_INCH).toBeCloseTo(177.8, 10);
   });
 });

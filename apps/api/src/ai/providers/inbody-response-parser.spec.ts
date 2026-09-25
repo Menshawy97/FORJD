@@ -330,3 +330,116 @@ describe("parseInBodyExtractionResponse: consistency note alongside the model's 
     expect(parseInBodyExtractionResponse(text).fields.body_fat_mass_kg.readingNote).toMatch(/^This doesn't match .* Faint print\.$/);
   });
 });
+
+/**
+ * Height and age (docs/product/scan-height-age-plan.md §2.3). The model transcribes them as
+ * printed, like every other value (ADR-053); the parser converts ft/in and inches to cm. A reading
+ * the app could not save (outside the request contract's bounds) or whose unit is unknown is kept
+ * for the user to confirm but held below the pre-fill threshold.
+ */
+describe("parseInBodyExtractionResponse: height and age", () => {
+  const withProfile = (profile: Record<string, unknown>) =>
+    JSON.stringify({
+      inbody_model: "570",
+      test_date: "2026-09-25",
+      fields: { weight: { value: 82.4, unit: "kg", confidence: 0.97, reading_note: "" } },
+      segmental: {},
+      image_quality_notes: "",
+      ...profile,
+    });
+  const height = (value: number | null, unit: string | null, inches: number | null = null, confidence = 0.95, reading_note = "") => ({
+    value,
+    unit,
+    inches,
+    confidence,
+    reading_note,
+  });
+  const age = (value: number | null, unit: string | null = "years", confidence = 0.95, reading_note = "") => ({
+    value,
+    unit,
+    confidence,
+    reading_note,
+  });
+
+  it("keeps a height printed in cm and an age in years exactly as printed", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ height: height(178.5, "cm"), age: age(31) }));
+
+    expect(result.heightCm).toEqual({ value: 178.5, confidence: 0.95, readingNote: "" });
+    expect(result.ageYears).toEqual({ value: 31, confidence: 0.95, readingNote: "" });
+  });
+
+  it("converts feet and inches to cm in code, and says so", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ height: height(5, "ft_in", 10), age: age(31) }));
+
+    expect(result.heightCm.value).toBe(177.8);
+    expect(result.heightCm.confidence).toBe(0.95);
+    expect(result.heightCm.readingNote).toBe("Converted from 5 ft 10 in.");
+  });
+
+  it("reads feet printed with no inches as whole feet", () => {
+    expect(parseInBodyExtractionResponse(withProfile({ height: height(6, "ft_in", null) })).heightCm.value).toBe(182.9);
+  });
+
+  it("converts a height printed in inches only", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ height: height(70, "in") }));
+
+    expect(result.heightCm.value).toBe(177.8);
+    expect(result.heightCm.readingNote).toBe("Converted from 70 in.");
+  });
+
+  it("keeps the model's own note after the conversion note", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ height: height(5, "ft_in", 10, 0.8, "Glare on the header.") }));
+
+    expect(result.heightCm.readingNote).toBe("Converted from 5 ft 10 in. Glare on the header.");
+  });
+
+  it("holds a height with an unrecognised unit below the pre-fill threshold", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ height: height(178, "m") }));
+
+    expect(result.heightCm.value).toBe(178);
+    expect(result.heightCm.confidence).toBe(0.5);
+    expect(result.heightCm.readingNote).toMatch(/wasn't recognised \(m\)/);
+  });
+
+  it.each([
+    ["a height the app could not save", { height: height(17.8, "cm") }, "heightCm", 17.8],
+    ["an age below the account minimum", { age: age(9) }, "ageYears", 9],
+    ["an age above 110", { age: age(131) }, "ageYears", 131],
+  ] as const)("keeps %s for the user to correct, below the pre-fill threshold", (_label, profile, key, value) => {
+    const result = parseInBodyExtractionResponse(withProfile(profile));
+
+    expect(result[key].value).toBe(value);
+    expect(result[key].confidence).toBe(0.5);
+    expect(result[key].readingNote).toMatch(/outside the range the app accepts/);
+  });
+
+  it("holds a fractional age below the pre-fill threshold (sheets print whole years)", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ age: age(31.5) }));
+
+    expect(result.ageYears.value).toBe(31.5);
+    expect(result.ageYears.confidence).toBe(0.5);
+  });
+
+  it("returns null with no confidence when the sheet prints neither", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ height: height(null, null), age: age(null, null) }));
+
+    expect(result.heightCm).toEqual({ value: null, confidence: 0, readingNote: "" });
+    expect(result.ageYears).toEqual({ value: null, confidence: 0, readingNote: "" });
+  });
+
+  it("returns null for both when the response has no height or age at all", () => {
+    const result = parseInBodyExtractionResponse(withProfile({}));
+
+    expect(result.heightCm).toEqual({ value: null, confidence: 0, readingNote: "" });
+    expect(result.ageYears).toEqual({ value: null, confidence: 0, readingNote: "" });
+  });
+
+  it("returns null for both on the original (pre-ADR-053) response shape", () => {
+    const result = parseInBodyExtractionResponse(
+      JSON.stringify({ fields: { weight_kg: { value: 82.4, confidence: 0.9, reading_note: "" } }, image_quality_notes: "" }),
+    );
+
+    expect(result.heightCm).toEqual({ value: null, confidence: 0, readingNote: "" });
+    expect(result.ageYears).toEqual({ value: null, confidence: 0, readingNote: "" });
+  });
+});

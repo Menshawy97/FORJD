@@ -45,6 +45,11 @@ export const extractBodyScanResponseSchema = z.object({
       typeof extractedMeasurementSchema
     >,
   ),
+  /** The height and age printed in the sheet's header (scan-height-age-plan.md §2.3), height
+   *  already in cm. Read like any other value, with a confidence, so the confirm screen can
+   *  pre-fill them or ask for a check; null when the sheet prints neither. */
+  heightCm: extractedMeasurementSchema,
+  ageYears: extractedMeasurementSchema,
   imageQualityNotes: z.string(),
 });
 export type ExtractBodyScanResponse = z.infer<typeof extractBodyScanResponseSchema>;

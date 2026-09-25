@@ -430,3 +430,40 @@ describe("BodyService -- scan height and age", () => {
     await expect(service.getScan(user, "scan-9")).resolves.toMatchObject({ heightCm: null, ageYears: null });
   });
 });
+
+// Slice B (scan-height-age-plan.md §2.3): the sheet's height and age reach the confirm screen.
+describe("BodyService -- extract returns the sheet's height and age", () => {
+  it("passes the vision reading's height and age through to the response", async () => {
+    const TINY_PNG = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    );
+    const heightCm = { value: 177.8, confidence: 0.95, readingNote: "Converted from 5 ft 10 in." };
+    const ageYears = { value: 31, confidence: 0.97, readingNote: "" };
+    const service = new BodyService(
+      {
+        extractBodyScan: jest.fn().mockResolvedValue({
+          inbodyModel: "570",
+          testDate: "2026-09-25",
+          fields: {},
+          segmental: {},
+          heightCm,
+          ageYears,
+          imageQualityNotes: "",
+        }),
+      } as unknown as VisionProvider,
+      { upload: jest.fn() } as unknown as StorageProvider,
+      {} as unknown as BodyRepository,
+      { get: jest.fn().mockResolvedValue({ aiFeaturesConsent: true }) } as unknown as PrivacyService,
+    );
+
+    const result = await service.extract({ id: "user-1" } as User, {
+      buffer: TINY_PNG,
+      mimetype: "image/png",
+      size: TINY_PNG.length,
+    });
+
+    expect(result.heightCm).toEqual(heightCm);
+    expect(result.ageYears).toEqual(ageYears);
+  });
+});

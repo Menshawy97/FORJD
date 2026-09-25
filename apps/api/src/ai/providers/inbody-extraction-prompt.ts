@@ -1,6 +1,6 @@
 import { SEGMENTAL_SITES } from "@forjd/domain";
 
-import { PRINTED_FIELDS, SEGMENTAL_UNITS } from "./inbody-extraction-schema";
+import { AGE_UNITS, HEIGHT_UNITS, PRINTED_FIELDS, SEGMENTAL_UNITS } from "./inbody-extraction-schema";
 
 /**
  * Vendor-agnostic InBody extraction prompt (ADR-032, rewritten by ADR-053).
@@ -23,11 +23,20 @@ export function buildInBodyExtractionPrompt(): string {
     .map((field) => `- ${field.key}: ${field.label}. unit ${field.units.map((unit) => `"${unit}"`).join(" or ")}.`)
     .join("\n");
   const segmentalUnits = SEGMENTAL_UNITS.map((unit) => `"${unit}"`).join(" or ");
+  const heightUnits = HEIGHT_UNITS.map((unit) => `"${unit}"`).join(" or ");
+  const ageUnits = AGE_UNITS.map((unit) => `"${unit}"`).join(" or ");
 
   return `This is a photo of an InBody body-composition result sheet (a printout, or a photo of a screen
 or app). Transcribe the CURRENT test's values exactly as printed, with the unit printed beside
 each one. Do not convert units and do not do any arithmetic: report the printed number and its
 printed unit, and the app converts.
+
+The header (the line at the top with ID, Height, Age, Gender and the test date):
+- height: the person's height as printed. unit ${heightUnits}. For feet and inches (e.g.
+  "5 ft 10 in" or 5' 10") set value to the feet, unit to "ft_in" and inches to the inches (so
+  value 5, inches 10); otherwise inches is null.
+- age: the person's age as printed, in whole years. unit ${ageUnits}.
+Set value (and unit) to null when the sheet does not print one.
 
 Fields (set value to null and unit to null when the sheet does not print it):
 ${fieldLines}
@@ -66,6 +75,7 @@ Rules:
   small print, or hesitation between two readings, and explain the doubt in reading_note.
 
 Answer with a single JSON object: "inbody_model" and "test_date" (strings as printed, or null),
-"fields" and "segmental" (each entry {"value", "unit", "confidence", "reading_note"}, keyed as
-listed above), and "image_quality_notes" (a string).`;
+"height" ({"value", "unit", "inches", "confidence", "reading_note"}), "age" ({"value", "unit",
+"confidence", "reading_note"}), "fields" and "segmental" (each entry {"value", "unit",
+"confidence", "reading_note"}, keyed as listed above), and "image_quality_notes" (a string).`;
 }

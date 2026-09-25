@@ -1,6 +1,7 @@
-import { BODY_METRICS, KG_PER_LB, SEGMENTAL_SITES, type BodyMetric, type SegmentalSite } from "@forjd/domain";
+import { SCAN_AGE_YEARS_BOUNDS, SCAN_HEIGHT_CM_BOUNDS } from "@forjd/contracts";
+import { BODY_METRICS, CM_PER_INCH, KG_PER_LB, SEGMENTAL_SITES, type BodyMetric, type SegmentalSite } from "@forjd/domain";
 
-import { PRINTED_FIELDS, SEGMENTAL_UNITS, type PrintedUnit } from "./inbody-extraction-schema";
+import { AGE_UNITS, HEIGHT_UNITS, PRINTED_FIELDS, SEGMENTAL_UNITS } from "./inbody-extraction-schema";
 import type { ExtractedBodyScan, ExtractedMeasurement } from "./vision-provider.interface";
 
 /**
@@ -67,7 +68,7 @@ const round2 = (n: number): number => Math.round(n * 100) / 100;
  * converted here, in code, rather than by the model -- which was measured reading lb digits
  * correctly and then skipping the conversion.
  */
-function readPrinted(raw: RawMeasurement | undefined, allowedUnits: readonly PrintedUnit[]): ExtractedMeasurement {
+function readPrinted(raw: RawMeasurement | undefined, allowedUnits: readonly string[]): ExtractedMeasurement {
   const value = typeof raw?.value === "number" ? raw.value : null;
   if (value === null) return { value: null, confidence: 0, readingNote: "" };
 
@@ -76,7 +77,7 @@ function readPrinted(raw: RawMeasurement | undefined, allowedUnits: readonly Pri
   const unit = typeof raw?.unit === "string" ? raw.unit : null;
   const withNote = (note: string) => (modelNote ? `${note} ${modelNote}` : note);
 
-  if (unit === null || !allowedUnits.includes(unit as PrintedUnit)) {
+  if (unit === null || !allowedUnits.includes(unit)) {
     return {
       value,
       confidence: Math.min(confidence, UNVERIFIED_UNIT_CONFIDENCE),
@@ -87,6 +88,70 @@ function readPrinted(raw: RawMeasurement | undefined, allowedUnits: readonly Pri
     return { value: round2(value * KG_PER_LB), confidence, readingNote: withNote(`Converted from ${value} lb.`) };
   }
   return { value, confidence, readingNote: modelNote };
+}
+
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+const NO_READING: ExtractedMeasurement = { value: null, confidence: 0, readingNote: "" };
+
+/** Held below the pre-fill threshold, with the reason first and the model's own note after it. */
+function needsCheck(reading: ExtractedMeasurement, note: string): ExtractedMeasurement {
+  return {
+    value: reading.value,
+    confidence: Math.min(reading.confidence, UNVERIFIED_UNIT_CONFIDENCE),
+    readingNote: reading.readingNote ? `${note} ${reading.readingNote}` : note,
+  };
+}
+
+/** A reading the app could not save as it stands is kept for the user to correct, never dropped. */
+function checkBounds(reading: ExtractedMeasurement, [min, max]: readonly [number, number], unit: string): ExtractedMeasurement {
+  if (reading.value === null || (reading.value >= min && reading.value <= max)) return reading;
+  return needsCheck(reading, `This is outside the range the app accepts (${min}–${max} ${unit}), so please check it.`);
+}
+
+type RawHeight = RawMeasurement & { inches?: unknown };
+
+/**
+ * The header's height (scan-height-age-plan.md §2.3), printed in cm, inches, or feet and inches.
+ * Like lb to kg (ADR-053), the conversion happens here rather than in the model.
+ */
+function readHeight(raw: RawHeight | undefined): ExtractedMeasurement {
+  const value = typeof raw?.value === "number" ? raw.value : null;
+  if (value === null) return NO_READING;
+
+  const confidence = typeof raw?.confidence === "number" ? raw.confidence : 0;
+  const modelNote = typeof raw?.reading_note === "string" ? raw.reading_note : "";
+  const unit = typeof raw?.unit === "string" ? raw.unit : null;
+  const read = (cm: number, note: string): ExtractedMeasurement => ({
+    value: cm,
+    confidence,
+    readingNote: note && modelNote ? `${note} ${modelNote}` : note || modelNote,
+  });
+
+  if (unit === null || !(HEIGHT_UNITS as readonly string[]).includes(unit)) {
+    return needsCheck(read(value, ""), `The unit printed for this value wasn't recognised (${unit ?? "none"}), so please check it.`);
+  }
+  let reading: ExtractedMeasurement;
+  if (unit === "ft_in") {
+    const inches = typeof raw?.inches === "number" ? raw.inches : 0;
+    const printed = inches ? `${value} ft ${inches} in` : `${value} ft`;
+    reading = read(round1((value * 12 + inches) * CM_PER_INCH), `Converted from ${printed}.`);
+  } else if (unit === "in") {
+    reading = read(round1(value * CM_PER_INCH), `Converted from ${value} in.`);
+  } else {
+    reading = read(value, "");
+  }
+  return checkBounds(reading, SCAN_HEIGHT_CM_BOUNDS, "cm");
+}
+
+/** The header's age, in whole years (scan-height-age-plan.md §2.3). */
+function readAge(raw: RawMeasurement | undefined): ExtractedMeasurement {
+  const reading = readPrinted(raw, AGE_UNITS);
+  // A missing value, or an unrecognised unit (already held for a check by readPrinted), is final.
+  if (reading.value === null || !(AGE_UNITS as readonly unknown[]).includes(raw?.unit)) return reading;
+  if (!Number.isInteger(reading.value)) {
+    return needsCheck(reading, "Age is printed in whole years, so please check it.");
+  }
+  return checkBounds(reading, SCAN_AGE_YEARS_BOUNDS, "years");
 }
 
 /** Printed keys that differ from their canonical metric name (`weight` vs `weight_kg`). Some
@@ -136,6 +201,8 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
   const raw = extractJson(text) as {
     inbody_model?: unknown;
     test_date?: unknown;
+    height?: unknown;
+    age?: unknown;
     fields?: Record<string, { value?: unknown; confidence?: unknown; reading_note?: unknown }>;
     segmental?: Record<string, { value?: unknown; confidence?: unknown; reading_note?: unknown }>;
     image_quality_notes?: unknown;
@@ -157,6 +224,8 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
       testDate: normalizeTestDate(raw.test_date),
       fields,
       segmental,
+      heightCm: readHeight(raw.height as RawHeight | undefined),
+      ageYears: readAge(raw.age as RawMeasurement | undefined),
       imageQualityNotes: typeof raw.image_quality_notes === "string" ? raw.image_quality_notes : "",
     };
   }
@@ -186,6 +255,9 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
     testDate: normalizeTestDate(raw.test_date),
     fields,
     segmental,
+    // The original shape predates height and age on scans, so it never carries them.
+    heightCm: NO_READING,
+    ageYears: NO_READING,
     imageQualityNotes: typeof raw.image_quality_notes === "string" ? raw.image_quality_notes : "",
   };
 }

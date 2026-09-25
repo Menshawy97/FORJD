@@ -34,6 +34,14 @@ before building: the screen replica in §3, and answers to the §4.5 questions.
    height (cm, or ft/in converted in code as lb→kg is today) and age, each with a confidence.
    Golden fixtures are updated from the user's sample sheets, and the eval is re-run so it
    still scores at least 88%.
+
+   **Built in slice B:** height (`cm`, `in` or `ft_in`, converted to cm in the parser) and age
+   (whole years) are read from the header with a confidence; a reading outside the request
+   contract's bounds, a fractional age or an unknown unit is kept but held below the pre-fill
+   threshold. The ADR-053 evaluation was a one-off, so it is now committed as
+   `pnpm --filter @forjd/api inbody:eval`. The sample sheets are gitignored and the run needs an
+   OpenAI key, so **the re-run is owed on the user's machine**, after adding `heightCm` and
+   `ageYears` to each `truth/<name>.json` from its sheet.
 4. **Profile prompt:** `PATCH /users/me` already accepts `heightCm`; the app asks, then calls
    it. Nothing on the server changes the profile by itself.
 
