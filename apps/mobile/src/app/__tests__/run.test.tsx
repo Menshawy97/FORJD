@@ -51,7 +51,7 @@ jest.mock('@/store/run-health-access', () => ({
   hasAskedRunHealthAccess: jest.fn(),
   markRunHealthAccessAsked: jest.fn(),
 }));
-jest.mock('@/features/run/latest-weight', () => ({ fetchLatestWeightKg: jest.fn() }));
+jest.mock('@/features/run/latest-weight', () => ({ fetchRunCalorieInputs: jest.fn() }));
 jest.mock('@/workouts/sync-sessions', () => ({ syncPendingSessions: jest.fn() }));
 jest.mock('@/store/leaderboard-consent', () => ({ readLocationConsent: jest.fn() }));
 
@@ -65,7 +65,7 @@ import { getDeviceHealthProvider } from '@/integrations/health/device-health-pro
 import { readHealthConsent } from '@/store/health-consent-local';
 import { hasAskedRunHealthAccess, markRunHealthAccessAsked } from '@/store/run-health-access';
 import { toRunSnapshot } from '@/features/run/run-snapshot';
-import { fetchLatestWeightKg } from '@/features/run/latest-weight';
+import { fetchRunCalorieInputs } from '@/features/run/latest-weight';
 import { clearRunSnapshot, getUnfinishedRunSnapshot, saveRunSnapshot } from '@/store/run-session';
 import { readLocationConsent } from '@/store/leaderboard-consent';
 import { enqueueSessionUpload, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
@@ -121,7 +121,7 @@ beforeEach(() => {
   (getUnfinishedRunSnapshot as jest.Mock).mockResolvedValue(null);
   (saveRunSnapshot as jest.Mock).mockResolvedValue(undefined);
   (clearRunSnapshot as jest.Mock).mockResolvedValue(undefined);
-  (fetchLatestWeightKg as jest.Mock).mockResolvedValue(70);
+  (fetchRunCalorieInputs as jest.Mock).mockResolvedValue({ weightKg: 70, bmrKcal: null, ageYears: null, sex: null });
   (syncPendingSessions as jest.Mock).mockResolvedValue(undefined);
   (readLocationConsent as jest.Mock).mockResolvedValue(false);
   (readHealthConsent as jest.Mock).mockResolvedValue(false);
@@ -360,7 +360,7 @@ describe('RunScreen -- finishing', () => {
   });
 
   it('never blocks on the network: no weight still saves the run, just without an estimate', async () => {
-    (fetchLatestWeightKg as jest.Mock).mockResolvedValue(null);
+    (fetchRunCalorieInputs as jest.Mock).mockResolvedValue({ weightKg: null, bmrKcal: null, ageYears: null, sex: null });
     await runOneHundredMetres();
     await fireEvent.press(screen.getByText('Finish run'));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));

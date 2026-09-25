@@ -344,3 +344,64 @@ export function averageHeartRate(
   if (inWindow.length === 0) return null;
   return Math.round(inWindow.reduce((sum, sample) => sum + sample.bpm, 0) / inWindow.length);
 }
+
+/** Below this average heart rate Keytel's equation was not fitted (exercise heart rates), so it is not used. */
+export const KEYTEL_MIN_HEART_RATE_BPM = 90;
+
+const KJ_PER_KCAL = 4.184;
+const MINUTES_PER_DAY = 1440;
+
+export interface RunActiveCalorieInput extends RunCalorieInput {
+  /** The latest scan's basal metabolic rate; `null` uses 1 MET for resting energy. */
+  bmrKcal: number | null;
+  /** Mean heart rate over the run, only with health-data consent; `null` uses the pace equation. */
+  avgHeartRateBpm: number | null;
+  ageYears: number | null;
+  sex: 'male' | 'female' | 'prefer_not_to_say' | null;
+}
+
+/**
+ * Gross energy from heart rate, kcal per minute: Keytel et al., *J Sports Sci* 2005;23(3):289–297,
+ * the equations without VO2max, in kJ/min. Men `−55.0969 + 0.6309·HR + 0.1988·kg + 0.2017·age`,
+ * women `−20.4022 + 0.4472·HR − 0.1263·kg + 0.074·age`. Null when sex is not given.
+ */
+function keytelGrossKcalPerMinute(heartRate: number, weightKg: number, ageYears: number, sex: RunActiveCalorieInput['sex']) {
+  if (sex === 'male') return (-55.0969 + 0.6309 * heartRate + 0.1988 * weightKg + 0.2017 * ageYears) / KJ_PER_KCAL;
+  if (sex === 'female') return (-20.4022 + 0.4472 * heartRate - 0.1263 * weightKg + 0.074 * ageYears) / KJ_PER_KCAL;
+  return null;
+}
+
+/**
+ * Estimated *active* energy of a run in kilocalories, or `null` when it cannot be worked out
+ * (docs/product/scan-height-age-plan.md §4.4). A watch reports active energy, so this does too:
+ * gross energy minus resting energy over the moving time, never below zero.
+ *
+ * - Gross: Keytel's heart-rate equation when the mean heart rate (at least 90 bpm), age and sex are
+ *   known, since it is more personal than pace; otherwise the ACSM pace equation
+ *   (`estimateRunCaloriesKcal`).
+ * - Resting: the latest scan's BMR spread over the day, else 1 MET (3.5 mL·kg⁻¹·min⁻¹, 0.0175 kcal
+ *   per kg per minute at 5 kcal per litre of oxygen).
+ */
+export function estimateRunActiveCaloriesKcal(input: RunActiveCalorieInput): number | null {
+  const { weightKg, movingSeconds, avgHeartRateBpm, ageYears } = input;
+  if (weightKg === null || !Number.isFinite(weightKg) || weightKg <= 0) return null;
+  if (!Number.isFinite(movingSeconds) || movingSeconds <= 0) return null;
+  const minutes = movingSeconds / 60;
+
+  const keytel =
+    avgHeartRateBpm !== null && avgHeartRateBpm >= KEYTEL_MIN_HEART_RATE_BPM && ageYears !== null
+      ? keytelGrossKcalPerMinute(avgHeartRateBpm, weightKg, ageYears, input.sex)
+      : null;
+  let grossPerMinute = keytel;
+  if (grossPerMinute === null) {
+    const gross = estimateRunCaloriesKcal(input);
+    if (gross === null) return null;
+    grossPerMinute = gross / minutes;
+  }
+
+  const restingPerMinute =
+    input.bmrKcal !== null && Number.isFinite(input.bmrKcal) && input.bmrKcal > 0
+      ? input.bmrKcal / MINUTES_PER_DAY
+      : (3.5 * weightKg * 5) / 1000;
+  return Math.max(0, Math.round((grossPerMinute - restingPerMinute) * minutes));
+}

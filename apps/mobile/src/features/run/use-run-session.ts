@@ -35,7 +35,7 @@ import { newSessionId } from '@/workouts/start-session';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
 
 import { gpsQuality, type GpsQuality } from './gps-quality';
-import { fetchLatestWeightKg } from './latest-weight';
+import { fetchRunCalorieInputs } from './latest-weight';
 import { HEART_RATE_POLL_MS, prepareRunHealth, readFinalHealth, type FinalHealth, type RunHealthReader } from './run-health';
 import { restoreRunSnapshot, toRunSnapshot } from './run-snapshot';
 import { toRunSummary } from './run-summary';
@@ -414,8 +414,8 @@ export function useRunSession(): RunSession {
         const finalHealthRead = healthConsentRead.then((consent) =>
           consent === true ? readFinalHealth(healthRef.current, finished.startedAtMs, endedAt) : noHealth,
         );
-        const [weightKg, startAllowed, healthConsent, finalHealth] = await Promise.all([
-          fetchLatestWeightKg(),
+        const [calorieInputs, startAllowed, healthConsent, finalHealth] = await Promise.all([
+          fetchRunCalorieInputs(new Date(finished.startedAtMs)),
           readLocationConsent(),
           healthConsentRead,
           finalHealthRead,
@@ -423,7 +423,7 @@ export function useRunSession(): RunSession {
         const healthAllowed = healthConsent === true;
         const withHeartRate = healthAllowed ? addHeartRate(finished, finalHealth.heartRate) : finished;
         const request = toRunUploadRequest(withHeartRate, {
-          weightKg,
+          ...calorieInputs,
           allowStartLocation: startAllowed === true,
           // Only an explicit yes reads or stores heart rate and the watch's calories (ADR-043).
           healthDataAllowed: healthAllowed,

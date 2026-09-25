@@ -190,18 +190,16 @@ FORJD and isn't sent to Google. Without a connection the map tiles won't load, a
 a plain background instead.
 
 ### How are calories worked out?
-If your watch reports the calories, FORJD uses those. Otherwise it estimates them from your pace,
-your net climb from start to finish, and your latest weight using the American College of Sports Medicine's running and walking
-equations, and marks the number "estimated". With no weight on record it shows a dash instead.
+If your watch reports the calories, FORJD uses those. Otherwise it estimates them and marks the number "estimated". With your heart rate from a watch (if you've allowed health data), your age and your sex, it uses Keytel's heart-rate equation; otherwise your pace, your net climb from start to finish and your latest weight, with the American College of Sports Medicine's running and walking equations. With no weight on record it shows a dash instead.
 
 Running (at about 8 km/h and faster): oxygen use = 0.2 × speed + 0.9 × speed × grade + 3.5. Walking
 (slower): 0.1 × speed + 1.8 × speed × grade + 3.5. Speed is in metres per minute, grade is the slope as
 a fraction, and oxygen use is in mL per kg per minute. Energy is oxygen use × your weight in kg ÷ 1000
-× 5 kcal per minute. It is an estimate for one person's average, and a watch that measures your heart
-rate will usually be closer.
+× 5 kcal per minute. Like a watch, FORJD counts only the calories the run added: it takes off what your body burns at rest over the same time, from your latest InBody scan's BMR, or 1 MET without one. It is an estimate for one person's average, and a watch that measures your heart rate will usually be closer.
 
 *Source:* American College of Sports Medicine. *ACSM's Guidelines for Exercise Testing and
-Prescription*, 11th ed. Wolters Kluwer; 2021.
+Prescription*, 11th ed. Wolters Kluwer; 2021. Keytel LR et al. Prediction of energy expenditure from heart rate
+monitoring during submaximal exercise. *J Sports Sci* 2005;23(3):289–297.
 
 ### Why does heart rate show a dash?
 FORJD reads heart rate from a watch that shares it through Health Connect, and only if you've allowed

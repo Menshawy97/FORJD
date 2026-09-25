@@ -125,6 +125,12 @@ row, since a read value is never saved unconfirmed.
   includes resting). Subtract resting energy, using the latest scan's BMR where there is one,
   so the two are comparable.
 
+**Built in slice F:** `estimateRunActiveCaloriesKcal` in `@forjd/domain` (Keytel with heart rate,
+age and sex, else ACSM; minus resting from BMR, else 1 MET). A finished run loads weight, BMR, age
+on the run's date and sex together, bounded like the old weight lookup (rule 6). Heart rate only
+feeds it with health-data consent. The in-app FAQ and `faq-copy.md` explain both; formulas are in
+`live-run-plan.md`.
+
 ### 4.5 Calories and macros: *answered and designed, 2026-09-25*
 Today the daily targets are numbers the user types in (`PUT /nutrition/macro-goals`). The basis
 for suggested targets:

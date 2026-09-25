@@ -33,6 +33,9 @@ tiles come from.
 4. **Calories are the watch's value when there is one, otherwise an ACSM estimate,** labelled
    "estimated" (formulas and citation in `docs/product/live-run-plan.md` and the FAQ). No weight on
    record means no estimate. It is a plain calculation, never called AI (ADR-030).
+   *Update 2026-09-25 (`docs/product/scan-height-age-plan.md` §4.4):* the estimate is now active
+   energy, like the watch's, and uses Keytel's heart-rate equation when heart rate (with consent),
+   age and sex are known; the ACSM equation remains the fallback. Still labelled "estimated".
 5. **The map is Google's, through `react-native-maps`,** because the user chose street context over the
    drawn-route alternative. It lives in `apps/mobile/src/integrations/maps/`, the only place allowed to
    import it (a conformance rule, CLAUDE.md rule 4). With no key configured, where the native module is
