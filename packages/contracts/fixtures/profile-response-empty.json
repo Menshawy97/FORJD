@@ -11,6 +11,8 @@
   "energyUnit": "kcal",
   "trainingGoals": [],
   "activities": [],
+  "activityLevel": null,
+  "bodyGoal": null,
   "city": null,
   "avatarUrl": null,
   "plan": "free"

@@ -1,7 +1,11 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import {
   ACTIVITIES,
+  ACTIVITY_LEVELS,
   Activity,
+  ActivityLevel,
+  BODY_GOALS,
+  BodyGoal,
   DISTANCE_UNITS,
   DistanceUnit,
   ENERGY_UNITS,
@@ -68,6 +72,11 @@ function keepKnown<T extends string>(values: string[], known: readonly T[]): T[]
  * Same reasoning as `keepKnown`, but a scalar has no "drop it" option — a unit preference
  * must be *something*, so it degrades to the column default rather than to null.
  */
+/** A nullable slug column read back as a known member, or null (a narrowed value set degrades to "not chosen"). */
+function knownOrNull<T extends string>(value: string | null, known: readonly T[]): T | null {
+  return value !== null && (known as readonly string[]).includes(value) ? (value as T) : null;
+}
+
 function keepKnownScalar<T extends string>(value: string, known: readonly T[], fallback: T): T {
   return (known as readonly string[]).includes(value) ? (value as T) : fallback;
 }
@@ -98,6 +107,8 @@ export interface ProfilePatch {
   energyUnit?: EnergyUnit;
   trainingGoals?: TrainingGoal[];
   activities?: Activity[];
+  activityLevel?: ActivityLevel | null;
+  bodyGoal?: BodyGoal | null;
   city?: string | null;
   citySlug?: string | null;
   avatarUrl?: string | null;
@@ -261,6 +272,8 @@ export class UsersRepository {
       energyUnit: keepKnownScalar(row.energyUnit, ENERGY_UNITS, 'kcal'),
       trainingGoals: keepKnown(row.trainingGoals, TRAINING_GOALS),
       activities: keepKnown(row.activities, ACTIVITIES),
+      activityLevel: knownOrNull(row.activityLevel, ACTIVITY_LEVELS),
+      bodyGoal: knownOrNull(row.bodyGoal, BODY_GOALS),
       city: row.city,
       citySlug: row.citySlug,
       avatarUrl: row.avatarUrl,

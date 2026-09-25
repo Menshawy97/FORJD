@@ -11,10 +11,12 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { getBodySchema, getClassGuards, getQuerySchema } from "../test-support/controller-metadata";
 import { fakeAuthenticatedRequest } from "../test-support/fake-authenticated-request";
 import { NutritionController } from "./nutrition.controller";
+import { MacroSuggestionService } from "./macro-suggestion.service";
 import { NutritionService } from "./nutrition.service";
 
 describe("NutritionController", () => {
   let service: jest.Mocked<NutritionService>;
+  let suggestions: jest.Mocked<MacroSuggestionService>;
   let controller: NutritionController;
 
   beforeEach(() => {
@@ -34,7 +36,8 @@ describe("NutritionController", () => {
       deleteLogGroup: jest.fn(),
       deleteLogEntry: jest.fn(),
     } as unknown as jest.Mocked<NutritionService>;
-    controller = new NutritionController(service);
+    suggestions = { getSuggestion: jest.fn() } as unknown as jest.Mocked<MacroSuggestionService>;
+    controller = new NutritionController(service, suggestions);
   });
 
   it("carries JwtAuthGuard at the class level", () => {
@@ -168,5 +171,18 @@ describe("NutritionController", () => {
 
     await controller.deleteLogEntry(request, "entry-1");
     expect(service.deleteLogEntry).toHaveBeenCalledWith(request.user, "entry-1");
+  });
+});
+
+// scan-height-age-plan.md §4.5: the suggestion route reads the caller's own data only.
+describe("NutritionController -- macro goal suggestion", () => {
+  it("asks for the authenticated user's suggestion", async () => {
+    const suggestions = { getSuggestion: jest.fn().mockResolvedValue({ suggestion: null, basis: null, missing: [] }) };
+    const controller = new NutritionController({} as NutritionService, suggestions as unknown as MacroSuggestionService);
+    const request = { user: { id: "user-1", email: "a@b.c" } } as never;
+
+    await controller.getMacroGoalSuggestion(request);
+
+    expect(suggestions.getSuggestion).toHaveBeenCalledWith({ id: "user-1", email: "a@b.c" });
   });
 });

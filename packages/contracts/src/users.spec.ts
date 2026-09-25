@@ -53,3 +53,16 @@ describe("updateProfileRequestSchema.dateOfBirth", () => {
     expect(updateProfileRequestSchema.safeParse({ displayName: "Ada" }).success).toBe(true);
   });
 });
+
+// scan-height-age-plan.md §4.5: activity level and body goal, asked at sign-up and editable in Profile.
+describe('activity level and body goal on the profile', () => {
+  it('accepts each approved value on update, and null to clear', () => {
+    expect(updateProfileRequestSchema.safeParse({ activityLevel: 'active', bodyGoal: 'recomposition' }).success).toBe(true);
+    expect(updateProfileRequestSchema.safeParse({ activityLevel: null, bodyGoal: null }).success).toBe(true);
+  });
+
+  it('rejects values outside the approved lists', () => {
+    expect(updateProfileRequestSchema.safeParse({ activityLevel: 'couch' }).success).toBe(false);
+    expect(updateProfileRequestSchema.safeParse({ bodyGoal: 'bulk' }).success).toBe(false);
+  });
+});

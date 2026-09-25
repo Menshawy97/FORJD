@@ -1,3 +1,4 @@
+import type { ActivityLevel, BodyGoal } from "./nutrition-targets";
 /**
  * Canonical domain types. Pure TypeScript by rule: no NestJS, no Supabase, no UI framework
  * may be imported here (CLAUDE.md rules 1-2, enforced by the CI conformance check).
@@ -142,6 +143,12 @@ export interface Profile {
   trainingGoals: TrainingGoal[];
   activities: Activity[];
   /**
+   * For suggested calorie and macro targets (docs/product/scan-height-age-plan.md §4.5): asked at
+   * sign-up and editable in Profile. Null until chosen, and for accounts created before them.
+   */
+  activityLevel: ActivityLevel | null;
+  bodyGoal: BodyGoal | null;
+  /**
    * A city name the user volunteered, and a slug derived from it for future grouping. Coarse
    * and string-only by design — no coordinate is ever stored on the user record, because
    * docs/architecture/security.md puts location on WorkoutSession. The device reverse-geocodes
@@ -192,3 +199,4 @@ export * from "./leaderboard-vocabulary";
 export * from "./leaderboard-scoring";
 
 export * from "./run-calculations";
+export * from "./nutrition-targets";

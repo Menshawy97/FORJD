@@ -1,4 +1,5 @@
 import {
+  macroGoalSuggestionResponseSchema,
   createCustomFoodRequestSchema,
   createSavedMealRequestSchema,
   foodListResponseSchema,
@@ -236,5 +237,35 @@ describe('nutrition contracts', () => {
       expect(setMacroGoalsRequestSchema.safeParse({ kcal: 0, protein: 0, carbs: 0, fat: 0 }).success).toBe(false);
       expect(setMacroGoalsRequestSchema.safeParse({ kcal: 1, protein: 0, carbs: 0, fat: 0 }).success).toBe(true);
     });
+  });
+});
+
+// scan-height-age-plan.md §4.5: the suggestion the Set daily goals card shows, with its inputs.
+describe('macroGoalSuggestionResponseSchema', () => {
+  it('carries the suggestion in the macro-goals shape, and every input the details show', () => {
+    const response = {
+      suggestion: { kcal: 2750, protein: 139, carbs: 377, fat: 76 },
+      basis: {
+        maintenanceKcal: 3240,
+        bmrKcal: 1905,
+        bmrSource: 'scan',
+        scanMeasuredAt: '2026-09-22T09:00:00.000Z',
+        weightKg: 86.6,
+        activityLevel: 'active',
+        activityFactor: 1.7,
+        bodyGoal: 'lose_fat',
+        energyChange: -0.15,
+        proteinPerKg: 1.6,
+        fatShare: 0.25,
+      },
+      missing: [],
+    };
+    expect(macroGoalSuggestionResponseSchema.safeParse(response).success).toBe(true);
+  });
+
+  it('says what is missing instead of suggesting', () => {
+    const none = { suggestion: null, basis: null, missing: ['activityLevel', 'bodyGoal'] };
+    expect(macroGoalSuggestionResponseSchema.safeParse(none).success).toBe(true);
+    expect(macroGoalSuggestionResponseSchema.safeParse({ ...none, missing: ['height'] }).success).toBe(false);
   });
 });

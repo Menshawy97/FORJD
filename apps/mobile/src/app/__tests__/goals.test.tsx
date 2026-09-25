@@ -133,7 +133,9 @@ describe('GoalsScreen', () => {
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/profile'));
   });
 
-  it('on the first-run path, saves, shows the welcome toast, and lands on home', async () => {
+  // scan-height-age-plan.md §4.5: sign-up continues to the activity-level and body-goal pages,
+  // which end on home with the welcome.
+  it('on the first-run path, saves and continues to the activity level page', async () => {
     mockUseLocalSearchParams.mockReturnValue({ returnTo: 'newAccount' });
     (updateProfile as jest.Mock).mockResolvedValue(PROFILE);
 
@@ -141,8 +143,7 @@ describe('GoalsScreen', () => {
 
     fireEvent.press(await findByText('Save'));
 
-    expect(await findByText('Welcome to FORJD!')).toBeTruthy();
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/activity-level?returnTo=newAccount'));
   });
 
   it('the back chevron returns to profile by default', async () => {

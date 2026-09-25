@@ -32,6 +32,7 @@ import type {
   LoginRequest,
   LogFoodRequest,
   LogSavedMealRequest,
+  MacroGoalSuggestionResponse,
   MacroGoalsResponse,
   MeResponse,
   NutritionLogEntryResponse,
@@ -352,6 +353,12 @@ export async function deleteCustomFood(id: string): Promise<void> {
 /** Rejects with a 404 `AxiosError` before any goals have ever been saved -- the caller shows an honest "set your goals" prompt rather than treating a caught error as a network failure. */
 export async function getMacroGoals(): Promise<MacroGoalsResponse> {
   const response = await apiClient.get<MacroGoalsResponse>('/nutrition/macro-goals');
+  return response.data;
+}
+
+/** Suggested daily targets and what they came from (scan-height-age-plan.md §4.5). Saving is `setMacroGoals`. */
+export async function getMacroGoalSuggestion(): Promise<MacroGoalSuggestionResponse> {
+  const response = await apiClient.get<MacroGoalSuggestionResponse>('/nutrition/macro-goals/suggestion');
   return response.data;
 }
 

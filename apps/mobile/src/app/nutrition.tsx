@@ -2,7 +2,14 @@ import {
   MEAL_SLOT_DISPLAY_NAMES,
   type MealSlot,
 } from '@forjd/domain';
-import type { FoodResponse, MacroGoalsResponse, NutritionLogEntryResponse, SavedMealResponse } from '@forjd/contracts';
+import type {
+  FoodResponse,
+  MacroGoalSuggestionResponse,
+  MacroGoalsResponse,
+  NutritionLogEntryResponse,
+  SavedMealResponse,
+  SetMacroGoalsRequest,
+} from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -12,6 +19,7 @@ import {
   deleteLogEntry,
   deleteLogGroup,
   getFood,
+  getMacroGoalSuggestion,
   getMacroGoals,
   listNutritionLog,
   listSavedMeals,
@@ -107,6 +115,8 @@ export default function NutritionScreen() {
 
   const [editGoalsOpen, setEditGoalsOpen] = useState(false);
   const [editGoalsVals, setEditGoalsVals] = useState<EditGoalsValues>({ kcal: '', protein: '', carbs: '', fat: '' });
+  // scan-height-age-plan.md §4.5: undefined while loading, null when it could not be loaded.
+  const [goalSuggestion, setGoalSuggestion] = useState<MacroGoalSuggestionResponse | null | undefined>(undefined);
 
   // Which grouped log rows (keyed by groupId) are expanded to show their individual items --
   // `s_nutrition()`'s own `toggleGroup`/`expandedGroups` interaction.
@@ -315,6 +325,27 @@ export default function NutritionScreen() {
         : { kcal: '', protein: '', carbs: '', fat: '' },
     );
     setEditGoalsOpen(true);
+    // Asked fresh each time, so a new scan or a changed goal shows at once. Best effort: a failure
+    // only affects the card, never the sheet's own fields.
+    setGoalSuggestion(undefined);
+    getMacroGoalSuggestion().then(setGoalSuggestion, () => setGoalSuggestion(null));
+  };
+
+  /** Use: the suggestion becomes the daily targets, saved like the typed-in ones. */
+  const useSuggestion = async (targets: SetMacroGoalsRequest) => {
+    try {
+      const saved = await setMacroGoals(targets);
+      setGoals(saved);
+      setEditGoalsOpen(false);
+      toast.show('Goals updated');
+    } catch (error) {
+      toast.show(errorMessage(error));
+    }
+  };
+
+  const editTargetsInProfile = () => {
+    setEditGoalsOpen(false);
+    router.replace('/profile');
   };
 
   const changeEditGoalsVal = (key: keyof EditGoalsValues, value: string) => {
@@ -419,6 +450,9 @@ export default function NutritionScreen() {
         onChangeEditGoalsVal={changeEditGoalsVal}
         onSaveGoals={saveGoals}
         onCancelEditGoals={() => setEditGoalsOpen(false)}
+        goalSuggestion={goalSuggestion}
+        onUseSuggestion={useSuggestion}
+        onEditTargetsInProfile={editTargetsInProfile}
       />
 
       <Toast message={toast.message} />

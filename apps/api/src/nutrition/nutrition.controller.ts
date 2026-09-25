@@ -7,6 +7,7 @@ import type {
   FoodSearchQuery,
   LogFoodRequest,
   LogSavedMealRequest,
+  MacroGoalSuggestionResponse,
   MacroGoalsResponse,
   NutritionLogEntryResponse,
   NutritionLogListResponse,
@@ -26,6 +27,7 @@ import { z } from "zod";
 
 import { AuthenticatedRequest, JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
+import { MacroSuggestionService } from "./macro-suggestion.service";
 import { NutritionService } from "./nutrition.service";
 
 const localDateQuerySchema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD") });
@@ -39,7 +41,10 @@ const localDateQuerySchema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{
 @Controller("nutrition")
 @UseGuards(JwtAuthGuard)
 export class NutritionController {
-  constructor(private readonly nutritionService: NutritionService) {}
+  constructor(
+    private readonly nutritionService: NutritionService,
+    private readonly macroSuggestionService: MacroSuggestionService,
+  ) {}
 
   @Get("foods")
   searchFoods(
@@ -71,6 +76,12 @@ export class NutritionController {
   @Get("macro-goals")
   getMacroGoals(@Req() request: AuthenticatedRequest): Promise<MacroGoalsResponse> {
     return this.nutritionService.getMacroGoals(request.user);
+  }
+
+  /** Suggested targets for Set daily goals (scan-height-age-plan.md §4.5); saving them is the PUT below. */
+  @Get("macro-goals/suggestion")
+  getMacroGoalSuggestion(@Req() request: AuthenticatedRequest): Promise<MacroGoalSuggestionResponse> {
+    return this.macroSuggestionService.getSuggestion(request.user);
   }
 
   @Put("macro-goals")

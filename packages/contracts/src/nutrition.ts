@@ -1,4 +1,4 @@
-import { FOOD_CATEGORIES, MEAL_SLOTS } from '@forjd/domain';
+import { ACTIVITY_LEVELS, BODY_GOALS, FOOD_CATEGORIES, MEAL_SLOTS } from '@forjd/domain';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------------------------
@@ -97,6 +97,40 @@ export const setMacroGoalsRequestSchema = z.object({
   fat: z.number().min(0),
 });
 export type SetMacroGoalsRequest = z.infer<typeof setMacroGoalsRequestSchema>;
+
+/** What a suggestion cannot be worked out without: the answer to show instead of numbers. */
+export const MACRO_SUGGESTION_MISSING = ['activityLevel', 'bodyGoal', 'weight', 'bmr'] as const;
+
+/**
+ * `GET /nutrition/macro-goals/suggestion` (docs/product/scan-height-age-plan.md §4.5). A suggestion
+ * only: the app shows it on Set daily goals and the user taps Use to save it through
+ * `PUT /nutrition/macro-goals`, in the same `{ kcal, protein, carbs, fat }` shape. `basis` is every
+ * input and constant the (i) details show, so the app never recomputes. When something is missing
+ * (no activity level, goal, weight, or a BMR from a scan or Mifflin–St Jeor), `suggestion` and
+ * `basis` are null and `missing` says what to add.
+ */
+export const macroGoalSuggestionResponseSchema = z.object({
+  suggestion: macroTotalsSchema.nullable(),
+  basis: z
+    .object({
+      maintenanceKcal: z.number(),
+      bmrKcal: z.number(),
+      /** `scan`: the latest InBody scan's (measured or calculated); `estimate`: Mifflin–St Jeor. */
+      bmrSource: z.enum(['scan', 'estimate']),
+      scanMeasuredAt: z.string().datetime().nullable(),
+      weightKg: z.number(),
+      activityLevel: z.enum(ACTIVITY_LEVELS),
+      activityFactor: z.number(),
+      bodyGoal: z.enum(BODY_GOALS),
+      /** −0.15 for lose fat, −0.05 recomposition, 0 maintain, +0.10 build muscle. */
+      energyChange: z.number(),
+      proteinPerKg: z.number(),
+      fatShare: z.number(),
+    })
+    .nullable(),
+  missing: z.array(z.enum(MACRO_SUGGESTION_MISSING)),
+});
+export type MacroGoalSuggestionResponse = z.infer<typeof macroGoalSuggestionResponseSchema>;
 
 /**
  * A logged food entry. Macro values are the snapshot `NutritionRepository.logEntry` computed

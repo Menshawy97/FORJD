@@ -17,6 +17,8 @@
     "strength",
     "hyrox"
   ],
+  "activityLevel": "active",
+  "bodyGoal": "lose_fat",
   "city": "Cairo",
   "avatarUrl": "https://example.com/avatar.png",
   "plan": "free"
