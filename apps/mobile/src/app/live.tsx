@@ -1,4 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
+import { getAccountId } from '@/auth/secureStorage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -179,7 +180,7 @@ export default function LiveScreen() {
         try {
           const db = await dbRef.current;
           if (!db) return;
-          await saveSessionSnapshot(db, started.id, started as unknown as Record<string, unknown>, started.startedAt.toISOString());
+          await saveSessionSnapshot(db, await getAccountId(), started.id, started as unknown as Record<string, unknown>, started.startedAt.toISOString());
         } catch {
           // Crash recovery for this session is degraded, not lost: the workout itself keeps
           // running from in-memory state either way (H6) -- there is nothing for the athlete to
@@ -202,7 +203,7 @@ export default function LiveScreen() {
         try {
           const db = await dbRef.current;
           if (!db || cancelled || finishPressed.current) return;
-          await saveSessionSnapshot(db, started.id, { ...started, startLocation: position } as unknown as Record<string, unknown>, started.startedAt.toISOString());
+          await saveSessionSnapshot(db, await getAccountId(), started.id, { ...started, startLocation: position } as unknown as Record<string, unknown>, started.startedAt.toISOString());
         } catch {
           // Degraded, not lost: the position is still on the in-memory session and goes up with
           // the workout; only crash recovery of it is missed.
@@ -216,7 +217,7 @@ export default function LiveScreen() {
     void (async () => {
       const db = await dbRef.current;
       if (!db || cancelled) return;
-      const snapshot = await getUnfinishedSessionSnapshot(db);
+      const snapshot = await getUnfinishedSessionSnapshot(db, await getAccountId());
       if (!snapshot || cancelled) return;
 
       const stored = snapshot.payload as unknown as LiveSession;
@@ -520,7 +521,7 @@ export default function LiveScreen() {
         // Hand the session to the sync queue. This is the one place it happens --
         // `appendSessionEvent` does NOT enqueue on `workout_finished`, despite what
         // the store's module docblock used to claim.
-        await enqueueSessionUpload(db, toUploadRequest(finished, endedAt, elapsedSeconds));
+        await enqueueSessionUpload(db, await getAccountId(), toUploadRequest(finished, endedAt, elapsedSeconds));
         // The snapshot exists only to recover an *unfinished* session; leaving it
         // would offer this workout back on the next launch.
         await clearSessionSnapshot(db, finished.id);

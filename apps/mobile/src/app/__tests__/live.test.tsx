@@ -256,7 +256,7 @@ describe('resuming after a crash', () => {
     await render(<LiveScreen />);
 
     await waitFor(() => expect(saveSessionSnapshot).toHaveBeenCalledTimes(1));
-    const [, sessionId, , startedAt] = (saveSessionSnapshot as jest.Mock).mock.calls[0];
+    const [, , sessionId, , startedAt] = (saveSessionSnapshot as jest.Mock).mock.calls[0];
     expect(sessionId).toBe('session-1');
     expect(startedAt).toEqual(expect.any(String));
   });
@@ -754,7 +754,7 @@ describe('the start position (Phase 10, ADR-048)', () => {
     await fireEvent.press(await findByLabelText('Complete set 1 of Bench Press'));
     await fireEvent.press(await findByLabelText('Finish workout'));
     await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
-    return (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    return (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
   };
 
   it('asks for the position once, when a workout starts', async () => {
@@ -795,7 +795,7 @@ describe('the start position (Phase 10, ADR-048)', () => {
     await render(<LiveScreen />);
 
     await waitFor(() => expect(saveSessionSnapshot).toHaveBeenCalledTimes(2));
-    const [, sessionId, payload] = (saveSessionSnapshot as jest.Mock).mock.calls[1];
+    const [, , sessionId, payload] = (saveSessionSnapshot as jest.Mock).mock.calls[1];
     expect(sessionId).toBe('session-1');
     expect(payload).toMatchObject({ id: 'session-1', startLocation: POSITION });
   });
@@ -891,7 +891,7 @@ describe('the offline path', () => {
     // The whole point of the offline path: the finished session reaches the sync queue even
     // though every API call rejected.
     await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
-    const payload = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    const payload = (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
     // ADR-044: run through the live runner, so it counts, even though it was logged offline.
     expect(payload).toMatchObject({ id: 'session-1', templateId: 'template-1', isLiveTracked: true });
     // Every set travels, ticked or not -- analytics filters on isCompleted rather than

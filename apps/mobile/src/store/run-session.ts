@@ -1,3 +1,4 @@
+import { belongsToAccount } from './account-scope';
 import type { SqliteMigration } from './sqlite-migrations';
 import type { SqliteConnection } from './exercise-catalogue';
 
@@ -97,24 +98,30 @@ export interface RunSnapshotRecord {
 /** Records a run so a force-killed app can offer to resume it. Written once, at start. */
 export async function saveRunSnapshot(
   db: SqliteConnection,
+  accountId: string | null,
   sessionId: string,
   payload: Record<string, unknown>,
   startedAt: string,
 ): Promise<void> {
-  await db.runAsync('INSERT OR REPLACE INTO run_snapshot (session_id, payload, started_at) VALUES (?, ?, ?)', [
-    sessionId,
-    JSON.stringify(payload),
-    startedAt,
-  ]);
+  await db.runAsync(
+    'INSERT OR REPLACE INTO run_snapshot (session_id, payload, started_at, account_id) VALUES (?, ?, ?, ?)',
+    [sessionId, JSON.stringify(payload), startedAt, accountId],
+  );
 }
 
-/** The run to offer to resume, or `null`. The most recently started one, as `getUnfinishedSessionSnapshot` does. */
-export async function getUnfinishedRunSnapshot(db: SqliteConnection): Promise<RunSnapshotRecord | null> {
-  const rows = await db.getAllAsync<{ session_id: string; payload: string; started_at: string }>(
-    'SELECT session_id, payload, started_at FROM run_snapshot ORDER BY started_at DESC LIMIT 1',
+/**
+ * The signed-in account's run to offer to resume, or `null`: the most recently started one, as
+ * `getUnfinishedSessionSnapshot` does, and like it never another account's (review 8.5, L3-1).
+ */
+export async function getUnfinishedRunSnapshot(
+  db: SqliteConnection,
+  accountId: string | null,
+): Promise<RunSnapshotRecord | null> {
+  const rows = await db.getAllAsync<{ session_id: string; payload: string; started_at: string; account_id: string | null }>(
+    'SELECT session_id, payload, started_at, account_id FROM run_snapshot ORDER BY started_at DESC',
     [],
   );
-  const row = rows[0];
+  const row = rows.find((candidate) => belongsToAccount(candidate.account_id ?? null, accountId));
   if (!row) return null;
   return { sessionId: row.session_id, payload: JSON.parse(row.payload) as Record<string, unknown>, startedAt: row.started_at };
 }

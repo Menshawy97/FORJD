@@ -27,6 +27,8 @@ import {
  * preference that silently detached from its exercise would be worse than one never set.
  */
 const STORAGE_KEY = 'forjd.exerciseUnits.v1';
+/** Exported so sign-out can forget it (whole-app review 8.5, L5-2). */
+export const EXERCISE_UNITS_STORAGE_KEY = STORAGE_KEY;
 
 export type DisplayUnit = WeightDisplayUnit | DistanceDisplayUnit;
 

@@ -19,6 +19,10 @@ jest.mock('@/auth/apiClient', () => ({
   uploadWorkoutSession: jest.fn(),
 }));
 
+jest.mock('@/auth/secureStorage', () => ({
+  getAccountId: jest.fn(async () => 'account-a'),
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
   (openWorkoutSessionDb as jest.Mock).mockResolvedValue({});
@@ -35,8 +39,8 @@ it('drains the queue through an uploader that wraps the real upload call', async
   // keeps `workout-session.ts` free of any import from the API client. It is a wrapper, not
   // `uploadWorkoutSession` itself, because it also translates an `AxiosError`'s response status
   // into the typed `UploadRejection` the store classifies failures with (C3).
-  expect(drainSyncQueue).toHaveBeenCalledWith({}, expect.any(Function));
-  expect(drainSyncQueue).not.toHaveBeenCalledWith({}, uploadWorkoutSession);
+  expect(drainSyncQueue).toHaveBeenCalledWith({}, 'account-a', expect.any(Function));
+  expect(drainSyncQueue).not.toHaveBeenCalledWith({}, 'account-a', uploadWorkoutSession);
 });
 
 it("gives the injected uploader's rejection a status copied from an AxiosError response, so the store can classify it", async () => {
@@ -48,7 +52,7 @@ it("gives the injected uploader's rejection a status copied from an AxiosError r
 
   await syncPendingSessions();
 
-  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][1] as (body: unknown) => Promise<void>;
+  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][2] as (body: unknown) => Promise<void>;
   await expect(injectedUploader({ id: 'session-1' })).rejects.toMatchObject({ status: 422 });
 });
 
@@ -57,7 +61,7 @@ it('leaves a plain network error (no response) without a status, so it stays ret
 
   await syncPendingSessions();
 
-  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][1] as (body: unknown) => Promise<void>;
+  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][2] as (body: unknown) => Promise<void>;
   let rejection: { status?: number } = {};
   try {
     await injectedUploader({ id: 'session-1' });
@@ -95,7 +99,7 @@ it('passes a failed upload back rather than hiding it from a caller that wants t
 it("clamps an out-of-range set in a queued payload before uploading it, so a workout stuck behind a 400 saves on the next retry", async () => {
   (uploadWorkoutSession as jest.Mock).mockResolvedValue(undefined);
   await syncPendingSessions();
-  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][1] as (body: unknown) => Promise<void>;
+  const injectedUploader = (drainSyncQueue as jest.Mock).mock.calls[0][2] as (body: unknown) => Promise<void>;
 
   await injectedUploader({
     id: "session-1",

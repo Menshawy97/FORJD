@@ -46,7 +46,12 @@ jest.mock('@/store/leaderboard-consent', () => ({
   rememberLocationConsent: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('@/auth/secureStorage', () => ({
+  getAccountId: jest.fn(),
+}));
+
 import { getMe } from '@/auth/apiClient';
+import { getAccountId } from '@/auth/secureStorage';
 import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { ensureWorkoutSessionSchema, getFailedSessions, openWorkoutSessionDb } from '@/store/workout-session';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
@@ -76,6 +81,31 @@ describe('Home keeps the on-device location consent true', () => {
     (ensureWorkoutSessionSchema as jest.Mock).mockResolvedValue(undefined);
     (getFailedSessions as jest.Mock).mockResolvedValue([]);
     (syncPendingSessions as jest.Mock).mockResolvedValue({ uploaded: [], failed: [] });
+    (getAccountId as jest.Mock).mockResolvedValue('account-a');
+  });
+
+  it('records nothing when the answer arrives after the person signed out (review 8.5, known gap)', async () => {
+    // Signed in when Home started loading, signed out by the time the server answered: writing the
+    // answer now would hand the previous person's yes to whoever signs in next.
+    (getAccountId as jest.Mock).mockResolvedValueOnce('account-a').mockResolvedValue(null);
+    (getMe as jest.Mock).mockResolvedValue(meWith({ locationForLeaderboard: true }));
+
+    await render(<HomeScreen />);
+    await waitFor(() => expect(getMe).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(rememberLocationConsent).not.toHaveBeenCalled();
+  });
+
+  it('records nothing when a different account signed in before the answer arrived', async () => {
+    (getAccountId as jest.Mock).mockResolvedValueOnce('account-a').mockResolvedValue('account-b');
+    (getMe as jest.Mock).mockResolvedValue(meWith({ locationForLeaderboard: true }));
+
+    await render(<HomeScreen />);
+    await waitFor(() => expect(getMe).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(rememberLocationConsent).not.toHaveBeenCalled();
   });
 
   it('records a yes the server reports', async () => {

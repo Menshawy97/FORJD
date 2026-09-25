@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import type { WorkoutEventType, WorkoutSessionStatus } from '@forjd/domain';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 
+import { belongsToAccount } from './account-scope';
 import type { SqliteConnection } from './exercise-catalogue';
 import { RUN_SESSION_MIGRATION } from './run-session';
 import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
@@ -109,6 +110,17 @@ const MIGRATIONS: SqliteMigration[] = [
     },
   },
   RUN_SESSION_MIGRATION,
+  {
+    // Whole-app review 8.5, L3-1: every queued upload and crash-recovery snapshot records the
+    // account that created it, so a second account signing in on the same phone never uploads, or
+    // is offered, the first account's session. Nullable: rows written before this step have none.
+    version: 4,
+    async up(db) {
+      await db.execAsync('ALTER TABLE session_queue ADD COLUMN account_id TEXT;');
+      await db.execAsync('ALTER TABLE session_snapshot ADD COLUMN account_id TEXT;');
+      await db.execAsync('ALTER TABLE run_snapshot ADD COLUMN account_id TEXT;');
+    },
+  },
 ];
 
 /** Idempotent, run before every use -- see `exercise-catalogue.ts`'s own note on why (cheap, no init step for a caller to forget). Applies every migration a given database is missing; see `MIGRATIONS` above and `sqlite-migrations.ts` for the mechanism. */
@@ -203,31 +215,35 @@ export interface SessionSnapshotRecord {
  */
 export async function saveSessionSnapshot(
   db: SqliteConnection,
+  accountId: string | null,
   sessionId: string,
   payload: Record<string, unknown>,
   startedAt: string,
 ): Promise<void> {
-  await db.runAsync('INSERT OR REPLACE INTO session_snapshot (session_id, payload, started_at) VALUES (?, ?, ?)', [
-    sessionId,
-    JSON.stringify(payload),
-    startedAt,
-  ]);
+  await db.runAsync(
+    'INSERT OR REPLACE INTO session_snapshot (session_id, payload, started_at, account_id) VALUES (?, ?, ?, ?)',
+    [sessionId, JSON.stringify(payload), startedAt, accountId],
+  );
 }
 
 /**
- * The session to offer to resume, or `null`.
+ * The signed-in account's session to offer to resume, or `null`.
  *
  * Returns the **most recently started** one. There should only ever be a single row -- a
  * session is snapshotted at start and cleared when it finishes -- but ordering makes the
  * behaviour defined rather than incidental if an earlier session was abandoned without ever
- * being finished (an app killed at exactly the wrong moment, say).
+ * being finished (an app killed at exactly the wrong moment, say). Another account's snapshot is
+ * never offered, nor removed: it waits for its owner (whole-app review 8.5, L3-1).
  */
-export async function getUnfinishedSessionSnapshot(db: SqliteConnection): Promise<SessionSnapshotRecord | null> {
-  const rows = await db.getAllAsync<{ session_id: string; payload: string; started_at: string }>(
-    'SELECT session_id, payload, started_at FROM session_snapshot ORDER BY started_at DESC LIMIT 1',
+export async function getUnfinishedSessionSnapshot(
+  db: SqliteConnection,
+  accountId: string | null,
+): Promise<SessionSnapshotRecord | null> {
+  const rows = await db.getAllAsync<{ session_id: string; payload: string; started_at: string; account_id: string | null }>(
+    'SELECT session_id, payload, started_at, account_id FROM session_snapshot ORDER BY started_at DESC',
     [],
   );
-  const row = rows[0];
+  const row = rows.find((candidate) => belongsToAccount(candidate.account_id ?? null, accountId));
   if (!row) return null;
   return {
     sessionId: row.session_id,
@@ -363,6 +379,8 @@ export interface QueuedSessionRow {
   attemptCount: number;
   nextRetryAt: string;
   lastError: string | null;
+  /** The account that finished the session; `null` for a row queued before v4 recorded it. */
+  accountId: string | null;
 }
 
 function rowToQueueEntry(row: {
@@ -372,6 +390,7 @@ function rowToQueueEntry(row: {
   attempt_count: number;
   next_retry_at: string;
   last_error: string | null;
+  account_id: string | null;
 }): QueuedSessionRow {
   return {
     sessionId: row.session_id,
@@ -380,6 +399,7 @@ function rowToQueueEntry(row: {
     attemptCount: row.attempt_count,
     nextRetryAt: row.next_retry_at,
     lastError: row.last_error,
+    accountId: row.account_id ?? null,
   };
 }
 
@@ -393,16 +413,18 @@ function rowToQueueEntry(row: {
  */
 export async function enqueueSessionUpload(
   db: SqliteConnection,
+  accountId: string | null,
   payload: WorkoutSessionUploadRequest,
   now: Date = new Date(),
 ): Promise<void> {
   await db.runAsync(
-    `INSERT OR REPLACE INTO session_queue (session_id, payload, status, attempt_count, next_retry_at, last_error)
-     VALUES (?, ?, 'pending', 0, ?, NULL)`,
-    [payload.id, JSON.stringify(payload), now.toISOString()],
+    `INSERT OR REPLACE INTO session_queue (session_id, payload, status, attempt_count, next_retry_at, last_error, account_id)
+     VALUES (?, ?, 'pending', 0, ?, NULL, ?)`,
+    [payload.id, JSON.stringify(payload), now.toISOString(), accountId],
   );
 }
 
+/** Every queued row, whoever it belongs to -- `drainSyncQueue` and `getFailedSessions` scope it. */
 export async function getQueuedSessions(db: SqliteConnection): Promise<QueuedSessionRow[]> {
   const rows = await db.getAllAsync<{
     session_id: string;
@@ -411,8 +433,9 @@ export async function getQueuedSessions(db: SqliteConnection): Promise<QueuedSes
     attempt_count: number;
     next_retry_at: string;
     last_error: string | null;
+    account_id: string | null;
   }>(
-    'SELECT session_id, payload, status, attempt_count, next_retry_at, last_error FROM session_queue ORDER BY session_id',
+    'SELECT session_id, payload, status, attempt_count, next_retry_at, last_error, account_id FROM session_queue ORDER BY session_id',
     [],
   );
   return rows.map(rowToQueueEntry);
@@ -429,13 +452,19 @@ export async function getQueuedSessions(db: SqliteConnection): Promise<QueuedSes
  * A row that succeeds is removed together with its event log (`clearSessionEvents`) so it can
  * never be uploaded a second time by a later drain call -- idempotency at the HTTP layer
  * (Phase E) is the second line of defence, not the only one.
+ *
+ * **Only the signed-in account's rows are sent** (whole-app review 8.5, L3-1). The server stamps an
+ * upload with whoever's token carries it, so draining a session another account finished on this
+ * phone would file it under the wrong person. Other accounts' rows stay queued, untouched, until
+ * their owner signs back in.
  */
 export async function drainSyncQueue(
   db: SqliteConnection,
+  accountId: string | null,
   uploadSession: (payload: WorkoutSessionUploadRequest) => Promise<void>,
   now: Date = new Date(),
 ): Promise<{ uploaded: string[]; failed: string[] }> {
-  const rows = await getQueuedSessions(db);
+  const rows = (await getQueuedSessions(db)).filter((row) => belongsToAccount(row.accountId, accountId));
   const uploaded: string[] = [];
   const failed: string[] = [];
 
@@ -487,10 +516,10 @@ export async function drainSyncQueue(
   return { uploaded, failed };
 }
 
-/** Failed rows, for a user-visible retry surface (C3) -- see `retryFailedSession`. */
-export async function getFailedSessions(db: SqliteConnection): Promise<QueuedSessionRow[]> {
+/** The signed-in account's failed rows, for a user-visible retry surface (C3) -- see `retryFailedSession`. */
+export async function getFailedSessions(db: SqliteConnection, accountId: string | null): Promise<QueuedSessionRow[]> {
   const rows = await getQueuedSessions(db);
-  return rows.filter((row) => row.status === 'failed');
+  return rows.filter((row) => row.status === 'failed' && belongsToAccount(row.accountId, accountId));
 }
 
 /**
@@ -500,9 +529,14 @@ export async function getFailedSessions(db: SqliteConnection): Promise<QueuedSes
  */
 export async function retryFailedSession(
   db: SqliteConnection,
+  accountId: string | null,
   sessionId: string,
   now: Date = new Date(),
 ): Promise<void> {
+  // Defence in depth: the retry banner only ever lists this account's rows, but the reset itself
+  // also refuses another account's, like every other read and write in this file.
+  const row = (await getQueuedSessions(db)).find((candidate) => candidate.sessionId === sessionId);
+  if (!row || !belongsToAccount(row.accountId, accountId)) return;
   await db.runAsync(
     "UPDATE session_queue SET status = 'pending', attempt_count = 0, next_retry_at = ?, last_error = NULL WHERE session_id = ?",
     [now.toISOString(), sessionId],

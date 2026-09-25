@@ -10,6 +10,8 @@
 // on every mutation, so it can never serve a token the store no longer holds.
 import * as SecureStore from 'expo-secure-store';
 
+import { readJwtSubject } from './jwt-subject';
+import { forgetAccountPreferences } from '@/store/account-preferences';
 import { forgetHealthConsent } from '@/store/health-consent-local';
 import { forgetLocationConsent } from '@/store/leaderboard-consent';
 
@@ -100,6 +102,20 @@ export async function getEmail(): Promise<string | null> {
 }
 
 /**
+ * Which account is signed in, read offline from the stored access token's `sub` claim (whole-app
+ * review 8.5, L3-1). Used to stamp work finished on this phone -- queued uploads, crash-recovery
+ * snapshots -- with its owner, so another account signing in later never uploads it as theirs.
+ *
+ * Only decoded, never verified: this is a local label for rows on this device, not an
+ * authorisation decision (the server verifies every token it receives). `null` when nobody is
+ * signed in, or for a token it cannot read -- never a guess.
+ */
+export async function getAccountId(): Promise<string | null> {
+  const token = await getAccessToken();
+  return token ? readJwtSubject(token) : null;
+}
+
+/**
  * Read at redirect time by the root layout (ADR-011: not reactively watched). Presence of
  * an access token is treated as "signed in" — a stale/expired token is caught by the first
  * authenticated request's 401, not pre-emptively here (no clock-skew guessing games).
@@ -149,6 +165,9 @@ export async function clearSession(options?: { expired?: boolean }): Promise<voi
   await forgetLocationConsent();
   // ADR-043: the same for the device's copy of the health-data consent (R8).
   await forgetHealthConsent();
+  // Whole-app review 8.5, L5-2: recent exercises, notification and unit preferences are this
+  // person's too. Never throws.
+  await forgetAccountPreferences();
   cache.accessToken = null;
   cache.refreshToken = null;
   cache.expiresAt = null;

@@ -19,6 +19,8 @@ jest.mock('expo-router', () => {
   };
 });
 
+jest.mock('@/auth/secureStorage', () => ({ getAccountId: jest.fn(async () => 'account-a') }));
+
 jest.mock('@/auth/apiClient', () => ({
   getProgramEnrollment: jest.fn().mockResolvedValue({ enrollment: null }),
   listPrograms: jest.fn().mockResolvedValue({ items: [] }),
@@ -82,7 +84,7 @@ describe('the failed-sync banner (C3)', () => {
   it('renders nothing when there are no failed sessions', async () => {
     const screen = await render(<HomeScreen />);
 
-    await waitFor(() => expect(getFailedSessions).toHaveBeenCalledWith(FAKE_DB));
+    await waitFor(() => expect(getFailedSessions).toHaveBeenCalledWith(FAKE_DB, 'account-a'));
     expect(screen.queryByText(/wasn't saved/i)).toBeNull();
   });
 
@@ -105,7 +107,7 @@ describe('the failed-sync banner (C3)', () => {
 
     await fireEvent.press(retryButton);
 
-    await waitFor(() => expect(retryFailedSession).toHaveBeenCalledWith(FAKE_DB, 'session-1'));
+    await waitFor(() => expect(retryFailedSession).toHaveBeenCalledWith(FAKE_DB, 'account-a', 'session-1'));
     expect(syncPendingSessions).toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByText(/Upper Push/)).toBeNull());
   });

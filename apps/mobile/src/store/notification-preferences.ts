@@ -11,6 +11,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Screens call these functions rather than AsyncStorage directly, so that moving these
 // preferences server-side later is an adapter swap here, not a screen rewrite.
 const STORAGE_KEY = 'forjd.notificationPreferences.v1';
+/** Exported so sign-out can forget it (whole-app review 8.5, L5-2). */
+export const NOTIFICATION_PREFERENCES_STORAGE_KEY = STORAGE_KEY;
 
 export interface NotificationPreferences {
   workout: boolean;

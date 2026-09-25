@@ -1,6 +1,7 @@
 import type { AxiosError } from 'axios';
 
 import { uploadWorkoutSession } from '@/auth/apiClient';
+import { getAccountId } from '@/auth/secureStorage';
 import type { SqliteConnection } from '@/store/exercise-catalogue';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 import { sanitizeUploadRequest } from './live-session';
@@ -86,7 +87,9 @@ export async function syncPendingSessions(): Promise<{ uploaded: string[]; faile
   try {
     const db = await openWorkoutSessionDb();
     await ensureWorkoutSessionSchema(db);
-    return await drainSyncQueue(db, makeUploadSession(db));
+    // Only the signed-in account's sessions: the upload is filed under whoever's token carries
+    // it, so another account's queued work waits for its owner (whole-app review 8.5, L3-1).
+    return await drainSyncQueue(db, await getAccountId(), makeUploadSession(db));
   } catch {
     // Nothing to surface: the queue is durable, and the next trigger tries again.
     return { uploaded: [], failed: [] };
