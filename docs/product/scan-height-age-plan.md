@@ -147,14 +147,17 @@ for suggested targets:
   - Nutrition, "Set daily goals": the Auto-calculate card becomes live. Closed, it shows
     "Suggested: 2,750 kcal · Protein 139 g · Carbs 377 g · Fat 76 g", a plain circled (i)
     icon (no box around it; grey closed, accent open), the Use button, and "Based on your InBody
-    scan, activity level and goal." Tapping (i) opens the full details inside the card, not
-    summarised:
-    - *Your inputs:* InBody scan and date (BMR, weight), activity level and factor, goal and
-      percentage.
-    - *How it adds up:* one row per step, with the working under the step name and the result
-      on the right: maintenance (BMR × activity), the goal's calories, protein (g/kg × weight),
-      fat (25% ÷ 9), carbs (the rest ÷ 4).
-    - A short note on BMR and the protein source, and "Edit in Profile ›".
+    scan, activity level and goal." Tapping (i) opens the details inside the card, kept compact
+    (the user asked for it summarised a little so the sheet fits a phone):
+    - One line per step, name, short working and result: Maintenance (BMR × activity factor,
+      named), the goal's calories (e.g. "Recomp −5%": 3,240 − 5%), Protein (g/kg × weight),
+      Fat (25% of calories), Carbs (the rest). The inputs live in these rows; there is no
+      separate inputs section.
+    - One footer line: where the BMR came from and its date, the protein sources, and "Edit in
+      Profile ›".
+  - The sheet stops at 85% of the screen height; its title and Save/Cancel stay fixed and only
+    the middle scrolls. With the details open it fits a 390×844 phone without scrolling; an
+    iPhone SE scrolls a little to reach the last goal field.
   - Protein is 1.6 g per kg of body weight (2.2 g/kg for body recomposition). Energy uses the
     latest scan's BMR, or Mifflin–St Jeor from profile height, weight and age when there is no
     scan; the inputs then name "Estimated BMR" instead of the scan.
