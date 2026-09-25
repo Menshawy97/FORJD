@@ -128,7 +128,8 @@ export class HealthDataRepository {
       .select()
       .from(healthObservations)
       .where(and(...conditions))
-      .orderBy(desc(healthObservations.startTime))
+      // `id` breaks ties, so which readings sharing a start time survive the cap is stable.
+      .orderBy(desc(healthObservations.startTime), desc(healthObservations.id))
       .limit(window.limit);
     const rows = [...newestFirst].reverse();
 
