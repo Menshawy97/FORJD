@@ -172,6 +172,9 @@ export type NutritionLogListResponse = z.infer<typeof nutritionLogListResponseSc
  * malicious client log any calorie count against any food.
  */
 export const logFoodRequestSchema = z.object({
+  /** Optional, client-generated: the same id sent twice logs the food once, so retrying after a
+   *  dropped response cannot double a day's calories (whole-app review 8.5, L4-1). Additive (rule 7). */
+  id: z.string().uuid().optional(),
   foodId: z.string().uuid(),
   slot: mealSlotSchema,
   loggedDate: localDateSchema,

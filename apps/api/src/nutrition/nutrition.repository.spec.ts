@@ -383,6 +383,47 @@ describe("NutritionRepository", () => {
       expect(entry.groupId).toBeNull();
     });
 
+    it("stores an entry once when the same client id is sent twice, returning it both times (review 8.5, L4-1)", async () => {
+      const userId = await makeUser("log-idempotent");
+      const food = await repository.createCatalogueFood(catalogueInput(`log-idem-${randomUUID()}`));
+      createdFoodIds.push(food.id);
+      const input = {
+        id: randomUUID(),
+        foodId: food.id,
+        slot: "lunch" as const,
+        loggedDate: "2026-09-25",
+        servingLabel: "100 g",
+        grams: 100,
+      };
+
+      const first = await repository.logEntry(userId, input);
+      const replay = await repository.logEntry(userId, input);
+
+      expect(first.id).toBe(input.id);
+      expect(replay).toEqual(first);
+      const day = await repository.listLogForDate(userId, "2026-09-25");
+      expect(day.filter((entry) => entry.id === input.id)).toHaveLength(1);
+    });
+
+    it("refuses a client id another account already used, rather than returning their entry", async () => {
+      const owner = await makeUser("log-id-owner");
+      const stranger = await makeUser("log-id-stranger");
+      const food = await repository.createCatalogueFood(catalogueInput(`log-id-${randomUUID()}`));
+      createdFoodIds.push(food.id);
+      const input = {
+        id: randomUUID(),
+        foodId: food.id,
+        slot: "dinner" as const,
+        loggedDate: "2026-09-25",
+        servingLabel: "100 g",
+        grams: 100,
+      };
+
+      await repository.logEntry(owner, input);
+
+      await expect(repository.logEntry(stranger, input)).rejects.toThrow(ConflictException);
+    });
+
     it("logs a saved meal's items as one group sharing a groupId, snapshotting the meal's name as groupName", async () => {
       const userId = await makeUser("log-group");
       const food = await repository.createCatalogueFood(catalogueInput(`log-group-${randomUUID()}`));

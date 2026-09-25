@@ -5,6 +5,7 @@ import {
   type MealSlot,
 } from '@forjd/domain';
 import { mealSlotSchema, type FoodResponse } from '@forjd/contracts';
+import { randomUUID } from 'expo-crypto';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -106,6 +107,9 @@ export default function FoodDetailScreen() {
   const [customGrams, setCustomGrams] = useState('');
   const [logAsSlot, setLogAsSlot] = useState<MealSlot>(paramSlot ?? 'breakfast');
   const primarySave = useSingleFlight();
+  // One id per visit, reused if the save is retried after an error, so the server stores the entry
+  // once even when the first attempt landed but its response was lost (review 8.5, L4-1).
+  const [logEntryId] = useState(() => randomUUID());
 
   const editing = !!entryId;
 
@@ -257,6 +261,7 @@ export default function FoodDetailScreen() {
         deleted = true;
       }
       await logFood({
+        id: logEntryId,
         foodId: food.id,
         slot: logAsSlot,
         loggedDate: todayLocalDate(),

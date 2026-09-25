@@ -30,6 +30,8 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
 }));
 
+jest.mock('expo-crypto', () => ({ randomUUID: () => '33333333-3333-4333-8333-333333333333' }));
+
 jest.mock('@/auth/apiClient', () => ({
   getFood: jest.fn(),
   listNutritionLog: jest.fn(),

@@ -122,8 +122,21 @@ describe('nutrition contracts', () => {
   describe('logFoodRequestSchema', () => {
     it('carries no macro fields at all -- the service computes them server-side, never from wire input', () => {
       expect(Object.keys(logFoodRequestSchema.shape).sort()).toEqual(
-        ['foodId', 'slot', 'loggedDate', 'servingLabel', 'grams'].sort(),
+        ['id', 'foodId', 'slot', 'loggedDate', 'servingLabel', 'grams'].sort(),
       );
+    });
+
+    it('accepts an optional client-generated uuid so a retried log is stored once (review 8.5, L4-1)', () => {
+      const base = {
+        foodId: '11111111-1111-4111-8111-111111111111',
+        slot: 'lunch',
+        loggedDate: '2026-09-25',
+        servingLabel: '100 g',
+        grams: 100,
+      };
+      expect(logFoodRequestSchema.safeParse(base).success).toBe(true);
+      expect(logFoodRequestSchema.safeParse({ ...base, id: '22222222-2222-4222-8222-222222222222' }).success).toBe(true);
+      expect(logFoodRequestSchema.safeParse({ ...base, id: 'not-a-uuid' }).success).toBe(false);
     });
 
     it('accepts grams: 0, matching the design\'s "Custom amount" accepting a 0 g entry', () => {
