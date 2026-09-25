@@ -8,6 +8,8 @@ import {
   bodyScanSeriesResponseSchema,
   createManualBodyScanRequestSchema,
   measurementBounds,
+  SCAN_AGE_YEARS_BOUNDS,
+  SCAN_HEIGHT_CM_BOUNDS,
 } from "./index";
 
 const NINE_METRICS = [
@@ -143,6 +145,8 @@ describe("body contracts", () => {
       id: "11111111-1111-1111-1111-111111111111",
       measuredAt: "2026-01-15T09:00:00.000Z",
       source: "inbody",
+      heightCm: 178,
+      ageYears: 31,
       measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 }],
     };
     expect(bodyScanResponseSchema.safeParse(response).success).toBe(true);
@@ -263,5 +267,100 @@ describe("measurementBounds", () => {
     expect(measurementBounds("weight_kg", 5000)).toEqual([20, 400]);
     expect(measurementBounds("trunk", 30.5)).toBeNull();
     expect(measurementBounds("weight_kg", 82.4)).toBeNull();
+  });
+});
+
+/**
+ * Height and age on a scan (docs/product/scan-height-age-plan.md §2). Stored on the scan itself,
+ * never as BODY_METRICS rows, so they never become Body-tab trend lines. Optional on the two
+ * create requests until the app sends them (slice C makes them required, in the same PR as the
+ * screens), nullable on every read because scans saved before this change have neither.
+ */
+describe("scan height and age", () => {
+  const confirm = (extra: Record<string, unknown>) => ({
+    measuredAt: "2026-09-25T09:00:00.000Z",
+    measurements: [{ metric: "weight_kg", value: 82.4, unit: "kg", confidence: 0.97 }],
+    ...extra,
+  });
+  const manual = (extra: Record<string, unknown>) => ({
+    measuredAt: "2026-09-25T09:00:00.000Z",
+    measurements: [
+      { metric: "weight_kg", value: 82.4, unit: "kg" },
+      { metric: "body_fat_percent", value: 12.1, unit: "%" },
+    ],
+    ...extra,
+  });
+  const issue = (result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[]; message: string }> } }, field: string) =>
+    result.error?.issues.find((i) => i.path[0] === field)?.message;
+
+  it("uses 100-250 cm and the account minimum age (16) to 110 years", () => {
+    expect(SCAN_HEIGHT_CM_BOUNDS).toEqual([100, 250]);
+    expect(SCAN_AGE_YEARS_BOUNDS).toEqual([16, 110]);
+  });
+
+  it.each([
+    ["confirm", confirmBodyScanRequestSchema, confirm],
+    ["manual", createManualBodyScanRequestSchema, manual],
+  ] as const)("%s request carries height and age through", (_label, schema, build) => {
+    const parsed = schema.parse(build({ heightCm: 178.5, ageYears: 31 }));
+    expect(parsed.heightCm).toBe(178.5);
+    expect(parsed.ageYears).toBe(31);
+  });
+
+  it.each([
+    ["confirm", confirmBodyScanRequestSchema, confirm],
+    ["manual", createManualBodyScanRequestSchema, manual],
+  ] as const)("%s request still saves without them, so today's app keeps working until slice C", (_label, schema, build) => {
+    expect(schema.safeParse(build({})).success).toBe(true);
+  });
+
+  it.each([
+    ["confirm", confirmBodyScanRequestSchema, confirm],
+    ["manual", createManualBodyScanRequestSchema, manual],
+  ] as const)("%s request names the field and its range when height is out of bounds", (_label, schema, build) => {
+    for (const heightCm of [99.9, 250.1]) {
+      const result = schema.safeParse(build({ heightCm, ageYears: 31 }));
+      expect(result.success).toBe(false);
+      expect(issue(result, "heightCm")).toBe("heightCm must be between 100 and 250");
+    }
+  });
+
+  it.each([
+    ["confirm", confirmBodyScanRequestSchema, confirm],
+    ["manual", createManualBodyScanRequestSchema, manual],
+  ] as const)("%s request names the field and its range when age is out of bounds", (_label, schema, build) => {
+    for (const ageYears of [15, 111]) {
+      const result = schema.safeParse(build({ heightCm: 178, ageYears }));
+      expect(result.success).toBe(false);
+      expect(issue(result, "ageYears")).toBe("ageYears must be between 16 and 110");
+    }
+  });
+
+  it("rejects a fractional age: the sheet prints whole years and the column is a smallint", () => {
+    const result = confirmBodyScanRequestSchema.safeParse(confirm({ heightCm: 178, ageYears: 31.5 }));
+    expect(result.success).toBe(false);
+    expect(issue(result, "ageYears")).toBe("ageYears must be a whole number of years");
+  });
+
+  it("returns both as null for a scan saved before this change", () => {
+    const response = {
+      id: "11111111-1111-1111-1111-111111111111",
+      measuredAt: "2026-01-15T09:00:00.000Z",
+      source: "manual",
+      heightCm: null,
+      ageYears: null,
+      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 1 }],
+    };
+    expect(bodyScanResponseSchema.safeParse(response).success).toBe(true);
+  });
+
+  it("always states them on a read, even when null, so a client never guesses", () => {
+    const response = {
+      id: "11111111-1111-1111-1111-111111111111",
+      measuredAt: "2026-01-15T09:00:00.000Z",
+      source: "inbody",
+      measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97 }],
+    };
+    expect(bodyScanResponseSchema.safeParse(response).success).toBe(false);
   });
 });

@@ -14,7 +14,7 @@ import type {
 import { STORAGE_PROVIDER, StorageProvider } from "../storage/providers/storage-provider.interface";
 import { VISION_PROVIDER, VisionProvider } from "../ai/providers/vision-provider.interface";
 import { PrivacyService } from "../privacy/privacy.service";
-import { BodyRepository } from "./body.repository";
+import { BodyRepository, ScanProfileInput, ScanWithMeasurementsRow } from "./body.repository";
 
 /** Mirrors `UploadedAvatarFile` in `avatar-upload.service.ts` -- the minimal shape
  *  `FileInterceptor`'s memory storage actually attaches, not `Express.Multer.File`. */
@@ -38,6 +38,29 @@ const SCAN_PHOTO_MAX_DIMENSION = 1600;
 const SCAN_PHOTO_WEBP_QUALITY = 85;
 
 const ALLOWED_SCAN_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/** A request's height and age, null for whichever one it leaves out (optional until slice C). */
+function scanProfileOf(request: { heightCm?: number; ageYears?: number }): ScanProfileInput {
+  return { heightCm: request.heightCm ?? null, ageYears: request.ageYears ?? null };
+}
+
+/** One scan as the API returns it. Confirm, scan detail and the account export share this so they
+ *  cannot drift. */
+export function toBodyScanResponse(scan: ScanWithMeasurementsRow): BodyScanResponse {
+  return {
+    id: scan.id,
+    measuredAt: scan.measuredAt.toISOString(),
+    source: scan.source as ScanSource,
+    heightCm: scan.heightCm,
+    ageYears: scan.ageYears,
+    measurements: scan.measurements.map((m) => ({
+      metric: m.metric as BodyMetric | SegmentalSite,
+      value: m.value,
+      unit: m.unit,
+      confidence: m.confidence,
+    })),
+  };
+}
 
 @Injectable()
 export class BodyService {
@@ -91,22 +114,19 @@ export class BodyService {
     await this.storageProvider.upload({ ...ref, body: webp, contentType: "image/webp" });
 
     const measuredAt = new Date(request.measuredAt);
-    const scanId = await this.bodyRepository.createScan(user.id, measuredAt, "inbody", ref.key, request.measurements);
+    const scanId = await this.bodyRepository.createScan(
+      user.id,
+      measuredAt,
+      "inbody",
+      ref.key,
+      request.measurements,
+      scanProfileOf(request),
+    );
 
     const scan = await this.bodyRepository.getScanById(user.id, scanId);
     if (!scan) throw new NotFoundException("Scan not found immediately after creating it");
 
-    return {
-      id: scan.id,
-      measuredAt: scan.measuredAt.toISOString(),
-      source: scan.source as ScanSource,
-      measurements: scan.measurements.map((m) => ({
-        metric: m.metric as BodyMetric | SegmentalSite,
-        value: m.value,
-        unit: m.unit,
-        confidence: m.confidence,
-      })),
-    };
+    return toBodyScanResponse(scan);
   }
 
   /**
@@ -117,7 +137,14 @@ export class BodyService {
    */
   async createManual(user: User, request: CreateManualBodyScanRequest): Promise<BodyScanResponse> {
     const measurements = request.measurements.map((m) => ({ ...m, confidence: MANUAL_ENTRY_CONFIDENCE }));
-    const scanId = await this.bodyRepository.createScan(user.id, new Date(request.measuredAt), "manual", null, measurements);
+    const scanId = await this.bodyRepository.createScan(
+      user.id,
+      new Date(request.measuredAt),
+      "manual",
+      null,
+      measurements,
+      scanProfileOf(request),
+    );
     return this.getScan(user, scanId);
   }
 
@@ -142,17 +169,7 @@ export class BodyService {
     const scan = await this.bodyRepository.getScanById(user.id, scanId);
     if (!scan) throw new NotFoundException("Scan not found");
 
-    return {
-      id: scan.id,
-      measuredAt: scan.measuredAt.toISOString(),
-      source: scan.source as ScanSource,
-      measurements: scan.measurements.map((m) => ({
-        metric: m.metric as BodyMetric | SegmentalSite,
-        value: m.value,
-        unit: m.unit,
-        confidence: m.confidence,
-      })),
-    };
+    return toBodyScanResponse(scan);
   }
 
   async getSeries(user: User): Promise<BodyScanSeriesResponse> {

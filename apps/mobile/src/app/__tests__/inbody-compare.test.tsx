@@ -46,12 +46,16 @@ const scanA = {
   id: 'scan-a',
   measuredAt: '2026-07-20T08:00:00.000Z',
   source: 'inbody' as const,
+  heightCm: null,
+  ageYears: null,
   measurements: [{ metric: 'weight_kg' as const, value: 80, unit: 'kg', confidence: 0.97 }],
 };
 const scanB = {
   id: 'scan-b',
   measuredAt: '2026-08-20T08:00:00.000Z',
   source: 'inbody' as const,
+  heightCm: null,
+  ageYears: null,
   measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97 }],
 };
 

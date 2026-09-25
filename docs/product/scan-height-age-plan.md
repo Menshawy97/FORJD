@@ -24,6 +24,12 @@ before building: the screen replica in §3, and answers to the §4.5 questions.
    the account minimum from `age.ts`, to 110) are **required** on the confirm and
    manual-create requests and **nullable** on responses. Out-of-range values get the same
    per-field "Must be between X and Y" message as the other values.
+
+   **When "required" lands (decided with the user, 2026-09-25):** slice A accepts both as
+   *optional* and stores null when a request leaves one out; slice C makes them required in the
+   same PR as the screens that send them. Every green `main` deploys the API to staging, so a
+   required field in slice A would have made every InBody save from the current app fail until
+   slice C shipped (and broken a shipped v1 endpoint, rule 7).
 3. **Extraction** (`apps/api/src/ai/providers/`): the schema and prompt ask for the printed
    height (cm, or ft/in converted in code as lb→kg is today) and age, each with a confidence.
    Golden fixtures are updated from the user's sample sheets, and the eval is re-run so it
@@ -108,10 +114,11 @@ targets would be health guidance, so this part is **proposal only**:
 
 ## 5. Slices (tests first in each)
 
-1. **A: Contracts, migration, API.** Required on create, nullable on read, bounds and messages.
-   Repository and service tests.
+1. **A: Contracts, migration, API.** Optional on create for now (see §2.2), nullable on read,
+   bounds and messages. Repository and service tests.
 2. **B: Extraction.** Schema, prompt, ft/in conversion, fixtures, eval re-run.
-3. **C: Screens.** After replica approval: the two rows, pre-fill from profile, profile prompt.
+3. **C: Screens.** After replica approval: the two rows, pre-fill from profile, profile prompt,
+   and the two fields become required on both create requests.
 4. **D: BMI and BMR checks and fill-ins** (§4.1, §4.2), in the parser and the manual path.
 5. **E: FFMI in the Body tab** (§4.3). Replica first.
 6. **F: Run calories** (§4.4).

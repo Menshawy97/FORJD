@@ -176,6 +176,13 @@
       "when": 1790275978358,
       "tag": "0024_make-body-scan-photo-optional",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790298419172,
+      "tag": "0025_add-body-scan-height-age",
+      "breakpoints": true
     }
   ]
 }

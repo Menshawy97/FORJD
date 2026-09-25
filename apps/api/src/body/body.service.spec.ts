@@ -306,6 +306,7 @@ describe("BodyService -- manual entry", () => {
         { metric: "weight_kg", value: 82.4, unit: "kg", confidence: 1 },
         { metric: "body_fat_percent", value: 12.1, unit: "%", confidence: 1 },
       ],
+      { heightCm: null, ageYears: null },
     );
   });
 
@@ -341,5 +342,91 @@ describe("BodyService -- manual entry", () => {
     const list = await service.listScans(user);
 
     expect(list.scans.map((scan) => scan.source)).toEqual(["manual", "inbody"]);
+  });
+});
+
+/**
+ * Height and age on a scan (docs/product/scan-height-age-plan.md §2): passed through to the scan
+ * row on both save paths, and stated on every read (null for a scan saved without them).
+ */
+describe("BodyService -- scan height and age", () => {
+  const user: User = { id: "user-1", email: "athlete@example.com" } as User;
+  const TINY_PNG = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const file = { buffer: TINY_PNG, mimetype: "image/png", size: TINY_PNG.length };
+  const storedScan = (profile: { heightCm: number | null; ageYears: number | null }) => ({
+    id: "scan-9",
+    measuredAt: new Date("2026-09-25T09:00:00.000Z"),
+    source: "manual",
+    ...profile,
+    measurements: [{ metric: "weight_kg", value: 82.4, unit: "kg", confidence: 1 }],
+  });
+
+  function build(profile: { heightCm: number | null; ageYears: number | null } = { heightCm: 178.5, ageYears: 31 }) {
+    const bodyRepository = {
+      createScan: jest.fn().mockResolvedValue("scan-9"),
+      getScanById: jest.fn().mockResolvedValue(storedScan(profile)),
+    };
+    const service = new BodyService(
+      { extractBodyScan: jest.fn() } as unknown as VisionProvider,
+      { upload: jest.fn().mockResolvedValue({ bucket: "inbody", key: "user-1/scan.webp" }) } as unknown as StorageProvider,
+      bodyRepository as unknown as BodyRepository,
+      { get: jest.fn().mockResolvedValue({ aiFeaturesConsent: true }) } as unknown as PrivacyService,
+    );
+    return { service, bodyRepository };
+  }
+
+  const manual = {
+    measuredAt: "2026-09-25T09:00:00.000Z",
+    measurements: [
+      { metric: "weight_kg" as const, value: 82.4, unit: "kg" },
+      { metric: "body_fat_percent" as const, value: 12.1, unit: "%" },
+    ],
+  };
+  const confirm = {
+    measuredAt: "2026-09-25T09:00:00.000Z",
+    measurements: [{ metric: "weight_kg" as const, value: 82.4, unit: "kg", confidence: 0.97 }],
+  };
+
+  it("saves a manual entry's height and age on the scan", async () => {
+    const { service, bodyRepository } = build();
+
+    await service.createManual(user, { ...manual, heightCm: 178.5, ageYears: 31 });
+
+    expect(bodyRepository.createScan.mock.calls[0]?.[5]).toEqual({ heightCm: 178.5, ageYears: 31 });
+  });
+
+  it("saves a confirmed scan's height and age on the scan", async () => {
+    const { service, bodyRepository } = build();
+
+    await service.confirm(user, file, { ...confirm, heightCm: 178.5, ageYears: 31 });
+
+    expect(bodyRepository.createScan.mock.calls[0]?.[5]).toEqual({ heightCm: 178.5, ageYears: 31 });
+  });
+
+  it("stores null for either one the request leaves out (allowed until slice C)", async () => {
+    const { service, bodyRepository } = build();
+
+    await service.confirm(user, file, { ...confirm, heightCm: 178.5 });
+
+    expect(bodyRepository.createScan.mock.calls[0]?.[5]).toEqual({ heightCm: 178.5, ageYears: null });
+  });
+
+  it.each([
+    ["manual save", (service: BodyService) => service.createManual(user, { ...manual, heightCm: 178.5, ageYears: 31 })],
+    ["confirmed save", (service: BodyService) => service.confirm(user, file, { ...confirm, heightCm: 178.5, ageYears: 31 })],
+    ["scan detail", (service: BodyService) => service.getScan(user, "scan-9")],
+  ])("returns them on the %s", async (_label, call) => {
+    const { service } = build();
+
+    await expect(call(service)).resolves.toMatchObject({ heightCm: 178.5, ageYears: 31 });
+  });
+
+  it("returns null for both on a scan saved before this change", async () => {
+    const { service } = build({ heightCm: null, ageYears: null });
+
+    await expect(service.getScan(user, "scan-9")).resolves.toMatchObject({ heightCm: null, ageYears: null });
   });
 });

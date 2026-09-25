@@ -19,11 +19,24 @@ export interface MeasurementRow {
   confidence: number;
 }
 
-export interface ScanWithMeasurementsRow {
+/** The height and age printed on (or typed in for) one scan; null when a scan has none. */
+export interface ScanProfileInput {
+  heightCm: number | null;
+  ageYears: number | null;
+}
+
+export interface ScanWithMeasurementsRow extends ScanProfileInput {
   id: string;
   measuredAt: Date;
   source: string;
   measurements: MeasurementRow[];
+}
+
+const NO_SCAN_PROFILE: ScanProfileInput = { heightCm: null, ageYears: null };
+
+/** `numeric` arrives from drizzle as a string (see body.schema.ts); null stays null. */
+function readScanProfile(scan: { heightCm: string | null; ageYears: number | null }): ScanProfileInput {
+  return { heightCm: scan.heightCm === null ? null : Number(scan.heightCm), ageYears: scan.ageYears };
 }
 
 export interface MetricSeriesRow {
@@ -56,9 +69,21 @@ export class BodyRepository {
     /** Null for a manual entry, which has no photo. */
     photoKey: string | null,
     measurements: NewMeasurementInput[],
+    /** Stored on the scan row, never as measurements, so they never become Body-tab trends. */
+    profile: ScanProfileInput = NO_SCAN_PROFILE,
   ): Promise<string> {
     return this.db.transaction(async (tx) => {
-      const [scan] = await tx.insert(bodyScans).values({ userId, measuredAt, source, photoKey }).returning();
+      const [scan] = await tx
+        .insert(bodyScans)
+        .values({
+          userId,
+          measuredAt,
+          source,
+          photoKey,
+          heightCm: profile.heightCm === null ? null : profile.heightCm.toString(),
+          ageYears: profile.ageYears,
+        })
+        .returning();
       if (!scan) throw new Error("insert did not return a row");
 
       if (measurements.length > 0) {
@@ -92,6 +117,7 @@ export class BodyRepository {
       id: scan.id,
       measuredAt: scan.measuredAt,
       source: scan.source,
+      ...readScanProfile(scan),
       measurements: measurements.map((m) => ({
         metric: m.metric,
         value: Number(m.value),
@@ -127,6 +153,7 @@ export class BodyRepository {
       id: scan.id,
       measuredAt: scan.measuredAt,
       source: scan.source,
+      ...readScanProfile(scan),
       measurements: (byScan.get(scan.id) ?? []).map((m) => ({
         metric: m.metric,
         value: Number(m.value),
