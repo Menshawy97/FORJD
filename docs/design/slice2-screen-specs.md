@@ -193,6 +193,8 @@ upload plus search dumb star chevron check clock x pencil`.
 
 ### `tabbar(active)`
 
+> **As built (2026-09-24):** 64px of content plus the device's bottom safe-area inset, and **no top border**. At 76 the bar read as too tall on the phone and covered the last row of Home's "This week" strip; the hairline read as a stray white line. Icon-to-label gap is 2px on a 22px icon box (react-navigation's 28px box is overridden), which places icon and label where the design's own captures have them. See `apps/mobile/src/app/(tabs)/_layout.tsx`.
+
 ```
 height 76; flex:none; border-top 1px solid rgba(255,255,255,.07)
 background rgba(14,14,15,.96); backdrop-filter blur(12px); padding '10px 6px 0'

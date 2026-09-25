@@ -99,6 +99,8 @@ items, icon 22 then label `10px/1 Archivo` (weight 600 active / 500 inactive), c
 active and `#6b6b64` otherwise. **Library, exercise detail and new-exercise all render the tab
 bar with `train` active**, so use `<TabBar active="train" />`.
 
+> **As built (2026-09-24):** 64px of content plus the device's bottom safe-area inset, and **no top border**. At 76 the bar read as too tall on the phone and covered the last row of Home's "This week" strip; the hairline read as a stray white line. Icon-to-label gap is 2px on a 22px icon box (react-navigation's 28px box is overridden), which places icon and label where the design's own captures have them. See `apps/mobile/src/app/(tabs)/_layout.tsx`.
+
 ---
 
 ## 3. `library` — Exercise Library

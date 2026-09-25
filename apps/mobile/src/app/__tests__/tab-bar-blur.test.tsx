@@ -4,6 +4,12 @@
 //   height:76 · borderTop:1px rgba(255,255,255,.07)
 //   background:'rgba(14,14,15,.96)' · backdropFilter:'blur(12px)'
 //
+// 2026-09-24: the bar is 64px of content plus the device's bottom inset, with no top border.
+// 76 with no inset handling read as too tall on the phone (and hid the last row of Home's
+// "This week" strip), and the 7% white hairline read as a stray white line; 64 is what the
+// design's own captures show once the frame's home-indicator strip is set aside. The inset is
+// added rather than absorbed so the labels never sit under the gesture bar or home indicator.
+//
 // The translucent colour was already in place (`colors.tabBarBg`), but a translucent colour
 // over nothing is just a darker solid: the bar was laid out in the flow, so no content ever
 // passed behind it and there was nothing to blur. Two things have to be true together — the
@@ -42,15 +48,27 @@ function flatten(node: unknown): HostNode[] {
 
 describe('tab bar', () => {
   it('floats over the scene at the design height', () => {
-    expect(TAB_BAR_HEIGHT).toBe(76);
-    expect(tabsScreenOptions.tabBarStyle).toMatchObject({
+    expect(TAB_BAR_HEIGHT).toBe(64);
+    expect(tabsScreenOptions(0).tabBarStyle).toMatchObject({
       position: 'absolute',
       height: TAB_BAR_HEIGHT,
     });
   });
 
-  it('gives the scene back the space the floating bar takes', () => {
-    expect(tabsScreenOptions.sceneStyle).toEqual({ paddingBottom: TAB_BAR_HEIGHT });
+  it('draws no top border line', () => {
+    expect(tabsScreenOptions(0).tabBarStyle.borderTopWidth).toBe(0);
+  });
+
+  it('adds the bottom safe-area inset below the tabs instead of letting them sit under it', () => {
+    expect(tabsScreenOptions(34).tabBarStyle).toMatchObject({
+      height: TAB_BAR_HEIGHT + 34,
+      paddingBottom: 34,
+    });
+  });
+
+  it('gives the scene back the space the floating bar takes, inset included', () => {
+    expect(tabsScreenOptions(0).sceneStyle).toEqual({ paddingBottom: TAB_BAR_HEIGHT });
+    expect(tabsScreenOptions(34).sceneStyle).toEqual({ paddingBottom: TAB_BAR_HEIGHT + 34 });
   });
 
   it('renders a blur behind the bar', async () => {
