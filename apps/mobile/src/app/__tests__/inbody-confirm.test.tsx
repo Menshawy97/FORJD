@@ -193,7 +193,9 @@ describe('Confirm scan -- fat-free mass index', () => {
   it('opens and saves a scan read before FFMI existed, leaving the row empty', async () => {
     pendingScan();
     const pending = takePendingScan()!;
-    const { fat_free_mass_index: _absent, ...olderFields } = pending.extracted.fields;
+    const olderFields = Object.fromEntries(
+      Object.entries(pending.extracted.fields).filter(([metric]) => metric !== 'fat_free_mass_index'),
+    );
     setPendingScan({ ...pending, extracted: { ...pending.extracted, fields: olderFields as never } });
     const { findByRole, getByLabelText } = await render(<InBodyConfirmScreen />);
 
