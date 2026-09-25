@@ -1,3 +1,4 @@
+import { belongsToAccount } from './account-scope';
 import type { SqliteMigration } from './sqlite-migrations';
 import type { SqliteConnection } from './exercise-catalogue';
 
@@ -116,7 +117,6 @@ export async function getUnfinishedRunSnapshot(
   db: SqliteConnection,
   accountId: string | null,
 ): Promise<RunSnapshotRecord | null> {
-  const { belongsToAccount } = require('./workout-session') as typeof import('./workout-session');
   const rows = await db.getAllAsync<{ session_id: string; payload: string; started_at: string; account_id: string | null }>(
     'SELECT session_id, payload, started_at, account_id FROM run_snapshot ORDER BY started_at DESC',
     [],

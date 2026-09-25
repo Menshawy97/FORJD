@@ -480,7 +480,7 @@ describe('workout-session store', () => {
       );
       expect((await getFailedSessions(db, ACCOUNT_A))[0]?.sessionId).toBe('session-1');
 
-      await retryFailedSession(db, 'session-1', new Date('2026-09-02T10:00:00.000Z'));
+      await retryFailedSession(db, ACCOUNT_A, 'session-1', new Date('2026-09-02T10:00:00.000Z'));
 
       const rows = await getQueuedSessions(db);
       expect(rows[0]?.status).toBe('pending');
@@ -636,6 +636,25 @@ describe('workout-session store', () => {
         expect.objectContaining({ sessionId: 'session-b' }),
       ]);
       await expect(getFailedSessions(db, null)).resolves.toEqual([]);
+    });
+
+    it("will not retry another account's failed session", async () => {
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-a'), new Date('2026-09-02T09:00:00.000Z'));
+      const rejection: UploadRejection = Object.assign(new Error('contract drift'), { status: 422 });
+      await drainSyncQueue(
+        db,
+        ACCOUNT_A,
+        async () => {
+          throw rejection;
+        },
+        new Date('2026-09-02T09:00:00.000Z'),
+      );
+
+      await retryFailedSession(db, ACCOUNT_B, 'session-a', new Date('2026-09-02T10:00:00.000Z'));
+
+      await expect(getFailedSessions(db, ACCOUNT_A)).resolves.toEqual([
+        expect.objectContaining({ sessionId: 'session-a' }),
+      ]);
     });
 
     it("offers crash recovery only for the signed-in account's unfinished session", async () => {

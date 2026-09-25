@@ -107,7 +107,7 @@ describe('the failed-sync banner (C3)', () => {
 
     await fireEvent.press(retryButton);
 
-    await waitFor(() => expect(retryFailedSession).toHaveBeenCalledWith(FAKE_DB, 'session-1'));
+    await waitFor(() => expect(retryFailedSession).toHaveBeenCalledWith(FAKE_DB, 'account-a', 'session-1'));
     expect(syncPendingSessions).toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByText(/Upper Push/)).toBeNull());
   });

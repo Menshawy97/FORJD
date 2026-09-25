@@ -10,6 +10,7 @@
 // on every mutation, so it can never serve a token the store no longer holds.
 import * as SecureStore from 'expo-secure-store';
 
+import { readJwtSubject } from './jwt-subject';
 import { forgetAccountPreferences } from '@/store/account-preferences';
 import { forgetHealthConsent } from '@/store/health-consent-local';
 import { forgetLocationConsent } from '@/store/leaderboard-consent';
@@ -111,18 +112,7 @@ export async function getEmail(): Promise<string | null> {
  */
 export async function getAccountId(): Promise<string | null> {
   const token = await getAccessToken();
-  if (!token) return null;
-  const payload = token.split('.')[1];
-  if (!payload) return null;
-  try {
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const claims = JSON.parse(atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='))) as {
-      sub?: unknown;
-    };
-    return typeof claims.sub === 'string' && claims.sub.length > 0 ? claims.sub : null;
-  } catch {
-    return null;
-  }
+  return token ? readJwtSubject(token) : null;
 }
 
 /**

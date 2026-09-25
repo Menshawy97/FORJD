@@ -7,6 +7,7 @@ import { renderApp } from './render-app';
 import { resetIntroForTests, shouldShowIntro } from '@/components/brand/intro-gate';
 
 jest.mock('@/auth/secureStorage', () => ({
+  getAccountId: jest.fn().mockResolvedValue('account-a'),
   hasSession: jest.fn(),
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(),

@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import type { WorkoutEventType, WorkoutSessionStatus } from '@forjd/domain';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 
+import { belongsToAccount } from './account-scope';
 import type { SqliteConnection } from './exercise-catalogue';
 import { RUN_SESSION_MIGRATION } from './run-session';
 import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
@@ -403,16 +404,6 @@ function rowToQueueEntry(row: {
 }
 
 /**
- * Whether a row stamped with `rowAccountId` belongs to the signed-in `accountId` (whole-app review
- * 8.5, L3-1). Nobody signed in owns nothing. A row with no account predates v4 and is claimed by
- * whoever is signed in, which is what every row did before -- only existing dev installs have any.
- */
-export function belongsToAccount(rowAccountId: string | null, accountId: string | null): boolean {
-  if (accountId === null) return false;
-  return rowAccountId === null || rowAccountId === accountId;
-}
-
-/**
  * Enqueues a finished session for upload. `INSERT OR REPLACE` by `payload.id` (the session's
  * own client-generated idempotency key): re-finishing the same session id resets its retry
  * state to a fresh attempt rather than accumulating against whatever attempt count an
@@ -538,9 +529,14 @@ export async function getFailedSessions(db: SqliteConnection, accountId: string 
  */
 export async function retryFailedSession(
   db: SqliteConnection,
+  accountId: string | null,
   sessionId: string,
   now: Date = new Date(),
 ): Promise<void> {
+  // Defence in depth: the retry banner only ever lists this account's rows, but the reset itself
+  // also refuses another account's, like every other read and write in this file.
+  const row = (await getQueuedSessions(db)).find((candidate) => candidate.sessionId === sessionId);
+  if (!row || !belongsToAccount(row.accountId, accountId)) return;
   await db.runAsync(
     "UPDATE session_queue SET status = 'pending', attempt_count = 0, next_retry_at = ?, last_error = NULL WHERE session_id = ?",
     [now.toISOString(), sessionId],

@@ -26,6 +26,7 @@ import { renderApp } from './render-app';
 import { colors } from '@/theme/tokens';
 
 jest.mock('@/auth/secureStorage', () => ({
+  getAccountId: jest.fn().mockResolvedValue('account-a'),
   hasSession: jest.fn().mockResolvedValue(true),
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(() => true),

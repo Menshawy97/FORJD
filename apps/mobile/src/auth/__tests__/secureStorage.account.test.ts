@@ -57,6 +57,18 @@ describe('the signed-in account id', () => {
     await expect(getAccountId()).resolves.toBeNull();
   });
 
+  it('decodes without any global base64 helper, since the phone runtime may not provide one', async () => {
+    const realAtob = globalThis.atob;
+    // @ts-expect-error -- deliberately removed for this test.
+    delete globalThis.atob;
+    try {
+      await saveSession(session(tokenFor({ sub: 'hermes-account', name: 'Zoë Ødegaard' })));
+      await expect(getAccountId()).resolves.toBe('hermes-account');
+    } finally {
+      globalThis.atob = realAtob;
+    }
+  });
+
   it('is null, never a guess, for a token it cannot read', async () => {
     await saveSession(session('not-a-jwt'));
     await expect(getAccountId()).resolves.toBeNull();

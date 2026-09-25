@@ -13,6 +13,7 @@ import { renderApp } from './render-app';
 // redirect decision (phase 5); hasSession() only drives the one-time initial "has fonts +
 // auth state been checked" gate. Both are set together per test so they agree.
 jest.mock('@/auth/secureStorage', () => ({
+  getAccountId: jest.fn().mockResolvedValue('account-a'),
   hasSession: jest.fn(),
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(),

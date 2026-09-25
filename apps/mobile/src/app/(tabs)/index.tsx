@@ -217,7 +217,7 @@ export default function HomeScreen() {
       try {
         const db = await openWorkoutSessionDb();
         await ensureWorkoutSessionSchema(db);
-        await retryFailedSession(db, sessionId);
+        await retryFailedSession(db, await getAccountId(), sessionId);
         await syncPendingSessions();
       } finally {
         await loadFailedSessions();
