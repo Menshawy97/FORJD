@@ -234,3 +234,69 @@ describe("BodyRepository -- manual entries (no photo)", () => {
     await expect(repository.listScanPhotoKeysForUser(userId)).resolves.toEqual([`${userId}/photo.webp`]);
   });
 });
+
+/**
+ * Height and age on the scan row (docs/product/scan-height-age-plan.md §2): stored beside the
+ * scan, never as measurement rows, and read back as numbers (or null for a scan without them).
+ */
+describe("BodyRepository -- scan height and age", () => {
+  const connectionString = process.env.DATABASE_URL ?? "postgresql://forjd:forjd_local_dev@localhost:5432/forjd";
+  let pool: Pool;
+  let db: NodePgDatabase<Record<string, never>>;
+  let repository: BodyRepository;
+  let userId: string;
+  const weight = [{ metric: "weight_kg" as BodyMetric, value: 82.4, unit: "kg", confidence: 1 }];
+
+  beforeAll(async () => {
+    pool = new Pool({ connectionString });
+    db = drizzle(pool) as NodePgDatabase<Record<string, never>>;
+    repository = new BodyRepository(db);
+    const [row] = await db
+      .insert(users)
+      .values({ email: `bodyrepo-height-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com` })
+      .returning();
+    if (!row) throw new Error("insert did not return a row");
+    userId = row.id;
+  });
+
+  afterAll(async () => {
+    await db.delete(users).where(eq(users.id, userId));
+    await pool.end();
+  });
+
+  it("stores height and age with the scan and reads them back as numbers", async () => {
+    const scanId = await repository.createScan(userId, new Date("2026-09-25T09:00:00.000Z"), "manual", null, weight, {
+      heightCm: 178.5,
+      ageYears: 31,
+    });
+
+    const scan = await repository.getScanById(userId, scanId);
+    expect(scan?.heightCm).toBe(178.5);
+    expect(scan?.ageYears).toBe(31);
+  });
+
+  it("never turns them into measurement rows, so they cannot become Body-tab trends", async () => {
+    const scanId = await repository.createScan(userId, new Date("2026-09-25T10:00:00.000Z"), "manual", null, weight, {
+      heightCm: 178,
+      ageYears: 31,
+    });
+
+    const rows = await db.select().from(bodyMeasurements).where(eq(bodyMeasurements.scanId, scanId));
+    expect(rows.map((r) => r.metric)).toEqual(["weight_kg"]);
+  });
+
+  it("reads null for a scan saved without them", async () => {
+    const scanId = await repository.createScan(userId, new Date("2026-09-20T09:00:00.000Z"), "inbody", `${userId}/p.webp`, weight);
+
+    const scan = await repository.getScanById(userId, scanId);
+    expect(scan?.heightCm).toBeNull();
+    expect(scan?.ageYears).toBeNull();
+  });
+
+  it("includes them on every scan in the history list", async () => {
+    const scans = await repository.listScansForUser(userId);
+    const withValues = scans.find((s) => s.heightCm === 178.5);
+    expect(withValues?.ageYears).toBe(31);
+    expect(scans.some((s) => s.heightCm === null && s.ageYears === null)).toBe(true);
+  });
+});

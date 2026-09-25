@@ -240,6 +240,48 @@ describe("Body scans (e2e)", () => {
       expect(uploadedRefs.length).toBe(uploadsBefore);
     });
   });
+
+  // Last in this suite: it adds scans, and the tests above count them.
+  describe("height and age on a scan (scan-height-age-plan.md §2)", () => {
+    const manual = (extra: Record<string, unknown>) =>
+      request(app.getHttpServer())
+        .post("/api/v1/body-scans/manual")
+        .set("Authorization", "Bearer owner-token")
+        .send({
+          measuredAt: "2026-09-25T09:00:00.000Z",
+          measurements: [
+            { metric: "weight_kg", value: 82.4, unit: "kg" },
+            { metric: "body_fat_percent", value: 12.1, unit: "%" },
+          ],
+          ...extra,
+        });
+
+    it("saves them with the scan and returns them on the scan's detail", async () => {
+      const saved = await manual({ heightCm: 178.5, ageYears: 31 }).expect(201);
+      expect(saved.body).toMatchObject({ heightCm: 178.5, ageYears: 31 });
+
+      const detail = await request(app.getHttpServer())
+        .get(`/api/v1/body-scans/${saved.body.id as string}`)
+        .set("Authorization", "Bearer owner-token")
+        .expect(200);
+      expect(detail.body).toMatchObject({ heightCm: 178.5, ageYears: 31 });
+    });
+
+    it("still saves without them, as null, until the app sends them (slice C)", async () => {
+      const saved = await manual({}).expect(201);
+      expect(saved.body).toMatchObject({ heightCm: null, ageYears: null });
+    });
+
+    it("rejects an out-of-range height with a message naming the field and range", async () => {
+      const response = await manual({ heightCm: 260, ageYears: 31 }).expect(400);
+      expect(JSON.stringify(response.body)).toContain("heightCm must be between 100 and 250");
+    });
+
+    it("rejects an age below the account minimum", async () => {
+      const response = await manual({ heightCm: 178, ageYears: 12 }).expect(400);
+      expect(JSON.stringify(response.body)).toContain("ageYears must be between 16 and 110");
+    });
+  });
 });
 
 /**

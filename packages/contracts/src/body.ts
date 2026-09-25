@@ -1,4 +1,4 @@
-import { BODY_METRICS, SCAN_SOURCES, SEGMENTAL_SITES } from '@forjd/domain';
+import { BODY_METRICS, MINIMUM_AGE_YEARS, SCAN_SOURCES, SEGMENTAL_SITES } from '@forjd/domain';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------------------------
@@ -122,6 +122,39 @@ export const confirmedMeasurementSchema = z
 export type ConfirmedMeasurement = z.infer<typeof confirmedMeasurementSchema>;
 
 /**
+ * The height and age printed on (or typed in for) one scan (docs/product/scan-height-age-plan.md
+ * §2). They live on the scan itself, not as BODY_METRICS rows, so they never become Body-tab trend
+ * lines -- the user's rule. Height is generous for real extremes; age starts at the account
+ * minimum, since nobody younger can hold an account.
+ */
+export const SCAN_HEIGHT_CM_BOUNDS = [100, 250] as const;
+export const SCAN_AGE_YEARS_BOUNDS = [MINIMUM_AGE_YEARS, 110] as const;
+
+const rangeMessage = (field: string, [min, max]: readonly [number, number]) => `${field} must be between ${min} and ${max}`;
+
+const scanHeightCmSchema = z
+  .number()
+  .min(SCAN_HEIGHT_CM_BOUNDS[0], rangeMessage("heightCm", SCAN_HEIGHT_CM_BOUNDS))
+  .max(SCAN_HEIGHT_CM_BOUNDS[1], rangeMessage("heightCm", SCAN_HEIGHT_CM_BOUNDS));
+
+const scanAgeYearsSchema = z
+  .number()
+  .int("ageYears must be a whole number of years")
+  .min(SCAN_AGE_YEARS_BOUNDS[0], rangeMessage("ageYears", SCAN_AGE_YEARS_BOUNDS))
+  .max(SCAN_AGE_YEARS_BOUNDS[1], rangeMessage("ageYears", SCAN_AGE_YEARS_BOUNDS));
+
+/**
+ * Optional on both create requests *for now*: the app only starts sending them with the screens
+ * in slice C, and a required field before then would make every InBody save from today's app
+ * fail (and break a shipped v1 endpoint, rule 7). Slice C makes them required in the same PR as
+ * the screens that send them.
+ */
+const scanProfileFields = {
+  heightCm: scanHeightCmSchema.optional(),
+  ageYears: scanAgeYearsSchema.optional(),
+};
+
+/**
  * Request body for `POST /body-scans`, sent as a multipart `data` field (JSON string)
  * alongside the same photo re-sent as the `file` part -- the extract step stores nothing,
  * so there is no server-side reference to finalize; the confirm step's photo upload is a
@@ -133,6 +166,7 @@ export const confirmBodyScanRequestSchema = z.object({
   // never needs more, so an explicit cap (R10) closes the framework-body-size-default as the
   // only backstop.
   measurements: z.array(confirmedMeasurementSchema).min(1).max(20),
+  ...scanProfileFields,
 });
 export type ConfirmBodyScanRequest = z.infer<typeof confirmBodyScanRequestSchema>;
 
@@ -158,6 +192,7 @@ export const createManualBodyScanRequestSchema = z
   .object({
     measuredAt: z.string().datetime(),
     measurements: z.array(manualMeasurementSchema).min(MANUAL_REQUIRED_METRICS.length).max(20),
+    ...scanProfileFields,
   })
   .superRefine((request, ctx) => {
     const metrics = request.measurements.map((m) => m.metric);
@@ -185,6 +220,10 @@ export const bodyScanResponseSchema = z.object({
   id: z.string().uuid(),
   measuredAt: z.string().datetime(),
   source: scanSourceSchema,
+  /** Null for a scan saved before height and age were recorded (they are left blank, by the
+   *  user's choice), and always stated so a client never has to guess. */
+  heightCm: z.number().nullable(),
+  ageYears: z.number().int().nullable(),
   measurements: z.array(bodyMeasurementResponseSchema),
 });
 export type BodyScanResponse = z.infer<typeof bodyScanResponseSchema>;

@@ -897,6 +897,9 @@ export const responseFixtures = {
           id: '22222222-2222-4222-8222-222222222222',
           measuredAt: '2026-08-20T08:00:00.000Z',
           source: 'inbody' as const,
+          // The profile's own height, and its age on the scan date (born 1990-07-04).
+          heightCm: 172.5,
+          ageYears: 36,
           measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97 }],
         },
       ],

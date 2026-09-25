@@ -141,6 +141,8 @@
       "id": "22222222-2222-4222-8222-222222222222",
       "measuredAt": "2026-08-20T08:00:00.000Z",
       "source": "inbody",
+      "heightCm": 172.5,
+      "ageYears": 36,
       "measurements": [
         {
           "metric": "weight_kg",
