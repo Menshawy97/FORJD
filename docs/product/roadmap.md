@@ -74,7 +74,9 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
 
 **Status (2026-09-25): 8.5A done, the plan is [whole-app-review-plan.md](whole-app-review-plan.md)
 (pinned at `b1f006a`). Lane 9 is split into 9a server/database speed and 9b app speed, with
-speed budgets, at the user's request. 8.5B running.**
+speed budgets, at the user's request. 8.5B done: findings in
+[docs/reviews/2026-09-25-whole-app-review.md](../reviews/2026-09-25-whole-app-review.md) (1 blocker, 7 high,
+all verified; proposed fix slices S1-S13). Next: 8.5C triage with the user.**
 
 **Why:** 60 PRs landed in a week, across seven plans, mostly verified by CI alone. The last
 whole-repo audit (2026-09-10, 29 slices) predates the live run, the leaderboards, the website,
