@@ -10,8 +10,10 @@ import {
   getFailedSessions,
   getQueuedSessions,
   getSessionEvents,
+  getUnfinishedSessionSnapshot,
   replaySessionState,
   retryFailedSession,
+  saveSessionSnapshot,
   SessionEventRecord,
   UploadRejection,
 } from '../workout-session';
@@ -28,8 +30,16 @@ class FakeSqliteConnection implements SqliteConnection {
   nextEventId = 1;
   queue = new Map<
     string,
-    { payload: string; status: string; attempt_count: number; next_retry_at: string; last_error: string | null }
+    {
+      payload: string;
+      status: string;
+      attempt_count: number;
+      next_retry_at: string;
+      last_error: string | null;
+      account_id: string | null;
+    }
   >();
+  snapshots = new Map<string, { payload: string; started_at: string; account_id: string | null }>();
   /** Backs `PRAGMA user_version` -- see the `schema versioning (R25)` tests below. */
   userVersion: number;
 
@@ -64,8 +74,18 @@ class FakeSqliteConnection implements SqliteConnection {
       const [sessionId] = params as [string];
       this.events = this.events.filter((event) => event.session_id !== sessionId);
     } else if (source.startsWith('INSERT OR REPLACE INTO session_queue')) {
-      const [sessionId, payload, nextRetryAt] = params as [string, string, string];
-      this.queue.set(sessionId, { payload, status: 'pending', attempt_count: 0, next_retry_at: nextRetryAt, last_error: null });
+      const [sessionId, payload, nextRetryAt, accountId] = params as [string, string, string, string | null];
+      this.queue.set(sessionId, {
+        payload,
+        status: 'pending',
+        attempt_count: 0,
+        next_retry_at: nextRetryAt,
+        last_error: null,
+        account_id: accountId,
+      });
+    } else if (source.startsWith('INSERT OR REPLACE INTO session_snapshot')) {
+      const [sessionId, payload, startedAt, accountId] = params as [string, string, string, string | null];
+      this.snapshots.set(sessionId, { payload, started_at: startedAt, account_id: accountId });
     } else if (source.startsWith('DELETE FROM session_queue')) {
       const [sessionId] = params as [string];
       this.queue.delete(sessionId);
@@ -112,6 +132,13 @@ class FakeSqliteConnection implements SqliteConnection {
           .sort((a, b) => a.id - b.id) as unknown as T[],
       );
     }
+    if (source.startsWith('SELECT session_id, payload, started_at, account_id FROM session_snapshot')) {
+      return Promise.resolve(
+        [...this.snapshots.entries()]
+          .map(([sessionId, row]) => ({ session_id: sessionId, ...row }))
+          .sort((a, b) => b.started_at.localeCompare(a.started_at)) as unknown as T[],
+      );
+    }
     if (source.startsWith('SELECT session_id, payload, status, attempt_count, next_retry_at, last_error')) {
       return Promise.resolve(
         [...this.queue.entries()]
@@ -122,6 +149,9 @@ class FakeSqliteConnection implements SqliteConnection {
     throw new Error(`FakeSqliteConnection: unhandled query: ${source}`);
   }
 }
+
+const ACCOUNT_A = 'account-a';
+const ACCOUNT_B = 'account-b';
 
 const uploadRequest = (id: string): WorkoutSessionUploadRequest => ({
   id,
@@ -252,10 +282,10 @@ describe('workout-session store', () => {
     it('uploads a pending session and removes it from the queue and its event log', async () => {
       const payload = uploadRequest('session-1');
       await appendSessionEvent(db, 'session-1', 'workout_finished', '2026-09-02T09:30:00.000Z', {});
-      await enqueueSessionUpload(db, payload);
+      await enqueueSessionUpload(db, ACCOUNT_A, payload);
 
       const uploaded: WorkoutSessionUploadRequest[] = [];
-      const result = await drainSyncQueue(db, async (body) => {
+      const result = await drainSyncQueue(db, ACCOUNT_A, async (body) => {
         uploaded.push(body);
       });
 
@@ -266,7 +296,7 @@ describe('workout-session store', () => {
     });
 
     it('is idempotent: a session that fails to upload stays queued and is uploaded exactly once on eventual success', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
       let attempts = 0;
       const failThenSucceed = async (): Promise<void> => {
@@ -276,31 +306,31 @@ describe('workout-session store', () => {
         }
       };
 
-      const firstDrain = await drainSyncQueue(db, failThenSucceed, new Date('2026-09-02T09:00:00.000Z'));
+      const firstDrain = await drainSyncQueue(db, ACCOUNT_A, failThenSucceed, new Date('2026-09-02T09:00:00.000Z'));
       expect(firstDrain).toEqual({ uploaded: [], failed: ['session-1'] });
       const afterFirstFailure = await getQueuedSessions(db);
       expect(afterFirstFailure[0]?.status).toBe('pending');
       expect(afterFirstFailure[0]?.attemptCount).toBe(1);
 
       // Drained again before the backoff window elapses: skipped, no second upload attempt.
-      const tooSoon = await drainSyncQueue(db, failThenSucceed, new Date('2026-09-02T09:00:00.500Z'));
+      const tooSoon = await drainSyncQueue(db, ACCOUNT_A, failThenSucceed, new Date('2026-09-02T09:00:00.500Z'));
       expect(tooSoon).toEqual({ uploaded: [], failed: [] });
       expect(attempts).toBe(1);
 
       // Drained again after the backoff window: succeeds, and the row is gone for good.
-      const secondDrain = await drainSyncQueue(db, failThenSucceed, new Date('2026-09-02T09:00:05.000Z'));
+      const secondDrain = await drainSyncQueue(db, ACCOUNT_A, failThenSucceed, new Date('2026-09-02T09:00:05.000Z'));
       expect(secondDrain).toEqual({ uploaded: ['session-1'], failed: [] });
       expect(attempts).toBe(2);
       await expect(getQueuedSessions(db)).resolves.toEqual([]);
 
       // A third drain call must not upload it a third time -- it is simply no longer queued.
-      const thirdDrain = await drainSyncQueue(db, failThenSucceed, new Date('2026-09-02T10:00:00.000Z'));
+      const thirdDrain = await drainSyncQueue(db, ACCOUNT_A, failThenSucceed, new Date('2026-09-02T10:00:00.000Z'));
       expect(thirdDrain).toEqual({ uploaded: [], failed: [] });
       expect(attempts).toBe(2);
     });
 
     it('stops retrying automatically after the max attempt count, without deleting the row', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
       const alwaysFail = async (): Promise<void> => {
         throw new Error('permanently broken');
@@ -308,7 +338,7 @@ describe('workout-session store', () => {
 
       let now = new Date('2026-09-02T09:00:00.000Z');
       for (let attempt = 0; attempt < 5; attempt += 1) {
-        await drainSyncQueue(db, alwaysFail, now);
+        await drainSyncQueue(db, ACCOUNT_A, alwaysFail, now);
         now = new Date(now.getTime() + 31 * 60_000);
       }
 
@@ -320,7 +350,7 @@ describe('workout-session store', () => {
       // A failed row is skipped entirely on the next drain -- no further upload attempt.
       let calls = 0;
       await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async () => {
           calls += 1;
         },
@@ -330,11 +360,11 @@ describe('workout-session store', () => {
     });
 
     it('leaves a not-yet-due row queued without attempting it', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
       let calls = 0;
       const result = await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async () => {
           calls += 1;
         },
@@ -348,11 +378,11 @@ describe('workout-session store', () => {
 
   describe('non-retriable vs retriable failure classification (C3)', () => {
     it('marks a row failed on the very first attempt when the rejection is a non-retriable 4xx', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
       const rejection: UploadRejection = Object.assign(new Error('contract drift'), { status: 422 });
       const result = await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async () => {
           throw rejection;
         },
@@ -368,11 +398,11 @@ describe('workout-session store', () => {
     it.each([408, 429])(
       'keeps a row pending with backoff when the rejection is retriable status %i',
       async (status) => {
-        await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+        await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
         const rejection: UploadRejection = Object.assign(new Error('rate limited'), { status });
         await drainSyncQueue(
-          db,
+          db, ACCOUNT_A,
           async () => {
             throw rejection;
           },
@@ -386,10 +416,10 @@ describe('workout-session store', () => {
     );
 
     it('keeps a row pending with backoff on a network error with no status', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
       await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async () => {
           throw new Error('network request failed');
         },
@@ -402,11 +432,11 @@ describe('workout-session store', () => {
     });
 
     it('keeps a row pending with backoff on a 5xx rejection', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
       const rejection: UploadRejection = Object.assign(new Error('server error'), { status: 503 });
       await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async () => {
           throw rejection;
         },
@@ -421,45 +451,45 @@ describe('workout-session store', () => {
 
   describe('getFailedSessions / retryFailedSession (C3)', () => {
     it('returns only failed rows, with their last error', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
-      await enqueueSessionUpload(db, uploadRequest('session-2'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-2'), new Date('2026-09-02T09:00:00.000Z'));
 
       const rejection: UploadRejection = Object.assign(new Error('contract drift'), { status: 422 });
       await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async (payload) => {
           if (payload.id === 'session-1') throw rejection;
         },
         new Date('2026-09-02T09:00:00.000Z'),
       );
 
-      const failed = await getFailedSessions(db);
+      const failed = await getFailedSessions(db, ACCOUNT_A);
       expect(failed.map((row) => row.sessionId)).toEqual(['session-1']);
       expect(failed[0]?.lastError).toBe('contract drift');
     });
 
     it('resets a failed row to pending with a zero attempt count so the next drain retries it', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
       const alwaysFail: UploadRejection = Object.assign(new Error('contract drift'), { status: 422 });
       await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async () => {
           throw alwaysFail;
         },
         new Date('2026-09-02T09:00:00.000Z'),
       );
-      expect((await getFailedSessions(db))[0]?.sessionId).toBe('session-1');
+      expect((await getFailedSessions(db, ACCOUNT_A))[0]?.sessionId).toBe('session-1');
 
       await retryFailedSession(db, 'session-1', new Date('2026-09-02T10:00:00.000Z'));
 
       const rows = await getQueuedSessions(db);
       expect(rows[0]?.status).toBe('pending');
       expect(rows[0]?.attemptCount).toBe(0);
-      await expect(getFailedSessions(db)).resolves.toEqual([]);
+      await expect(getFailedSessions(db, ACCOUNT_A)).resolves.toEqual([]);
 
       let uploadedCount = 0;
       const result = await drainSyncQueue(
-        db,
+        db, ACCOUNT_A,
         async () => {
           uploadedCount += 1;
         },
@@ -472,7 +502,7 @@ describe('workout-session store', () => {
 
   describe('concurrent drains do not lose-update the attempt counter', () => {
     it('produces attempt_count = 2, not 1, when two drains race on the same failing row', async () => {
-      await enqueueSessionUpload(db, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-1'), new Date('2026-09-02T09:00:00.000Z'));
 
       const now = new Date('2026-09-02T09:00:00.000Z');
       const alwaysFail = async (): Promise<void> => {
@@ -482,8 +512,8 @@ describe('workout-session store', () => {
       // Neither call is awaited before the other starts -- this is what a reconnect firing
       // while an app-foreground drain is already in flight looks like.
       const [first, second] = await Promise.all([
-        drainSyncQueue(db, alwaysFail, now),
-        drainSyncQueue(db, alwaysFail, now),
+        drainSyncQueue(db, ACCOUNT_A, alwaysFail, now),
+        drainSyncQueue(db, ACCOUNT_A, alwaysFail, now),
       ]);
 
       expect(first.failed.length + second.failed.length).toBeGreaterThan(0);
@@ -508,20 +538,124 @@ describe('workout-session store', () => {
 
       await ensureWorkoutSessionSchema(versionOneDb);
 
-      // 3, not 2: this one shared list also carries run-session.ts's RUN_SESSION_MIGRATION step
-      // (ADR-049) -- one database, one PRAGMA user_version, one list, whichever caller runs first.
-      expect(versionOneDb.userVersion).toBe(3);
+      // 4: this one shared list also carries run-session.ts's RUN_SESSION_MIGRATION step (ADR-049)
+      // at 3 -- one database, one PRAGMA user_version, one list, whichever caller runs first -- and
+      // v4 stamps the queue and snapshots with the account that created them (review 8.5 S1).
+      expect(versionOneDb.userVersion).toBe(4);
       const events = await getSessionEvents(versionOneDb, 'session-1');
       expect(events).toHaveLength(1);
       expect(events[0]?.type).toBe('workout_finished');
     });
 
     it('is a no-op on a database already at the latest version', async () => {
-      const upToDateDb = new FakeSqliteConnection(3);
+      const upToDateDb = new FakeSqliteConnection(4);
 
       await expect(ensureWorkoutSessionSchema(upToDateDb)).resolves.toBeUndefined();
 
-      expect(upToDateDb.userVersion).toBe(3);
+      expect(upToDateDb.userVersion).toBe(4);
+    });
+
+    it('migrates a version-3 database (before accounts were recorded) to version 4', async () => {
+      const versionThreeDb = new FakeSqliteConnection(3);
+
+      await ensureWorkoutSessionSchema(versionThreeDb);
+
+      expect(versionThreeDb.userVersion).toBe(4);
+    });
+  });
+
+  describe('account scoping (whole-app review 8.5, L3-1)', () => {
+    it("never uploads another account's queued session: a session finished by A waits for A", async () => {
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-a'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_B, uploadRequest('session-b'), new Date('2026-09-02T09:00:00.000Z'));
+
+      const uploadedByB: string[] = [];
+      const result = await drainSyncQueue(
+        db,
+        ACCOUNT_B,
+        async (body) => {
+          uploadedByB.push(body.id);
+        },
+        new Date('2026-09-02T09:00:00.000Z'),
+      );
+
+      expect(result).toEqual({ uploaded: ['session-b'], failed: [] });
+      expect(uploadedByB).toEqual(['session-b']);
+      // A's session is untouched, still queued for when A signs back in.
+      const remaining = await getQueuedSessions(db);
+      expect(remaining.map((row) => [row.sessionId, row.accountId])).toEqual([['session-a', ACCOUNT_A]]);
+
+      const uploadedByA: string[] = [];
+      await drainSyncQueue(
+        db,
+        ACCOUNT_A,
+        async (body) => {
+          uploadedByA.push(body.id);
+        },
+        new Date('2026-09-02T09:00:00.000Z'),
+      );
+      expect(uploadedByA).toEqual(['session-a']);
+    });
+
+    it('uploads nothing when nobody is signed in', async () => {
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-a'), new Date('2026-09-02T09:00:00.000Z'));
+
+      let calls = 0;
+      const result = await drainSyncQueue(
+        db,
+        null,
+        async () => {
+          calls += 1;
+        },
+        new Date('2026-09-02T09:00:00.000Z'),
+      );
+
+      expect(result).toEqual({ uploaded: [], failed: [] });
+      expect(calls).toBe(0);
+    });
+
+    it('lets the signed-in account claim a row queued before accounts were recorded', async () => {
+      await enqueueSessionUpload(db, null, uploadRequest('legacy'), new Date('2026-09-02T09:00:00.000Z'));
+
+      const result = await drainSyncQueue(db, ACCOUNT_A, async () => undefined, new Date('2026-09-02T09:00:00.000Z'));
+
+      expect(result.uploaded).toEqual(['legacy']);
+    });
+
+    it("lists only the signed-in account's failed sessions for the retry banner", async () => {
+      await enqueueSessionUpload(db, ACCOUNT_A, uploadRequest('session-a'), new Date('2026-09-02T09:00:00.000Z'));
+      await enqueueSessionUpload(db, ACCOUNT_B, uploadRequest('session-b'), new Date('2026-09-02T09:00:00.000Z'));
+      const rejection: UploadRejection = Object.assign(new Error('contract drift'), { status: 422 });
+      const reject = async (): Promise<void> => {
+        throw rejection;
+      };
+      await drainSyncQueue(db, ACCOUNT_A, reject, new Date('2026-09-02T09:00:00.000Z'));
+      await drainSyncQueue(db, ACCOUNT_B, reject, new Date('2026-09-02T09:00:00.000Z'));
+
+      await expect(getFailedSessions(db, ACCOUNT_B)).resolves.toEqual([
+        expect.objectContaining({ sessionId: 'session-b' }),
+      ]);
+      await expect(getFailedSessions(db, null)).resolves.toEqual([]);
+    });
+
+    it("offers crash recovery only for the signed-in account's unfinished session", async () => {
+      await saveSessionSnapshot(db, ACCOUNT_A, 'session-a', { name: 'A' }, '2026-09-02T09:00:00.000Z');
+
+      await expect(getUnfinishedSessionSnapshot(db, ACCOUNT_B)).resolves.toBeNull();
+      await expect(getUnfinishedSessionSnapshot(db, null)).resolves.toBeNull();
+      await expect(getUnfinishedSessionSnapshot(db, ACCOUNT_A)).resolves.toEqual({
+        sessionId: 'session-a',
+        payload: { name: 'A' },
+        startedAt: '2026-09-02T09:00:00.000Z',
+      });
+    });
+
+    it('offers a snapshot saved before accounts were recorded to whoever is signed in', async () => {
+      await saveSessionSnapshot(db, null, 'legacy', { name: 'Old' }, '2026-09-02T09:00:00.000Z');
+
+      await expect(getUnfinishedSessionSnapshot(db, ACCOUNT_B)).resolves.toEqual(
+        expect.objectContaining({ sessionId: 'legacy' }),
+      );
     });
 
     it('throws rather than silently proceeding when the database is newer than this app build understands', async () => {
