@@ -71,15 +71,32 @@ export interface DailyTargets {
   fatG: number;
 }
 
+/**
+ * The least this app will ever suggest eating in a day (whole-app review 8.5, L6-1): calorie intake
+ * "should not fall below 1,200 a day in women or 1,500 a day in men", except under a health
+ * professional's supervision -- Harvard Health Publishing, "Calorie counting made easy", updated
+ * 2024-04-03, https://www.health.harvard.edu/staying-healthy/calorie-counting-made-easy. Approved by
+ * the user on 2026-09-25, with the midpoint for no stated sex, as `mifflinStJeorBmrKcal` does.
+ */
+export const MINIMUM_DAILY_KCAL = { female: 1200, male: 1500, unspecified: 1350 } as const;
+
+function minimumDailyKcal(sex: "male" | "female" | "prefer_not_to_say" | null): number {
+  if (sex === "female") return MINIMUM_DAILY_KCAL.female;
+  if (sex === "male") return MINIMUM_DAILY_KCAL.male;
+  return MINIMUM_DAILY_KCAL.unspecified;
+}
+
 export function suggestDailyTargets(input: {
   weightKg: number;
   bmrKcal: number;
   activityLevel: ActivityLevel;
   bodyGoal: BodyGoal;
+  sex: "male" | "female" | "prefer_not_to_say" | null;
 }): DailyTargets {
   const maintenance = input.bmrKcal * ACTIVITY_LEVEL_FACTORS[input.activityLevel];
   const goal = BODY_GOAL_ADJUSTMENTS[input.bodyGoal];
-  const kcal = roundTo10(maintenance * (1 + goal.energyChange));
+  // Raised to the minimum before the macros below are worked out, so they add up to what is shown.
+  const kcal = Math.max(minimumDailyKcal(input.sex), roundTo10(maintenance * (1 + goal.energyChange)));
   const proteinG = Math.round(goal.proteinPerKg * input.weightKg);
   const fatKcal = kcal * FAT_SHARE_OF_KCAL;
   const carbsKcal = Math.max(0, kcal - proteinG * KCAL_PER_G_PROTEIN - fatKcal);

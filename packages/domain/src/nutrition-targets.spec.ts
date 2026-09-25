@@ -51,7 +51,7 @@ describe("mifflinStJeorBmrKcal", () => {
 });
 
 describe("suggestDailyTargets", () => {
-  const omar = { weightKg: 86.6, bmrKcal: 1905, activityLevel: "active" as const };
+  const omar = { weightKg: 86.6, bmrKcal: 1905, activityLevel: "active" as const, sex: "male" as const };
 
   it("matches the approved design for losing fat: 2,750 kcal · protein 139 g · carbs 377 g · fat 76 g", () => {
     // 1,905 × 1.7 = 3,238.5 maintenance; −15% = 2,752.7 → 2,750. Protein 1.6 × 86.6 = 139 g.
@@ -85,7 +85,51 @@ describe("suggestDailyTargets", () => {
 
   it("never leaves carbs negative", () => {
     // A very high protein share on a low energy budget: carbs floor at zero.
-    const tiny = suggestDailyTargets({ weightKg: 150, bmrKcal: 900, activityLevel: "mostly_sitting", bodyGoal: "recomposition" });
+    const tiny = suggestDailyTargets({
+      weightKg: 150,
+      bmrKcal: 900,
+      activityLevel: "mostly_sitting",
+      bodyGoal: "recomposition",
+      sex: null,
+    });
     expect(tiny.carbsG).toBe(0);
+  });
+});
+
+/**
+ * Whole-app review 8.5, L6-1. Never suggest less than 1,200 kcal a day for women or 1,500 for men,
+ * the minimum Harvard Health Publishing gives without a health professional's supervision
+ * ("Calorie counting made easy", updated 2024-04-03), approved by the user on 2026-09-25. With no
+ * stated sex, the midpoint (1,350), as Mifflin-St Jeor's own unknown-sex case does.
+ */
+describe("suggestDailyTargets minimum calories", () => {
+  // 45 kg, 150 cm, 60 y woman: BMR 927; × 1.4 = 1,298 maintenance; −15% → 1,100 before the floor.
+  const smallAndSitting = { weightKg: 45, bmrKcal: 927, activityLevel: "mostly_sitting" as const, bodyGoal: "lose_fat" as const };
+
+  it("never suggests less than 1,200 kcal for a woman", () => {
+    expect(suggestDailyTargets({ ...smallAndSitting, sex: "female" }).kcal).toBe(1200);
+  });
+
+  it("never suggests less than 1,500 kcal for a man", () => {
+    expect(suggestDailyTargets({ ...smallAndSitting, sex: "male" }).kcal).toBe(1500);
+  });
+
+  it.each([null, "prefer_not_to_say"] as const)("uses the midpoint, 1,350 kcal, when sex is %s", (sex) => {
+    expect(suggestDailyTargets({ ...smallAndSitting, sex }).kcal).toBe(1350);
+  });
+
+  it("works out fat and carbs from the raised target, not the one below the floor", () => {
+    // 1,200 kcal: protein 1.6 × 45 = 72 g (288 kcal); fat 25% = 300 kcal = 33 g; carbs (1,200 − 288 − 300) ÷ 4 = 153 g.
+    expect(suggestDailyTargets({ ...smallAndSitting, sex: "female" })).toEqual({
+      maintenanceKcal: 1300,
+      kcal: 1200,
+      proteinG: 72,
+      carbsG: 153,
+      fatG: 33,
+    });
+  });
+
+  it("leaves a target already above the minimum untouched", () => {
+    expect(suggestDailyTargets({ ...smallAndSitting, bodyGoal: "maintain", sex: "female" }).kcal).toBe(1300);
   });
 });
