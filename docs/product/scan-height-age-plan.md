@@ -92,6 +92,13 @@ approved the reference**, and none of it is labelled "AI" (it is arithmetic).
 - A calculated BMR is stored with a "calculated" marker, never passed off as a scan value
   (rule 10: preserve source).
 
+**Built in slice D:** the arithmetic lives in `@forjd/domain` (`body-calculations.ts`). The
+parser holds a sheet BMI or BMR that breaks its formula below the pre-fill threshold, using only
+confidently read inputs (a BMR is not checked against fat values the body fat check already
+doubted). Both save paths fill in a missing BMI and, when a body fat value gives fat-free mass, a
+missing BMR, stored with `body_measurements.calculated = true` and returned as `calculated` on
+every scan response. Showing the marker in the app is slice E.
+
 ### 4.3 Fat-free mass index: *new metric, tracked in the Body tab*
 - FFMI = FFM ÷ (height m)², plus the height-normalised form FFMI + 6.1 × (1.8 − height m).
   Kouri et al., *Clin J Sport Med* 1995;5(4):223–228. A fairer size-for-height measure than BMI

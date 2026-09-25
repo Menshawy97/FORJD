@@ -48,7 +48,7 @@ const scanA = {
   source: 'inbody' as const,
   heightCm: null,
   ageYears: null,
-  measurements: [{ metric: 'weight_kg' as const, value: 80, unit: 'kg', confidence: 0.97 }],
+  measurements: [{ metric: 'weight_kg' as const, value: 80, unit: 'kg', confidence: 0.97, calculated: false }],
 };
 const scanB = {
   id: 'scan-b',
@@ -56,7 +56,7 @@ const scanB = {
   source: 'inbody' as const,
   heightCm: null,
   ageYears: null,
-  measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97 }],
+  measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97, calculated: false }],
 };
 
 beforeEach(() => {

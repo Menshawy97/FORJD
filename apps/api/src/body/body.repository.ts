@@ -10,6 +10,8 @@ export interface NewMeasurementInput {
   value: number;
   unit: string;
   confidence: number;
+  /** Worked out by the server from the scan's other values, not read or typed. Defaults to false. */
+  calculated?: boolean;
 }
 
 export interface MeasurementRow {
@@ -17,6 +19,7 @@ export interface MeasurementRow {
   value: number;
   unit: string;
   confidence: number;
+  calculated: boolean;
 }
 
 /** The height and age printed on (or typed in for) one scan; null when a scan has none. */
@@ -95,6 +98,7 @@ export class BodyRepository {
             value: m.value.toString(),
             unit: m.unit,
             confidence: m.confidence.toString(),
+            calculated: m.calculated ?? false,
             measuredAt,
           })),
         );
@@ -123,6 +127,7 @@ export class BodyRepository {
         value: Number(m.value),
         unit: m.unit,
         confidence: Number(m.confidence),
+        calculated: m.calculated,
       })),
     };
   }
@@ -159,6 +164,7 @@ export class BodyRepository {
         value: Number(m.value),
         unit: m.unit,
         confidence: Number(m.confidence),
+        calculated: m.calculated,
       })),
     }));
   }

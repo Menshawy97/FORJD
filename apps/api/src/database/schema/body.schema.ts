@@ -1,4 +1,4 @@
-import { index, numeric, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, numeric, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./users.schema";
 
 /**
@@ -86,6 +86,13 @@ export const bodyMeasurements = pgTable(
      * compare what the model said against what the user ultimately confirmed.
      */
     confidence: numeric("confidence").notNull(),
+    /**
+     * True for a value the server worked out from the scan's other values because the sheet or
+     * the user gave none: BMI from weight and height, BMR from fat-free mass
+     * (docs/product/scan-height-age-plan.md §4.1–4.2). Kept apart from read and typed values so
+     * a calculated figure is never passed off as measured (rule 10: preserve source).
+     */
+    calculated: boolean("calculated").notNull().default(false),
     measuredAt: timestamp("measured_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

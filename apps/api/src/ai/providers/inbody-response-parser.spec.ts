@@ -461,3 +461,112 @@ describe("parseInBodyExtractionResponse: height and age", () => {
     expect(result.ageYears).toEqual({ value: null, confidence: 0, readingNote: "" });
   });
 });
+
+/**
+ * BMI and BMR checks (docs/product/scan-height-age-plan.md §4.1–4.2). Both are arithmetic on
+ * other values the sheet prints: BMI = weight ÷ height², and InBody prints BMR as
+ * 370 + 21.6 × fat-free mass. A read value that breaks its formula is kept, so the user sees what
+ * was read, but held below the pre-fill threshold with the expected value. A check only runs on
+ * inputs read confidently: a doubtful weight or height says nothing about the BMI.
+ */
+describe("parseInBodyExtractionResponse: BMI and BMR checks", () => {
+  type Reading = { value: number; unit: string; confidence?: number; reading_note?: string };
+  const read = ({ value, unit, confidence = 0.99, reading_note = "" }: Reading) => ({ value, unit, confidence, reading_note });
+  const sheet = (fields: Record<string, Reading>, height?: Reading) =>
+    JSON.stringify({
+      fields: Object.fromEntries(Object.entries(fields).map(([key, reading]) => [key, read(reading)])),
+      ...(height ? { height: { ...read(height), inches: null } } : {}),
+    });
+  const weight = (value: number, confidence?: number): Reading => ({ value, unit: "kg", confidence });
+  const bmi = (value: number, reading_note?: string): Reading => ({ value, unit: "kg/m2", reading_note });
+  const cm = (value: number, confidence?: number): Reading => ({ value, unit: "cm", confidence });
+
+  describe("BMI", () => {
+    it("flags the known misread: 29.3 read where weight and height give 25.3", () => {
+      const result = parseInBodyExtractionResponse(sheet({ weight: weight(81), bmi: bmi(29.3) }, cm(178.9)));
+
+      expect(result.fields.bmi.value).toBe(29.3);
+      expect(result.fields.bmi.confidence).toBe(0.5);
+      expect(result.fields.bmi.readingNote).toBe("This doesn't match weight ÷ height² (25.3), so please check it.");
+      expect(result.fields.weight_kg.confidence).toBe(0.99);
+    });
+
+    it("leaves a BMI that matches alone", () => {
+      expect(parseInBodyExtractionResponse(sheet({ weight: weight(81), bmi: bmi(25.3) }, cm(178.9))).fields.bmi.confidence).toBe(0.99);
+    });
+
+    it("keeps the model's own note after the mismatch", () => {
+      const result = parseInBodyExtractionResponse(sheet({ weight: weight(81), bmi: bmi(29.3, "Faint print.") }, cm(178.9)));
+      expect(result.fields.bmi.readingNote).toMatch(/^This doesn't match .* Faint print\.$/);
+    });
+
+    it("does nothing without a height, or with a doubtful height or weight", () => {
+      expect(parseInBodyExtractionResponse(sheet({ weight: weight(81), bmi: bmi(29.3) })).fields.bmi.confidence).toBe(0.99);
+      expect(parseInBodyExtractionResponse(sheet({ weight: weight(81), bmi: bmi(29.3) }, cm(178.9, 0.6))).fields.bmi.confidence).toBe(0.99);
+      expect(parseInBodyExtractionResponse(sheet({ weight: weight(81, 0.6), bmi: bmi(29.3) }, cm(178.9))).fields.bmi.confidence).toBe(0.99);
+    });
+
+    it("does nothing when the sheet prints no BMI", () => {
+      expect(parseInBodyExtractionResponse(sheet({ weight: weight(81) }, cm(178.9))).fields.bmi.value).toBeNull();
+    });
+  });
+
+  describe("BMR", () => {
+    const bmr = (value: number): Reading => ({ value, unit: "kcal" });
+    const fatMass = (value: number, confidence?: number): Reading => ({ value, unit: "kg", confidence });
+    const pbf = (value: number): Reading => ({ value, unit: "%" });
+
+    it("flags a BMR more than 5% from 370 + 21.6 × fat-free mass", () => {
+      // 86.6 kg - 13.5 kg fat = 73.1 kg fat-free: 370 + 21.6 x 73.1 = 1,949 kcal.
+      const result = parseInBodyExtractionResponse(
+        sheet({ weight: weight(86.6), body_fat_mass: fatMass(13.5), body_fat_percent: pbf(15.6), basal_metabolic_rate: bmr(1750) }),
+      );
+
+      expect(result.fields.basal_metabolic_rate_kcal.value).toBe(1750);
+      expect(result.fields.basal_metabolic_rate_kcal.confidence).toBe(0.5);
+      expect(result.fields.basal_metabolic_rate_kcal.readingNote).toBe(
+        "This doesn't match 370 + 21.6 × fat-free mass (1,949 kcal), so please check it.",
+      );
+    });
+
+    it("leaves a BMR within 5% alone", () => {
+      const result = parseInBodyExtractionResponse(
+        sheet({ weight: weight(86.6), body_fat_mass: fatMass(13.5), body_fat_percent: pbf(15.6), basal_metabolic_rate: bmr(1949) }),
+      );
+      expect(result.fields.basal_metabolic_rate_kcal.confidence).toBe(0.99);
+    });
+
+    it("uses body fat % when the fat mass is doubtful", () => {
+      // 80 kg x (1 - 20%) = 64 kg fat-free: 1,752 kcal.
+      const sheetWith = (value: number) =>
+        sheet({ weight: weight(80), body_fat_mass: fatMass(16, 0.6), body_fat_percent: pbf(20), basal_metabolic_rate: bmr(value) });
+
+      expect(parseInBodyExtractionResponse(sheetWith(1752)).fields.basal_metabolic_rate_kcal.confidence).toBe(0.99);
+      expect(parseInBodyExtractionResponse(sheetWith(2000)).fields.basal_metabolic_rate_kcal.confidence).toBe(0.5);
+    });
+
+    it("does nothing when fat-free mass is unknown or the fat values disagree", () => {
+      expect(
+        parseInBodyExtractionResponse(sheet({ weight: weight(80), basal_metabolic_rate: bmr(2400) })).fields.basal_metabolic_rate_kcal
+          .confidence,
+      ).toBe(0.99);
+      // 87.6 kg at 25 % cannot hold 25 kg of fat: both fat values are held for a check, so
+      // neither can vouch for the BMR.
+      expect(
+        parseInBodyExtractionResponse(
+          sheet({ weight: weight(87.6), body_fat_mass: fatMass(25), body_fat_percent: pbf(25), basal_metabolic_rate: bmr(1500) }),
+        ).fields.basal_metabolic_rate_kcal.confidence,
+      ).toBe(0.99);
+    });
+
+    it("does nothing without a BMR or a confident weight", () => {
+      expect(
+        parseInBodyExtractionResponse(sheet({ weight: weight(86.6), body_fat_mass: fatMass(13.5) })).fields.basal_metabolic_rate_kcal.value,
+      ).toBeNull();
+      expect(
+        parseInBodyExtractionResponse(sheet({ weight: weight(86.6, 0.6), body_fat_mass: fatMass(13.5), basal_metabolic_rate: bmr(1500) }))
+          .fields.basal_metabolic_rate_kcal.confidence,
+      ).toBe(0.99);
+    });
+  });
+});

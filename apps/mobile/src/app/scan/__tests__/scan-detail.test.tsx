@@ -48,7 +48,7 @@ const scan = {
   source: 'inbody' as const,
   heightCm: null,
   ageYears: null,
-  measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97 }],
+  measurements: [{ metric: 'weight_kg' as const, value: 84.6, unit: 'kg', confidence: 0.97, calculated: false }],
 };
 
 beforeEach(() => {

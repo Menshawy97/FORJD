@@ -306,10 +306,10 @@ describe("BodyService -- manual entry", () => {
       new Date("2026-09-24T09:15:00.000Z"),
       "manual",
       null,
-      [
+      expect.arrayContaining([
         { metric: "weight_kg", value: 82.4, unit: "kg", confidence: 1 },
         { metric: "body_fat_percent", value: 12.1, unit: "%", confidence: 1 },
-      ],
+      ]),
       { heightCm: 178, ageYears: 31 },
     );
   });
@@ -462,5 +462,108 @@ describe("BodyService -- extract returns the sheet's height and age", () => {
 
     expect(result.heightCm).toEqual(heightCm);
     expect(result.ageYears).toEqual(ageYears);
+  });
+});
+
+/**
+ * Filling in what a scan lacks (docs/product/scan-height-age-plan.md §4.1–4.2): a missing BMI from
+ * weight and height, a missing BMR from fat-free mass (370 + 21.6 × FFM, the formula InBody
+ * prints). Both save paths do it, a filled-in value is stored as calculated (rule 10), and a value
+ * the sheet or the user gave is never replaced.
+ */
+describe("BodyService -- calculated BMI and BMR", () => {
+  const user: User = { id: "user-1", email: "athlete@example.com" } as User;
+  const TINY_PNG = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const file = { buffer: TINY_PNG, mimetype: "image/png", size: TINY_PNG.length };
+
+  function build() {
+    const bodyRepository = {
+      createScan: jest.fn().mockResolvedValue("scan-9"),
+      getScanById: jest.fn().mockResolvedValue({
+        id: "scan-9",
+        measuredAt: new Date("2026-09-25T09:00:00.000Z"),
+        source: "manual",
+        heightCm: 178,
+        ageYears: 31,
+        measurements: [
+          { metric: "weight_kg", value: 82.4, unit: "kg", confidence: 1, calculated: false },
+          { metric: "bmi", value: 26, unit: "", confidence: 1, calculated: true },
+        ],
+      }),
+    };
+    const service = new BodyService(
+      { extractBodyScan: jest.fn() } as unknown as VisionProvider,
+      { upload: jest.fn().mockResolvedValue({ bucket: "inbody", key: "user-1/scan.webp" }) } as unknown as StorageProvider,
+      bodyRepository as unknown as BodyRepository,
+      { get: jest.fn().mockResolvedValue({ aiFeaturesConsent: true }) } as unknown as PrivacyService,
+    );
+    const saved = (): Array<Record<string, unknown>> => bodyRepository.createScan.mock.calls[0]?.[4];
+    return { service, saved };
+  }
+
+  const profile = { measuredAt: "2026-09-25T09:00:00.000Z", heightCm: 178, ageYears: 31 };
+  const weight = { metric: "weight_kg" as const, value: 82.4, unit: "kg" };
+  const pbf = { metric: "body_fat_percent" as const, value: 12.1, unit: "%" };
+  // 82.4 kg / 1.78 m² = 26.0; fat-free 82.4 × (1 − 12.1%) = 72.4 kg: 370 + 21.6 × 72.4 = 1,934 kcal.
+  const bmi = { metric: "bmi", value: 26, unit: "", confidence: 1, calculated: true };
+  const bmr = { metric: "basal_metabolic_rate_kcal", value: 1934, unit: "kcal", confidence: 1, calculated: true };
+
+  it("fills in BMI and BMR on a manual entry, marked calculated", async () => {
+    const { service, saved } = build();
+
+    await service.createManual(user, { ...profile, measurements: [weight, pbf] });
+
+    expect(saved()).toEqual(expect.arrayContaining([bmi, bmr]));
+    expect(saved()).toHaveLength(4);
+  });
+
+  it("fills them in on a confirmed scan whose sheet had none", async () => {
+    const { service, saved } = build();
+
+    await service.confirm(user, file, { ...profile, measurements: [{ ...weight, confidence: 0.97 }, { ...pbf, confidence: 0.97 }] });
+
+    expect(saved()).toEqual(expect.arrayContaining([bmi, bmr]));
+  });
+
+  it("never replaces a BMI or BMR the sheet or the user gave", async () => {
+    const { service, saved } = build();
+
+    await service.createManual(user, {
+      ...profile,
+      measurements: [weight, pbf, { metric: "bmi", value: 25.9, unit: "" }, { metric: "basal_metabolic_rate_kcal", value: 1900, unit: "kcal" }],
+    });
+
+    expect(saved()).toHaveLength(4);
+    expect(saved().filter((m) => m.calculated)).toEqual([]);
+  });
+
+  it("fills in no BMR without a body fat value (fat-free mass is unknown)", async () => {
+    const { service, saved } = build();
+
+    await service.createManual(user, { ...profile, measurements: [weight] });
+
+    expect(saved()).toEqual([{ ...weight, confidence: 1 }, bmi]);
+  });
+
+  it("fills in nothing without a weight", async () => {
+    const { service, saved } = build();
+
+    await service.confirm(user, file, { ...profile, measurements: [{ ...pbf, confidence: 0.97 }] });
+
+    expect(saved()).toEqual([{ ...pbf, confidence: 0.97 }]);
+  });
+
+  it("says which values were calculated when it returns the scan", async () => {
+    const { service } = build();
+
+    const scan = await service.getScan(user, "scan-9");
+
+    expect(scan.measurements.map((m) => [m.metric, m.calculated])).toEqual([
+      ["weight_kg", false],
+      ["bmi", true],
+    ]);
   });
 });
