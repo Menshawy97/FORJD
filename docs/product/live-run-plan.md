@@ -50,6 +50,13 @@ Google still requires a billing account on the project. Recheck before launch.
   `kcal/min = VO2 · kg / 1000 · 5`, about 5 kcal per litre of oxygen. Body weight is the latest
   `weight` reading (an InBody scan or a Health Connect / manual observation). With no weight there is
   no estimate and the tile reads "—". The tile says "estimated"; it is never called AI.
+- **Calories, since scan-height-age slice F** (`docs/product/scan-height-age-plan.md` §4.4): the
+  estimate is **active** energy, like the watch's `active_energy`, so the two mean the same thing:
+  gross minus resting energy over the moving time (the latest scan's BMR ÷ 1440 per minute, else
+  1 MET), never below zero. Gross comes from Keytel et al., *J Sports Sci* 2005;23(3):289–297, when
+  the mean heart rate is at least 90 bpm (read only with health-data consent) and the profile gives
+  age and sex: men `(−55.0969 + 0.6309·HR + 0.1988·kg + 0.2017·age) / 4.184` kcal/min, women
+  `(−20.4022 + 0.4472·HR − 0.1263·kg + 0.074·age) / 4.184`. Otherwise it is the ACSM figure above.
 
 ## Slices
 

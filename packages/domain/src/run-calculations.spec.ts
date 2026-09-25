@@ -6,7 +6,9 @@ import {
   buildTrack,
   currentSpeedMetersPerSecond,
   elevationGainMeters,
+  estimateRunActiveCaloriesKcal,
   estimateRunCaloriesKcal,
+  KEYTEL_MIN_HEART_RATE_BPM,
   haversineMeters,
   netClimbMeters,
   RunFix,
@@ -422,5 +424,71 @@ describe('averageHeartRate', () => {
   it('is unknown when no sample falls in the window', () => {
     expect(averageHeartRate(samples, 4000, 8000)).toBeNull();
     expect(averageHeartRate([], 0, 10)).toBeNull();
+  });
+});
+
+/**
+ * Active calories for a run (docs/product/scan-height-age-plan.md §4.4). A watch reports *active*
+ * energy, so the app's own estimate does too: gross energy minus resting energy over the run, with
+ * resting from the latest scan's BMR (else 1 MET). Gross comes from Keytel et al. (J Sports Sci
+ * 2005;23(3):289–297) when heart rate, age and sex are known, else from the ACSM pace equation.
+ */
+describe('estimateRunActiveCaloriesKcal', () => {
+  // 10 km in 50 min at 70 kg: ACSM gross 15.225 kcal/min (see estimateRunCaloriesKcal above).
+  const run = {
+    distanceMeters: 10000,
+    movingSeconds: 3000,
+    netClimbMeters: 0,
+    weightKg: 70,
+    bmrKcal: null as number | null,
+    avgHeartRateBpm: null as number | null,
+    ageYears: null as number | null,
+    sex: null as 'male' | 'female' | 'prefer_not_to_say' | null,
+  };
+
+  it("subtracts resting energy from ACSM's gross figure, using the scan's BMR", () => {
+    // Resting 1,680 kcal / 1,440 min = 1.1667 kcal/min. (15.225 − 1.1667) × 50 = 702.9.
+    expect(estimateRunActiveCaloriesKcal({ ...run, bmrKcal: 1680 })).toBe(703);
+  });
+
+  it('uses 1 MET (3.5 mL·kg⁻¹·min⁻¹) for resting energy without a scan', () => {
+    // 1 MET at 70 kg = 3.5 × 70 / 1000 × 5 = 1.225 kcal/min. (15.225 − 1.225) × 50 = 700.
+    expect(estimateRunActiveCaloriesKcal(run)).toBe(700);
+  });
+
+  it("uses Keytel's equation for men when heart rate, age and sex are known", () => {
+    // −55.0969 + 0.6309 × 150 + 0.1988 × 70 + 0.2017 × 30 = 59.5051 kJ/min = 14.2221 kcal/min.
+    // (14.2221 − 1.1667) × 50 = 652.8.
+    expect(estimateRunActiveCaloriesKcal({ ...run, bmrKcal: 1680, avgHeartRateBpm: 150, ageYears: 30, sex: 'male' })).toBe(653);
+  });
+
+  it("uses Keytel's equation for women", () => {
+    // −20.4022 + 0.4472 × 150 − 0.1263 × 60 + 0.074 × 30 = 41.3198 kJ/min = 9.8757 kcal/min.
+    // Resting 1 MET at 60 kg = 1.05 kcal/min. (9.8757 − 1.05) × 50 = 441.3.
+    expect(
+      estimateRunActiveCaloriesKcal({ ...run, weightKg: 60, avgHeartRateBpm: 150, ageYears: 30, sex: 'female' }),
+    ).toBe(441);
+  });
+
+  it('falls back to the pace equation when heart rate, age or sex is missing, or sex is not given', () => {
+    const keytel = { ...run, avgHeartRateBpm: 150, ageYears: 30, sex: 'male' as const };
+    expect(estimateRunActiveCaloriesKcal({ ...keytel, avgHeartRateBpm: null })).toBe(700);
+    expect(estimateRunActiveCaloriesKcal({ ...keytel, ageYears: null })).toBe(700);
+    expect(estimateRunActiveCaloriesKcal({ ...keytel, sex: null })).toBe(700);
+    expect(estimateRunActiveCaloriesKcal({ ...keytel, sex: 'prefer_not_to_say' })).toBe(700);
+  });
+
+  it(`falls back below ${KEYTEL_MIN_HEART_RATE_BPM} bpm, where Keytel's equation was not fitted`, () => {
+    expect(estimateRunActiveCaloriesKcal({ ...run, avgHeartRateBpm: 80, ageYears: 30, sex: 'male' })).toBe(700);
+  });
+
+  it('never goes below zero', () => {
+    // 1 km in 50 min: ACSM walking gross 1.925 kcal/min, below a 3,000 kcal BMR's 2.083 kcal/min.
+    expect(estimateRunActiveCaloriesKcal({ ...run, distanceMeters: 1000, bmrKcal: 3000 })).toBe(0);
+  });
+
+  it('cannot estimate without a weight or a moving time', () => {
+    expect(estimateRunActiveCaloriesKcal({ ...run, weightKg: null })).toBeNull();
+    expect(estimateRunActiveCaloriesKcal({ ...run, movingSeconds: 0 })).toBeNull();
   });
 });

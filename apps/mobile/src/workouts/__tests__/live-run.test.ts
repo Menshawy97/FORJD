@@ -3,6 +3,7 @@
 // count, and how a finished run becomes the upload the queue sends. The maths itself lives in
 // @forjd/domain (run-calculations); what is proven here is the bookkeeping around it.
 import { workoutSessionUploadRequestSchema } from '@forjd/contracts';
+import { estimateRunActiveCaloriesKcal, estimateRunCaloriesKcal } from '@forjd/domain';
 
 import {
   RUN_EXERCISE_PLACEHOLDER_ID,
@@ -288,6 +289,44 @@ describe('toRunUploadRequest', () => {
     const notAllowed = toRunUploadRequest(state, base);
     expect(notAllowed.run?.avgHeartRateBpm).toBeNull();
     expect(notAllowed.run?.splits[0]?.avgHeartRateBpm).toBeNull();
+  });
+
+  // scan-height-age-plan.md §4.4: the estimate is active energy, like the watch's figure, and uses
+  // Keytel's heart-rate equation when heart rate (with consent), age and sex are known.
+  it("reports active energy: the pace estimate minus resting energy from the scan's BMR", () => {
+    const done = finished();
+    const stats = runStats(done, done.endedAtMs!);
+    const body = toRunUploadRequest(done, { ...base, bmrKcal: 1680 });
+    const pace = { distanceMeters: stats.distanceMeters, movingSeconds: stats.movingSeconds, netClimbMeters: stats.netClimbMeters, weightKg: 70 };
+
+    expect(body.run?.caloriesKcal).toBe(
+      estimateRunActiveCaloriesKcal({ ...pace, bmrKcal: 1680, avgHeartRateBpm: null, ageYears: null, sex: null }),
+    );
+    expect(body.run!.caloriesKcal!).toBeLessThan(estimateRunCaloriesKcal(pace)!);
+  });
+
+  it('uses heart rate for the estimate only with health-data consent', () => {
+    const state = addHeartRate(finished(), [
+      { timestampMs: T0 + 100_000, bpm: 150 },
+      { timestampMs: T0 + 200_000, bpm: 150 },
+    ]);
+    const stats = runStats(state, state.endedAtMs!);
+    const person = { ...base, bmrKcal: 1680, ageYears: 30, sex: 'male' as const };
+    const estimate = (avgHeartRateBpm: number | null) =>
+      estimateRunActiveCaloriesKcal({
+        distanceMeters: stats.distanceMeters,
+        movingSeconds: stats.movingSeconds,
+        netClimbMeters: stats.netClimbMeters,
+        weightKg: 70,
+        bmrKcal: 1680,
+        avgHeartRateBpm,
+        ageYears: 30,
+        sex: 'male',
+      });
+
+    expect(toRunUploadRequest(state, { ...person, healthDataAllowed: true }).run?.caloriesKcal).toBe(estimate(150));
+    expect(toRunUploadRequest(state, person).run?.caloriesKcal).toBe(estimate(null));
+    expect(estimate(150)).not.toBe(estimate(null));
   });
 
   it('sends the first reading rounded to about 110 m as the start position, only when allowed', () => {

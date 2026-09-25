@@ -5,7 +5,7 @@ import {
   buildTrack,
   currentSpeedMetersPerSecond,
   elevationGainMeters,
-  estimateRunCaloriesKcal,
+  estimateRunActiveCaloriesKcal,
   netClimbMeters,
   splitsFromTrack,
   trackDistanceMeters,
@@ -197,6 +197,11 @@ export interface RunUploadOptions {
   healthDataAllowed: boolean;
   /** Calories the watch reported for the run, if any. Preferred over the estimate. */
   watchCaloriesKcal: number | null;
+  /** The latest scan's BMR, for resting energy (scan-height-age-plan.md §4.4); absent uses 1 MET. */
+  bmrKcal?: number | null;
+  /** Age on the run's date and sex, for Keytel's heart-rate equation; absent uses pace alone. */
+  ageYears?: number | null;
+  sex?: 'male' | 'female' | 'prefer_not_to_say' | null;
 }
 
 const clampInt = (value: number, min: number, max: number): number =>
@@ -242,11 +247,17 @@ export function toRunUploadRequest(state: RunState, options: RunUploadOptions): 
     options.healthDataAllowed && options.watchCaloriesKcal !== null && options.watchCaloriesKcal >= 0
       ? Math.round(options.watchCaloriesKcal)
       : null;
-  const estimated = estimateRunCaloriesKcal({
+  // Active energy, like the watch's figure; from heart rate only when health data is allowed,
+  // because `heartRate` is empty otherwise (scan-height-age-plan.md §4.4).
+  const estimated = estimateRunActiveCaloriesKcal({
     distanceMeters: stats.distanceMeters,
     movingSeconds: stats.movingSeconds,
     netClimbMeters: stats.netClimbMeters,
     weightKg: options.weightKg,
+    bmrKcal: options.bmrKcal ?? null,
+    avgHeartRateBpm: avgHeartRate,
+    ageYears: options.ageYears ?? null,
+    sex: options.sex ?? null,
   });
   const clampedEstimate = estimated === null ? null : Math.min(MAX_CALORIES_KCAL, estimated);
   const calories = watchCalories ?? clampedEstimate;

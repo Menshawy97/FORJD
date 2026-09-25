@@ -39,6 +39,8 @@ describe('FAQ content', () => {
     expect(withSource('training-volume')).toMatch(/Hornsby/);
     expect(withSource('readiness')).toMatch(/Plews/);
     expect(withSource('calories')).toMatch(/ACSM/);
+    // scan-height-age-plan.md §4.4: the heart-rate estimate cites its equation too.
+    expect(withSource('calories')).toMatch(/Keytel/);
   });
 
   it('never shows an unfinished note to a user', () => {
