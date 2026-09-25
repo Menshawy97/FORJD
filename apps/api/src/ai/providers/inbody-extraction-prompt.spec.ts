@@ -1,7 +1,13 @@
 import { SEGMENTAL_SITES } from "@forjd/domain";
 
 import { buildInBodyExtractionPrompt } from "./inbody-extraction-prompt";
-import { PRINTED_FIELDS, PRINTED_UNITS } from "./inbody-extraction-schema";
+import {
+  AGE_UNITS,
+  buildInBodyExtractionSchema,
+  HEIGHT_UNITS,
+  PRINTED_FIELDS,
+  PRINTED_UNITS,
+} from "./inbody-extraction-schema";
 
 /**
  * These assert properties of the prompt (ADR-032, ADR-053), not a frozen string -- that job
@@ -45,5 +51,30 @@ describe("buildInBodyExtractionPrompt", () => {
   it("tells the model a field the sheet does not print is null", () => {
     expect(prompt).toMatch(/never fill a field the sheet does not print/i);
     expect(prompt).toMatch(/Visceral Fat AREA/);
+  });
+
+  // Slice B (scan-height-age-plan.md §2.3): the header's height and age, transcribed as printed.
+  it("asks for the header's height and age, with every unit the schema accepts for them", () => {
+    expect(prompt).toMatch(/\bheight\b/);
+    expect(prompt).toMatch(/\bage\b/);
+    for (const unit of [...HEIGHT_UNITS, ...AGE_UNITS]) {
+      expect(prompt).toContain(`"${unit}"`);
+    }
+    expect(prompt).toMatch(/5 ft 10 in/);
+  });
+});
+
+describe("buildInBodyExtractionSchema", () => {
+  const schema = buildInBodyExtractionSchema() as {
+    required: string[];
+    properties: Record<string, { required: string[]; properties: Record<string, unknown> }>;
+  };
+
+  // Strict structured output requires every key; height carries a separate inches value so
+  // "5 ft 10 in" can be reported exactly as printed.
+  it("requires a height (value, unit, inches) and an age (value, unit)", () => {
+    expect(schema.required).toEqual(expect.arrayContaining(["height", "age"]));
+    expect(schema.properties.height?.required).toEqual(["value", "unit", "inches", "confidence", "reading_note"]);
+    expect(schema.properties.age?.required).toEqual(["value", "unit", "confidence", "reading_note"]);
   });
 });

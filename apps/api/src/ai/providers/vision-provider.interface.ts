@@ -31,6 +31,9 @@ export interface ExtractedBodyScan {
    *  No confidence bar is shown for these on the confirm screen, but the underlying
    *  extraction confidence still exists and still governs the pre-fill threshold. */
   segmental: Record<SegmentalSite, ExtractedMeasurement>;
+  /** The header's height (converted to cm) and age in years (scan-height-age-plan.md §2.3). */
+  heightCm: ExtractedMeasurement;
+  ageYears: ExtractedMeasurement;
   imageQualityNotes: string;
 }
 

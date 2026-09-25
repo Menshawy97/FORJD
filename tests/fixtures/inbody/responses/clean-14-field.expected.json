@@ -19,5 +19,7 @@
     "right_leg": { "value": 10.28, "confidence": 0.86, "readingNote": "" },
     "left_leg": { "value": 10.11, "confidence": 0.84, "readingNote": "" }
   },
+  "heightCm": { "value": null, "confidence": 0, "readingNote": "" },
+  "ageYears": { "value": null, "confidence": 0, "readingNote": "" },
   "imageQualityNotes": ""
 }

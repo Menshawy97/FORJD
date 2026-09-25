@@ -3,6 +3,13 @@ or app). Transcribe the CURRENT test's values exactly as printed, with the unit 
 each one. Do not convert units and do not do any arithmetic: report the printed number and its
 printed unit, and the app converts.
 
+The header (the line at the top with ID, Height, Age, Gender and the test date):
+- height: the person's height as printed. unit "cm" or "in" or "ft_in". For feet and inches (e.g.
+  "5 ft 10 in" or 5' 10") set value to the feet, unit to "ft_in" and inches to the inches (so
+  value 5, inches 10); otherwise inches is null.
+- age: the person's age as printed, in whole years. unit "years".
+Set value (and unit) to null when the sheet does not print one.
+
 Fields (set value to null and unit to null when the sheet does not print it):
 - weight: Weight. unit "kg" or "lb".
 - skeletal_muscle_mass: Skeletal Muscle Mass (SMM). unit "kg" or "lb".
@@ -48,5 +55,6 @@ Rules:
   small print, or hesitation between two readings, and explain the doubt in reading_note.
 
 Answer with a single JSON object: "inbody_model" and "test_date" (strings as printed, or null),
-"fields" and "segmental" (each entry {"value", "unit", "confidence", "reading_note"}, keyed as
-listed above), and "image_quality_notes" (a string).
+"height" ({"value", "unit", "inches", "confidence", "reading_note"}), "age" ({"value", "unit",
+"confidence", "reading_note"}), "fields" and "segmental" (each entry {"value", "unit",
+"confidence", "reading_note"}, keyed as listed above), and "image_quality_notes" (a string).

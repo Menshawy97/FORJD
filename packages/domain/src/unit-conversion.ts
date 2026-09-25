@@ -17,6 +17,9 @@
 
 /** The exact international avoirdupois pound, in kilograms. Not an approximation. */
 export const KG_PER_LB = 0.45359237;
+/** The exact international inch, in centimetres. Not an approximation. Used to read a height an
+ *  InBody sheet prints in feet and inches (scan-height-age-plan.md §2.3). */
+export const CM_PER_INCH = 2.54;
 const LB_PER_KG = 1 / KG_PER_LB;
 const METRES_PER_MILE = 1609.344;
 

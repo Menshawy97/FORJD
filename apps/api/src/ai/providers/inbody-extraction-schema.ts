@@ -51,6 +51,40 @@ const printedValueSchema = {
 } as const;
 
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] } as const;
+const nullableNumber = { anyOf: [{ type: "number" }, { type: "null" }] } as const;
+
+/**
+ * The header's height and age (scan-height-age-plan.md §2.3), transcribed as printed like every
+ * other value. Height is "cm", "in", or "ft_in": for "5 ft 10 in" the model reports value 5 and
+ * inches 10, and the parser converts, so no arithmetic is asked of the model (ADR-053).
+ */
+export const HEIGHT_UNITS = ["cm", "in", "ft_in"] as const;
+export const AGE_UNITS = ["years"] as const;
+
+const heightSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["value", "unit", "inches", "confidence", "reading_note"],
+  properties: {
+    value: nullableNumber,
+    unit: { anyOf: [{ type: "string", enum: [...HEIGHT_UNITS] }, { type: "null" }] },
+    inches: nullableNumber,
+    confidence: { type: "number" },
+    reading_note: { type: "string" },
+  },
+} as const;
+
+const ageSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["value", "unit", "confidence", "reading_note"],
+  properties: {
+    value: nullableNumber,
+    unit: { anyOf: [{ type: "string", enum: [...AGE_UNITS] }, { type: "null" }] },
+    confidence: { type: "number" },
+    reading_note: { type: "string" },
+  },
+} as const;
 
 /** OpenAI structured-output schema (strict mode: every key required, no extras). */
 export function buildInBodyExtractionSchema(): Record<string, unknown> {
@@ -58,10 +92,12 @@ export function buildInBodyExtractionSchema(): Record<string, unknown> {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["inbody_model", "test_date", "fields", "segmental", "image_quality_notes"],
+    required: ["inbody_model", "test_date", "height", "age", "fields", "segmental", "image_quality_notes"],
     properties: {
       inbody_model: nullableString,
       test_date: nullableString,
+      height: heightSchema,
+      age: ageSchema,
       fields: {
         type: "object",
         additionalProperties: false,

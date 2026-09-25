@@ -47,9 +47,19 @@ describe("body contracts", () => {
       testDate: "2026-01-15",
       fields,
       segmental: emptySegmental,
+      heightCm: { value: 178, confidence: 0.96, readingNote: "" },
+      ageYears: { value: null, confidence: 0, readingNote: "" },
       imageQualityNotes: "Blurry",
     };
     expect(extractBodyScanResponseSchema.safeParse(response).success).toBe(true);
+  });
+
+  // Slice B (scan-height-age-plan.md §2.3): the sheet's height and age are read like any other
+  // value, with a confidence, so the confirm screen can pre-fill or ask for a check.
+  it("extractBodyScanResponseSchema always carries the sheet's height and age readings", () => {
+    const fields = Object.fromEntries(NINE_METRICS.map((m) => [m, { value: null, confidence: 0, readingNote: "" }]));
+    const response = { inbodyModel: null, testDate: null, fields, segmental: emptySegmental, imageQualityNotes: "" };
+    expect(extractBodyScanResponseSchema.safeParse(response).success).toBe(false);
   });
 
   it("extractBodyScanResponseSchema rejects a response missing a required field", () => {

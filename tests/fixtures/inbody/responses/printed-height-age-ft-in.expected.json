@@ -1,0 +1,25 @@
+{
+  "inbodyModel": "570",
+  "testDate": "2026-09-25",
+  "fields": {
+    "weight_kg": { "value": 82.42, "confidence": 0.97, "readingNote": "Converted from 181.7 lb." },
+    "skeletal_muscle_mass_kg": { "value": 41.82, "confidence": 0.94, "readingNote": "Converted from 92.2 lb." },
+    "body_fat_mass_kg": { "value": 9.98, "confidence": 0.93, "readingNote": "Converted from 22 lb." },
+    "body_fat_percent": { "value": 12.1, "confidence": 0.96, "readingNote": "" },
+    "visceral_fat_level": { "value": 4, "confidence": 0.9, "readingNote": "" },
+    "total_body_water_l": { "value": 53.21, "confidence": 0.9, "readingNote": "Converted from 117.3 lb." },
+    "bmi": { "value": 26.1, "confidence": 0.95, "readingNote": "" },
+    "basal_metabolic_rate_kcal": { "value": 1840, "confidence": 0.92, "readingNote": "" },
+    "inbody_score": { "value": null, "confidence": 0, "readingNote": "" }
+  },
+  "segmental": {
+    "right_arm": { "value": 4.22, "confidence": 0.88, "readingNote": "Converted from 9.3 lb." },
+    "left_arm": { "value": 4.13, "confidence": 0.88, "readingNote": "Converted from 9.1 lb." },
+    "trunk": { "value": 31.8, "confidence": 0.9, "readingNote": "Converted from 70.1 lb." },
+    "right_leg": { "value": 10.61, "confidence": 0.87, "readingNote": "Converted from 23.4 lb." },
+    "left_leg": { "value": 10.52, "confidence": 0.87, "readingNote": "Converted from 23.2 lb." }
+  },
+  "heightCm": { "value": 177.8, "confidence": 0.96, "readingNote": "Converted from 5 ft 10 in." },
+  "ageYears": { "value": 31, "confidence": 0.98, "readingNote": "" },
+  "imageQualityNotes": ""
+}

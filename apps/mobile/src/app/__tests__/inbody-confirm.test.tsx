@@ -61,6 +61,8 @@ function pendingScan(overrides: Partial<Record<string, number>> = {}) {
       testDate: '2025-08-02',
       fields: Object.fromEntries(BODY_METRICS.map((m) => [m, field(values[m]!)])) as never,
       segmental: Object.fromEntries(SEGMENTAL_SITES.map((s) => [s, field(values[s]!)])) as never,
+      heightCm: { value: null, confidence: 0, readingNote: '' },
+      ageYears: { value: null, confidence: 0, readingNote: '' },
       imageQualityNotes: '',
     },
   });
