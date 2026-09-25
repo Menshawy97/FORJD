@@ -154,6 +154,11 @@ for suggested targets:
      the user later the same day: 5% under maintenance with protein at 2.2 g/kg (the research
      above).
   4. **Fat is 25% of calories; carbs are the rest** after protein and fat.
+  5. **A daily minimum** (added after the whole-app review, L6-1, approved 2026-09-25): never
+     suggest below 1,200 kcal for women or 1,500 kcal for men (Harvard Health Publishing,
+     "Calorie counting made easy", 2024), 1,350 kcal when sex is not given. Macros are worked
+     out from the raised target, and the breakdown says "Raised to the 1,200 kcal daily minimum
+     (Harvard Health)." when it applies.
 - **Approved designs (2026-09-25):**
   - Sign-up page "How active are you?": Mostly sitting (1.4), Lightly active (1.55), Active
     (1.7), Very active (1.85), Athlete (2.0); Continue.
