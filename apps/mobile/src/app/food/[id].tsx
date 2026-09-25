@@ -15,6 +15,7 @@ import { FilterChip } from '@/components/filter-chip';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { useSingleFlight } from '@/components/use-single-flight';
 import { generateDraftItemId, useMealDraft } from '@/features/nutrition/meal-draft-context';
 import { todayLocalDate } from '@/nutrition/date';
 import { colors } from '@/theme/tokens';
@@ -104,6 +105,7 @@ export default function FoodDetailScreen() {
   const [qty, setQty] = useState(1);
   const [customGrams, setCustomGrams] = useState('');
   const [logAsSlot, setLogAsSlot] = useState<MealSlot>(paramSlot ?? 'breakfast');
+  const primarySave = useSingleFlight();
 
   const editing = !!entryId;
 
@@ -206,7 +208,11 @@ export default function FoodDetailScreen() {
     return qty > 1 ? `${base} × ${qty}` : base;
   };
 
-  const onPrimary = async () => {
+  // One save at a time (whole-app review 8.5, L4-1): a second tap while the first was still in
+  // flight logged the food twice, silently doubling its calories and macros for the day.
+  const onPrimary = () => primarySave.run(savePrimary);
+
+  const savePrimary = async () => {
     if (isCustomAmount && customGrams.trim() === '') {
       toast.show('Enter an amount in grams');
       return;
@@ -415,6 +421,8 @@ export default function FoodDetailScreen() {
       <View className="border-t border-border px-screen-x pb-[24px] pt-[14px]" style={{ gap: 10 }}>
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ busy: primarySave.isRunning, disabled: primarySave.isRunning }}
+          disabled={primarySave.isRunning}
           onPress={onPrimary}
           // R19 (H13): white text on raw `accent` measured 3.06:1, below AA's 4.5:1 floor.
           className="h-[52px] items-center justify-center rounded-button bg-accentDark">
