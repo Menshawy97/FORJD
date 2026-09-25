@@ -5,6 +5,8 @@ import {
   DISTANCE_UNITS,
   ENERGY_UNITS,
   PLANS,
+  ACTIVITY_LEVELS,
+  BODY_GOALS,
   SEXES,
   TRAINING_GOALS,
   UNIT_SYSTEMS,
@@ -27,6 +29,8 @@ export const unitSystemSchema = z.enum(UNIT_SYSTEMS);
  * (see profiles.schema.ts), so no migration is involved.
  */
 export const sexSchema = z.enum(SEXES);
+export const activityLevelSchema = z.enum(ACTIVITY_LEVELS);
+export const bodyGoalSchema = z.enum(BODY_GOALS);
 
 /** The three real unit preferences. Independent of each other and of `unitSystem`. */
 export const weightUnitSchema = z.enum(WEIGHT_UNITS);
@@ -107,6 +111,9 @@ export const profileResponseSchema = z.object({
    */
   trainingGoals: z.array(trainingGoalSchema),
   activities: z.array(activitySchema),
+  /** For suggested calorie and macro targets (scan-height-age-plan.md §4.5); null until chosen. */
+  activityLevel: activityLevelSchema.nullable(),
+  bodyGoal: bodyGoalSchema.nullable(),
   city: citySchema.nullable(),
   avatarUrl: z.string().nullable(),
   /**
@@ -331,6 +338,8 @@ export const updateProfileRequestSchema = z
      */
     trainingGoals: chipListSchema(TRAINING_GOALS),
     activities: chipListSchema(ACTIVITIES),
+    activityLevel: activityLevelSchema.nullable(),
+    bodyGoal: bodyGoalSchema.nullable(),
     /**
      * Setting a city needs no consent flag — it is volunteered and coarse, unlike
      * `locationForLeaderboard`, which gates whether the server *uses* it for a leaderboard.

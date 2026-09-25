@@ -37,6 +37,8 @@ describe('AthletesService', () => {
     energyUnit: 'kcal',
     trainingGoals: ['get_stronger'],
     activities: ['strength', 'hyrox'],
+    activityLevel: null,
+    bodyGoal: null,
     city: 'Cairo',
     citySlug: 'cairo',
     avatarUrl: 'https://example.com/a.png',

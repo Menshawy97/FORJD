@@ -180,6 +180,18 @@ for suggested targets:
     each opening its sign-up page with Save. Saving changes the suggestion only; the daily
     targets change when the user taps Use.
 
+**Built in slice G:** `@forjd/domain` `nutrition-targets.ts` holds the vocabularies, factors,
+Mifflin–St Jeor and `suggestDailyTargets`, reproducing the approved numbers (2,750 kcal to lose
+fat, 3,080 for recomposition). `profiles.activity_level` and `profiles.body_goal` (migration 0027)
+go through `PATCH /users/me/profile`. `GET /nutrition/macro-goals/suggestion` returns the
+suggestion in the macro-goals shape plus every input the (i) details show, or what is `missing`.
+Weight is the newest of the scans' and the health data's; BMR the newest scan's (measured or
+calculated), else Mifflin–St Jeor (the midpoint constant when sex is not given). In the app, Use
+saves the suggestion as the daily targets; the Goals page on a new account continues to
+"How active are you?" and "What's your goal?", which ends on home. The approved sign-up footnote
+"Once you log a few weeks of training, FORJD suggests a level from it" was left out, because that
+suggestion is not built.
+
 ### 4.6 Checked and left unchanged
 - **Readiness:** scores against the person's own baseline by design (`readiness.ts`
   explains that no wearable scores against "normal for your age"). Age would make it less

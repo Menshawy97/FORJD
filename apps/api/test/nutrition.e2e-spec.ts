@@ -271,4 +271,69 @@ describe('Nutrition (e2e)', () => {
       .set(auth('stranger-token'))
       .expect(204);
   });
+  // scan-height-age-plan.md §4.5: suggested targets from the profile's activity level and goal and
+  // the latest scan's BMR. A suggestion only -- nothing is saved until the app PUTs it.
+  describe('macro goal suggestion', () => {
+    const suggestion = (token: string) =>
+      request(app.getHttpServer()).get('/api/v1/nutrition/macro-goals/suggestion').set(auth(token));
+
+    it('requires sign-in', async () => {
+      await request(app.getHttpServer()).get('/api/v1/nutrition/macro-goals/suggestion').expect(401);
+    });
+
+    it('says what is missing before the profile has an activity level and goal', async () => {
+      const response = await suggestion('stranger-token').expect(200);
+      expect(response.body).toMatchObject({ suggestion: null, basis: null });
+      expect(response.body.missing).toEqual(expect.arrayContaining(['activityLevel', 'bodyGoal']));
+    });
+
+    it('suggests targets from the profile and the latest scan, without saving them', async () => {
+      const profile = await request(app.getHttpServer())
+        .patch('/api/v1/users/me/profile')
+        .set(auth('owner-token'))
+        .send({ activityLevel: 'active', bodyGoal: 'lose_fat' })
+        .expect(200);
+      expect(profile.body).toMatchObject({ activityLevel: 'active', bodyGoal: 'lose_fat' });
+
+      await request(app.getHttpServer())
+        .post('/api/v1/body-scans/manual')
+        .set(auth('owner-token'))
+        .send({
+          measuredAt: '2026-09-22T09:00:00.000Z',
+          heightCm: 178,
+          ageYears: 31,
+          measurements: [
+            { metric: 'weight_kg', value: 86.6, unit: 'kg' },
+            { metric: 'body_fat_mass_kg', value: 13.5, unit: 'kg' },
+          ],
+        })
+        .expect(201);
+
+      // BMR worked out from the scan (slice D): 370 + 21.6 × 73.1 = 1,949. × 1.7 = 3,313.3
+      // maintenance (3,310); −15% = 2,816.3 → 2,820. Protein 1.6 × 86.6 = 139 g; fat 705 kcal = 78 g;
+      // carbs (2,820 − 556 − 705) ÷ 4 = 389.75 → 390 g.
+      const response = await suggestion('owner-token').expect(200);
+      expect(response.body).toEqual({
+        suggestion: { kcal: 2820, protein: 139, carbs: 390, fat: 78 },
+        basis: {
+          maintenanceKcal: 3310,
+          bmrKcal: 1949,
+          bmrSource: 'scan',
+          scanMeasuredAt: '2026-09-22T09:00:00.000Z',
+          weightKg: 86.6,
+          activityLevel: 'active',
+          activityFactor: 1.7,
+          bodyGoal: 'lose_fat',
+          energyChange: -0.15,
+          proteinPerKg: 1.6,
+          fatShare: 0.25,
+        },
+        missing: [],
+      });
+
+      // Only the stranger's own data: they still have no goal, and see nothing of the owner's.
+      const stranger = await suggestion('stranger-token').expect(200);
+      expect(stranger.body.basis).toBeNull();
+    });
+  });
 });

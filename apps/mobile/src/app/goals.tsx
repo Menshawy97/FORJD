@@ -96,8 +96,9 @@ export default function GoalsScreen() {
     try {
       await updateProfile(patch);
       if (firstRun) {
-        toast.show('Welcome to FORJD!');
-        router.replace('/');
+        // Sign-up continues to activity level and body goal (scan-height-age-plan.md §4.5); the
+        // welcome comes at the end of those.
+        router.replace('/activity-level?returnTo=newAccount');
       } else {
         toast.show('Goals updated');
         router.replace('/profile');

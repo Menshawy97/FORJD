@@ -159,6 +159,8 @@ export class AccountExportService {
       energyUnit: profile.energyUnit,
       trainingGoals: profile.trainingGoals,
       activities: profile.activities,
+      activityLevel: profile.activityLevel,
+      bodyGoal: profile.bodyGoal,
       city: profile.city,
       avatarUrl: profile.avatarUrl,
       plan,

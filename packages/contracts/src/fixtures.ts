@@ -93,6 +93,8 @@ const profile = {
   energyUnit: 'kJ' as const,
   trainingGoals: ['get_stronger', 'improve_endurance'] as const,
   activities: ['strength', 'hyrox'] as const,
+  activityLevel: 'active' as const,
+  bodyGoal: 'lose_fat' as const,
   city: 'Cairo',
   avatarUrl: 'https://example.com/avatar.png',
   plan: 'free' as const,
@@ -155,6 +157,8 @@ export const responseFixtures = {
       energyUnit: 'kcal' as const,
       trainingGoals: [],
       activities: [],
+      activityLevel: null,
+      bodyGoal: null,
       city: null,
       avatarUrl: null,
       // Not null — plan is never absent, unlike every other field on this fixture, because

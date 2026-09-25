@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import type { Activity, TrainingGoal } from '@forjd/domain';
+import { ACTIVITY_LEVEL_FACTORS, type Activity, type ActivityLevel, type TrainingGoal } from '@forjd/domain';
 
 import { getMe } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
@@ -10,6 +10,7 @@ import { clearSession } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { shareAccountExport } from '@/data-export/share-account-export';
+import { activityLevelLabel, bodyGoalSummary } from '@/features/targets/labels';
 import { colors } from '@/theme/tokens';
 
 // Structure, copy and geometry from the prototype's `isProfile` branch of
@@ -59,6 +60,9 @@ interface Identity {
   city: string | null;
   goalsSubtitle: string;
   unitsSubtitle: string;
+  /** For suggested calorie targets (scan-height-age-plan.md §4.5): "Active · × 1.7", or "Not set". */
+  activitySubtitle: string;
+  bodyGoalSubtitle: string;
 }
 
 /**
@@ -121,6 +125,20 @@ function buildGroups(
         // Phase H. Same choice as Units: router.replace, not push (ADR-011) — a settings
         // destination, not a stack the user should accumulate entries on.
         onPress: () => router.replace('/goals'),
+      },
+      // scan-height-age-plan.md §4.5: the two inputs to the suggested daily targets, editable here
+      // after sign-up. router.replace like every settings destination (ADR-011).
+      {
+        icon: 'runner',
+        title: 'Activity level',
+        subtitle: identity.activitySubtitle,
+        onPress: () => router.replace('/activity-level'),
+      },
+      {
+        icon: 'bolt',
+        title: 'Body goal',
+        subtitle: identity.bodyGoalSubtitle,
+        onPress: () => router.replace('/body-goal'),
       },
       {
         icon: 'bars',
@@ -212,12 +230,19 @@ const ROW_ICON_SIZE = 22;
 const CHEVRON_SIZE = 18;
 
 const LOGOUT_ERROR = 'Could not log out. Please try again.';
+const NOT_SET = 'Not set';
+
+function activitySubtitle(level: ActivityLevel | null): string {
+  return level ? `${activityLevelLabel(level)} · × ${ACTIVITY_LEVEL_FACTORS[level]}` : NOT_SET;
+}
 const EMPTY_IDENTITY: Identity = {
   name: '—',
   username: null,
   city: null,
   goalsSubtitle: goalsSubtitle([], []),
   unitsSubtitle: unitsSubtitle('metric', 'kg'),
+  activitySubtitle: NOT_SET,
+  bodyGoalSubtitle: NOT_SET,
 };
 
 function describeLoadFailure(error: unknown): string {
@@ -246,6 +271,8 @@ export default function ProfileScreen() {
           city: profile.city,
           goalsSubtitle: goalsSubtitle(profile.trainingGoals, profile.activities),
           unitsSubtitle: unitsSubtitle(profile.unitSystem, profile.weightUnit),
+          activitySubtitle: activitySubtitle(profile.activityLevel ?? null),
+          bodyGoalSubtitle: profile.bodyGoal ? bodyGoalSummary(profile.bodyGoal) : NOT_SET,
         });
       })
       .catch((cause: unknown) => {

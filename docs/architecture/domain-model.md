@@ -47,6 +47,13 @@ settings screen rather than simply reading as all-off.
 while a training goal like "Get stronger" is an untargeted intent with neither.
 Reusing `goals` would force those columns to hold something meaningless.
 
+`activity_level` and `body_goal` (nullable `text`, slugs from `ACTIVITY_LEVELS` and `BODY_GOALS`
+in `@forjd/domain`) are the two profile inputs to suggested daily calorie and macro targets
+(`docs/product/scan-height-age-plan.md` §4.5): asked at sign-up after Goals, editable in Profile.
+Null means "not chosen" and gives no suggestion, never an invented default. The suggestion itself
+is derived on read by `GET /nutrition/macro-goals/suggestion` (BMR from the latest scan, else
+Mifflin–St Jeor) and never stored; it becomes the user's `macro_goals` only when they tap Use.
+
 **Exercise content** — `exercises`, `exercise_variants`, `muscle_groups`,
 `equipment`, `exercise_muscles`. Ingested via `ExerciseSourceAdapter` with
 version-controlled override files layered on top. See `integrations.md`,

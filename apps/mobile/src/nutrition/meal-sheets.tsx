@@ -3,12 +3,13 @@ import {
   MEAL_SLOTS,
   type MealSlot,
 } from '@forjd/domain';
-import type { SavedMealResponse } from '@forjd/contracts';
-import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import type { MacroGoalSuggestionResponse, SavedMealResponse, SetMacroGoalsRequest } from '@forjd/contracts';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { Icon } from '@/components/icon';
 import { MealSlotChip } from '@/components/meal-slot-chip';
 import { colors } from '@/theme/tokens';
+
+import { SuggestionCard } from './suggestion-card';
 
 /**
  * The three bottom sheets from `nutrition.tsx` (`s_nutrition()`): "Save as meal", "Log this
@@ -43,6 +44,10 @@ interface NutritionSheetsProps {
   onChangeEditGoalsVal: (key: keyof EditGoalsValues, value: string) => void;
   onSaveGoals: () => void;
   onCancelEditGoals: () => void;
+  /** The Auto-calculate suggestion (scan-height-age-plan.md §4.5): undefined loading, null failed. */
+  goalSuggestion: MacroGoalSuggestionResponse | null | undefined;
+  onUseSuggestion: (targets: SetMacroGoalsRequest) => void;
+  onEditTargetsInProfile: () => void;
 }
 
 export function NutritionSheets({
@@ -63,6 +68,9 @@ export function NutritionSheets({
   onChangeEditGoalsVal,
   onSaveGoals,
   onCancelEditGoals,
+  goalSuggestion,
+  onUseSuggestion,
+  onEditTargetsInProfile,
 }: NutritionSheetsProps) {
   return (
     <>
@@ -157,24 +165,18 @@ export function NutritionSheets({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           className="absolute inset-0 z-20 items-end justify-end"
           style={{ backgroundColor: colors.scrim }}>
+          {/* Capped at 85% of the screen with a fixed title and buttons, so the card's (i) details
+              scroll in the middle instead of pushing Save off a small phone (approved 2026-09-25). */}
           <View
-            className="w-full rounded-t-[18px] border-t border-border bg-surface px-[22px] pb-[24px] pt-[20px]"
-            style={{ gap: 14 }}>
-            <Text className="font-archivo text-[18px] font-bold text-text">Set daily goals</Text>
-            {/* Auto-calculate depends on InBody data, which does not exist until Phase 5
-                (ADR-020) -- shown disabled with honest copy rather than computing from fake
-                defaults, per nutrition-screen-specs.md §2's explicit instruction. */}
-            <View
-              className="flex-row items-center rounded-[11px] border px-[14px] py-3 opacity-50"
-              style={{ gap: 10, borderColor: 'rgba(233,113,47,.4)', backgroundColor: 'rgba(233,113,47,.1)' }}>
-              <Icon name="bolt" color={colors.accent} size={17} />
-              <View className="flex-1" style={{ minWidth: 0 }}>
-                <Text className="font-archivo text-[13px] font-bold text-accent">Auto-calculate</Text>
-                <Text className="mt-0.5 font-archivo text-[11px] text-weekScoreLabel">
-                  Available once your InBody scan is set up
-                </Text>
-              </View>
-            </View>
+            className="w-full rounded-t-[18px] border-t border-border bg-surface pb-[24px] pt-[20px]"
+            style={{ maxHeight: '85%' }}>
+            <Text className="px-[22px] pb-[12px] font-archivo text-[18px] font-bold text-text">Set daily goals</Text>
+            <ScrollView
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 4, gap: 14 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled">
+            <SuggestionCard response={goalSuggestion} onUse={onUseSuggestion} onEditInProfile={onEditTargetsInProfile} />
             {(['kcal', 'protein', 'carbs', 'fat'] as const).map((key) => (
               <View key={key} className="flex-row items-center justify-between" style={{ gap: 10 }}>
                 <Text className="font-archivo text-[13px] font-semibold capitalize text-text">
@@ -193,7 +195,10 @@ export function NutritionSheets({
                 </View>
               </View>
             ))}
-            <View className="flex-row" style={{ gap: 9, marginTop: 6 }}>
+            </ScrollView>
+            <View
+              className="flex-row px-[22px] pt-[12px]"
+              style={{ gap: 9, borderTopWidth: 1, borderColor: 'rgba(255,255,255,.06)' }}>
               <Pressable
                 accessibilityRole="button"
                 onPress={onSaveGoals}

@@ -23,6 +23,13 @@ export const profiles = pgTable(
     dateOfBirth: date('date_of_birth'),
     sex: text('sex'),
     heightCm: numeric('height_cm', { precision: 5, scale: 2 }),
+    /**
+     * Slugs from @forjd/domain's ACTIVITY_LEVELS and BODY_GOALS, for suggested calorie and macro
+     * targets (docs/product/scan-height-age-plan.md §4.5). Nullable: an account created before
+     * them, or that has not chosen yet, gets no suggestion rather than an invented default.
+     */
+    activityLevel: text('activity_level'),
+    bodyGoal: text('body_goal'),
     // Display preference only. Everything is stored in metric; conversion happens at the edge.
     // Retained as a *preset* that writes weightUnit and distanceUnit — see the three columns
     // below, which are the real preferences.

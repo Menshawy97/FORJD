@@ -29,6 +29,7 @@ jest.mock('@/auth/apiClient', () => ({
   listNutritionLog: jest.fn(),
   listSavedMeals: jest.fn(),
   getMacroGoals: jest.fn(),
+  getMacroGoalSuggestion: jest.fn(),
   getFood: jest.fn(),
   deleteLogEntry: jest.fn(),
   deleteLogGroup: jest.fn(),
@@ -41,6 +42,7 @@ import {
   createSavedMeal,
   deleteLogEntry,
   getFood,
+  getMacroGoalSuggestion,
   getMacroGoals,
   listNutritionLog,
   listSavedMeals,
@@ -94,6 +96,7 @@ function mockEmptyDay() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (getMacroGoalSuggestion as jest.Mock).mockResolvedValue({ suggestion: null, basis: null, missing: ['activityLevel', 'bodyGoal'] });
 });
 
 afterEach(() => {
@@ -222,6 +225,39 @@ describe('Nutrition dashboard', () => {
     fireEvent.press(getByText('Save'));
 
     expect(setMacroGoals).not.toHaveBeenCalled();
+  });
+
+  // scan-height-age-plan.md §4.5: Use saves the suggestion as the daily targets.
+  it('saves the suggested targets when Use is tapped', async () => {
+    mockEmptyDay();
+    (getMacroGoalSuggestion as jest.Mock).mockResolvedValue({
+      suggestion: { kcal: 2750, protein: 139, carbs: 377, fat: 76 },
+      basis: {
+        maintenanceKcal: 3240,
+        bmrKcal: 1905,
+        bmrSource: 'scan',
+        scanMeasuredAt: '2026-09-22T09:00:00.000Z',
+        weightKg: 86.6,
+        activityLevel: 'active',
+        activityFactor: 1.7,
+        bodyGoal: 'lose_fat',
+        energyChange: -0.15,
+        proteinPerKg: 1.6,
+        fatShare: 0.25,
+      },
+      missing: [],
+    });
+    (setMacroGoals as jest.Mock).mockResolvedValue({ kcal: 2750, protein: 139, carbs: 377, fat: 76 });
+
+    const { getByLabelText, getByText, findByText, findByRole } = await render(<NutritionScreen />);
+    await waitFor(() => expect(getByText('Set your daily goals')).toBeTruthy());
+    fireEvent.press(getByLabelText('Set daily goals'));
+
+    expect(await findByText('Suggested: 2,750 kcal')).toBeTruthy();
+    await fireEvent.press(await findByRole('button', { name: 'Use' }));
+
+    expect(setMacroGoals).toHaveBeenCalledWith({ kcal: 2750, protein: 139, carbs: 377, fat: 76 });
+    expect(await findByText('Goals updated')).toBeTruthy();
   });
 
   it('navigates to the share and saved-meals placeholders from the header icons', async () => {
