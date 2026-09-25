@@ -53,7 +53,7 @@ describe("body vocabulary display-name coverage", () => {
     }
   });
 
-  it("BODY_METRICS matches the design's nine confirm-screen fields exactly", () => {
+  it("BODY_METRICS is the design's nine confirm-screen fields, then FFMI (scan-height-age-plan §4.3)", () => {
     expect(BODY_METRICS).toEqual([
       "weight_kg",
       "skeletal_muscle_mass_kg",
@@ -64,6 +64,7 @@ describe("body vocabulary display-name coverage", () => {
       "bmi",
       "basal_metabolic_rate_kcal",
       "inbody_score",
+      "fat_free_mass_index",
     ]);
   });
 

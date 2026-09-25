@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import type { ExtractedMeasurement } from '@forjd/contracts';
 import {
   BODY_METRICS,
   BODY_METRIC_DISPLAY_NAMES,
@@ -53,6 +54,15 @@ function formatBannerTime(d: Date): string {
  * visual styling itself is untouched. This does not apply to the segmental section, which
  * the design never shows a confidence bar for at all.
  */
+/**
+ * A metric's reading, or "not read" when the extraction predates the metric: a scan read before
+ * FFMI existed has no such field (scan-height-age-plan.md §4.3), and must still open and save.
+ */
+function readingFor(extracted: PendingScan['extracted'], metric: BodyMetric): ExtractedMeasurement {
+  return extracted.fields[metric] ?? NOT_READ;
+}
+const NOT_READ: ExtractedMeasurement = { value: null, confidence: 0, readingNote: '' };
+
 export default function InBodyConfirmScreen() {
   const [pending, setPending] = useState<PendingScan | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -79,7 +89,7 @@ export default function InBodyConfirmScreen() {
 
       const initial: Record<string, string> = {};
       for (const metric of BODY_METRICS) {
-        const field = scan.extracted.fields[metric];
+        const field = readingFor(scan.extracted, metric);
         initial[metric] =
           field.value != null && shouldPrefill(field.confidence) ? String(field.value) : '';
       }
@@ -118,7 +128,7 @@ export default function InBodyConfirmScreen() {
         metric,
         value,
         unit: BODY_METRIC_UNITS[metric],
-        confidence: pending.extracted.fields[metric].confidence,
+        confidence: readingFor(pending.extracted, metric).confidence,
       };
     });
 
@@ -242,7 +252,7 @@ export default function InBodyConfirmScreen() {
             key={metric}
             label={BODY_METRIC_DISPLAY_NAMES[metric]}
             unit={BODY_METRIC_UNITS[metric]}
-            confidence={pending.extracted.fields[metric].confidence}
+            confidence={readingFor(pending.extracted, metric).confidence}
             value={values[metric] ?? ''}
             onChange={(text) => setValues((v) => ({ ...v, [metric]: text }))}
             error={errors[metric]}

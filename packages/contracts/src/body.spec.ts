@@ -12,7 +12,7 @@ import {
   SCAN_HEIGHT_CM_BOUNDS,
 } from "./index";
 
-const NINE_METRICS = [
+const BODY_METRIC_LIST = [
   "weight_kg",
   "skeletal_muscle_mass_kg",
   "body_fat_mass_kg",
@@ -22,6 +22,8 @@ const NINE_METRICS = [
   "bmi",
   "basal_metabolic_rate_kcal",
   "inbody_score",
+  // Printed by some InBody models; otherwise worked out by the API (scan-height-age-plan.md §4.3).
+  "fat_free_mass_index",
 ] as const;
 
 const FIVE_SEGMENTAL_SITES = ["right_arm", "left_arm", "trunk", "right_leg", "left_leg"] as const;
@@ -31,8 +33,8 @@ const emptySegmental = Object.fromEntries(
 );
 
 describe("body contracts", () => {
-  it("bodyMetricSchema accepts exactly the nine confirm-screen fields", () => {
-    for (const metric of NINE_METRICS) {
+  it("bodyMetricSchema accepts exactly the confirm-screen fields", () => {
+    for (const metric of BODY_METRIC_LIST) {
       expect(bodyMetricSchema.safeParse(metric).success).toBe(true);
     }
     expect(bodyMetricSchema.safeParse("not_a_real_metric").success).toBe(false);
@@ -40,7 +42,7 @@ describe("body contracts", () => {
 
   it("extractBodyScanResponseSchema accepts a full extraction, including null fields", () => {
     const fields = Object.fromEntries(
-      NINE_METRICS.map((m) => [m, { value: null, confidence: 0, readingNote: "Blurry" }]),
+      BODY_METRIC_LIST.map((m) => [m, { value: null, confidence: 0, readingNote: "Blurry" }]),
     );
     const response = {
       inbodyModel: "570",
@@ -57,14 +59,14 @@ describe("body contracts", () => {
   // Slice B (scan-height-age-plan.md §2.3): the sheet's height and age are read like any other
   // value, with a confidence, so the confirm screen can pre-fill or ask for a check.
   it("extractBodyScanResponseSchema always carries the sheet's height and age readings", () => {
-    const fields = Object.fromEntries(NINE_METRICS.map((m) => [m, { value: null, confidence: 0, readingNote: "" }]));
+    const fields = Object.fromEntries(BODY_METRIC_LIST.map((m) => [m, { value: null, confidence: 0, readingNote: "" }]));
     const response = { inbodyModel: null, testDate: null, fields, segmental: emptySegmental, imageQualityNotes: "" };
     expect(extractBodyScanResponseSchema.safeParse(response).success).toBe(false);
   });
 
   it("extractBodyScanResponseSchema rejects a response missing a required field", () => {
     const incompleteFields = Object.fromEntries(
-      NINE_METRICS.slice(0, 8).map((m) => [m, { value: 1, confidence: 0.9, readingNote: "" }]),
+      BODY_METRIC_LIST.slice(0, 8).map((m) => [m, { value: 1, confidence: 0.9, readingNote: "" }]),
     );
     const response = {
       inbodyModel: null,
@@ -200,7 +202,7 @@ describe("body contracts", () => {
         {
           metric: "weight_kg",
           unit: "kg",
-          points: [{ measuredAt: "2026-01-15T09:00:00.000Z", value: 84.6 }],
+          points: [{ measuredAt: "2026-01-15T09:00:00.000Z", value: 84.6, calculated: false }],
         },
       ],
     };
@@ -411,5 +413,34 @@ describe("scan height and age", () => {
       measurements: [{ metric: "weight_kg", value: 84.6, unit: "kg", confidence: 0.97, calculated: false }],
     };
     expect(bodyScanResponseSchema.safeParse(response).success).toBe(false);
+  });
+});
+
+/**
+ * Slice E (scan-height-age-plan.md §4.3): FFMI is a stored metric when a sheet prints it, with a
+ * range like every other value, and every Body-tab series point says whether it was worked out.
+ */
+describe("fat-free mass index and calculated series points", () => {
+  it("bounds FFMI between 8 and 40", () => {
+    expect(measurementBounds("fat_free_mass_index", 23.1)).toBeNull();
+    expect(measurementBounds("fat_free_mass_index", 7)).toEqual([8, 40]);
+    expect(measurementBounds("fat_free_mass_index", 41)).toEqual([8, 40]);
+  });
+
+  it("series points state whether they were calculated; FFMI points may carry the height-adjusted value", () => {
+    const response = {
+      series: [
+        {
+          metric: "fat_free_mass_index",
+          unit: "",
+          points: [{ measuredAt: "2026-09-22T09:00:00.000Z", value: 23.1, calculated: true, heightAdjusted: 23.2 }],
+        },
+        { metric: "weight_kg", unit: "kg", points: [{ measuredAt: "2026-09-22T09:00:00.000Z", value: 86.6, calculated: false }] },
+      ],
+    };
+    expect(bodyScanSeriesResponseSchema.safeParse(response).success).toBe(true);
+
+    const unstated = { series: [{ metric: "bmi", unit: "", points: [{ measuredAt: "2026-09-22T09:00:00.000Z", value: 27.3 }] }] };
+    expect(bodyScanSeriesResponseSchema.safeParse(unstated).success).toBe(false);
   });
 });

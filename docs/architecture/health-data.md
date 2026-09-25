@@ -70,6 +70,12 @@ path also uses the same arithmetic to check what it read: a sheet BMI more than 
 height², or a BMR more than 5% from the formula, is held below the pre-fill threshold for the
 user to check (`docs/product/scan-height-age-plan.md` §4.1–4.2).
 
+Fat-free mass index is the exception to storing: a sheet that prints FFMI is stored like any
+value, but otherwise FFMI (fat-free mass ÷ height²) is derived on every read of a scan and never
+written, so it follows the scan's own values with no backfill (rule 9). The Body tab's FFMI series
+carries each point's height-adjusted form (Kouri et al. 1995), and every series point states
+whether it was calculated (§4.3).
+
 ## InBody photo pipeline
 
 First-class domain (`BodyScan`), not a generic file upload. See ADR-006 for

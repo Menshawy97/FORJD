@@ -182,8 +182,12 @@ describe("Body scans (e2e)", () => {
     ];
 
     const confirmed = await confirm(measurements).expect(201);
-    // The two confirmed values, plus BMI and BMR worked out from them (scan-height-age-plan §4.1–4.2).
-    expect(confirmed.body.measurements).toHaveLength(4);
+    // The two confirmed values, plus BMI and BMR worked out from them (scan-height-age-plan §4.1–4.2)
+    // and the fat-free mass index (§4.3): 84.6 kg × (1 − 18.2%) = 69.2 kg ÷ 1.78² = 21.8.
+    expect(confirmed.body.measurements).toHaveLength(5);
+    expect(confirmed.body.measurements).toContainEqual(
+      expect.objectContaining({ metric: "fat_free_mass_index", value: 21.8, calculated: true }),
+    );
     expect(confirmed.body.measurements.filter((m: { calculated: boolean }) => !m.calculated)).toHaveLength(2);
     const scanId = confirmed.body.id as string;
 
@@ -192,7 +196,7 @@ describe("Body scans (e2e)", () => {
       .set("Authorization", "Bearer owner-token")
       .expect(200);
     expect(detail.body.id).toBe(scanId);
-    expect(detail.body.measurements).toHaveLength(4);
+    expect(detail.body.measurements).toHaveLength(5);
 
     const list = await request(app.getHttpServer())
       .get("/api/v1/body-scans")
@@ -213,6 +217,13 @@ describe("Body scans (e2e)", () => {
     expect(weightSeries).toBeDefined();
     expect(weightSeries.points).toHaveLength(1);
     expect(weightSeries.points[0].value).toBe(84.6);
+    expect(weightSeries.points[0].calculated).toBe(false);
+
+    // scan-height-age-plan §4.3: FFMI is worked out per scan, with its height-adjusted value.
+    const ffmiSeries = response.body.series.find((s: { metric: string }) => s.metric === "fat_free_mass_index");
+    expect(ffmiSeries.points).toEqual([
+      { measuredAt: expect.any(String), value: 21.8, calculated: true, heightAdjusted: 21.9 },
+    ]);
   });
 
   it("uploads the confirmed photo to the private inbody bucket", () => {

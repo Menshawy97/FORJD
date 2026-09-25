@@ -4,7 +4,9 @@ import sharp from "sharp";
 import {
   BODY_METRIC_UNITS,
   bmiFrom,
+  fatFreeMassIndex,
   fatFreeMassKg,
+  heightAdjustedFfmi,
   katchMcArdleBmrKcal,
   type BodyMetric,
   type ScanSource,
@@ -23,7 +25,13 @@ import type {
 import { STORAGE_PROVIDER, StorageProvider } from "../storage/providers/storage-provider.interface";
 import { VISION_PROVIDER, VisionProvider } from "../ai/providers/vision-provider.interface";
 import { PrivacyService } from "../privacy/privacy.service";
-import { BodyRepository, NewMeasurementInput, ScanProfileInput, ScanWithMeasurementsRow } from "./body.repository";
+import {
+  BodyRepository,
+  MeasurementRow,
+  NewMeasurementInput,
+  ScanProfileInput,
+  ScanWithMeasurementsRow,
+} from "./body.repository";
 
 /** Mirrors `UploadedAvatarFile` in `avatar-upload.service.ts` -- the minimal shape
  *  `FileInterceptor`'s memory storage actually attaches, not `Express.Multer.File`. */
@@ -87,6 +95,37 @@ export function withCalculatedValues(measurements: NewMeasurementInput[], height
   return [...measurements, ...added];
 }
 
+const FFMI: BodyMetric = "fat_free_mass_index";
+
+/**
+ * A scan's measurements with its fat-free mass index (docs/product/scan-height-age-plan.md §4.3):
+ * the sheet's own when it printed one, otherwise FFM ÷ height² from the scan's weight, body fat and
+ * height, marked calculated. Worked out on every read rather than stored (rule 9), so it follows
+ * the scan's values and needs no backfill. A scan without a height or a body fat value has none.
+ */
+export function withFatFreeMassIndex(measurements: MeasurementRow[], heightCm: number | null): MeasurementRow[] {
+  if (heightCm === null || measurements.some((m) => m.metric === FFMI)) return measurements;
+  const valueOf = (metric: BodyMetric): number | null => measurements.find((m) => m.metric === metric)?.value ?? null;
+  const weightKg = valueOf("weight_kg");
+  if (weightKg === null) return measurements;
+  const fatFree = fatFreeMassKg({
+    weightKg,
+    bodyFatMassKg: valueOf("body_fat_mass_kg"),
+    bodyFatPercent: valueOf("body_fat_percent"),
+  });
+  if (fatFree === null) return measurements;
+  return [
+    ...measurements,
+    {
+      metric: FFMI,
+      value: fatFreeMassIndex(fatFree, heightCm),
+      unit: BODY_METRIC_UNITS[FFMI],
+      confidence: CALCULATED_CONFIDENCE,
+      calculated: true,
+    },
+  ];
+}
+
 /** One scan as the API returns it. Confirm, scan detail and the account export share this so they
  *  cannot drift. */
 export function toBodyScanResponse(scan: ScanWithMeasurementsRow): BodyScanResponse {
@@ -96,7 +135,7 @@ export function toBodyScanResponse(scan: ScanWithMeasurementsRow): BodyScanRespo
     source: scan.source as ScanSource,
     heightCm: scan.heightCm,
     ageYears: scan.ageYears,
-    measurements: scan.measurements.map((m) => ({
+    measurements: withFatFreeMassIndex(scan.measurements, scan.heightCm).map((m) => ({
       metric: m.metric as BodyMetric | SegmentalSite,
       value: m.value,
       unit: m.unit,
@@ -219,15 +258,40 @@ export class BodyService {
   }
 
   async getSeries(user: User): Promise<BodyScanSeriesResponse> {
-    const series = await this.bodyRepository.getSeriesForUser(user.id);
+    const [series, scans] = await Promise.all([
+      this.bodyRepository.getSeriesForUser(user.id),
+      this.bodyRepository.listScansForUser(user.id),
+    ]);
 
-    return {
-      series: series.map((s) => ({
+    const stored = series
+      // A sheet-printed FFMI is stored like any value; the series below already includes it.
+      .filter((s) => s.metric !== FFMI)
+      .map((s) => ({
         metric: s.metric as BodyMetric | SegmentalSite,
         unit: s.unit,
-        points: s.points.map((p) => ({ measuredAt: p.measuredAt.toISOString(), value: p.value })),
-      })),
-    };
+        points: s.points.map((p) => ({ measuredAt: p.measuredAt.toISOString(), value: p.value, calculated: p.calculated })),
+      }));
+    const ffmi = this.ffmiSeries(scans);
+    return { series: ffmi.points.length > 0 ? [...stored, ffmi] : stored };
+  }
+
+  /** One FFMI point per scan that has one, oldest first, with Kouri et al.'s height-adjusted value. */
+  private ffmiSeries(scans: ScanWithMeasurementsRow[]): BodyScanSeriesResponse["series"][number] {
+    const points = [...scans]
+      .sort((a, b) => a.measuredAt.getTime() - b.measuredAt.getTime())
+      .flatMap((scan) => {
+        const ffmi = withFatFreeMassIndex(scan.measurements, scan.heightCm).find((m) => m.metric === FFMI);
+        if (!ffmi) return [];
+        return [
+          {
+            measuredAt: scan.measuredAt.toISOString(),
+            value: ffmi.value,
+            calculated: ffmi.calculated,
+            ...(scan.heightCm === null ? {} : { heightAdjusted: heightAdjustedFfmi(ffmi.value, scan.heightCm) }),
+          },
+        ];
+      });
+    return { metric: FFMI, unit: BODY_METRIC_UNITS[FFMI], points };
   }
 
   private async requireAiConsent(user: User): Promise<void> {

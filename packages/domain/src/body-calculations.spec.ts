@@ -3,6 +3,10 @@ import {
   BMR_TOLERANCE_RATIO,
   bmiFrom,
   bmiDisagrees,
+  FFMI_TOLERANCE,
+  fatFreeMassIndex,
+  ffmiDisagrees,
+  heightAdjustedFfmi,
   bmrDisagrees,
   fatFreeMassKg,
   katchMcArdleBmrKcal,
@@ -66,5 +70,37 @@ describe("bmrDisagrees", () => {
     expect(bmrDisagrees(1949, 1949)).toBe(false);
     expect(bmrDisagrees(1860, 1949)).toBe(false);
     expect(bmrDisagrees(2040, 1949)).toBe(false);
+  });
+});
+
+/**
+ * Fat-free mass index (docs/product/scan-height-age-plan.md §4.3): Kouri et al., Clin J Sport Med
+ * 1995;5(4):223–228. FFMI = FFM ÷ height², and the height-adjusted form adds 6.1 × (1.8 − height m).
+ */
+describe("fatFreeMassIndex", () => {
+  it("is fat-free mass over height in metres squared, to one decimal", () => {
+    // 73.1 / 1.78^2 = 23.07
+    expect(fatFreeMassIndex(73.1, 178)).toBe(23.1);
+  });
+});
+
+describe("heightAdjustedFfmi", () => {
+  it("adds 6.1 × (1.8 − height m) to an FFMI, lifting a shorter person's and lowering a taller one's", () => {
+    // 23.1 + 6.1 × 0.02 = 23.22
+    expect(heightAdjustedFfmi(23.1, 178)).toBe(23.2);
+    // 17.7 + 6.1 × (−0.1) = 17.09
+    expect(heightAdjustedFfmi(17.7, 190)).toBe(17.1);
+  });
+
+  it("leaves the FFMI as it is at 1.8 m", () => {
+    expect(heightAdjustedFfmi(21.6, 180)).toBe(21.6);
+  });
+});
+
+describe("ffmiDisagrees", () => {
+  it(`flags a sheet FFMI more than ${FFMI_TOLERANCE} away from the computed one`, () => {
+    expect(ffmiDisagrees(26.1, 23.1)).toBe(true);
+    expect(ffmiDisagrees(23.1, 23.1)).toBe(false);
+    expect(ffmiDisagrees(23.6, 23.1)).toBe(false);
   });
 });

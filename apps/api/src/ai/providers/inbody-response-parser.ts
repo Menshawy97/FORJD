@@ -7,7 +7,9 @@ import {
   bmiDisagrees,
   bmiFrom,
   bmrDisagrees,
+  fatFreeMassIndex,
   fatFreeMassKg,
+  ffmiDisagrees,
   katchMcArdleBmrKcal,
   shouldPrefill,
   type BodyMetric,
@@ -100,14 +102,8 @@ function flagInconsistentBmi(fields: Record<BodyMetric, ExtractedMeasurement>, h
  */
 function flagInconsistentBmr(fields: Record<BodyMetric, ExtractedMeasurement>): void {
   const bmr = fields.basal_metabolic_rate_kcal;
-  const weightKg = trusted(fields.weight_kg);
-  if (bmr.value === null || weightKg === null) return;
-  const fatFree = fatFreeMassKg({
-    weightKg,
-    bodyFatMassKg: trusted(fields.body_fat_mass_kg),
-    bodyFatPercent: trusted(fields.body_fat_percent),
-  });
-  if (fatFree === null) return;
+  const fatFree = trustedFatFreeMass(fields);
+  if (bmr.value === null || fatFree === null) return;
 
   const computed = katchMcArdleBmrKcal(fatFree);
   if (!bmrDisagrees(bmr.value, computed)) return;
@@ -115,6 +111,32 @@ function flagInconsistentBmr(fields: Record<BodyMetric, ExtractedMeasurement>): 
     bmr,
     `This doesn't match 370 + 21.6 × fat-free mass (${computed.toLocaleString("en-US")} kcal), so please check it.`,
   );
+}
+
+/** Fat-free mass from confidently read weight and body fat, or null when it cannot be vouched for. */
+function trustedFatFreeMass(fields: Record<BodyMetric, ExtractedMeasurement>): number | null {
+  const weightKg = trusted(fields.weight_kg);
+  if (weightKg === null) return null;
+  return fatFreeMassKg({
+    weightKg,
+    bodyFatMassKg: trusted(fields.body_fat_mass_kg),
+    bodyFatPercent: trusted(fields.body_fat_percent),
+  });
+}
+
+/**
+ * Some models print FFMI (scan-height-age-plan.md §4.3). Like BMI, a printed value is kept, but
+ * one that breaks fat-free mass ÷ height² by more than the sheet's rounding is held for a check.
+ */
+function flagInconsistentFfmi(fields: Record<BodyMetric, ExtractedMeasurement>, height: ExtractedMeasurement): void {
+  const ffmi = fields.fat_free_mass_index;
+  const heightCm = trusted(height);
+  const fatFree = trustedFatFreeMass(fields);
+  if (ffmi.value === null || heightCm === null || fatFree === null) return;
+
+  const computed = fatFreeMassIndex(fatFree, heightCm);
+  if (!ffmiDisagrees(ffmi.value, computed)) return;
+  fields.fat_free_mass_index = needsCheck(ffmi, `This doesn't match fat-free mass ÷ height² (${computed}), so please check it.`);
 }
 
 type RawMeasurement = { value?: unknown; unit?: unknown; confidence?: unknown; reading_note?: unknown };
@@ -276,6 +298,7 @@ export function parseInBodyExtractionResponse(text: string): ExtractedBodyScan {
     const heightCm = readHeight(raw.height as RawHeight | undefined);
     flagInconsistentBmi(fields, heightCm);
     flagInconsistentBmr(fields);
+    flagInconsistentFfmi(fields, heightCm);
     const segmental = {} as Record<SegmentalSite, ExtractedMeasurement>;
     for (const site of SEGMENTAL_SITES) {
       segmental[site] = readPrinted((raw.segmental as Record<string, RawMeasurement> | undefined)?.[site], SEGMENTAL_UNITS);

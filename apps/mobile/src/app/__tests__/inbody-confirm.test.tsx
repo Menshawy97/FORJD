@@ -21,7 +21,7 @@ jest.mock('expo-router', () => {
 jest.mock('@/auth/apiClient', () => ({ confirmBodyScan: jest.fn(), getMe: jest.fn() }));
 
 import { confirmBodyScan, getMe } from '@/auth/apiClient';
-import { setPendingScan } from '@/store/pending-scan';
+import { setPendingScan, takePendingScan } from '@/store/pending-scan';
 
 import InBodyConfirmScreen from '../inbody-confirm';
 
@@ -173,5 +173,34 @@ describe('Confirm scan -- height and age', () => {
     await fireEvent.press(await findByRole('button', { name: 'Confirm & Save' }));
 
     expect(mockReplace).toHaveBeenCalledWith('/inbody');
+  });
+});
+
+// Slice E (scan-height-age-plan.md §4.3): some InBody models print FFMI. A printed one is shown and
+// confirmed like BMI; a scan read before FFMI existed (no such field at all) still opens and saves.
+describe('Confirm scan -- fat-free mass index', () => {
+  it("pre-fills the sheet's FFMI and saves it", async () => {
+    pendingScan({ fat_free_mass_index: 23.1 });
+    const { findByRole, getByLabelText } = await render(<InBodyConfirmScreen />);
+
+    expect(getByLabelText('Fat-free mass index').props.value).toBe('23.1');
+    await fireEvent.press(await findByRole('button', { name: 'Confirm & Save' }));
+
+    const body = (confirmBodyScan as jest.Mock).mock.calls[0][1];
+    expect(body.measurements).toContainEqual(expect.objectContaining({ metric: 'fat_free_mass_index', value: 23.1 }));
+  });
+
+  it('opens and saves a scan read before FFMI existed, leaving the row empty', async () => {
+    pendingScan();
+    const pending = takePendingScan()!;
+    const { fat_free_mass_index: _absent, ...olderFields } = pending.extracted.fields;
+    setPendingScan({ ...pending, extracted: { ...pending.extracted, fields: olderFields as never } });
+    const { findByRole, getByLabelText } = await render(<InBodyConfirmScreen />);
+
+    expect(getByLabelText('Fat-free mass index').props.value).toBe('');
+    await fireEvent.press(await findByRole('button', { name: 'Confirm & Save' }));
+
+    const body = (confirmBodyScan as jest.Mock).mock.calls[0][1];
+    expect(body.measurements.map((m: { metric: string }) => m.metric)).not.toContain('fat_free_mass_index');
   });
 });

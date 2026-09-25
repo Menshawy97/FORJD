@@ -77,6 +77,9 @@ const BODY_MEASUREMENT_VALUE_BOUNDS: Partial<
   bmi: [10, 80],
   basal_metabolic_rate_kcal: [500, 5000],
   inbody_score: [0, 100],
+  // Well past the ~25 ceiling reported for drug-free lifters (Kouri et al. 1995) at the top, and
+  // below any adult's at the bottom (scan-height-age-plan.md §4.3).
+  fat_free_mass_index: [8, 40],
   // Segmental lean mass. Raised after a real sheet's 30.5 kg trunk was rejected by the old 30 kg
   // ceiling; the user set these to leave generous room for large, muscular athletes.
   right_arm: [0.5, 50],
@@ -257,6 +260,10 @@ export type BodyScanListResponse = z.infer<typeof bodyScanListResponseSchema>;
 export const bodyMetricSeriesPointSchema = z.object({
   measuredAt: z.string().datetime(),
   value: z.number(),
+  /** Worked out by the API rather than read or typed (scan-height-age-plan.md §4.1–4.3). */
+  calculated: z.boolean(),
+  /** FFMI points only: Kouri et al.'s height-adjusted FFMI, when the scan has a height. */
+  heightAdjusted: z.number().optional(),
 });
 export const bodyMetricSeriesSchema = z.object({
   metric: z.union([bodyMetricSchema, segmentalSiteSchema]),

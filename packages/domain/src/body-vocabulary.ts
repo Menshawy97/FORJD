@@ -18,7 +18,9 @@
 
 /**
  * The nine fields on the design's confirm screen (`s_inbodyConfirm`, `FORJD Mobile.dc.html`),
- * in the order the screen renders them. `weight_kg`, `skeletal_muscle_mass_kg`, and
+ * in the order the screen renders them, then `fat_free_mass_index`: some InBody models (570, 770)
+ * print FFMI, and a printed value is kept like BMI; otherwise the API works it out from weight,
+ * body fat and height (docs/product/scan-height-age-plan.md §4.3). `weight_kg`, `skeletal_muscle_mass_kg`, and
  * `body_fat_mass_kg` are always stored in kilograms regardless of what unit the InBody
  * sheet printed -- the vision extraction step converts before this vocabulary ever sees a
  * value (see `docs/decisions/ADR-032-...`).
@@ -33,6 +35,7 @@ export const BODY_METRICS = [
   "bmi",
   "basal_metabolic_rate_kcal",
   "inbody_score",
+  "fat_free_mass_index",
 ] as const;
 export type BodyMetric = (typeof BODY_METRICS)[number];
 
@@ -46,6 +49,7 @@ export const BODY_METRIC_DISPLAY_NAMES: Record<BodyMetric, string> = {
   bmi: "Body mass index",
   basal_metabolic_rate_kcal: "Basal metabolic rate",
   inbody_score: "InBody score",
+  fat_free_mass_index: "Fat-free mass index",
 };
 
 /**
@@ -63,6 +67,7 @@ export const BODY_METRIC_UNITS: Record<BodyMetric, string> = {
   bmi: "",
   basal_metabolic_rate_kcal: "kcal",
   inbody_score: "",
+  fat_free_mass_index: "",
 };
 
 /**
