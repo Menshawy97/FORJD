@@ -72,6 +72,10 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
 
 ## Phase 8.5 — Whole-app agent review (new, before the Android beta)
 
+**Status (2026-09-25): 8.5A done, the plan is [whole-app-review-plan.md](whole-app-review-plan.md)
+(pinned at `b1f006a`). Lane 9 is split into 9a server/database speed and 9b app speed, with
+speed budgets, at the user's request. 8.5B running.**
+
 **Why:** 60 PRs landed in a week, across seven plans, mostly verified by CI alone. The last
 whole-repo audit (2026-09-10, 29 slices) predates the live run, the leaderboards, the website,
 production, and every InBody and nutrition change since. External testers should meet an app
