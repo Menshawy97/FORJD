@@ -3,7 +3,6 @@ import type {
   AccountExportConnection,
   AccountExportPrograms,
   AccountExportResponse,
-  BodyScanResponse,
   HealthObservationResponse,
   NutritionLogEntryResponse,
   PrivacySettingsResponse,
@@ -18,11 +17,8 @@ import type {
   WorkoutTemplateResponse,
 } from '@forjd/contracts';
 import type {
-  BodyMetric,
   PrivacySettings,
   Profile,
-  ScanSource,
-  SegmentalSite,
   WorkoutBlock,
   WorkoutExercise,
   WorkoutSession,
@@ -32,6 +28,7 @@ import type {
 } from '@forjd/domain';
 
 import { BodyRepository } from '../body/body.repository';
+import { toBodyScanResponse } from '../body/body.service';
 import { HealthDataRepository } from '../health-data/health-data.repository';
 import { WhoopConnectionRepository } from '../integrations/whoop/whoop-connection.repository';
 import { NutritionLogEntry, NutritionRepository } from '../nutrition/nutrition.repository';
@@ -111,7 +108,7 @@ export class AccountExportService {
       profile: profile ? this.toProfileResponse(profile, plan) : null,
       privacy: this.toPrivacyResponse(privacy),
       healthObservations: observations.map((observation) => this.toHealthObservationResponse(observation)),
-      bodyScans: scans.map((scan) => this.toBodyScanResponse(scan)),
+      bodyScans: scans.map((scan) => toBodyScanResponse(scan)),
       nutritionLogEntries: nutritionEntries.map((entry) => this.toNutritionLogEntryResponse(entry)),
       workoutTemplates,
       workoutSessions,
@@ -201,25 +198,6 @@ export class AccountExportService {
       startTime: observation.startTime.toISOString(),
       endTime: observation.endTime.toISOString(),
       source: observation.source as HealthObservationResponse['source'],
-    };
-  }
-
-  private toBodyScanResponse(scan: {
-    id: string;
-    measuredAt: Date;
-    source: string;
-    measurements: Array<{ metric: string; value: number; unit: string; confidence: number }>;
-  }): BodyScanResponse {
-    return {
-      id: scan.id,
-      measuredAt: scan.measuredAt.toISOString(),
-      source: scan.source as ScanSource,
-      measurements: scan.measurements.map((m) => ({
-        metric: m.metric as BodyMetric | SegmentalSite,
-        value: m.value,
-        unit: m.unit,
-        confidence: m.confidence,
-      })),
     };
   }
 

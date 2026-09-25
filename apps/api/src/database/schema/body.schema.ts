@@ -1,4 +1,4 @@
-import { index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, numeric, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./users.schema";
 
 /**
@@ -47,6 +47,16 @@ export const bodyScans = pgTable(
      * Null for a manual entry, which has no photo (docs/product/manual-inbody-entry-plan.md).
      */
     photoKey: text("photo_key"),
+    /**
+     * The height and age printed on (or typed in for) this scan
+     * (docs/product/scan-height-age-plan.md §2). Columns on the scan, deliberately not
+     * `body_measurements` rows, so they never become Body-tab trend lines -- the user's rule.
+     * Nullable because scans saved before this change are left blank; the request contracts,
+     * not the column, decide when a new scan must carry them. `numeric` like every other body
+     * value (converted at the repository boundary); age is whole years.
+     */
+    heightCm: numeric("height_cm"),
+    ageYears: smallint("age_years"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("body_scans_user_measured_idx").on(table.userId, table.measuredAt)],

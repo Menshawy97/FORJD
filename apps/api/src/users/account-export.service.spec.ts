@@ -221,6 +221,39 @@ describe('AccountExportService', () => {
     ]);
   });
 
+  // GDPR Art. 15/20: a scan's height and age are the person's data too (scan-height-age-plan.md).
+  it("includes each scan's height and age, null for a scan saved without them", async () => {
+    const { service } = build({
+      bodyRepository: {
+        listScansForUser: jest.fn().mockResolvedValue([
+          {
+            id: 'scan-2',
+            measuredAt: new Date('2026-09-25T09:00:00.000Z'),
+            source: 'manual',
+            heightCm: 178.5,
+            ageYears: 31,
+            measurements: [],
+          },
+          {
+            id: 'scan-1',
+            measuredAt: new Date('2026-08-20T08:00:00.000Z'),
+            source: 'inbody',
+            heightCm: null,
+            ageYears: null,
+            measurements: [],
+          },
+        ]),
+      },
+    });
+
+    const result = await service.exportAccount(userId, email);
+
+    expect(result.bodyScans).toEqual([
+      expect.objectContaining({ id: 'scan-2', heightCm: 178.5, ageYears: 31 }),
+      expect.objectContaining({ id: 'scan-1', heightCm: null, ageYears: null }),
+    ]);
+  });
+
   it('includes nutrition log entries, workout templates and sessions, and privacy settings', async () => {
     const { service } = build({
       nutritionRepository: {
