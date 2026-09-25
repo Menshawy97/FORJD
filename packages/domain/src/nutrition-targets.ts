@@ -69,6 +69,8 @@ export interface DailyTargets {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  /** The minimum the target was raised to, or `null` when the goal already cleared it. */
+  minimumApplied: number | null;
 }
 
 /**
@@ -96,7 +98,9 @@ export function suggestDailyTargets(input: {
   const maintenance = input.bmrKcal * ACTIVITY_LEVEL_FACTORS[input.activityLevel];
   const goal = BODY_GOAL_ADJUSTMENTS[input.bodyGoal];
   // Raised to the minimum before the macros below are worked out, so they add up to what is shown.
-  const kcal = Math.max(minimumDailyKcal(input.sex), roundTo10(maintenance * (1 + goal.energyChange)));
+  const minimum = minimumDailyKcal(input.sex);
+  const goalKcal = roundTo10(maintenance * (1 + goal.energyChange));
+  const kcal = Math.max(minimum, goalKcal);
   const proteinG = Math.round(goal.proteinPerKg * input.weightKg);
   const fatKcal = kcal * FAT_SHARE_OF_KCAL;
   const carbsKcal = Math.max(0, kcal - proteinG * KCAL_PER_G_PROTEIN - fatKcal);
@@ -106,5 +110,6 @@ export function suggestDailyTargets(input: {
     proteinG,
     carbsG: Math.round(carbsKcal / KCAL_PER_G_CARBS),
     fatG: Math.round(fatKcal / KCAL_PER_G_FAT),
+    minimumApplied: goalKcal < minimum ? minimum : null,
   };
 }

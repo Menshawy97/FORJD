@@ -72,6 +72,27 @@ describe('SuggestionCard', () => {
     expect(getByText('BMR estimated from your height, weight and age. Protein: Morton 2018, Barakat 2020.')).toBeTruthy();
   });
 
+  it('says so in the details when the suggestion was raised to the daily minimum (review 8.5, L6-1)', async () => {
+    const floored: MacroGoalSuggestionResponse = {
+      suggestion: { kcal: 1200, protein: 72, carbs: 153, fat: 33 },
+      basis: { ...basis, maintenanceKcal: 1300, bmrKcal: 927, weightKg: 45, minimumKcalApplied: 1200 },
+      missing: [],
+    };
+    const { getByRole, getByText } = await renderCard(floored);
+
+    await fireEvent.press(getByRole('button', { name: 'How this is calculated' }));
+
+    expect(getByText('Raised to the 1,200 kcal daily minimum (Harvard Health).')).toBeTruthy();
+  });
+
+  it('shows no minimum note when the goal already cleared it', async () => {
+    const { getByRole, queryByText } = await renderCard({ ...loseFat, basis: { ...basis, minimumKcalApplied: null } });
+
+    await fireEvent.press(getByRole('button', { name: 'How this is calculated' }));
+
+    expect(queryByText(/daily minimum/)).toBeNull();
+  });
+
   it('uses the suggestion, and opens Profile from the details', async () => {
     const { getByRole, getByText, onUse, onEditInProfile } = await renderCard(loseFat);
 

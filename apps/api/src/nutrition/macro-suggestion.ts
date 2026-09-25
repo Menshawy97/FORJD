@@ -107,6 +107,7 @@ export function buildMacroGoalSuggestion(inputs: MacroSuggestionInputs): MacroGo
       energyChange: goal.energyChange,
       proteinPerKg: goal.proteinPerKg,
       fatShare: FAT_SHARE_OF_KCAL,
+      minimumKcalApplied: targets.minimumApplied,
     },
     missing: [],
   };

@@ -175,6 +175,13 @@ export function SuggestionCard({ response, onUse, onEditInProfile }: SuggestionC
               </View>
             ))}
           </View>
+          {basis.minimumKcalApplied ? (
+            // Whole-app review 8.5, L6-1, wording approved by the user 2026-09-25: without it the goal
+            // row's result would not match its own formula when the target was raised.
+            <Text className="font-archivo text-[10.5px]" style={{ ...DIM, lineHeight: 10.5 * 1.45 }}>
+              {`Raised to the ${withThousands(basis.minimumKcalApplied)} kcal daily minimum (Harvard Health).`}
+            </Text>
+          ) : null}
           <View className="flex-row items-center justify-between" style={{ gap: 10 }}>
             <Text className="flex-1 font-archivo text-[10.5px]" style={{ ...DIM, lineHeight: 10.5 * 1.45 }}>
               {`${bmrLine} Protein: ${proteinSources}.`}

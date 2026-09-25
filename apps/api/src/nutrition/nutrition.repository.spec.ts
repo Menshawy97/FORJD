@@ -440,6 +440,27 @@ describe("NutritionRepository", () => {
       expect(entries[0]?.groupName).toBe(meal.name);
     });
 
+    it("reads a saved meal's foods in one query, not one per item (review 8.5, L4-3)", async () => {
+      const userId = await makeUser("log-group-batched");
+      const created = await Promise.all(
+        [1, 2, 3].map(() => repository.createCatalogueFood(catalogueInput(`log-batch-${randomUUID()}`))),
+      );
+      created.forEach((food) => createdFoodIds.push(food.id));
+      const meal = await repository.createSavedMeal(
+        userId,
+        `Batched Meal ${randomUUID()}`,
+        created.map((food) => ({ foodId: food.id, servingLabel: "100 g", grams: 100 })),
+      );
+      const selects = jest.spyOn(db, "select");
+
+      const entries = await repository.logSavedMeal(userId, meal.id, "dinner", "2026-08-31", meal.name);
+
+      expect(entries).toHaveLength(3);
+      // One read of the meal's items, one read of their foods -- whatever the meal's size.
+      expect(selects).toHaveBeenCalledTimes(2);
+      selects.mockRestore();
+    });
+
     it("an individually logged entry has a null groupName, same as groupId", async () => {
       const userId = await makeUser("log-single-groupname");
       const food = await repository.createCatalogueFood(catalogueInput(`log-single-gn-${randomUUID()}`));

@@ -717,10 +717,17 @@ export class NutritionRepository {
 
     if (itemRows.length === 0) return [];
 
+    // Every item's food in one read (whole-app review 8.5, L4-3): one query per item paid a full
+    // database round trip per ingredient, one after another, before the insert.
+    const foodIds = [...new Set(itemRows.map((item) => item.foodId))];
+    const foodRows = await this.db.select().from(foods).where(inArray(foods.id, foodIds));
+    const foodsById = new Map(foodRows.map((food) => [food.id, food]));
+
     const groupId = crypto.randomUUID();
     const values: (typeof nutritionLogEntries.$inferInsert)[] = [];
     for (const item of itemRows) {
-      const food = await this.mustFindFoodRow(item.foodId);
+      const food = foodsById.get(item.foodId);
+      if (!food) throw new Error(`logSavedMeal: no such food ${item.foodId}`);
       const grams = Number(item.grams);
       const macros = this.scaleMacros(food, grams);
       values.push({

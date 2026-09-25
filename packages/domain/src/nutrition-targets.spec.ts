@@ -62,6 +62,7 @@ describe("suggestDailyTargets", () => {
       proteinG: 139,
       carbsG: 377,
       fatG: 76,
+      minimumApplied: null,
     });
   });
 
@@ -74,6 +75,7 @@ describe("suggestDailyTargets", () => {
       proteinG: 191,
       carbsG: 387,
       fatG: 86,
+      minimumApplied: null,
     });
   });
 
@@ -126,6 +128,7 @@ describe("suggestDailyTargets minimum calories", () => {
       proteinG: 72,
       carbsG: 153,
       fatG: 33,
+      minimumApplied: 1200,
     });
   });
 

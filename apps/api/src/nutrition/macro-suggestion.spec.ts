@@ -50,9 +50,22 @@ describe("buildMacroGoalSuggestion", () => {
         energyChange: -0.15,
         proteinPerKg: 1.6,
         fatShare: 0.25,
+        minimumKcalApplied: null,
       },
       missing: [],
     });
+  });
+
+  it("says when the suggestion was raised to the daily minimum (review 8.5, L6-1)", () => {
+    const result = buildMacroGoalSuggestion(
+      inputs({
+        profile: { ...profile, sex: "female", activityLevel: "mostly_sitting", heightCm: 150, dateOfBirth: "1966-09-26" },
+        scans: [],
+        healthWeights: [{ at: new Date("2026-09-24T07:00:00.000Z"), kg: 45 }],
+      }),
+    );
+    expect(result.suggestion?.kcal).toBe(1200);
+    expect(result.basis?.minimumKcalApplied).toBe(1200);
   });
 
   it("uses a newer weight from health data than the scan's", () => {

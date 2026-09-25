@@ -126,6 +126,9 @@ export const macroGoalSuggestionResponseSchema = z.object({
       energyChange: z.number(),
       proteinPerKg: z.number(),
       fatShare: z.number(),
+      /** The daily minimum the suggestion was raised to, or `null` when the goal already cleared it
+       *  (whole-app review 8.5, L6-1). Optional so older servers' responses still parse (rule 7). */
+      minimumKcalApplied: z.number().nullable().optional(),
     })
     .nullable(),
   missing: z.array(z.enum(MACRO_SUGGESTION_MISSING)),
