@@ -132,8 +132,8 @@ session crash recovery (R5); the offline upload queue (rule 6); the designed Not
 (`docs/design/slice2-screen-specs.md` §5).
 
 **Sequencing (recommended):** 12A-12C before the Android beta, straight after Phase 8.5, because
-runs and workouts must survive a locked phone. 12D-12H after the beta, informed by what testers
-ask for. iOS parts follow Phase 11's library decision (ADR-007: no Mac).
+runs and workouts must survive a locked phone. 12D-12I after the beta, informed by what testers
+ask for. iPhone widgets (12I) are in scope; other iOS parts follow Phase 11 (ADR-007: no Mac).
 
 ### Decisions to settle first (each an ADR, docs-only PR)
 
@@ -151,9 +151,24 @@ ask for. iOS parts follow Phase 11's library decision (ADR-007: no Mac).
    so it carries no health values ("Your recovery changed, open FORJD", not "HRV fell 22%"). Local
    notifications, built on the phone, may show values. Health-based alerts need health-data
    consent.
-4. **Widgets library.** Android: `react-native-android-widget` (config plugin, JSX widgets) or
-   native; iOS WidgetKit needs a Swift extension, so it waits for Phase 11 (possibly
-   `expo-apple-targets` through Codemagic).
+4. **Widgets on both platforms.** The user wants home-screen widgets on iPhone as well as
+   Android (2026-09-25).
+   - **Android:** `react-native-android-widget` (config plugin, JSX widgets) or native.
+   - **iOS:** WidgetKit only runs SwiftUI in a widget extension, so no JavaScript library can draw
+     an iPhone widget. That is the case CLAUDE.md's platform note allows for: the least Swift
+     possible, generated into the Xcode project at prebuild, never hand-edited in Xcode.
+     - Candidates: `expo-widgets` (Expo's own module, if it is stable on SDK 57; ADR-027) or
+       `@bacons/apple-targets` (a config plugin that adds the extension target from a `targets/`
+       folder).
+     - The app and the widget share data through an App Group (a shared `UserDefaults` suite),
+       written by one small JS module. Widget taps open the app by deep link.
+   - **No Mac (ADR-007):** Codemagic builds the extension. The App Group and the widget's bundle
+     ID need the Apple Developer account and Codemagic's automatic signing, and they are checked
+     on a physical iPhone through TestFlight.
+   - **One shared model:** both platforms draw the same widget content, built by a pure,
+     unit-tested function from a local snapshot, so only the drawing is per-platform.
+   - **Not in this decision:** Live Activities and the Dynamic Island. They use the same extension
+     mechanism and can follow once the extension exists.
 
 ### Slices
 
@@ -167,6 +182,7 @@ ask for. iOS parts follow Phase 11's library decision (ADR-007: no Mac).
 | 12F | **Push:** device-token registration (`device_push_tokens` table, deleted on sign-out and account deletion, in the export and the data inventory), `NotificationProvider` + a fake for tests, then the server-side senders: leaderboard moves (after the Monday snapshot), PR celebrations (on upload) | ADR from decisions 2-3. Contract tests for the adapter (rule 8) |
 | 12G | **Recovery alerts:** Health Connect background read (`READ_HEALTH_DATA_IN_BACKGROUND`) or the next foreground sync, readiness recomputed (rule 9), an alert when HRV or sleep drops sharply | Health-data consent required; no values in push text; rule 16 device test |
 | 12H | **Android home-screen widgets:** today's workout or program day, readiness, calories and macros left, City rank. Fed from a snapshot the app writes locally; no network inside the widget; a setting to hide health values from the home screen | ADR from decision 4. Replica first, per the approval rule |
+| 12I | **iPhone home-screen widgets:** the same widgets and sizes (small, medium; lock-screen accessory if cheap), drawn in SwiftUI from the shared snapshot through the App Group; tap to open the matching screen | ADR from decision 4. Needs the Apple Developer account, a Codemagic build and a TestFlight check on an iPhone. Replica first. Can run before the rest of Phase 11 |
 
 **Across the phase:** every native API behind an injected seam (the ADR-026 pattern) so Jest
 covers the logic; every slice's permission asked at the moment it is needed, never at launch; a
@@ -2574,7 +2590,7 @@ failure).
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
 | 11 — iOS track (parallel with 10) | 40-46 | AppleHealthProvider, Codemagic, TestFlight → App Store | Not started |
-| 12 — Background, notifications, widgets | 4-6 | Background run and session, push and local notifications, Android widgets | **Not started** — see its section near the top of this file. 12A-12C (background run, session, upload) recommended before the beta; 12D-12H after it; iOS parts follow Phase 11 |
+| 12 — Background, notifications, widgets | 4-6 | Background run and session, push and local notifications, Android and iPhone widgets | **Not started** — see its section near the top of this file. 12A-12C (background run, session, upload) recommended before the beta; 12D-12I after it, iPhone widgets (12I) included |
 | Dual-platform public launch | ~47 | Both stores | Not started |
 
 ## Decisions that shaped this sequencing
