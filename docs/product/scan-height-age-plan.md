@@ -8,7 +8,7 @@ before building: the screen replica in §3, and answers to the §4.5 questions.
 | Question | Answer |
 |---|---|
 | Where a scan's height and age come from | **Saved with each scan.** An uploaded scan reads them from the sheet. A manual entry starts filled in from the profile (height, and age on the scan date from date of birth), and the user can edit both. |
-| Required? | Yes, like weight and body fat %: labelled "Required", with a red box and a reason if missing at save. |
+| Required? | Yes, like weight: labelled "Required", with a red box and a reason if missing at save. (Body fat % was required too until 2026-09-25, when the user made it optional.) |
 | Scan height differs from profile height | **Ask before updating:** after saving, "Update your profile height to 178 cm?" |
 | Scans saved before this change | **Left blank.** Only new scans need height and age. |
 | Where to use them | BMI check on scans, filling in a missing BMR, fat-free mass index, and "anywhere in the app these data can improve accuracy": insights, calories, macros (§4). |
@@ -59,8 +59,10 @@ approved the reference**, and none of it is labelled "AI" (it is arithmetic).
 
 ### 4.2 Fill in a missing BMR: *recommended*
 - InBody itself prints BMR from fat-free mass: **BMR = 370 + 21.6 × FFM** (Katch–McArdle;
-  McArdle, Katch & Katch, *Exercise Physiology*). FFM = weight − body fat mass, and both of
-  those are already required, so this is the most accurate fill-in available.
+  McArdle, Katch & Katch, *Exercise Physiology*). FFM = weight − body fat mass (or weight ×
+  (1 − body fat % ÷ 100) when only the percentage is known). Only weight is required, so a scan
+  with neither body fat value gets no FFM-based fill-in; that is the most accurate one available
+  when it can be computed.
 - The same formula also checks an extracted BMR: a mismatch above 5% turns it amber.
 - **Mifflin–St Jeor** (Mifflin et al., *Am J Clin Nutr* 1990;51:241–247), which needs height,
   age and sex, is the fallback only where fat-free mass is unknown (for example the calorie
@@ -71,8 +73,9 @@ approved the reference**, and none of it is labelled "AI" (it is arithmetic).
 ### 4.3 Fat-free mass index: *new metric, tracked in the Body tab*
 - FFMI = FFM ÷ (height m)², plus the height-normalised form FFMI + 6.1 × (1.8 − height m).
   Kouri et al., *Clin J Sport Med* 1995;5(4):223–228. A fairer size-for-height measure than BMI
-  for people who lift. Computed from each scan's own weight, body fat mass and height, and
-  derived at read time rather than stored as an aggregate (rule 9).
+  for people who lift. Computed from each scan's own weight, body fat (mass or %) and height, and
+  derived at read time rather than stored as an aggregate (rule 9). A scan with no body fat value
+  has no FFMI point.
 
 ### 4.4 Run calories: *improves the estimate when the watch gives heart rate but no energy*
 - Today: ACSM running equations, which use weight only (height and age do not appear in them),

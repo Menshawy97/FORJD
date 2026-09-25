@@ -173,8 +173,8 @@ describe("body contracts", () => {
 
 /**
  * Manual entry (docs/product/manual-inbody-entry-plan.md): the user types values in with no
- * photo. Weight and body fat % are required (the user's choice); the rest are optional and
- * bounded exactly like a confirmed scan's values.
+ * photo. Only weight is required (the user's choice; body fat % became optional on
+ * 2026-09-25); the rest are optional and bounded exactly like a confirmed scan's values.
  */
 describe("createManualBodyScanRequestSchema", () => {
   const request = (measurements: Array<{ metric: string; value: number; unit: string }>) => ({
@@ -195,11 +195,13 @@ describe("createManualBodyScanRequestSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it.each([
-    ["weight", [bodyFat]],
-    ["body fat %", [weight]],
-  ])("rejects a request without %s", (_label, measurements) => {
-    expect(createManualBodyScanRequestSchema.safeParse(request(measurements)).success).toBe(false);
+  it("rejects a request without weight", () => {
+    expect(createManualBodyScanRequestSchema.safeParse(request([bodyFat])).success).toBe(false);
+  });
+
+  // The user's rule (2026-09-25): body fat % is optional; only weight is required.
+  it("accepts weight on its own, without body fat %", () => {
+    expect(createManualBodyScanRequestSchema.safeParse(request([weight])).success).toBe(true);
   });
 
   it("rejects the same metric twice", () => {
