@@ -1,7 +1,7 @@
 # Height and age on InBody scans: plan
 
-Status: **approved by the user on 2026-09-25** (the plan and the references in §4). Still owed
-before building: the screen replica in §3, and answers to the §4.5 questions.
+Status: **approved by the user on 2026-09-25** (the plan and the references in §4). The §3
+screen replica, the §4.5 answers and the §4.5 page designs were approved the same day.
 
 ## 1. Decisions made with the user
 
@@ -48,15 +48,23 @@ before building: the screen replica in §3, and answers to the §4.5 questions.
 ## 3. Screens (replica first, per the approval rule)
 
 - **Confirm scan** and **manual entry:** two required rows, *Height (cm)* and *Age (years)*,
-  at the top of the Values list, using the existing `ScanValueRow`. On Confirm scan they carry
-  confidence bars like the other extracted values; when the AI could not read one, the row
-  starts filled from the profile and shows amber so it is checked.
-- **Profile-height prompt:** a small sheet after a successful save when the heights differ.
+  at the top of the Values list, using the existing `ScanValueRow`. On Confirm scan a value read
+  from the sheet carries its confidence bar like the other extracted values. A value the sheet
+  does not print starts filled from the profile and shows amber, "Not on the sheet: from your
+  profile. Please check.", until the user touches it. A doubtful sheet reading starts empty
+  (ADR-032); the profile never stands in for a misread. On manual entry both rows start from the
+  profile ("From your profile"), marked Required. A missing value gets a red box and "Enter your
+  height" / "Enter your age". An age taken from the date of birth follows the scan's date until
+  the user edits it.
+- **Profile-height prompt:** a bottom sheet on the InBody screen after a successful save when the
+  heights differ by 0.5 cm or more (or the profile has none): "Update your profile height to
+  177.8 cm?", with "Update to 177.8 cm" and "Keep 175 cm" (or "Not now").
 - **Body tab:** fat-free mass index gets its own tracked metric alongside the existing ones.
   Calculated BMI and BMR values join their metric's trend with a "calculated" marker. Height
   and age are not shown as trends.
 
-I will show a replica of these before building them.
+The Confirm scan, manual entry and prompt replica was approved on 2026-09-25 (slice C). The
+Body tab part is slice E, with its own replica.
 
 ## 4. Where height and age improve accuracy
 
@@ -101,17 +109,31 @@ approved the reference**, and none of it is labelled "AI" (it is arithmetic).
   includes resting). Subtract resting energy, using the latest scan's BMR where there is one,
   so the two are comparable.
 
-### 4.5 Calories and macros: *needs product decisions first*
-Today the daily targets are numbers the user types in (`PUT /nutrition/macro-goals`). Suggested
-targets would be health guidance, so this part is **proposal only**:
+### 4.5 Calories and macros: *answered and designed, 2026-09-25*
+Today the daily targets are numbers the user types in (`PUT /nutrition/macro-goals`). The basis
+for suggested targets:
 - Energy: BMR (§4.2) × a physical-activity level from FAO/WHO/UNU, *Human energy requirements*
   (2004).
 - Protein: about 1.6 g per kg per day for resistance-trained adults (Morton et al., *Br J Sports
   Med* 2018;52:376–384), better as per kg of fat-free mass when a scan exists.
-- **Open questions before this can be planned:** Is a suggested target wanted at all, or only
-  shown next to the user's own? How is activity level chosen (asked, or from logged training)?
-  Is there a goal (lose / maintain / gain) and how big a deficit or surplus? What about carbs
-  and fat?
+- **Answers (the user, 2026-09-25):**
+  1. **Suggest, the user accepts.** The app suggests targets; nothing changes until the user
+     taps Use. The user's own typed targets stay possible.
+  2. **Activity level is asked at sign-up**, on a new page in the goals page's layout. A
+     suggestion from logged training can come later.
+  3. **Goal: lose / maintain / gain, percent-based**, also asked at sign-up: lose is about 15%
+     under maintenance, gain about 10% over.
+  4. **Fat is 25% of calories; carbs are the rest** after protein and fat.
+- **Approved designs (2026-09-25):**
+  - Sign-up page "How active are you?": Mostly sitting (1.4), Lightly active (1.55), Active
+    (1.7), Very active (1.85), Athlete (2.0); Continue.
+  - Sign-up page "What's your goal?": Lose fat, Maintain, Build muscle, pre-selected from the
+    training goals; Finish.
+  - Nutrition, "Set daily goals": the Auto-calculate card becomes live, e.g. "Suggested: 2,750
+    kcal · Protein 139 g · Carbs 377 g · Fat 76 g" with a Use button and one line saying how it
+    was calculated. Protein is 1.6 g per kg of body weight. Energy uses the latest scan's BMR,
+    or Mifflin–St Jeor from profile height, weight and age when there is no scan.
+  - Activity level and goal are editable later in Profile.
 
 ### 4.6 Checked and left unchanged
 - **Readiness:** scores against the person's own baseline by design (`readiness.ts`
@@ -133,6 +155,7 @@ targets would be health guidance, so this part is **proposal only**:
 4. **D: BMI and BMR checks and fill-ins** (§4.1, §4.2), in the parser and the manual path.
 5. **E: FFMI in the Body tab** (§4.3). Replica first.
 6. **F: Run calories** (§4.4).
-7. **G: Calories and macros** (§4.5). Only after the open questions are answered.
+7. **G: Calories and macros** (§4.5): the two sign-up pages, the suggestion, and the Profile
+   rows.
 
 Each slice is its own PR, merged with `main` green, followed by a device check on Expo Go.

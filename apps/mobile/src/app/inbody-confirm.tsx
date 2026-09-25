@@ -18,6 +18,8 @@ import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
 import { rangeError } from '@/features/body/range-error';
+import type { ScanProfileField } from '@/features/body/scan-profile';
+import { ScanProfileRows, useScanProfile } from '@/features/body/scan-profile-rows';
 import { combineDateAndTime, ScanDateTimeFields } from '@/features/body/scan-date-time';
 import { ScanValueRow } from '@/features/body/scan-value-row';
 import { parseSheetDate } from '@/features/body/sheet-date';
@@ -58,8 +60,13 @@ export default function InBodyConfirmScreen() {
   const [scanDate, setScanDate] = useState(new Date());
   const [scanTime, setScanTime] = useState(new Date());
   const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<BodyMetric | SegmentalSite, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<BodyMetric | SegmentalSite | ScanProfileField, string>>>({});
   const toast = useToast();
+  const scanProfile = useScanProfile(
+    pending ? { heightCm: pending.extracted.heightCm, ageYears: pending.extracted.ageYears } : null,
+    scanDate,
+    pending !== null,
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -134,7 +141,8 @@ export default function InBodyConfirmScreen() {
 
     // The server's own limits, checked here so an out-of-range value is named on its row
     // rather than failing the whole save with a message that blamed the connection.
-    const outOfRange: Partial<Record<BodyMetric | SegmentalSite, string>> = {};
+    // Height and age first: required on every scan (scan-height-age-plan.md §3).
+    const outOfRange: Partial<Record<BodyMetric | SegmentalSite | ScanProfileField, string>> = scanProfile.errors();
     for (const m of measurements) {
       const problem = rangeError(m.metric, m.value, m.unit);
       if (problem) outOfRange[m.metric] = problem;
@@ -149,8 +157,16 @@ export default function InBodyConfirmScreen() {
 
     setSaving(true);
     try {
-      await confirmBodyScan(pending.photoUri, { measuredAt: combineDateAndTime(scanDate, scanTime).toISOString(), measurements });
-      router.replace('/inbody');
+      const heightCm = Number(scanProfile.height.text);
+      await confirmBodyScan(pending.photoUri, {
+        measuredAt: combineDateAndTime(scanDate, scanTime).toISOString(),
+        heightCm,
+        ageYears: Number(scanProfile.age.text),
+        measurements,
+      });
+      const prompt = scanProfile.heightPromptParams(heightCm);
+      if (prompt) router.replace({ pathname: '/inbody', params: prompt });
+      else router.replace('/inbody');
     } catch {
       toast.show('Could not save this scan. Check your connection and try again.');
     } finally {
@@ -215,6 +231,12 @@ export default function InBodyConfirmScreen() {
           }}>
           Extracted values
         </Text>
+        <ScanProfileRows
+          mode="confirm"
+          scanProfile={scanProfile}
+          errors={errors}
+          onEdit={(field) => setErrors((current) => ({ ...current, [field]: undefined }))}
+        />
         {BODY_METRICS.map((metric: BodyMetric) => (
           <ScanValueRow
             key={metric}

@@ -18,11 +18,13 @@ import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
 import { rangeError } from '@/features/body/range-error';
 import { combineDateAndTime, ScanDateTimeFields } from '@/features/body/scan-date-time';
+import type { ScanProfileField } from '@/features/body/scan-profile';
+import { ScanProfileRows, useScanProfile } from '@/features/body/scan-profile-rows';
 import { ScanValueRow } from '@/features/body/scan-value-row';
 import { colors } from '@/theme/tokens';
 
-/** Weight must be entered (the user's rule); everything else, body fat % included since
- *  2026-09-25, is optional. */
+/** Weight must be entered (the user's rule), as must height and age (the rows above the values,
+ *  `ScanProfileRows`); everything else, body fat % included since 2026-09-25, is optional. */
 const REQUIRED: Partial<Record<BodyMetric, string>> = {
   weight_kg: 'Enter your weight',
 };
@@ -55,10 +57,12 @@ export default function InBodyManualScreen() {
   const [segmentalValues, setSegmentalValues] = useState<Record<string, string>>({});
   const [date, setDate] = useState(() => new Date());
   const [time, setTime] = useState(() => new Date());
-  const [errors, setErrors] = useState<Partial<Record<BodyMetric | SegmentalSite, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<BodyMetric | SegmentalSite | ScanProfileField, string>>>({});
   const [saving, setSaving] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const toast = useToast();
+  // Height and age, filled from the profile; the age follows the test date (scan-height-age-plan.md §3).
+  const scanProfile = useScanProfile(null, date, true);
 
   const setValue = (metric: BodyMetric, text: string) => {
     setValues((current) => ({ ...current, [metric]: text }));
@@ -66,7 +70,7 @@ export default function InBodyManualScreen() {
   };
 
   const save = async () => {
-    const missing: Partial<Record<BodyMetric | SegmentalSite, string>> = {};
+    const missing: Partial<Record<BodyMetric | SegmentalSite | ScanProfileField, string>> = scanProfile.errors();
     for (const [metric, message] of Object.entries(REQUIRED) as [BodyMetric, string][]) {
       if (parseValue(values[metric]) === null) missing[metric] = message;
     }
@@ -100,8 +104,14 @@ export default function InBodyManualScreen() {
 
     setSaving(true);
     try {
-      await createManualBodyScan({ measuredAt: combineDateAndTime(date, time).toISOString(), measurements });
-      router.replace({ pathname: '/inbody', params: { saved: 'manual' } });
+      const heightCm = Number(scanProfile.height.text);
+      await createManualBodyScan({
+        measuredAt: combineDateAndTime(date, time).toISOString(),
+        heightCm,
+        ageYears: Number(scanProfile.age.text),
+        measurements,
+      });
+      router.replace({ pathname: '/inbody', params: { saved: 'manual', ...scanProfile.heightPromptParams(heightCm) } });
     } catch {
       toast.show('Could not save these values. Check your connection and try again.');
     } finally {
@@ -136,8 +146,8 @@ export default function InBodyManualScreen() {
           </View>
           <Text style={{ flex: 1, fontFamily: 'Archivo', fontSize: 12, lineHeight: 12 * 1.5, color: '#c8c8c0' }}>
             Type the values from your InBody result.{' '}
-            <Text style={{ color: colors.text, fontWeight: '600' }}>Weight</Text> is required — add any others
-            your sheet shows.
+            <Text style={{ color: colors.text, fontWeight: '600' }}>Height, age and weight</Text> are required — add
+            any others your sheet shows.
           </Text>
         </View>
 
@@ -151,6 +161,12 @@ export default function InBodyManualScreen() {
         />
 
         <Text style={{ ...SECTION_LABEL, marginTop: 24, marginBottom: 2 }}>Values</Text>
+        <ScanProfileRows
+          mode="manual"
+          scanProfile={scanProfile}
+          errors={errors}
+          onEdit={(field) => setErrors((current) => ({ ...current, [field]: undefined }))}
+        />
         {BODY_METRICS.map((metric: BodyMetric) => (
           <ScanValueRow
             key={metric}

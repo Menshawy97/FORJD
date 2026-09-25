@@ -39,9 +39,9 @@ const SCAN_PHOTO_WEBP_QUALITY = 85;
 
 const ALLOWED_SCAN_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-/** A request's height and age, null for whichever one it leaves out (optional until slice C). */
-function scanProfileOf(request: { heightCm?: number; ageYears?: number }): ScanProfileInput {
-  return { heightCm: request.heightCm ?? null, ageYears: request.ageYears ?? null };
+/** A request's height and age, stored on the scan row (both required since slice C). */
+function scanProfileOf(request: { heightCm: number; ageYears: number }): ScanProfileInput {
+  return { heightCm: request.heightCm, ageYears: request.ageYears };
 }
 
 /** One scan as the API returns it. Confirm, scan detail and the account export share this so they

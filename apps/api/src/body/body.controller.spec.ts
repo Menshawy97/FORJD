@@ -70,6 +70,8 @@ describe("BodyController", () => {
       const payload = {
         measuredAt: new Date().toISOString(),
         measurements: [{ metric: "weight_kg", value: 80, unit: "kg", confidence: 0.9 }],
+        heightCm: 178,
+        ageYears: 31,
       };
 
       await controller.confirm(request, file, JSON.stringify(payload));
@@ -116,6 +118,8 @@ describe("BodyController", () => {
       const request = fakeAuthenticatedRequest();
       const body = {
         measuredAt: "2026-09-24T09:15:00.000Z",
+        heightCm: 178,
+        ageYears: 31,
         measurements: [
           { metric: "weight_kg" as const, value: 82.4, unit: "kg" },
           { metric: "body_fat_percent" as const, value: 12.1, unit: "%" },

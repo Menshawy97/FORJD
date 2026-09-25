@@ -20,8 +20,12 @@ interface ScanValueRowProps {
   confidence?: number;
   /** Manual entry: marks weight and body fat % (the user's rule). */
   required?: boolean;
-  /** Manual entry: why this value blocks saving; turns the box red. */
+  /** Why this value blocks saving; turns the box red. */
   error?: string | null;
+  /** A small note under the label: where a pre-filled value came from ("From your profile"). */
+  hint?: string;
+  /** Amber box and hint without a confidence bar: a value filled from the profile, to be checked. */
+  checkMe?: boolean;
 }
 
 /**
@@ -29,11 +33,11 @@ interface ScanValueRowProps {
  * `FORJD Mobile.dc.html:2284`) and on the manual-entry form, which reuses the same layout
  * (docs/product/manual-inbody-entry-plan.md). Shared so the two screens cannot drift apart.
  */
-export function ScanValueRow({ label, unit, value, onChange, confidence, required, error }: ScanValueRowProps) {
+export function ScanValueRow({ label, unit, value, onChange, confidence, required, error, hint, checkMe }: ScanValueRowProps) {
   const confident = confidence != null && confidence >= 0.9;
   const borderColor = error
     ? ERROR_BORDER
-    : confidence != null && confidence < 0.9
+    : checkMe || (confidence != null && confidence < 0.9)
       ? AMBER_BORDER
       : colors.border;
 
@@ -64,6 +68,11 @@ export function ScanValueRow({ label, unit, value, onChange, confidence, require
               {Math.round(confidence * 100)}% confidence
             </Text>
           </View>
+        ) : null}
+        {hint ? (
+          <Text style={{ marginTop: 6, fontFamily: 'Archivo', fontSize: 10, fontWeight: '500', color: checkMe ? AMBER_TEXT : colors.dim }}>
+            {hint}
+          </Text>
         ) : null}
         {error ? (
           <Text style={{ marginTop: 6, fontFamily: 'Archivo', fontSize: 10.5, fontWeight: '500', color: ERROR_TEXT }}>
