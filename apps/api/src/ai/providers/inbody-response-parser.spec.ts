@@ -413,6 +413,24 @@ describe("parseInBodyExtractionResponse: height and age", () => {
     expect(result[key].readingNote).toMatch(/outside the range the app accepts/);
   });
 
+  it("puts the range reason first and keeps the model's own note after it", () => {
+    const result = parseInBodyExtractionResponse(withProfile({ height: height(17.8, "cm", null, 0.95, "Faint print.") }));
+
+    expect(result.heightCm.readingNote).toBe("This is outside the range the app accepts (100–250 cm), so please check it. Faint print.");
+  });
+
+  it("coerces a malformed height reading: non-number confidence, non-string note, non-string unit", () => {
+    const result = parseInBodyExtractionResponse(
+      withProfile({ height: { value: 178, unit: 42, inches: null, confidence: "high", reading_note: null } }),
+    );
+
+    expect(result.heightCm).toEqual({
+      value: 178,
+      confidence: 0,
+      readingNote: "The unit printed for this value wasn't recognised (none), so please check it.",
+    });
+  });
+
   it("holds a fractional age below the pre-fill threshold (sheets print whole years)", () => {
     const result = parseInBodyExtractionResponse(withProfile({ age: age(31.5) }));
 
