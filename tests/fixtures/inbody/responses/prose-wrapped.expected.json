@@ -10,7 +10,8 @@
     "total_body_water_l": { "value": 30.25, "confidence": 0.9, "readingNote": "" },
     "bmi": { "value": 24, "confidence": 0.55, "readingNote": "" },
     "basal_metabolic_rate_kcal": { "value": 1265, "confidence": 0.93, "readingNote": "" },
-    "inbody_score": { "value": null, "confidence": 0, "readingNote": "value not visible" }
+    "inbody_score": { "value": null, "confidence": 0, "readingNote": "value not visible" },
+    "fat_free_mass_index": { "value": null, "confidence": 0, "readingNote": "" }
   },
   "segmental": {
     "right_arm": { "value": null, "confidence": 0, "readingNote": "" },

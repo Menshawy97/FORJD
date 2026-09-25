@@ -48,6 +48,8 @@ Notes on specific fields:
 - inbody_score is printed as "NN/100 Points". Several machines (e.g. InBody 770) and most
   screen/app reports print no score at all: then return null. Never estimate one.
 - total_body_water is printed in L, or in lb on machines configured for lb.
+- fat_free_mass_index is printed as "FFMI" under Research Parameters on some machines (e.g.
+  InBody 570, 770); most sheets do not print it: then return null. Never work it out.
 
 Segmental Lean Analysis, per body part: ${SEGMENTAL_SITES.join(", ")}. Each shows a mass and a
 percentage; report the mass with its unit (${segmentalUnits}), never the percentage.

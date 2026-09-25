@@ -45,7 +45,7 @@ function readScanProfile(scan: { heightCm: string | null; ageYears: number | nul
 export interface MetricSeriesRow {
   metric: string;
   unit: string;
-  points: Array<{ measuredAt: Date; value: number }>;
+  points: Array<{ measuredAt: Date; value: number; calculated: boolean }>;
 }
 
 /**
@@ -192,7 +192,7 @@ export class BodyRepository {
     const byMetric = new Map<string, MetricSeriesRow>();
     for (const row of rows) {
       const entry = byMetric.get(row.metric) ?? { metric: row.metric, unit: row.unit, points: [] };
-      entry.points.push({ measuredAt: row.measuredAt, value: Number(row.value) });
+      entry.points.push({ measuredAt: row.measuredAt, value: Number(row.value), calculated: row.calculated });
       byMetric.set(row.metric, entry);
     }
 

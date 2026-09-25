@@ -570,3 +570,43 @@ describe("parseInBodyExtractionResponse: BMI and BMR checks", () => {
     });
   });
 });
+
+/**
+ * FFMI check (scan-height-age-plan.md §4.3): a sheet that prints FFMI is kept, like BMI, but a
+ * value that breaks FFM ÷ height² is held for a check. Needs confident weight, body fat and height.
+ */
+describe("parseInBodyExtractionResponse: FFMI check", () => {
+  const reading = (value: number, unit: string, confidence = 0.99) => ({ value, unit, confidence, reading_note: "" });
+  // 86.6 kg, 13.5 kg fat: 73.1 kg fat-free; at 1.78 m that is an FFMI of 23.1.
+  const sheet = (ffmi: number, heightConfidence = 0.99) =>
+    JSON.stringify({
+      fields: {
+        weight: reading(86.6, "kg"),
+        body_fat_mass: reading(13.5, "kg"),
+        body_fat_percent: reading(15.6, "%"),
+        fat_free_mass_index: reading(ffmi, "kg/m2"),
+      },
+      height: { ...reading(178, "cm", heightConfidence), inches: null },
+    });
+
+  it("keeps a printed FFMI that matches", () => {
+    expect(parseInBodyExtractionResponse(sheet(23.1)).fields.fat_free_mass_index).toEqual({ value: 23.1, confidence: 0.99, readingNote: "" });
+  });
+
+  it("holds one that doesn't for a check, naming the expected value", () => {
+    const result = parseInBodyExtractionResponse(sheet(28.1)).fields.fat_free_mass_index;
+
+    expect(result.value).toBe(28.1);
+    expect(result.confidence).toBe(0.5);
+    expect(result.readingNote).toBe("This doesn't match fat-free mass ÷ height² (23.1), so please check it.");
+  });
+
+  it("does nothing with a doubtful height, or without body fat", () => {
+    expect(parseInBodyExtractionResponse(sheet(28.1, 0.6)).fields.fat_free_mass_index.confidence).toBe(0.99);
+    const noFat = JSON.stringify({
+      fields: { weight: reading(86.6, "kg"), fat_free_mass_index: reading(28.1, "kg/m2") },
+      height: { ...reading(178, "cm"), inches: null },
+    });
+    expect(parseInBodyExtractionResponse(noFat).fields.fat_free_mass_index.confidence).toBe(0.99);
+  });
+});

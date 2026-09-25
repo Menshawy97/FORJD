@@ -16,8 +16,10 @@ import { Sparkline } from '@/components/sparkline';
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme/tokens';
 
+import { CalculatedTag, calculatedFrom } from './calculated-value';
+
 /** Metrics where a lower number is the improvement -- same rule `inbody-compare.tsx` uses. */
-const HIGHER_IS_BETTER = new Set<BodyMetric>(['skeletal_muscle_mass_kg', 'inbody_score']);
+const HIGHER_IS_BETTER = new Set<BodyMetric>(['skeletal_muscle_mass_kg', 'inbody_score', 'fat_free_mass_index']);
 
 /** The prototype's own `segRef` (`FORJD Mobile.dc.html:3397`) -- each segmental bar's fill
  *  percentage is the confirmed kg value divided by this reference max, not an absolute
@@ -85,6 +87,9 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
     'skeletal_muscle_mass_kg',
     'body_fat_percent',
     'body_fat_mass_kg',
+    // Slice E (scan-height-age-plan.md §4.3): every metric is tracked here except height and age.
+    'fat_free_mass_index',
+    'bmi',
     'total_body_water_l',
     'visceral_fat_level',
     'basal_metabolic_rate_kcal',
@@ -218,13 +223,18 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
         const s = seriesFor(series, metric);
         const points = s?.points.map((p) => p.value) ?? [];
         const latest = points.length > 0 ? points[points.length - 1] : null;
+        const latestPoint = s?.points[s.points.length - 1];
+        const workedOutFrom = latestPoint?.calculated ? calculatedFrom(metric) : null;
         const { text: deltaText, good } = s ? formatDelta(metric, s.points, s.unit) : { text: '—', good: null };
         return (
           <Card key={metric}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-              <Text style={{ fontFamily: 'Archivo', fontSize: 12.5, fontWeight: '600', color: '#C8C8C0' }}>
-                {BODY_METRIC_DISPLAY_NAMES[metric]}
-              </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 }}>
+                <Text style={{ fontFamily: 'Archivo', fontSize: 12.5, fontWeight: '600', color: '#C8C8C0' }}>
+                  {BODY_METRIC_DISPLAY_NAMES[metric]}
+                </Text>
+                {latestPoint?.calculated ? <CalculatedTag /> : null}
+              </View>
               <Text
                 style={{
                   fontFamily: 'Archivo',
@@ -236,6 +246,19 @@ export function BodyView({ series, hasAnyScan }: BodyViewProps) {
                 {latest != null ? `${latest}${BODY_METRIC_UNITS[metric] ? ` ${BODY_METRIC_UNITS[metric]}` : ''}` : '—'}
               </Text>
             </View>
+            {workedOutFrom || latestPoint?.heightAdjusted != null ? (
+              <View style={{ marginTop: 4, flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+                <Text style={{ fontFamily: 'Archivo', fontSize: 11, color: colors.dim }}>
+                  {workedOutFrom ? `From ${workedOutFrom}` : ''}
+                </Text>
+                {latestPoint?.heightAdjusted != null ? (
+                  <Text style={{ fontFamily: 'Archivo', fontSize: 11, color: colors.dim, fontVariant: ['tabular-nums'] }}>
+                    Height-adjusted{' '}
+                    <Text style={{ color: '#C8C8C0', fontWeight: '600' }}>{latestPoint.heightAdjusted}</Text>
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
             {points.length >= 2 ? (
               <View style={{ marginTop: 11 }}>
                 <Sparkline points={points} height={40} color={colors.text} />

@@ -33,6 +33,8 @@ export const PRINTED_FIELDS: Record<BodyMetric, PrintedField> = {
   bmi: { key: "bmi", label: "BMI", units: ["kg/m2"] },
   basal_metabolic_rate_kcal: { key: "basal_metabolic_rate", label: "Basal Metabolic Rate", units: ["kcal"] },
   inbody_score: { key: "inbody_score", label: "InBody Score", units: ["points"] },
+  // Printed by some models (570, 770) under Research Parameters (scan-height-age-plan.md §4.3).
+  fat_free_mass_index: { key: "fat_free_mass_index", label: "FFMI (Fat Free Mass Index)", units: ["kg/m2"] },
 };
 
 /** Segmental lean mass is a mass per body part: kg, or lb on lb-configured machines. */

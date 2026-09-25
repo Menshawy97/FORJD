@@ -88,3 +88,60 @@ describe('ScanDetailScreen error state (R26)', () => {
     expect(screen.queryByText('Could not load this scan. Please try again.')).toBeNull();
   });
 });
+
+// Slice E (scan-height-age-plan.md §4.1–4.3): a value the app worked out says so, and why.
+describe('ScanDetailScreen: calculated values', () => {
+  const m = (metric: string, value: number, unit: string, calculated: boolean) => ({
+    metric: metric as 'weight_kg',
+    value,
+    unit,
+    confidence: 1,
+    calculated,
+  });
+  const withMeasurements = (source: 'inbody' | 'manual', measurements: ReturnType<typeof m>[]) => ({
+    ...scan,
+    source,
+    heightCm: 178,
+    ageYears: 31,
+    measurements,
+  });
+
+  it('tags a calculated BMI and says what it came from', async () => {
+    mockGetBodyScan.mockResolvedValue(
+      withMeasurements('inbody', [m('weight_kg', 86.6, 'kg', false), m('bmi', 27.3, '', true)]),
+    );
+    const { findByText, getAllByText } = await render(<ScanDetailScreen />);
+
+    expect(await findByText('Not on the sheet: from weight and height')).toBeTruthy();
+    expect(getAllByText('Calculated')).toHaveLength(1);
+  });
+
+  it("says 'not entered' on a manual entry, and explains a calculated BMR", async () => {
+    mockGetBodyScan.mockResolvedValue(
+      withMeasurements('manual', [m('weight_kg', 86.6, 'kg', false), m('basal_metabolic_rate_kcal', 1949, 'kcal', true)]),
+    );
+    const { findByText } = await render(<ScanDetailScreen />);
+
+    expect(await findByText('Not entered: from fat-free mass')).toBeTruthy();
+  });
+
+  it('shows the fat-free mass index with its height-adjusted value', async () => {
+    mockGetBodyScan.mockResolvedValue(
+      withMeasurements('inbody', [m('weight_kg', 86.6, 'kg', false), m('fat_free_mass_index', 23.1, '', true)]),
+    );
+    const { findByText, getByText } = await render(<ScanDetailScreen />);
+
+    expect(await findByText('Fat-free mass index')).toBeTruthy();
+    expect(getByText('From weight, body fat and height · height-adjusted 23.2')).toBeTruthy();
+  });
+
+  it('shows a sheet-printed FFMI untagged, still with its height-adjusted value', async () => {
+    mockGetBodyScan.mockResolvedValue(
+      withMeasurements('inbody', [m('weight_kg', 86.6, 'kg', false), m('fat_free_mass_index', 23.1, '', false)]),
+    );
+    const { findByText, queryByText } = await render(<ScanDetailScreen />);
+
+    expect(await findByText('Height-adjusted 23.2')).toBeTruthy();
+    expect(queryByText('Calculated')).toBeNull();
+  });
+});

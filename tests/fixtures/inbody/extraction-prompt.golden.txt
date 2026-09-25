@@ -20,6 +20,7 @@ Fields (set value to null and unit to null when the sheet does not print it):
 - bmi: BMI. unit "kg/m2".
 - basal_metabolic_rate: Basal Metabolic Rate. unit "kcal".
 - inbody_score: InBody Score. unit "points".
+- fat_free_mass_index: FFMI (Fat Free Mass Index). unit "kg/m2".
 
 Notes on specific fields:
 - visceral_fat_level is a plain level number (e.g. "Level 3"). Many sheets instead show
@@ -28,6 +29,8 @@ Notes on specific fields:
 - inbody_score is printed as "NN/100 Points". Several machines (e.g. InBody 770) and most
   screen/app reports print no score at all: then return null. Never estimate one.
 - total_body_water is printed in L, or in lb on machines configured for lb.
+- fat_free_mass_index is printed as "FFMI" under Research Parameters on some machines (e.g.
+  InBody 570, 770); most sheets do not print it: then return null. Never work it out.
 
 Segmental Lean Analysis, per body part: right_arm, left_arm, trunk, right_leg, left_leg. Each shows a mass and a
 percentage; report the mass with its unit ("kg" or "lb"), never the percentage.

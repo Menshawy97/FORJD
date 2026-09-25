@@ -567,3 +567,96 @@ describe("BodyService -- calculated BMI and BMR", () => {
     ]);
   });
 });
+
+/**
+ * Fat-free mass index (docs/product/scan-height-age-plan.md §4.3). Worked out when a scan is read,
+ * never stored as an aggregate (rule 9): FFM ÷ height², from the scan's own weight, body fat and
+ * height. A sheet that prints FFMI wins, as with BMI and BMR. Every series point says whether it
+ * was calculated, and FFMI points carry Kouri et al.'s height-adjusted value.
+ */
+describe("BodyService -- fat-free mass index", () => {
+  const user: User = { id: "user-1", email: "athlete@example.com" } as User;
+  const m = (metric: string, value: number, unit = "", calculated = false) => ({ metric, value, unit, confidence: 1, calculated });
+  // 86.6 kg − 13.5 kg fat = 73.1 kg fat-free; ÷ 1.78² = 23.1; height-adjusted 23.2.
+  const scan = (overrides: Record<string, unknown> = {}) => ({
+    id: "scan-9",
+    measuredAt: new Date("2026-09-22T09:00:00.000Z"),
+    source: "inbody",
+    heightCm: 178,
+    ageYears: 31,
+    measurements: [m("weight_kg", 86.6, "kg"), m("body_fat_mass_kg", 13.5, "kg")],
+    ...overrides,
+  });
+
+  function build(repository: Record<string, jest.Mock>) {
+    return new BodyService(
+      { extractBodyScan: jest.fn() } as unknown as VisionProvider,
+      { upload: jest.fn() } as unknown as StorageProvider,
+      repository as unknown as BodyRepository,
+      { get: jest.fn() } as unknown as PrivacyService,
+    );
+  }
+  const ffmiOf = (response: { measurements: Array<{ metric: string }> }) =>
+    response.measurements.filter((x) => x.metric === "fat_free_mass_index");
+
+  it("works it out on a scan with weight, body fat and height, marked calculated", async () => {
+    const service = build({ getScanById: jest.fn().mockResolvedValue(scan()) });
+
+    expect(ffmiOf(await service.getScan(user, "scan-9"))).toEqual([m("fat_free_mass_index", 23.1, "", true)]);
+  });
+
+  it("keeps the sheet's FFMI when it printed one", async () => {
+    const sheet = scan({ measurements: [m("weight_kg", 86.6, "kg"), m("body_fat_mass_kg", 13.5, "kg"), m("fat_free_mass_index", 23.4)] });
+    const service = build({ getScanById: jest.fn().mockResolvedValue(sheet) });
+
+    expect(ffmiOf(await service.getScan(user, "scan-9"))).toEqual([m("fat_free_mass_index", 23.4)]);
+  });
+
+  it("has none without a height or a body fat value", async () => {
+    const noHeight = build({ getScanById: jest.fn().mockResolvedValue(scan({ heightCm: null })) });
+    const noFat = build({ getScanById: jest.fn().mockResolvedValue(scan({ measurements: [m("weight_kg", 86.6, "kg")] })) });
+
+    expect(ffmiOf(await noHeight.getScan(user, "scan-9"))).toEqual([]);
+    expect(ffmiOf(await noFat.getScan(user, "scan-9"))).toEqual([]);
+  });
+
+  it("adds an FFMI series, one point per scan that has one, oldest first, with the height-adjusted value", async () => {
+    const service = build({
+      getSeriesForUser: jest.fn().mockResolvedValue([
+        { metric: "bmi", unit: "", points: [{ measuredAt: new Date("2026-09-22T09:00:00.000Z"), value: 27.3, calculated: true }] },
+      ]),
+      listScansForUser: jest.fn().mockResolvedValue([
+        scan({ id: "new", measuredAt: new Date("2026-09-22T09:00:00.000Z") }),
+        scan({ id: "no-height", measuredAt: new Date("2026-08-22T09:00:00.000Z"), heightCm: null }),
+        scan({
+          id: "sheet",
+          measuredAt: new Date("2026-07-22T09:00:00.000Z"),
+          measurements: [m("weight_kg", 88, "kg"), m("body_fat_percent", 18, "%"), m("fat_free_mass_index", 22.8)],
+        }),
+      ]),
+    });
+
+    const { series } = await service.getSeries(user);
+
+    expect(series.find((s) => s.metric === "bmi")?.points).toEqual([
+      { measuredAt: "2026-09-22T09:00:00.000Z", value: 27.3, calculated: true },
+    ]);
+    expect(series.find((s) => s.metric === "fat_free_mass_index")).toEqual({
+      metric: "fat_free_mass_index",
+      unit: "",
+      points: [
+        { measuredAt: "2026-07-22T09:00:00.000Z", value: 22.8, calculated: false, heightAdjusted: 22.9 },
+        { measuredAt: "2026-09-22T09:00:00.000Z", value: 23.1, calculated: true, heightAdjusted: 23.2 },
+      ],
+    });
+  });
+
+  it("adds no FFMI series when no scan has one", async () => {
+    const service = build({
+      getSeriesForUser: jest.fn().mockResolvedValue([]),
+      listScansForUser: jest.fn().mockResolvedValue([scan({ heightCm: null })]),
+    });
+
+    expect((await service.getSeries(user)).series).toEqual([]);
+  });
+});

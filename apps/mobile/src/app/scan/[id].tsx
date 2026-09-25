@@ -2,12 +2,13 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { BodyScanResponse } from '@forjd/contracts';
-import { BODY_METRIC_DISPLAY_NAMES, type BodyMetric } from '@forjd/domain';
+import { BODY_METRIC_DISPLAY_NAMES, heightAdjustedFfmi, type BodyMetric } from '@forjd/domain';
 
 import { getBodyScan } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
+import { CalculatedTag, calculatedFrom } from '@/features/body/calculated-value';
 import { formatScanDate } from '@/features/body/format-scan-date';
 import { colors } from '@/theme/tokens';
 
@@ -92,9 +93,15 @@ export default function ScanDetailScreen() {
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
-            <Text style={{ fontFamily: 'Archivo', fontSize: 13, fontWeight: '500', color: colors.dim }}>
-              {BODY_METRIC_DISPLAY_NAMES[measurement.metric as BodyMetric] ?? measurement.metric}
-            </Text>
+            <View style={{ flexShrink: 1, gap: 3 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <Text style={{ fontFamily: 'Archivo', fontSize: 13, fontWeight: '500', color: colors.dim }}>
+                  {BODY_METRIC_DISPLAY_NAMES[measurement.metric as BodyMetric] ?? measurement.metric}
+                </Text>
+                {measurement.calculated ? <CalculatedTag /> : null}
+              </View>
+              {scan ? <MeasurementNote scan={scan} measurement={measurement} /> : null}
+            </View>
             <Text
               style={{
                 fontFamily: 'Archivo',
@@ -111,4 +118,30 @@ export default function ScanDetailScreen() {
       </ScrollView>
     </ScreenBackground>
   );
+}
+
+/**
+ * The grey line under a value (scan-height-age-plan.md §4.1–4.3): what a calculated value was
+ * worked out from, and for FFMI its height-adjusted form (Kouri et al. 1995), which is arithmetic
+ * on the FFMI whether the sheet printed it or the app worked it out.
+ */
+function MeasurementNote({
+  scan,
+  measurement,
+}: {
+  scan: BodyScanResponse;
+  measurement: BodyScanResponse['measurements'][number];
+}) {
+  const from = measurement.calculated ? calculatedFrom(measurement.metric) : null;
+  let note: string | null = null;
+  if (measurement.metric === 'fat_free_mass_index') {
+    const adjusted = scan.heightCm === null ? null : heightAdjustedFfmi(measurement.value, scan.heightCm);
+    const parts = [from ? `From ${from}` : null, adjusted === null ? null : `height-adjusted ${adjusted}`].filter(Boolean);
+    note = parts.length > 0 ? parts.join(' · ') : null;
+    if (note) note = note.charAt(0).toUpperCase() + note.slice(1);
+  } else if (from) {
+    note = `${scan.source === 'manual' ? 'Not entered' : 'Not on the sheet'}: from ${from}`;
+  }
+  if (!note) return null;
+  return <Text style={{ fontFamily: 'Archivo', fontSize: 11, color: '#6f6f68' }}>{note}</Text>;
 }

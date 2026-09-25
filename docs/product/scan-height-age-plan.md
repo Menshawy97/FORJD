@@ -106,6 +106,15 @@ every scan response. Showing the marker in the app is slice E.
   derived at read time rather than stored as an aggregate (rule 9). A scan with no body fat value
   has no FFMI point.
 
+**Built in slice E** (replica approved 2026-09-25): the user chose that a sheet which prints FFMI
+(InBody 570, 770) wins, as with BMI and BMR, so `fat_free_mass_index` joined `BODY_METRICS`, the
+extraction schema and the prompt, with a parser check against FFM ÷ height². Otherwise the API
+works FFMI out on every read of a scan (never stored), marked calculated. The Body tab gains FFMI
+and BMI cards; a card whose latest value was calculated carries a "Calculated" tag and what it
+came from, and FFMI shows the height-adjusted value. Scan detail tags each calculated value
+("Not on the sheet" / "Not entered: from …"). Confirm scan and manual entry gain an optional FFMI
+row, since a read value is never saved unconfirmed.
+
 ### 4.4 Run calories: *improves the estimate when the watch gives heart rate but no energy*
 - Today: ACSM running equations, which use weight only (height and age do not appear in them),
   or the watch's own figure when there is one.
