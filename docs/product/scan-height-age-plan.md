@@ -116,24 +116,44 @@ for suggested targets:
   (2004).
 - Protein: about 1.6 g per kg per day for resistance-trained adults (Morton et al., *Br J Sports
   Med* 2018;52:376–384), better as per kg of fat-free mass when a scan exists.
+- Body recomposition (losing fat and gaining muscle together): documented in trained people as
+  well as beginners, given progressive resistance training, energy at or slightly under
+  maintenance, and high protein (Barakat et al., *Strength Cond J* 2020;42(5):7–21). Protein
+  toward the top of Morton's range, where its benefit plateaus (about 2.2 g/kg); higher intakes
+  of 2.3–3.1 g/kg help keep lean mass in a deficit (Jäger et al., ISSN position stand, *J Int Soc
+  Sports Nutr* 2017;14:20; Helms et al., *IJSNEM* 2014;24:127–138).
 - **Answers (the user, 2026-09-25):**
   1. **Suggest, the user accepts.** The app suggests targets; nothing changes until the user
      taps Use. The user's own typed targets stay possible.
   2. **Activity level is asked at sign-up**, on a new page in the goals page's layout. A
      suggestion from logged training can come later.
-  3. **Goal: lose / maintain / gain, percent-based**, also asked at sign-up: lose is about 15%
-     under maintenance, gain about 10% over.
+  3. **Goal: lose / recomposition / maintain / gain, percent-based**, also asked at sign-up:
+     lose is about 15% under maintenance, gain about 10% over. Body recomposition was added by
+     the user later the same day: 5% under maintenance with protein at 2.2 g/kg (the research
+     above).
   4. **Fat is 25% of calories; carbs are the rest** after protein and fat.
 - **Approved designs (2026-09-25):**
   - Sign-up page "How active are you?": Mostly sitting (1.4), Lightly active (1.55), Active
     (1.7), Very active (1.85), Athlete (2.0); Continue.
-  - Sign-up page "What's your goal?": Lose fat, Maintain, Build muscle, pre-selected from the
-    training goals; Finish.
-  - Nutrition, "Set daily goals": the Auto-calculate card becomes live, e.g. "Suggested: 2,750
-    kcal · Protein 139 g · Carbs 377 g · Fat 76 g" with a Use button and one line saying how it
-    was calculated. Protein is 1.6 g per kg of body weight. Energy uses the latest scan's BMR,
-    or Mifflin–St Jeor from profile height, weight and age when there is no scan.
-  - Activity level and goal are editable later in Profile.
+  - Sign-up page "What's your goal?": Lose fat (−15%), Body recomposition (−5%, more protein),
+    Maintain, Build muscle (+10%), pre-selected from the training goals; Finish.
+  - Nutrition, "Set daily goals": the Auto-calculate card becomes live. Closed, it shows
+    "Suggested: 2,750 kcal · Protein 139 g · Carbs 377 g · Fat 76 g", a plain circled (i)
+    icon (no box around it; grey closed, accent open), the Use button, and "Based on your InBody
+    scan, activity level and goal." Tapping (i) opens the full details inside the card, not
+    summarised:
+    - *Your inputs:* InBody scan and date (BMR, weight), activity level and factor, goal and
+      percentage.
+    - *How it adds up:* one row per step, with the working under the step name and the result
+      on the right: maintenance (BMR × activity), the goal's calories, protein (g/kg × weight),
+      fat (25% ÷ 9), carbs (the rest ÷ 4).
+    - A short note on BMR and the protein source, and "Edit in Profile ›".
+  - Protein is 1.6 g per kg of body weight (2.2 g/kg for body recomposition). Energy uses the
+    latest scan's BMR, or Mifflin–St Jeor from profile height, weight and age when there is no
+    scan; the inputs then name "Estimated BMR" instead of the scan.
+  - Profile, Training group: "Activity level" and "Body goal" rows under Goals & Activities,
+    each opening its sign-up page with Save. Saving changes the suggestion only; the daily
+    targets change when the user taps Use.
 
 ### 4.6 Checked and left unchanged
 - **Readiness:** scores against the person's own baseline by design (`readiness.ts`
