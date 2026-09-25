@@ -1,4 +1,5 @@
 import { averageHeartRate } from '@forjd/domain';
+import { getAccountId } from '@/auth/secureStorage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, BackHandler } from 'react-native';
@@ -128,7 +129,7 @@ export function useRunSession(): RunSession {
       if (closedRef.current) return;
       try {
         const db = await getDb();
-        await saveRunSnapshot(db, state.id, toRunSnapshot(state, Date.now()), new Date(state.startedAtMs).toISOString());
+        await saveRunSnapshot(db, await getAccountId(), state.id, toRunSnapshot(state, Date.now()), new Date(state.startedAtMs).toISOString());
       } catch {
         // Recovery is best effort, but a runner who would lose the run to a crash should know.
         if (!saveWarnedRef.current) {
@@ -188,7 +189,7 @@ export function useRunSession(): RunSession {
       let recovered: RunState | null = null;
       try {
         const db = await getDb();
-        const snapshot = await getUnfinishedRunSnapshot(db);
+        const snapshot = await getUnfinishedRunSnapshot(db, await getAccountId());
         recovered = snapshot ? restoreRunSnapshot(snapshot.payload, Date.now()) : null;
         // A snapshot left behind by a run that was in fact queued must not bring it back to life.
         if (recovered && (await getQueuedSessions(db)).some((row) => row.sessionId === recovered?.id)) {
@@ -431,7 +432,7 @@ export function useRunSession(): RunSession {
         });
         // Closed before the enqueue, so a late autosave cannot write the snapshot back afterwards.
         closedRef.current = true;
-        await enqueueSessionUpload(db, request);
+        await enqueueSessionUpload(db, await getAccountId(), request);
         // From here the run is safely queued: nothing below may report it as "not saved".
         try {
           await clearRunSnapshot(db, finished.id);

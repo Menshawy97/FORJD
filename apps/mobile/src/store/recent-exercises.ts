@@ -15,6 +15,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * than showing a stand-in.
  */
 const STORAGE_KEY = 'forjd.recentExercises.v1';
+/** Exported so sign-out can forget it (whole-app review 8.5, L5-2). */
+export const RECENT_EXERCISES_STORAGE_KEY = STORAGE_KEY;
 const MAX_RECENT = 3;
 
 function isStringArray(value: unknown): value is string[] {

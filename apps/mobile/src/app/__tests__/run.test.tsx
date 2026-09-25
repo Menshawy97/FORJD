@@ -326,13 +326,14 @@ describe('RunScreen -- finishing', () => {
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
     expect(enqueueSessionUpload).toHaveBeenCalledWith(
       DB,
+      null,
       expect.objectContaining({
         activity: 'running',
         isLiveTracked: true,
         run: expect.objectContaining({ distanceMeters: expect.any(Number) }),
       }),
     );
-    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
     expect(request.run.distanceMeters).toBeGreaterThan(90);
     expect(clearRunSnapshot).toHaveBeenCalled();
     expect(getCompletedRun()?.distanceMeters).toBe(request.run.distanceMeters);
@@ -345,7 +346,7 @@ describe('RunScreen -- finishing', () => {
     await runOneHundredMetres();
     await fireEvent.press(screen.getByText('Finish run'));
     await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalled());
-    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
     expect(request.startLocation).toBeNull();
     expect(JSON.stringify(request)).not.toContain('route');
   });
@@ -355,7 +356,7 @@ describe('RunScreen -- finishing', () => {
     await runOneHundredMetres();
     await fireEvent.press(screen.getByText('Finish run'));
     await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalled());
-    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
     expect(request.startLocation).toEqual({ latitude: expect.any(Number), longitude: expect.any(Number) });
   });
 
@@ -364,7 +365,7 @@ describe('RunScreen -- finishing', () => {
     await runOneHundredMetres();
     await fireEvent.press(screen.getByText('Finish run'));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
-    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
     expect(request.run.caloriesKcal).toBeNull();
   });
 
@@ -501,7 +502,7 @@ describe('RunScreen -- watch heart rate and calories (R8)', () => {
     await fireEvent.press(screen.getByText('Finish run'));
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
-    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
     expect(request.run.avgHeartRateBpm).toBe(147);
     expect(request.run.caloriesKcal).toBe(210);
     expect(request.run.caloriesSource).toBe('watch');
@@ -520,7 +521,7 @@ describe('RunScreen -- watch heart rate and calories (R8)', () => {
     await fireEvent.press(screen.getByText('Finish run'));
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
-    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][1];
+    const request = (enqueueSessionUpload as jest.Mock).mock.calls[0][2];
     expect(request.run.avgHeartRateBpm).toBeNull();
     expect(request.run.caloriesSource).not.toBe('watch');
   });
@@ -571,7 +572,7 @@ describe('RunScreen -- review fixes (second round)', () => {
     await fireEvent.press(screen.getByText('Pause'));
 
     await waitFor(() => expect(saveRunSnapshot).toHaveBeenCalled());
-    const payload = (saveRunSnapshot as jest.Mock).mock.calls[0][2] as { state: { status: string } };
+    const payload = (saveRunSnapshot as jest.Mock).mock.calls[0][3] as { state: { status: string } };
     expect(payload.state.status).toBe('paused');
   });
 

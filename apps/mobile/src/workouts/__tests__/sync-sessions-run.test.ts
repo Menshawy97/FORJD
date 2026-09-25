@@ -6,6 +6,8 @@ import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 const mockUpload = jest.fn();
 jest.mock('@/auth/apiClient', () => ({ uploadWorkoutSession: (body: unknown) => mockUpload(body) }));
 
+jest.mock('@/auth/secureStorage', () => ({ getAccountId: async () => 'account-a' }));
+
 const mockResolve = jest.fn();
 jest.mock('../run-exercise', () => ({ resolveRunExerciseId: (...args: unknown[]) => mockResolve(...args) }));
 
@@ -39,7 +41,7 @@ describe('syncPendingSessions: resolving the run exercise placeholder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockOpen.mockResolvedValue(fakeDb);
-    mockDrain.mockImplementation(async (_db: unknown, upload: (body: WorkoutSessionUploadRequest) => Promise<void>) => {
+    mockDrain.mockImplementation(async (_db: unknown, _accountId: unknown, upload: (body: WorkoutSessionUploadRequest) => Promise<void>) => {
       uploadBody = upload;
       return { uploaded: [], failed: [] };
     });

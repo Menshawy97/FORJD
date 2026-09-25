@@ -22,6 +22,7 @@ import {
 import { rememberHealthConsent } from '@/store/health-consent-local';
 import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
+import { getAccountId } from '@/auth/secureStorage';
 import { ScreenBackground } from '@/components/screen-background';
 import { formatHomeDate } from '@/features/home/date';
 import { FailedSyncBanner, FailedSyncBannerSession } from '@/features/home/failed-sync-banner';
@@ -111,6 +112,10 @@ export default function HomeScreen() {
         if (generation === loadGeneration.current) setCityRank(rank);
       });
 
+    // Read alongside the batch, not before it, so it costs no extra wait: who was signed in when
+    // this load started, compared below with who is signed in when the answers arrive.
+    const accountAtStart = getAccountId();
+
     const [meResult, logResult, goalsResult, statsResult, healthSeriesResult, readinessResult] =
       await Promise.allSettled([
         getMe(),
@@ -126,7 +131,13 @@ export default function HomeScreen() {
     // ADR-048: this answer also says whether the person allowed location for leaderboards. Keep the
     // device's copy true, so a workout can decide locally, with no network, whether to read a
     // position. Nothing is written when the server could not be reached or has no settings yet.
-    if (meResult.status === 'fulfilled' && meResult.value.privacy) {
+    //
+    // Only while the same person is still signed in (whole-app review 8.5): an answer that arrives
+    // after a sign-out, or after someone else signed in, would otherwise write the previous
+    // person's consent into the copy the next account's workouts read.
+    const accountStartedWith = await accountAtStart;
+    const stillSameAccount = accountStartedWith !== null && accountStartedWith === (await getAccountId());
+    if (meResult.status === 'fulfilled' && meResult.value.privacy && stillSameAccount) {
       void rememberLocationConsent(meResult.value.privacy.locationForLeaderboard);
       // ADR-043: likewise the health-data consent, so a run can decide offline whether to read a watch.
       void rememberHealthConsent(meResult.value.privacy.healthDataConsent);
@@ -186,7 +197,7 @@ export default function HomeScreen() {
     try {
       const db = await openWorkoutSessionDb();
       await ensureWorkoutSessionSchema(db);
-      const rows = await getFailedSessions(db);
+      const rows = await getFailedSessions(db, await getAccountId());
       setFailedSessions(rows.map((row) => ({ sessionId: row.sessionId, name: row.payload.name })));
     } catch {
       // No local database to read from is not new information Home needs to show -- the same

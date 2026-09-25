@@ -14,6 +14,7 @@ jest.mock('@/auth/secureStorage', () => ({
   subscribeToSession: jest.fn(() => () => {}),
   getCachedHasSession: jest.fn(() => true),
   consumeSessionExpired: jest.fn(() => false),
+  getAccountId: jest.fn().mockResolvedValue('account-a'),
 }));
 
 function flattenColor(style: unknown): string | undefined {
