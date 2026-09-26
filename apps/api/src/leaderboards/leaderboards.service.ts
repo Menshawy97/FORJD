@@ -15,10 +15,10 @@ import { PrivacyService } from '../privacy/privacy.service';
 import { rankCity } from './activity-inputs';
 import { baselineNotBefore, comparisonWeekStart, monthBounds, periodLabel } from './city-time';
 import { LeaderboardSnapshotRepository } from './leaderboard-snapshot.repository';
+import { CityAthleteRow, LeaderboardsRepository } from './leaderboards.repository';
 
 /** How long one computed city board is reused on this server (review 8.5, L9a-2/L9a-3). */
 const CITY_BOARD_TTL_MS = 15_000;
-import { CityAthleteRow, LeaderboardsRepository } from './leaderboards.repository';
 
 /** Used to date a board that has no city to date it by: not opted in, or no city yet. */
 const NO_CITY_TIME_ZONE = 'UTC';
@@ -61,6 +61,9 @@ interface CityContext {
  */
 @Injectable()
 export class LeaderboardsService {
+  /** Each computed city board, by city and window, while it is still fresh (see `cachedCityAthletes`). */
+  private readonly cityBoards = new Map<string, { athletes: Promise<CityAthleteRow[]>; expiresAt: number }>();
+
   constructor(
     private readonly repository: LeaderboardsRepository,
     private readonly privacyService: PrivacyService,
@@ -158,8 +161,6 @@ export class LeaderboardsService {
     athletes.catch(() => this.cityBoards.delete(key));
     return athletes;
   }
-
-  private readonly cityBoards = new Map<string, { athletes: Promise<CityAthleteRow[]>; expiresAt: number }>();
 
   /** The caller's city, from their latest eligible session, with the timezone its month is measured in. */
   private async callerCity(userId: string): Promise<CityContext | null> {

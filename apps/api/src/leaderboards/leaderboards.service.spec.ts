@@ -157,6 +157,17 @@ describe('LeaderboardsService', () => {
       expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
     });
 
+    it('does not keep a failed read: the next request tries again', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+      repository.cityAthletes.mockRejectedValueOnce(new Error('database unavailable'));
+
+      await expect(service.get(viewer, query(), NOW)).rejects.toThrow('database unavailable');
+      const retried = await service.get(viewer, query(), later(1));
+
+      expect(retried.status).toBe('ranked');
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
+    });
+
     it('keeps this month and all time apart', async () => {
       const { service, repository } = build({ athletes: cohort(60, 20) });
 
