@@ -27,14 +27,19 @@ and Phase 10's leaderboards.** `main` is green. Since the 2026-09-19 update, #20
 **Health Connect is now called by a screen.** The 6F adapter merged before any device test
 (ADR-035), on the condition that no UI would call `connect()`/`sync()` until the phone test.
 R8's run screen (`features/run/run-health.ts`) now does, merged on the user's 2026-09-22
-decision. **So the physical Android phone test is the most urgent owed item**: it is the only
-check on code users will run.
+decision, and 8.5 S10 (#284) changed that path, merged on the user's 2026-09-26 decision; both
+are recorded in the ADR-035 amendment. **So the physical Android phone test is the most urgent
+owed item**: it is the only check on code users will run.
 
 ### Owed, and only the user can do them
 
-- **Devices:** the Health Connect phone test (ADR-035; R8); a dev-client build, then a walk of a
-  real run, of location on the Rank tab, of Google sign-in, of the new icon and splash, and of
-  the slice C-G screens.
+- **Devices:** the Health Connect phone test (ADR-035; R8; 8.5 S10: grant and refuse heart rate
+  and calories each alone, and check the run keeps whichever was granted); a dev-client build
+  (the 8.5 S11 Expo SDK 57 patch updates need one), then a walk of a real run, of location on the
+  Rank tab, of Google sign-in, of the new icon and splash, of the slice C-G screens, and of large
+  system text on Rank (8.5 S8's font-scale cap).
+- **Cloud:** delete the old `us-central1` Cloud Run services `forjd-api-production` and
+  `forjd-api-staging` (8.5 S7; everything now points at `europe-west1`).
 - **Credentials and accounts:** a Google Maps key restricted to the app (EAS variable
   `GOOGLE_MAPS_ANDROID_API_KEY`); Google Cloud + Supabase Google provider; Apple Developer
   account; Play Console; the live WHOOP OAuth round-trip (ADR-037).
@@ -52,17 +57,25 @@ check on code users will run.
 
 They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed there:
 
-- **Privacy:** the run and strength crash-recovery snapshots are not cleared on sign-out, so a
-  second account on the phone could be offered the first account's unfinished run. The same
-  kind of race: a late `getMe` can rewrite the health or location consent copy after sign-out.
+- **Privacy:** ~~crash-recovery snapshots and the late `getMe` consent race after sign-out~~ fixed
+  in 8.5 S1. Still open, **scheduled at 8.5 triage (L3-3):** Sentry does not scrub health values
+  from exception messages (`sentry-scrub.ts` strips only the user; `data-inventory.md`).
+  Unconfirmed (8.5E): the date-of-birth `getMe` in `AuthenticatedGate` could, if the gate stays
+  mounted across a quick account switch, redirect the new account on the old one's profile.
+- **Speed (8.5E, low):** the leaderboard's 15 s board cache never drops past months' keys
+  (`leaderboards.service.ts`); a first Nutrition visit still reads each food separately (no batch
+  `GET /nutrition/foods?ids=`; revisits are cached). The two R28 timing tests in
+  `nutrition.repository.spec.ts` keep 2 s wall-clock bounds (same flake class as L10-1).
+- **CI (8.5E, unconfirmed):** `ci.yml` has no top-level `permissions:` block; it touches no
+  credentials, so this rests on the repository's default token permission.
 - **Rule 10:** watch calories are summed across every Health Connect data origin (possible
   double count); filter by origin.
 - **Honest failures:** a revoked Health Connect permission reads as "no watch".
 - **Run follow-ups:** a leftover snapshot of an already-uploaded run; the route rebuilt every
   second; the unused `run_points` table; no miles option; the run share card ("coming soon").
-- **Website:** the privacy page's "Waitlist" section (W4 step 3). `WaitlistForm.astro` falls back
-  to the staging API and Turnstile's always-pass test key when `PUBLIC_API_URL` /
-  `PUBLIC_TURNSTILE_SITE_KEY` are unset, so confirm both are set for the production Pages build.
+- **Website:** the privacy page's "Waitlist" section (W4 step 3). The production build's form now
+  posts to the europe-west1 production API with the real Turnstile key (checked 2026-09-26), and
+  the site sends CSP, HSTS and framing headers (8.5 S11).
 - **Readiness:** Phase 7 decision E's baseline-crossover surfacing.
 - **Tooling:** Expo web cannot bundle (expo-sqlite's web worker), so UI previews rely on HTML
   mirrors or a device; `crash_diagnostics` strips only the user id (data inventory).
@@ -77,7 +90,21 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
 speed budgets, at the user's request. 8.5B done: findings in
 [docs/reviews/2026-09-25-whole-app-review.md](../reviews/2026-09-25-whole-app-review.md) (1 blocker, 7 high,
 all verified). 8.5C triage done the same day: fix everything, move the API to Europe, `--cpu-boost`
-only, a cited calorie minimum. 8.5D running: [whole-app-review-fix-plan.md](whole-app-review-fix-plan.md).**
+only, a cited calorie minimum. 8.5D done 2026-09-26: slices S1-S13 merged (#267-#287), each
+test-first, reviewed, `main` green after every merge; see
+[whole-app-review-fix-plan.md](whole-app-review-fix-plan.md).**
+
+**8.5E re-run (2026-09-26, at `445fcf0`): lanes 1, 2, 3, 9a and 9b are clean.** No blocker,
+high or medium finding is open or new; every earlier finding in those lanes is fixed, closed by a
+documented decision (L2-2), accepted (L2-1, low) or scheduled at triage (L3-3). Two new lows from
+9a are in the known gaps below. Reports:
+[architecture](../reviews/2026-09-26-01-architecture-rerun.md),
+[security](../reviews/2026-09-26-02-security-rerun.md),
+[privacy](../reviews/2026-09-26-03-privacy-rerun.md),
+[server speed](../reviews/2026-09-26-09a-server-speed-rerun.md),
+[app speed](../reviews/2026-09-26-09b-app-speed-rerun.md).
+**What stands between 8.5 and "closed":** only the exit criterion on owed device tests. They are
+either done, or carried into the beta with the user's agreement (the user's call; not yet made).
 
 **Why:** 60 PRs landed in a week, across seven plans, mostly verified by CI alone. The last
 whole-repo audit (2026-09-10, 29 slices) predates the live run, the leaderboards, the website,
@@ -116,8 +143,8 @@ ADR it breaks. No lane edits code.
 4. **8.5D Fix slices:** grouped by area, test-first (a failing test that shows the finding,
    then the fix), each its own PR, merged with `main` green, the same method as the 2026-09-10
    audit remediation (ADR-038).
-5. **8.5E Close:** re-run lanes 1-3 on the new `main`; update this roadmap, the architecture
-   docs and any ADR the fixes changed.
+5. **8.5E Close:** re-run lanes 1-3 (and, since the speed split, 9a/9b) on the new `main`;
+   update this roadmap, the architecture docs and any ADR the fixes changed. **Done 2026-09-26.**
 
 **Exit criteria:** no open blocker or high finding; every medium has a fix or a scheduled home;
 lanes 1-3 re-run clean; the owed device tests above done, or explicitly carried into the beta
@@ -2592,7 +2619,7 @@ failure).
 | Live run | — | GPS runs, route map, crash recovery, watch heart rate | **Complete** — [plan](live-run-plan.md); R1-R8 and F1 merged (ADR-049, ADR-050). Owed: Maps key, dev-client run walk, Health Connect test, Play Data safety form |
 | Website + brand | — | getforjd.com and waitlist; new logo and intro | **Live** — [website plan](website-plan.md) (ADR-051), [brand plan](brand-refresh-plan.md) (ADR-052). Owed: one real sign-up checked end to end, the terms of use, a privacy-page review |
 | InBody + nutrition accuracy | — | gpt-5.4-mini reading, manual entry, height and age, BMI/BMR/FFMI, run calories, suggested targets | **Complete** — ADR-053, [manual entry](manual-inbody-entry-plan.md), [height and age](scan-height-age-plan.md) slices A-G (#243-#260). Owed: the `inbody:eval` re-run (≥ 88%), a device check |
-| 8.5 — Whole-app agent review | 2-3 | Twelve parallel review lanes, verified findings, test-first fix slices | **Not started** — see the section near the top of this file. Must finish before the beta |
+| 8.5 — Whole-app agent review | 2-3 | Twelve parallel review lanes, verified findings, test-first fix slices | **Review, triage and all 13 fix slices done (#267-#287); 8.5E re-run clean (2026-09-26).** Closes when the owed device tests are done or carried into the beta with the user's agreement |
 | Limited Android beta | 35 | 12+ testers | Not started. Needs Phase 8.5 closed, 12A-12C (recommended), Play Console, and the owed device tests |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
