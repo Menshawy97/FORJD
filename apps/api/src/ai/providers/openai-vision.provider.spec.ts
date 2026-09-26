@@ -216,6 +216,19 @@ describe("OpenAiVisionProvider", () => {
       expect(create).toHaveBeenCalledTimes(2);
     });
 
+    it("does not wait out a backoff that would leave too little budget, so it never runs past 45 s", async () => {
+      create
+        .mockImplementationOnce(slowCompletion(20_000, "not json"))
+        .mockImplementationOnce(slowCompletion(24_000, "not json"));
+      const started = Date.now();
+
+      await expect(extract()).rejects.toBeInstanceOf(InternalServerErrorException);
+
+      // 20 s + 1 s wait + 24 s is exactly 45 s: the 2 s wait for a third attempt is skipped.
+      expect(Date.now() - started).toBeLessThanOrEqual(45_000);
+      expect(create).toHaveBeenCalledTimes(2);
+    });
+
     it("does not start an attempt with under 5 s of budget left", async () => {
       create.mockImplementationOnce(slowCompletion(40_000, "not json")).mockResolvedValue(fakeCompletion("not json"));
 

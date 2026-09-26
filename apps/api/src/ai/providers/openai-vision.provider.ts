@@ -60,9 +60,11 @@ export class OpenAiVisionProvider implements VisionProvider {
     let lastError: unknown;
     let attemptsMade = 0;
     for (let attempt = 1; attempt <= OpenAiVisionProvider.MAX_ATTEMPTS; attempt++) {
-      if (attempt > 1) await delay(OpenAiVisionProvider.BACKOFF_MS[attempt - 2] ?? 0);
+      const backoff = attempt > 1 ? (OpenAiVisionProvider.BACKOFF_MS[attempt - 2] ?? 0) : 0;
+      // Checked before waiting, so the wait itself never runs the request past its budget.
+      if (deadline - Date.now() - backoff < OpenAiVisionProvider.MIN_ATTEMPT_MS) break;
+      if (backoff > 0) await delay(backoff);
       const remaining = deadline - Date.now();
-      if (remaining < OpenAiVisionProvider.MIN_ATTEMPT_MS) break;
       attemptsMade = attempt;
 
       try {
