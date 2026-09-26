@@ -27,6 +27,11 @@ permissions:
 
 env:
   TARGET: ${{ inputs.target || 'staging' }}
+  # Where the API runs (ADR-055): europe-west1, the nearest Tier 1 region to the Supabase
+  # database in eu-west-1, so each query no longer crosses the Atlantic. GCP_REGION still names
+  # the Artifact Registry repository the images live in (us-central1); an image pulls across
+  # regions, so the registry did not have to move. GCP_RUN_REGION overrides this if set.
+  RUN_REGION: ${{ vars.GCP_RUN_REGION || 'europe-west1' }}
 
 jobs:
   # Splits the readiness check into its own job so a missing GCP setup shows as a skipped
@@ -189,9 +194,17 @@ jobs:
           if [ "$TARGET" = "production" ]; then
             ALLOWED_WEB_ORIGINS_ENV="@ALLOWED_WEB_ORIGINS=https://getforjd.com,https://www.getforjd.com"
           fi
+          #
+          # --cpu-boost (ADR-055): extra CPU while an instance starts, which shortens the cold
+          # start (14.6 s measured in the 2026-09-25 review). Only the seconds an instance is
+          # starting are billed at the boosted CPU, a few vCPU-seconds per cold start inside the
+          # free tier's monthly allowance, and nothing while idle. There is
+          # deliberately no --min-instances: an always-on instance is billed, and FORJD stays on
+          # free tiers.
           gcloud run deploy "forjd-api-${TARGET}" \
             --image "$IMAGE" \
-            --region "${{ vars.GCP_REGION }}" \
+            --region "$RUN_REGION" \
+            --cpu-boost \
             --platform managed \
             --allow-unauthenticated \
             --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest,OPENAI_API_KEY=forjd-${TARGET}-openai-api-key:latest,TURNSTILE_SECRET_KEY=forjd-${TARGET}-turnstile-secret-key:latest" \
