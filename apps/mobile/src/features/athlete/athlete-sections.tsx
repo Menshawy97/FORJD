@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 import { recordValue, sessionLabel, sessionValue } from './athlete-format';
 
 /**
@@ -33,7 +34,13 @@ const SECTION_LABEL = {
 } as const;
 
 function SectionLabel({ children }: { children: string }) {
-  return <Text style={{ ...SECTION_LABEL, marginTop: 26, marginBottom: 2 }}>{children}</Text>;
+  return (
+    <Text
+      maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
+      style={{ ...SECTION_LABEL, marginTop: 26, marginBottom: 2 }}>
+      {children}
+    </Text>
+  );
 }
 
 interface TileProps {
@@ -56,6 +63,7 @@ function Tile({ label, value, sub }: TileProps) {
         paddingHorizontal: 12,
       }}>
       <Text
+        maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
         style={{
           fontFamily: 'Archivo',
           fontSize: 19,
@@ -67,6 +75,7 @@ function Tile({ label, value, sub }: TileProps) {
         {value}
       </Text>
       <Text
+        maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
         style={{
           marginTop: 7,
           fontFamily: 'Archivo',
@@ -81,6 +90,7 @@ function Tile({ label, value, sub }: TileProps) {
       </Text>
       {sub ? (
         <Text
+          maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
           style={{
             marginTop: 6,
             fontFamily: 'Archivo',
@@ -139,6 +149,7 @@ function ListRow({ label, value, accent = false }: RowProps) {
         {label}
       </Text>
       <Text
+        maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
         style={{
           fontFamily: 'Archivo',
           fontSize: 13.5,

@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 import { deltaView, formatScore, rowName, type DeltaTone } from './rank-format';
 
 /**
@@ -46,6 +47,7 @@ export function RankRow({ row, onPress }: RankRowProps) {
   const content = (
     <>
       <Text
+        maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
         style={{
           width: 24,
           fontFamily: 'Archivo',
@@ -65,6 +67,7 @@ export function RankRow({ row, onPress }: RankRowProps) {
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
+          maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
           numberOfLines={1}
           style={{
             fontFamily: 'Archivo',
@@ -79,6 +82,7 @@ export function RankRow({ row, onPress }: RankRowProps) {
             share a first name and initial. Absent for an account with no username yet. */}
         {row.username ? (
           <Text
+            maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
             numberOfLines={1}
             style={{
               marginTop: 4,
@@ -94,6 +98,7 @@ export function RankRow({ row, onPress }: RankRowProps) {
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text
+          maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
           style={{
             fontFamily: 'Archivo',
             fontSize: 14.5,
@@ -108,6 +113,7 @@ export function RankRow({ row, onPress }: RankRowProps) {
         <View style={{ marginTop: 4, height: 10.5 }}>
           {delta ? (
             <Text
+              maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
               style={{
                 fontFamily: 'Archivo',
                 fontSize: 10.5,

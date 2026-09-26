@@ -354,6 +354,20 @@ describe('Nutrition share screen', () => {
     expect(getFood).toHaveBeenCalledTimes(2);
   });
 
+  // 8.5 S8, L8-3: the photo button is drawn 34x34 (the design's size) with no hitSlop, under
+  // the 44pt minimum. hitSlop widens the tappable area without moving a pixel.
+  it('gives the background-photo button a touch target of at least 44 on every side', async () => {
+    const { getByLabelText } = await setUpShareScreenWithData();
+
+    const button = getByLabelText('Background photo');
+    const style = Object.assign({}, ...[button.props.style].flat(Infinity));
+    const slop = button.props.hitSlop as { top: number; bottom: number; left: number; right: number };
+    expect(style.width).toBe(34);
+    expect(style.height).toBe(34);
+    expect(style.width + slop.left + slop.right).toBeGreaterThanOrEqual(44);
+    expect(style.height + slop.top + slop.bottom).toBeGreaterThanOrEqual(44);
+  });
+
   describe('background photo picker', () => {
     it('sets the card background from the gallery when permission is granted, resizing client-side first', async () => {
       (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });

@@ -14,6 +14,7 @@ import { listHeading, RANK_CHIPS, RANK_PERIODS } from '@/features/rank/rank-form
 import { noticeFor, RankNotice } from '@/features/rank/rank-notice';
 import { RankRow } from '@/features/rank/rank-row';
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 
 /**
  * The Rank tab (Phase 10K), built against `screenshots/leaderboard.png` and the prototype's
@@ -80,7 +81,11 @@ export default function RankScreen() {
   return (
     <ScreenBackground>
       <View style={{ paddingHorizontal: 22, paddingBottom: 12 }}>
-        <Text style={{ ...LABEL_STYLE, marginBottom: 6 }}>City</Text>
+        <Text
+          maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
+          style={{ ...LABEL_STYLE, marginBottom: 6 }}>
+          City
+        </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text
             accessibilityRole="header"
@@ -147,7 +152,9 @@ export default function RankScreen() {
 
         {board?.status === 'ranked' ? (
           <>
-            <Text style={{ ...LABEL_STYLE, marginTop: 18, marginBottom: 4 }}>
+            <Text
+              maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
+              style={{ ...LABEL_STYLE, marginTop: 18, marginBottom: 4 }}>
               {listHeading(board.metric, board.periodLabel)}
             </Text>
             {board.rows.map((row) => (

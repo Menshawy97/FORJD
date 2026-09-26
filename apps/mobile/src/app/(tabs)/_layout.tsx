@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icon';
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 
 // Five tabs, always in this order — 03-navigation.md's Shell section. Geometry and colors
 // below follow the prototype's `tabbar()` helper:
@@ -107,6 +108,7 @@ export default function TabsLayout() {
             title: tab.label,
             tabBarLabel: ({ focused }) => (
               <Text
+                maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
                 style={{
                   color: focused ? colors.accent : colors.tabInactive,
                   fontFamily: 'Archivo',

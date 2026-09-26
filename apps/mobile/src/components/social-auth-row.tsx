@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 
 // Geometry and path data transcribed verbatim from the prototype's `socialRow()`/`socialBtn()`
 // in `FORJD mobile app design/FORJD Mobile.dc.html` lines 1141-1165. `components/icon.tsx` is
@@ -31,6 +32,7 @@ export function SocialAuthRow({ onGooglePress, onApplePress, appleEnabled = true
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
         <Text
+          maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
           className="font-archivo"
           style={{
             fontSize: 11,
@@ -85,6 +87,7 @@ function SocialButton({ label, accessibilityLabel, onPress, icon, comingSoon = f
       className="h-[52px] flex-1 flex-row items-center justify-center gap-[9px] rounded-button border border-border">
       {icon}
       <Text
+        maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
         className="font-archivo"
         style={{ fontSize: 14, lineHeight: 14, fontWeight: '600', color: colors.text }}>
         {label}

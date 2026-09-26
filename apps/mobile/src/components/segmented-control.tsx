@@ -1,6 +1,7 @@
 import { Platform, Pressable, Text, View } from 'react-native';
 
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 
 /**
  * The prototype's shared `segStyle()` / `miniSegStyle()` pattern -- a pill-track segmented
@@ -37,6 +38,9 @@ interface SegmentedControlProps<T extends string> {
   accessibilityLabel?: string;
 }
 
+/** The minimum touch target (Apple HIG 44pt). */
+const MIN_TOUCH_TARGET = 44;
+
 const SIZE = {
   default: { height: 38, borderRadius: 9, fontSize: 13, trackPadding: 4, trackRadius: 12 },
   mini: { height: 30, borderRadius: 8, fontSize: 11.5, trackPadding: 3, trackRadius: 10 },
@@ -50,6 +54,10 @@ export function SegmentedControl<T extends string>({
   accessibilityLabel,
 }: SegmentedControlProps<T>) {
   const metrics = SIZE[size];
+  // Both prototype heights (38, 30) are under 44, so the drawn pill stays exactly the design's
+  // and hitSlop extends the tappable area vertically to the minimum (8.5 S8, L8-2).
+  const verticalSlop = Math.ceil((MIN_TOUCH_TARGET - metrics.height) / 2);
+  const hitSlop = { top: verticalSlop, bottom: verticalSlop, left: 0, right: 0 };
 
   return (
     <View
@@ -72,6 +80,7 @@ export function SegmentedControl<T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
+            hitSlop={hitSlop}
             style={[
               {
                 flex: 1,
@@ -96,6 +105,10 @@ export function SegmentedControl<T extends string>({
                 : null,
             ]}>
             <Text
+              // The segment is a fixed 38/30px box, so its label is capped like the other
+              // tight texts (8.5 S8, L8-4) rather than growing out of the pill.
+              maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
+              numberOfLines={1}
               style={{
                 fontFamily: 'Archivo',
                 fontWeight: '600',

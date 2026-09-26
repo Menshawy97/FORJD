@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 import { formatScore, weekLine, type DeltaTone } from './rank-format';
 
 /**
@@ -52,6 +53,7 @@ export function RankCard({ me }: RankCardProps) {
         }}>
         <View>
           <Text
+            maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
             style={{
               fontFamily: 'Archivo',
               fontSize: 9.5,
@@ -66,6 +68,7 @@ export function RankCard({ me }: RankCardProps) {
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 9 }}>
             <Text
+              maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
               style={{
                 fontFamily: 'Archivo',
                 fontSize: 27,
@@ -78,6 +81,7 @@ export function RankCard({ me }: RankCardProps) {
             </Text>
             {week ? (
               <Text
+                maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
                 style={{
                   fontFamily: 'Archivo',
                   fontSize: 11.5,
@@ -92,6 +96,7 @@ export function RankCard({ me }: RankCardProps) {
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text
+            maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
             style={{
               fontFamily: 'Archivo',
               fontSize: 20,
@@ -103,6 +108,7 @@ export function RankCard({ me }: RankCardProps) {
             {formatScore(me.score)}
           </Text>
           <Text
+            maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
             style={{
               marginTop: 6,
               fontFamily: 'Archivo',
