@@ -71,7 +71,11 @@ export const workoutTemplates = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("workout_templates_owner_idx").on(table.ownerUserId)],
+  (table) => [
+    index("workout_templates_owner_idx").on(table.ownerUserId),
+    // Foreign-key index (review 8.5, S6): deleting a base template finds its copies without a scan.
+    index("workout_templates_based_on_idx").on(table.basedOnTemplateId),
+  ],
 );
 
 export type WorkoutTemplateRow = typeof workoutTemplates.$inferSelect;
@@ -458,7 +462,11 @@ export const programWorkouts = pgTable(
      */
     dayOfWeek: integer("day_of_week"),
   },
-  (table) => [index("program_workouts_program_order_idx").on(table.programId, table.orderIndex)],
+  (table) => [
+    index("program_workouts_program_order_idx").on(table.programId, table.orderIndex),
+    // Foreign-key index (review 8.5, S6): the `restrict` check on deleting a template is a lookup.
+    index("program_workouts_template_idx").on(table.templateId),
+  ],
 );
 
 export type ProgramWorkoutRow = typeof programWorkouts.$inferSelect;
@@ -488,6 +496,8 @@ export const programEnrollments = pgTable(
   },
   (table) => [
     index("program_enrollments_user_idx").on(table.userId),
+    // Foreign-key index (review 8.5, S6): who follows a program, and the cascade when one is deleted.
+    index("program_enrollments_program_idx").on(table.programId),
     /**
      * One active program at a time, which the design assumes throughout -- `activeProgram` is a
      * single value and Train renders one "Currently following:" chip.
