@@ -13,9 +13,11 @@ Plan: [whole-app-review-plan.md](whole-app-review-plan.md).
 |---|---|
 | S1 sign-out and account scoping | **Merged** #267, `main` green. Blocker L3-1 fixed |
 | S2 newest-first health reads | **Merged** #268 |
-| S3 nutrition correctness and speed | PR #269 (code-reviewed; an e2e expectation fixed after CI) |
-| S4 export completeness | PR #270 (awaiting review and CI) |
-| S5-S13 | Not started. Next: S5 app speed |
+| S3 nutrition correctness and speed | **Merged** #269: cited calorie minimum (with the approved breakdown note), save-once Log button, idempotent log id, foods cache, batched saved-meal read |
+| S4 export completeness | **Merged** #270, `main` green. Follow-ups from its review: an e2e case seeding a run in `users-export.e2e-spec.ts`, and a `run` example in `packages/contracts/src/fixtures.ts` |
+| S5 app speed, part 1 | PR #272: Progress in parallel (L9b-1), Train lookups (L9b-2), programs on focus (L9b-5) |
+| S5 app speed, part 2 | Not started: one shared `getMe` cache (L9b-3), a minimum interval for tab-focus refetches (L9b-4) |
+| S6-S13 | Not started. Next after S5: S6 leaderboard and history reads, then S7 (server to europe-west1 + `--cpu-boost`) |
 
 Working notes for whoever resumes: slices are built in the worktree `.claude/worktrees/fix-85`
 (one branch per slice, from `origin/main`). After switching branches, rebuild the shared packages
