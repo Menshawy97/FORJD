@@ -354,6 +354,65 @@ describe('apiClient - profile reads and writes', () => {
     expect(instance.get).toHaveBeenCalledWith('/users/me');
   });
 
+  it('shares one GET /users/me between calls made while it is in flight (review 8.5, L9b-3)', async () => {
+    const { getMe } = loadApiClient();
+    const instance = apiClientInstance();
+    let answer: (value: unknown) => void = () => undefined;
+    instance.get.mockImplementation(() => new Promise((resolve) => (answer = resolve)));
+
+    // Launch asks from the root layout and Home at the same moment.
+    const fromLayout = getMe();
+    const fromHome = getMe();
+    // getMe reads the token first, so the request starts a tick later.
+    await new Promise((resolve) => setImmediate(resolve));
+    answer({ data: { id: 'u1', email: 'a@example.com', profile: null, privacy: null } });
+
+    await expect(Promise.all([fromLayout, fromHome])).resolves.toHaveLength(2);
+    expect(instance.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('never hands one account the request another account started (a sign-out and sign-in mid-request)', async () => {
+    const { getMe } = loadApiClient();
+    const instance = apiClientInstance();
+    const answers: Array<(value: unknown) => void> = [];
+    instance.get.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+    (secureStorage.getAccessToken as jest.Mock).mockResolvedValue('token-account-a');
+    const forA = getMe();
+    await flush();
+    (secureStorage.getAccessToken as jest.Mock).mockResolvedValue('token-account-b');
+    const forB = getMe();
+    await flush();
+
+    expect(instance.get).toHaveBeenCalledTimes(2);
+    answers[0]?.({ data: { id: 'a', email: 'a@example.com', profile: null, privacy: null } });
+    answers[1]?.({ data: { id: 'b', email: 'b@example.com', profile: null, privacy: null } });
+    await expect(forA).resolves.toEqual(expect.objectContaining({ id: 'a' }));
+    await expect(forB).resolves.toEqual(expect.objectContaining({ id: 'b' }));
+  });
+
+  it('asks again once the shared request has finished, so a later screen never sees a stale profile', async () => {
+    const { getMe } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.get.mockResolvedValue({ data: { id: 'u1', email: 'a@example.com', profile: null, privacy: null } });
+
+    await getMe();
+    await getMe();
+
+    expect(instance.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not keep a failed request: the next call tries again', async () => {
+    const { getMe } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.get.mockRejectedValueOnce(new Error('offline'));
+    instance.get.mockResolvedValueOnce({ data: { id: 'u1', email: 'a@example.com', profile: null, privacy: null } });
+
+    await expect(getMe()).rejects.toThrow('offline');
+    await expect(getMe()).resolves.toEqual(expect.objectContaining({ id: 'u1' }));
+  });
+
   it('updateProfile sends only the given fields through PATCH /users/me/profile', async () => {
     const { updateProfile } = loadApiClient();
     const instance = apiClientInstance();

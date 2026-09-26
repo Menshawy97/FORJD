@@ -205,9 +205,31 @@ export async function socialSignIn(input: SocialSignInRequest): Promise<SocialSi
   return response.data;
 }
 
+// The one `GET /users/me` currently in flight, shared by every caller that asks meanwhile (whole-app
+// review 8.5, L9b-3): at launch the root layout and Home asked at the same moment, twice across the
+// Atlantic. Deliberately not a cache of the answer -- once it lands the next call asks again, so a
+// screen opened after a profile edit never reads the profile from before it.
+//
+// Shared only with callers holding the same access token: a request started before a sign-out must
+// never answer for the next account to sign in (S5 review).
+let getMeInFlight: { token: string | null; promise: Promise<MeResponse> } | null = null;
+
 export async function getMe(): Promise<MeResponse> {
-  const response = await apiClient.get<MeResponse>('/users/me');
-  return response.data;
+  const token = await getAccessToken();
+  if (getMeInFlight && getMeInFlight.token === token) {
+    return getMeInFlight.promise;
+  }
+  const entry: { token: string | null; promise: Promise<MeResponse> } = {
+    token,
+    promise: apiClient.get<MeResponse>('/users/me').then((response) => response.data),
+  };
+  getMeInFlight = entry;
+  try {
+    return await entry.promise;
+  } finally {
+    // Only clear our own entry: a newer one started under another token must survive.
+    if (getMeInFlight === entry) getMeInFlight = null;
+  }
 }
 
 /**
