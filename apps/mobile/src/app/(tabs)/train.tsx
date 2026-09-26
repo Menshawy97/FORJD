@@ -4,7 +4,7 @@ import type {
   WorkoutTemplateSummary,
 } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
@@ -174,28 +174,32 @@ export default function TrainScreen() {
   const [showAllWorkouts, setShowAllWorkouts] = useState(false);
   const [myPrograms, setMyPrograms] = useState<ProgramSummary[]>([]);
 
-  useEffect(() => {
-    let cancelled = false;
+  // On focus, like the rest of this screen (whole-app review 8.5, L9b-5): loaded only on mount, a
+  // program created or followed elsewhere never appeared here until the app restarted.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
 
-    void (async () => {
-      const [enrollment, mine] = await Promise.all([
-        getProgramEnrollment().catch(() => ({ enrollment: null })),
-        listPrograms({ scope: 'mine' }).catch(() => ({ items: [] })),
-      ]);
-      if (cancelled) return;
+      void (async () => {
+        const [enrollment, mine] = await Promise.all([
+          getProgramEnrollment().catch(() => ({ enrollment: null })),
+          listPrograms({ scope: 'mine' }).catch(() => ({ items: [] })),
+        ]);
+        if (cancelled) return;
 
-      setActiveProgram(
-        enrollment.enrollment
-          ? { id: enrollment.enrollment.programId, name: enrollment.enrollment.programName }
-          : null,
-      );
-      setMyPrograms(mine.items);
-    })();
+        setActiveProgram(
+          enrollment.enrollment
+            ? { id: enrollment.enrollment.programId, name: enrollment.enrollment.programName }
+            : null,
+        );
+        setMyPrograms(mine.items);
+      })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const onRepeat = () => {
     if (!previous) return;

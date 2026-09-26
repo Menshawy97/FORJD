@@ -3,12 +3,15 @@ import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockPush = jest.fn();
+// Every focus callback the screen registers, so a test can simulate coming back to the tab.
+const mockFocusCallbacks = new Set<() => void>();
 
 jest.mock('expo-router', () => {
   const react = require('react');
   return {
     router: { push: (...args: unknown[]) => mockPush(...args), replace: jest.fn(), back: jest.fn() },
     useFocusEffect: (callback: () => void) => {
+      mockFocusCallbacks.add(callback);
       react.useEffect(() => {
         callback();
       }, []);
@@ -80,6 +83,7 @@ const myProgram = {
 describe('Train programs sections', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFocusCallbacks.clear();
     mockEnrollment.mockResolvedValue({ enrollment: null });
     mockList.mockResolvedValue({ items: [] });
   });
@@ -154,6 +158,15 @@ describe('Train programs sections', () => {
    * Train is the workout tab. Losing the network should cost the athlete a chip and a list, not
    * the ability to see the screen at all.
    */
+  it('reloads the programs when the tab regains focus, so a new program shows (review 8.5, L9b-5)', async () => {
+    await render(<TrainScreen />);
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1));
+
+    mockFocusCallbacks.forEach((callback) => callback());
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+  });
+
   it('still renders when both program reads fail', async () => {
     mockEnrollment.mockRejectedValue(new Error('offline'));
     mockList.mockRejectedValue(new Error('offline'));
