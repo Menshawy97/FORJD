@@ -176,8 +176,9 @@ enforce. The client's own `city`/`citySlug` are ignored, because the slug is the
 ranking key and a client-chosen one would let anyone join any city's board.
 
 Leaderboard participation is a separate opt-in from general app usage, and
-withdrawing it takes effect on the very next request: eligibility is read live and
-joined inside the query, with no cache (ADR-047). A board below five athletes is
+withdrawing it takes effect on the very next request: eligibility, names and photos
+are read live on every request (ADR-047). Only the totals behind the scores are
+reused, for up to 15 seconds, and never who is on the board (ADR-054). A board below five athletes is
 never shown. A private profile still shows name and username on the board but cannot
 be opened, and its photo is withheld from everyone but its owner.
 

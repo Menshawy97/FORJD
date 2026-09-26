@@ -62,6 +62,18 @@ describe('LeaderboardsService', () => {
     const repository = {
       latestEligibleCity: jest.fn().mockResolvedValue(options.latest === undefined ? { citySlug: SLUG, city: 'Alexandria' } : options.latest),
       cityAthletes: jest.fn().mockResolvedValue(options.athletes ?? []),
+      // By default everyone on the board is still a member, as they were when it was computed.
+      currentMembers: jest.fn((ids: string[]) => {
+        const byId = new Map((options.athletes ?? []).map((row) => [row.userId, row]));
+        return Promise.resolve(
+          new Map(
+            ids.map((id) => {
+              const row = byId.get(id);
+              return [id, { displayName: row?.displayName ?? null, username: row?.username ?? null, avatarUrl: row?.avatarUrl ?? null, isPublicProfile: row?.isPublicProfile ?? false }];
+            }),
+          ),
+        );
+      }),
     };
 
     const cities = {
@@ -123,6 +135,100 @@ describe('LeaderboardsService', () => {
       const { service } = build({ athletes: cohort(10, 5) });
 
       expect((await service.standingFor(viewer.id))?.rank).toBeGreaterThan(0);
+    });
+  });
+
+  describe('the city board is computed once per 15 s (review 8.5, L9a-2/L9a-3)', () => {
+    const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
+
+    it('reuses one computation for two reads of the same board', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.get(viewer, query(), NOW);
+      await service.get(viewer, query(), later(5));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(1);
+    });
+
+    it("shares it with a profile's standing, so tapping through profiles does not recompute the city", async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.standingFor(viewer.id, NOW);
+      await service.get(viewer, query(), later(1));
+      await service.standingFor('someone-else', later(2));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(1);
+    });
+
+    it('computes it again once 15 seconds have passed', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.get(viewer, query(), NOW);
+      await service.get(viewer, query(), later(16));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not keep a failed read: the next request tries again', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+      repository.cityAthletes.mockRejectedValueOnce(new Error('database unavailable'));
+
+      await expect(service.get(viewer, query(), NOW)).rejects.toThrow('database unavailable');
+      const retried = await service.get(viewer, query(), later(1));
+
+      expect(retried.status).toBe('ranked');
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
+    });
+
+    it('drops an athlete who withdrew on the very next read, even while the board is reused (ADR-047)', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+      const leaver = idOf(60);
+      expect((await service.get(viewer, query({ window: 60 }), NOW)).rows.some((row) => row.userId === leaver)).toBe(true);
+
+      repository.currentMembers.mockImplementation((ids: string[]) =>
+        Promise.resolve(new Map(ids.filter((id) => id !== leaver).map((id) => [id, { displayName: null, username: null, avatarUrl: null, isPublicProfile: true }]))),
+      );
+      const next = await service.get(viewer, query({ window: 60 }), later(1));
+
+      expect(next.rows.some((row) => row.userId === leaver)).toBe(false);
+      expect(next.cohortSize).toBe(59);
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows a changed name, photo or private setting on the very next read', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+      const top = idOf(60);
+      await service.get(viewer, query(), NOW);
+
+      repository.currentMembers.mockImplementation((ids: string[]) =>
+        Promise.resolve(
+          new Map(ids.map((id) => [id, id === top ? { displayName: 'Renamed', username: 'renamed', avatarUrl: 'https://example.com/p.png', isPublicProfile: false } : { displayName: 'X', username: 'x', avatarUrl: null, isPublicProfile: true }])),
+        ),
+      );
+      const row = (await service.get(viewer, query({ window: 60 }), later(1))).rows.find((entry) => entry.userId === top);
+
+      // Now private, so the photo is withheld from everyone else (D10).
+      expect(row).toMatchObject({ displayName: 'Renamed', username: 'renamed', avatarUrl: null, isPublicProfile: false });
+    });
+
+    it('computes it again when the caller is missing from a reused board, so a first workout shows at once', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+      repository.cityAthletes.mockResolvedValueOnce(cohort(60, 20).filter((row) => row.userId !== viewer.id));
+
+      expect((await service.get(viewer, query(), NOW)).status).toBe('no_eligible_sessions');
+      expect((await service.get(viewer, query(), later(1))).status).toBe('ranked');
+      await service.get(viewer, query(), later(2));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps this month and all time apart', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.get(viewer, query({ period: 'month' }), NOW);
+      await service.get(viewer, query({ period: 'all_time' }), NOW);
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
     });
   });
 

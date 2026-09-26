@@ -24,10 +24,26 @@ export const cityAthleteRowSchema = z.object({
   public_profile: z.boolean(),
 });
 
+export const currentMemberRowSchema = z.object({
+  user_id: z.string(),
+  display_name: z.string().nullable(),
+  username: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  public_profile: z.boolean(),
+});
+
 export const latestCityRowSchema = z.object({
   city_slug: z.string(),
   city: z.string().nullable(),
 });
+
+/** How an athlete is shown on a board: read live, never from a reused board. */
+export interface BoardIdentity {
+  displayName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  isPublicProfile: boolean;
+}
 
 /** One athlete's raw totals over a window, before any scoring. */
 export interface CityAthleteRow {
@@ -51,7 +67,8 @@ export interface CityAthleteRow {
  * The reads behind a city leaderboard (Phase 10, ADR-046, ADR-047). Standings are **computed on
  * read**: the query is bounded to one city over one window by the partial index from migration
  * 0020, and eligibility is decided inside it, by joining the athlete's privacy settings live, so a
- * withdrawal is true on the very next request and there is no cache to go stale.
+ * withdrawal is true on the very next request. The service reuses these totals for a few seconds,
+ * but never who is on the board or how they are shown: `currentMembers` reads that live every time.
  *
  * A session counts only if all of this holds, and this one predicate is the rule (ADR-044):
  * not deleted, completed, ended, run through the live runner, in this city, inside the window,
@@ -141,6 +158,39 @@ export class LeaderboardsRepository {
       avatarUrl: row.avatar_url,
       isPublicProfile: row.public_profile,
     }));
+  }
+
+  /**
+   * Which of `userIds` are on the leaderboard right now, with how they are shown right now. The
+   * service reuses a computed board's totals for a few seconds, and calls this on every request, so
+   * a withdrawal, a rename or a switch to private is still true on the very next request (ADR-047).
+   * A lookup by id, cheap next to recomputing the city's totals.
+   */
+  async currentMembers(userIds: readonly string[]): Promise<Map<string, BoardIdentity>> {
+    if (userIds.length === 0) return new Map();
+    const ids = sql.join(
+      userIds.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    );
+    const rows = await executeValidated(
+      this.db,
+      sql`
+      select ps.user_id, pr.display_name, pr.username, pr.avatar_url, ps.public_profile
+      from privacy_settings ps
+      left join profiles pr on pr.user_id = ps.user_id
+      where ps.user_id in (${ids})
+        and ps.leaderboard_opt_in = true
+        and ps.location_for_leaderboard = true
+      `,
+      currentMemberRowSchema,
+      'LeaderboardsRepository.currentMembers',
+    );
+    return new Map(
+      rows.map((row) => [
+        row.user_id,
+        { displayName: row.display_name, username: row.username, avatarUrl: row.avatar_url, isPublicProfile: row.public_profile },
+      ]),
+    );
   }
 
   /**
