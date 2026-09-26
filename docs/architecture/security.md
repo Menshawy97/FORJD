@@ -83,6 +83,8 @@ the same flows per address, and every request goes through it (`SupabaseAuthProv
 So the worst case for one victim is about one email a minute, which is annoying but bounded,
 and the per-hour project cap stops any wider flood. A per-address counter here would duplicate
 Supabase's limit and need its own store (Redis or a table) to survive restarts and scale-out.
+Both limits are **settings in the Supabase dashboard** (Authentication → Rate Limits), not
+code: loosening them there would silently undo this decision, so treat them as part of it.
 Revisit this if we move off Supabase's email sending, raise its per-address interval, or see
 abuse in the logs.
 Source: Supabase, "Production Checklist" → Auth rate limits

@@ -215,7 +215,8 @@ setup_everything_clean() {
 
   write "$dir/.github/workflows/deploy.yml" \
     "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/local-action"
+      - uses: ./.github/actions/local-action
+      - uses: \"actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020\" # quoted, still pinned"
 }
 
 # 8.5 S11, L12-1: a workflow action referenced by a movable tag runs whatever that tag points
