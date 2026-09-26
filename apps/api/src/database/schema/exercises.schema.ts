@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { index, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { users } from "./users.schema";
 
@@ -141,7 +141,13 @@ export const exerciseFavourites = pgTable(
       .references(() => exercises.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex("exercise_favourites_pk").on(table.userId, table.exerciseId)],
+  (table) => [
+    // A real primary key, not only a unique index (review 8.5, S6): the same one-row-per-pair rule.
+    primaryKey({ name: "exercise_favourites_pkey", columns: [table.userId, table.exerciseId] }),
+    // The key leads with user_id, so deleting a catalogue exercise needs its own index to find
+    // the favourites it cascades to.
+    index("exercise_favourites_exercise_idx").on(table.exerciseId),
+  ],
 );
 
 export type ExerciseFavouriteRow = typeof exerciseFavourites.$inferSelect;

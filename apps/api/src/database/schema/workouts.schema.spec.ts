@@ -350,4 +350,32 @@ describe("workouts schema (migrations 0012, 0013)", () => {
       expect(definition).toContain("city_slug IS NOT NULL");
     });
   });
+
+  // Review 8.5 (S6): a foreign key with no index makes every delete of the parent row scan the
+  // child table, and every join from the parent side a sequential scan.
+  describe("foreign-key indexes (review 8.5, S6)", () => {
+    const indexOn = async (table: string, columns: string): Promise<string | undefined> => {
+      const result = await db.execute(sql`select indexdef from pg_indexes where tablename = ${table}`);
+      return (result.rows as Array<{ indexdef: string }>).map((row) => row.indexdef).find((d) => d.endsWith(`(${columns})`));
+    };
+
+    it.each([
+      ["exercise_favourites", "exercise_id"],
+      ["program_enrollments", "program_id"],
+      ["program_workouts", "template_id"],
+      ["workout_templates", "based_on_template_id"],
+    ])("indexes %s.%s", async (table, column) => {
+      expect(await indexOn(table, column)).toBeDefined();
+    });
+
+    it("gives exercise_favourites a real primary key on (user_id, exercise_id)", async () => {
+      const result = await db.execute(sql`
+        select pg_get_constraintdef(c.oid) as definition
+        from pg_constraint c
+        join pg_class t on t.oid = c.conrelid
+        where t.relname = 'exercise_favourites' and c.contype = 'p'
+      `);
+      expect((result.rows[0] as { definition: string } | undefined)?.definition).toBe("PRIMARY KEY (user_id, exercise_id)");
+    });
+  });
 });
