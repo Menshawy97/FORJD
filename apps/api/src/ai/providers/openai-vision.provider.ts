@@ -44,8 +44,8 @@ export class OpenAiVisionProvider implements VisionProvider {
   private static readonly TOTAL_BUDGET_MS = 45_000;
   /** The client's own timeout (`openai-vision-client.ts`); a later attempt gets what is left. */
   private static readonly ATTEMPT_TIMEOUT_MS = 30_000;
-  /** The wait before the second and third attempts, so a briefly overloaded vendor can recover. */
-  private static readonly BACKOFF_MS = [1_000, 2_000] as const;
+  /** The wait before the second attempt, doubled before the third, so a busy vendor can recover. */
+  private static readonly FIRST_BACKOFF_MS = 1_000;
   /** A normal scan takes ~4 s; with less than this left, another attempt is not worth starting. */
   private static readonly MIN_ATTEMPT_MS = 5_000;
 
@@ -60,7 +60,7 @@ export class OpenAiVisionProvider implements VisionProvider {
     let lastError: unknown;
     let attemptsMade = 0;
     for (let attempt = 1; attempt <= OpenAiVisionProvider.MAX_ATTEMPTS; attempt++) {
-      const backoff = attempt > 1 ? (OpenAiVisionProvider.BACKOFF_MS[attempt - 2] ?? 0) : 0;
+      const backoff = attempt === 1 ? 0 : OpenAiVisionProvider.FIRST_BACKOFF_MS * 2 ** (attempt - 2);
       // Checked before waiting, so the wait itself never runs the request past its budget.
       if (deadline - Date.now() - backoff < OpenAiVisionProvider.MIN_ATTEMPT_MS) break;
       if (backoff > 0) await delay(backoff);
