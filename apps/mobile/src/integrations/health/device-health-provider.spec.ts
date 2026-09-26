@@ -7,7 +7,6 @@
  * lazy `require` in `try/catch` that every sibling adapter already uses (google.ts, apple.ts,
  * location-provider.ts, route-map.tsx).
  *
- *
  * A fresh module registry per test (`beforeEach` below), not `isolateModules`: the adapter is
  * required lazily, after the loader returns, so it must resolve against this test's mocks.
  */
