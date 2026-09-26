@@ -1,3 +1,5 @@
+import type { AstroUserConfig } from 'astro';
+
 /**
  * The site's Content-Security-Policy (8.5 S11, L12-2), given to Astro's `security.csp` in
  * `astro.config.mjs`. Astro hashes every inline script on every page at build time and puts the
@@ -20,6 +22,9 @@ export const API_ORIGINS = [
 
 const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
 
+/** Astro's own type for `security.csp` (the object form), so a directive typo fails `astro check`. */
+type CspConfig = Exclude<NonNullable<NonNullable<AstroUserConfig['security']>['csp']>, boolean>;
+
 export const cspConfig = {
   directives: [
     "default-src 'self'",
@@ -32,4 +37,4 @@ export const cspConfig = {
   ],
   scriptDirective: { resources: ["'self'", TURNSTILE_ORIGIN] },
   styleDirective: { resources: ["'self'", "'unsafe-inline'"] },
-} as const;
+} satisfies CspConfig;
