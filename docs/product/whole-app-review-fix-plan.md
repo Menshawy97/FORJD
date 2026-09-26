@@ -16,10 +16,11 @@ Plan: [whole-app-review-plan.md](whole-app-review-plan.md).
 | S3 nutrition correctness and speed | **Merged** #269: cited calorie minimum (with the approved breakdown note), save-once Log button, idempotent log id, foods cache, batched saved-meal read |
 | S4 export completeness | **Merged** #270, `main` green. Follow-ups from its review: an e2e case seeding a run in `users-export.e2e-spec.ts`, and a `run` example in `packages/contracts/src/fixtures.ts` |
 | S5 app speed, part 1 | **Merged** #272, `main` green: Progress in parallel (L9b-1), Train lookups (L9b-2), programs on focus (L9b-5) |
-| S5 app speed, part 2 | PR #274: `getMe` shares one in-flight request per access token (L9b-3; reviewed, its cross-account finding fixed). **L9b-4 closed** by the user 2026-09-26: tabs keep reloading on every focus |
-| S6 part 1 | PR #275: each city board computed at most once per 15 s, shared by the board and profile standings (L9a-2, L9a-3). Needs review |
-| S6 part 2 | Not started: bound streak/"ready to progress"/first-session scans (L9a-6), bounded concurrency in the snapshot job (L9a-8), drizzle migration for the 4 unindexed FKs + a PK on `exercise_favourites` |
-| S7-S13 | Not started. Next: S7 (server to europe-west1 + `--cpu-boost`; user steps for Cloudflare Pages `PUBLIC_API_URL` and deleting the old us-central1 services) |
+| S5 app speed, part 2 | **Merged** #274, `main` green: `getMe` shares one in-flight request per access token (L9b-3). **L9b-4 closed** by the user 2026-09-26: tabs keep reloading on every focus |
+| S6 part 1 | **Merged** #275, `main` green: a city board's totals reused for 15 s; membership, names and photos still read live every request (review caught the privacy gap; ADR-054 amends ADR-047) |
+| S6 part 2 | **Merged** #277 (bounded stats/first-session/ready-to-progress scans, snapshot job 4 cities at a time) and #278 (migration 0028: 4 FK indexes, PK on `exercise_favourites`), `main` green |
+| S7 | **Merged** #279 (API to europe-west1 + `--cpu-boost`, ADR-055) and #280 (staging URLs), `main` green. Staging and production redeployed to europe-west1, both healthy. Warm health ~0.30 s vs ~0.50 s in us-central1; cold start 8.3 s vs 14.6 s. **Owner steps:** Cloudflare Pages `PUBLIC_API_URL` updated (production and preview) 2026-09-26; site rebuild pending; then delete the old us-central1 `forjd-api-production` and `forjd-api-staging` services |
+| S8-S13 | Not started. Next: S8 (accessibility) |
 
 Local note: the local Docker Postgres is missing migration 0027, so repository specs touching `profiles.activity_level` fail locally; run `pnpm --filter @forjd/api db:migrate` against the local database before relying on them (CI uses a fresh, migrated database).
 
