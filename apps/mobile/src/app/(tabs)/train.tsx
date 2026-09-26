@@ -86,12 +86,16 @@ async function loadPreviousWorkout(): Promise<PreviousWorkout | null> {
   const resolved = new Map<string, ResolvedExercise>();
   try {
     const db = await openExerciseCatalogueDb();
-    for (const exercise of session.exercises) {
-      const cached = await getCachedExercise(db, exercise.exerciseId);
+    // Every name at once, not one lookup after another (whole-app review 8.5, L9b-2).
+    const cachedExercises = await Promise.all(
+      session.exercises.map((exercise) => getCachedExercise(db, exercise.exerciseId)),
+    );
+    session.exercises.forEach((exercise, index) => {
+      const cached = cachedExercises[index];
       if (cached) {
         resolved.set(exercise.exerciseId, { name: cached.name, goal: cached.goal ?? null });
       }
-    }
+    });
   } catch {
     // The catalogue being unavailable costs the chips their names, not the card its existence.
   }
