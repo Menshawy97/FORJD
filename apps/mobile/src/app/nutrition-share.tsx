@@ -323,6 +323,8 @@ export default function NutritionShareScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Background photo"
                 onPress={openPhotoSheet}
+                // Drawn 34x34 as designed; the slop brings the tappable area to 44 (8.5 S8, L8-3).
+                hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
                 className="absolute items-center justify-center rounded-full"
                 style={{ right: 12, top: 12, width: 34, height: 34, backgroundColor: colors.scrim }}>
                 <Icon name="camera" color={colors.text} size={16} />

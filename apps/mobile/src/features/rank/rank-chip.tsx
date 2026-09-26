@@ -1,11 +1,14 @@
 import { Pressable, Text } from 'react-native';
 
 import { colors } from '@/theme/tokens';
+import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 
 /**
  * The metric chips under the your-rank card: the prototype's `chipStyle(on)` --
  * `padding:'8px 15px'`, `borderRadius:9`, `font:'600 12.5px/1 Archivo'`; on: accent fill and
- * border with `#fff` text, off: `#191a1c` fill, the `.07` border and `#9a9a92` text.
+ * border with `#fff` text -- drawn with `accentDark`, as every white-on-accent control has been
+ * since R19/H13 (white on raw `accent` is 3.06:1, under AA; 8.5 S8, L8-1) -- off:
+ * `#191a1c` fill, the `.07` border and `#9a9a92` text.
  *
  * Not `FilterChip`: that one is a full pill (`rounded-full`, bold) drawn for the food screens.
  * This is a 9px-radius rectangle at semibold, so reusing it would have been close and wrong.
@@ -23,9 +26,10 @@ export function RankChip({ label, selected, onPress }: RankChipProps) {
       accessibilityState={{ selected }}
       onPress={onPress}
       className={`rounded-[9px] border px-[15px] py-[8px] ${
-        selected ? 'border-accent bg-accent' : 'border-border bg-elevated'
+        selected ? 'border-accentDark bg-accentDark' : 'border-border bg-elevated'
       }`}>
       <Text
+        maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
         style={{
           fontFamily: 'Archivo',
           fontSize: 12.5,
