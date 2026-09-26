@@ -59,6 +59,29 @@ with the gap named explicitly rather than allowed to blur into "6F is done."
   test closes this gap — enforced by review, since there is no automated check for "has this
   path been exercised on hardware."
 
+## Amendment (2026-09-26): the "no screen" condition was crossed, twice, by user decision
+
+Recorded here because CLAUDE.md asks for an ADR change before a rule is overturned, and the
+two decisions below were until now recorded only in roadmap prose (review finding L11-4,
+2026-09-25).
+
+1. **2026-09-22, R8 live runs.** The run screen (`features/run/run-health.ts`, via
+   `use-run-session.ts`) calls `connect()`, `requestPermissions()` and `sync()` on
+   `HealthConnectProvider` for real users, to read watch heart rate and calories during a run.
+   That crosses this ADR's condition above ("no screen may call `HealthConnectProvider` in a
+   way real users would reach until the device test"). The user decided to merge it anyway.
+2. **2026-09-26, 8.5 S10 (#284).** A change to the same path, keeping granted calories when
+   heart rate is refused, and loading the Health Connect library lazily, was merged on CI alone.
+   The user chose "merge now, test later" when asked.
+
+**Effect:** the physical-Android-phone test is no longer a gate on hidden code; it is the only
+check on code real users run. It is the most urgent owed item in `roadmap.md`, and it now
+covers at least: permission grant and refusal (each metric alone), heart rate and calories
+arriving during and after a run, and the app starting normally with the lazy load.
+
+Rule 16's default is **unchanged**: each further Health Connect or HealthKit merge ahead of a
+device test needs the user's explicit decision, recorded here or in a new ADR.
+
 ## Related
 
 - [`../product/roadmap.md`](../product/roadmap.md) — 2026-09-08 session-close entries for 6F's full verification record.

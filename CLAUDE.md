@@ -2,7 +2,7 @@
 
 Read this file and the relevant `docs/architecture/*.md` before modifying code.
 Implement only the requested vertical slice — migration → domain model → repository →
-API endpoint → tests → Flutter screen, for one bounded capability. Do not implement
+API endpoint → tests → mobile (Expo) screen, for one bounded capability. Do not implement
 adjacent features "while you're in there."
 
 The execution plan lives at `docs/product/roadmap.md`. The reasoning behind major
@@ -80,11 +80,19 @@ above applies unchanged.
 
 ## Enforced, not just stated
 
-From Phase 1, CI includes a grep-based conformance check that fails the build if:
+From Phase 1, CI includes a grep-based conformance check,
+`scripts/ci/check-architecture-conformance.sh`, which fails the build on about twenty rules.
+**The script is the full, current list**; the headline ones are that it fails if:
 - the Supabase SDK is imported outside the provider adapter directories,
 - `react-native-health-connect` is imported outside `apps/mobile/src/integrations/health/`,
 - `react-native-maps` is imported outside `apps/mobile/src/integrations/maps/` (ADR-050),
-- domain packages (`packages/domain/**`) import anything from UI or provider SDKs.
+- domain packages (`packages/domain/**`) import anything from UI or provider SDKs,
+- an analytics, advertising or session-replay SDK appears in the mobile app (rule 15),
+- a WHOOP hostname or secret-shaped identifier appears in mobile code (rule 5).
+
+The others isolate each vendor SDK or dataset to its one adapter or normalizer (OpenAI,
+`expo-secure-store`, `expo-sqlite`, social sign-in, `expo-location`, the exercise, USDA and
+GeoNames datasets, the WHOOP API).
 
 If you're about to violate one of these rules "just this once," don't — fix the
 CI check or update the ADR that justifies the exception first.

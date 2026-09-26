@@ -97,9 +97,16 @@ baseline, decomposed exactly as this rule requires, rather than WHOOP's
 own undisclosed-weighting composite, which independent research found did
 not reliably track perceived recovery even though its own HRV input did.
 
-## Event system
+## Event system (designed, not built)
 
-Domain events drive derived-data updates, replacing a pattern where one
+> **Status (2026-09-26):** none of this exists. `apps/api/src` has no event bus, no
+> `@OnEvent` subscriber and none of the event names below. Derived analytics are
+> **computed on read** instead (ADR-029): progress, streaks, PRs and leaderboards are
+> calculated when asked for, from the stored sessions and observations. The design below is
+> kept as the intended shape if write-time derivation is ever needed (for example once
+> read-time computation stops being fast enough), not as a description of the running system.
+
+Domain events would drive derived-data updates, replacing a pattern where one
 controller fans out to fifty services:
 
 ```
