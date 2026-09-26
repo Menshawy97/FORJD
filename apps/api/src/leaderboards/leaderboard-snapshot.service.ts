@@ -10,6 +10,8 @@ import { LeaderboardsRepository } from './leaderboards.repository';
 /** The one metric with a real score today; the others return `coming_soon` and have nothing to snapshot. */
 const SNAPSHOT_METRIC = 'activity';
 const UTC = 'UTC';
+/** How many cities are captured at once. */
+const SNAPSHOT_CONCURRENCY = 4;
 
 export interface SnapshotSummary {
   /** Cities captured without error. */
@@ -42,14 +44,25 @@ export class LeaderboardSnapshotService {
     const slugs = await this.snapshots.eligibleCities(MIN_COHORT_SIZE);
     const summary: SnapshotSummary = { cities: 0, rows: 0, failures: [] };
 
-    for (const citySlug of slugs) {
-      try {
-        summary.rows += await this.captureCity(citySlug, now);
-        summary.cities += 1;
-      } catch (error) {
-        summary.failures.push({ citySlug, message: error instanceof Error ? error.message : String(error) });
+    // A few cities at a time rather than one after another (review 8.5, L9a-8), and never so many
+    // that the job takes over the database's connections.
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < slugs.length) {
+        const citySlug = slugs[next] as string;
+        next += 1;
+        try {
+          // Awaited before it is added: `rows += await ...` would read the total before the wait
+          // and lose what the other workers added meanwhile.
+          const written = await this.captureCity(citySlug, now);
+          summary.rows += written;
+          summary.cities += 1;
+        } catch (error) {
+          summary.failures.push({ citySlug, message: error instanceof Error ? error.message : String(error) });
+        }
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(SNAPSHOT_CONCURRENCY, slugs.length) }, worker));
     return summary;
   }
 

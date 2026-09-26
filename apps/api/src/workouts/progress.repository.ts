@@ -512,6 +512,8 @@ export class ProgressRepository {
         from workout_templates wt
         join workout_blocks wb on wb.template_id = wt.id
         join workout_exercises we on we.block_id = wb.id
+        -- Only the templates this athlete trained from, not every template of every user (L9a-6).
+        where wt.id in (select template_id from sessions_with_template)
       ),
       compared as (
         select
@@ -549,11 +551,17 @@ export class ProgressRepository {
     const result = await executeValidated(
       this.db,
       sql`
-      select min(to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM-DD')) as local_date
-      from workout_sessions ws
-      where ws.user_id = ${userId}::uuid
-        and ws.deleted_at is null
-        and ws.status = 'completed'
+      select (
+        -- The earliest session through the (user_id, started_at) index, then its local date: the
+        -- same answer as the minimum local date, without dating every session (review 8.5, L9a-6).
+        select to_char((ws.started_at at time zone ${timeZone})::date, 'YYYY-MM-DD')
+        from workout_sessions ws
+        where ws.user_id = ${userId}::uuid
+          and ws.deleted_at is null
+          and ws.status = 'completed'
+        order by ws.started_at asc
+        limit 1
+      ) as local_date
     `,
       firstCompletedSessionRowSchema,
       "firstCompletedSessionLocalDate",

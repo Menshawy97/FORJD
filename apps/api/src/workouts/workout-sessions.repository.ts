@@ -35,6 +35,14 @@ import {
 import { civilDateMs, countWeekStreak, localCalendarDate, weekStartOf } from "./calendar-utils";
 import { keepKnownNullable, keepKnownOrFallback } from "./workout-templates.repository";
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * How far back Home's stats group training days (review 8.5, L9a-6). Just over a year, so the
+ * week and month are always inside it; a streak that reaches it is recounted over all history.
+ */
+const STATS_RECENT_DAYS = 400;
+
 export interface CreateWorkoutSetInput {
   type: WorkoutSetType;
   isCompleted: boolean;
@@ -381,26 +389,24 @@ export class WorkoutSessionsRepository {
      * streak all fall out of a single scan of the index this table already carries
      * (`workout_sessions_user_started_idx`).
      */
-    const dayRows = await this.db.execute<{ local_date: string; sessions: number }>(sql`
-      select
-        to_char((${workoutSessions.startedAt} at time zone ${timeZone})::date, 'YYYY-MM-DD') as local_date,
-        count(*)::int as sessions
-      from ${workoutSessions}
-      where ${workoutSessions.userId} = ${userId}::uuid
-        and ${workoutSessions.deletedAt} is null
-        and ${workoutSessions.status} = 'completed'
-      group by 1
-    `);
+    /*
+     * Bounded to the recent past (review 8.5, L9a-6): the week, the month and nearly every streak
+     * fall inside it, and the total is a plain count. Only a streak that reaches the bound needs
+     * the older days, and only then is the whole history grouped.
+     */
+    const recentFrom = new Date(now.getTime() - STATS_RECENT_DAYS * MS_PER_DAY);
+    const [recentDays, totalSessions] = await Promise.all([
+      this.trainingDays(userId, timeZone, recentFrom),
+      this.completedSessionCount(userId),
+    ]);
 
-    let totalSessions = 0;
     let sessionsThisMonth = 0;
     let thisWeekSessions = 0;
-    const trainedWeekStarts = new Set<string>();
+    let trainedWeekStarts = new Set<string>();
     const trainedWeekdays = new Set<number>();
 
-    for (const row of dayRows.rows) {
+    for (const row of recentDays) {
       const sessions = Number(row.sessions);
-      totalSessions += sessions;
 
       if (row.local_date.startsWith(currentMonthPrefix)) {
         sessionsThisMonth += sessions;
@@ -416,16 +422,64 @@ export class WorkoutSessionsRepository {
       }
     }
 
+    let weekStreak = countWeekStreak(trainedWeekStarts, currentWeekStart);
+    // The bound's own week is only partly scanned, so a streak whose first week comes right after it
+    // might continue into it; recount whenever the week before the streak was not fully scanned.
+    const partlyScannedWeek = civilDateMs(weekStartOf(localCalendarDate(recentFrom, timeZone)));
+    const latestStreakWeek = civilDateMs(currentWeekStart) - (trainedWeekStarts.has(currentWeekStart) ? 0 : 7 * MS_PER_DAY);
+    const earliestStreakWeek = latestStreakWeek - (weekStreak - 1) * 7 * MS_PER_DAY;
+    if (weekStreak > 0 && earliestStreakWeek - 7 * MS_PER_DAY <= partlyScannedWeek) {
+      // The streak runs into the bound: count it over the whole history.
+      trainedWeekStarts = new Set((await this.trainingDays(userId, timeZone, null)).map((row) => weekStartOf(row.local_date)));
+      weekStreak = countWeekStreak(trainedWeekStarts, currentWeekStart);
+    }
+
     return {
       totalSessions,
       sessionsThisMonth,
-      weekStreak: countWeekStreak(trainedWeekStarts, currentWeekStart),
+      weekStreak,
       thisWeek: {
         sessionCount: thisWeekSessions,
         trainedWeekdays: [...trainedWeekdays].sort((a, b) => a - b),
       },
       recentPersonalRecord: await this.recentPersonalRecordForUser(userId),
     };
+  }
+
+  /**
+   * Completed sessions grouped by local training day, from `from` onwards (`null` for all of
+   * history). One row per day trained, so it is bounded by how often the athlete trains.
+   */
+  private async trainingDays(
+    userId: string,
+    timeZone: string,
+    from: Date | null,
+  ): Promise<Array<{ local_date: string; sessions: number }>> {
+    const fromClause = from ? sql`and ${workoutSessions.startedAt} >= ${from.toISOString()}::timestamptz` : sql``;
+    const result = await this.db.execute<{ local_date: string; sessions: number }>(sql`
+      select
+        to_char((${workoutSessions.startedAt} at time zone ${timeZone})::date, 'YYYY-MM-DD') as local_date,
+        count(*)::int as sessions
+      from ${workoutSessions}
+      where ${workoutSessions.userId} = ${userId}::uuid
+        and ${workoutSessions.deletedAt} is null
+        and ${workoutSessions.status} = 'completed'
+        ${fromClause}
+      group by 1
+    `);
+    return result.rows;
+  }
+
+  /** Every completed session the athlete has, over all of history. */
+  private async completedSessionCount(userId: string): Promise<number> {
+    const result = await this.db.execute<{ total: number }>(sql`
+      select count(*)::int as total
+      from ${workoutSessions}
+      where ${workoutSessions.userId} = ${userId}::uuid
+        and ${workoutSessions.deletedAt} is null
+        and ${workoutSessions.status} = 'completed'
+    `);
+    return Number(result.rows[0]?.total ?? 0);
   }
 
   /**
