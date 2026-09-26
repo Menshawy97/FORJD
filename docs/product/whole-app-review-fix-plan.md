@@ -7,6 +7,23 @@ are not disturbed.
 Findings: [2026-09-25-whole-app-review.md](../reviews/2026-09-25-whole-app-review.md).
 Plan: [whole-app-review-plan.md](whole-app-review-plan.md).
 
+## Progress (last updated 2026-09-26)
+
+| Slice | State |
+|---|---|
+| S1 sign-out and account scoping | **Merged** #267, `main` green. Blocker L3-1 fixed |
+| S2 newest-first health reads | **Merged** #268 |
+| S3 nutrition correctness and speed | PR #269 (code-reviewed; an e2e expectation fixed after CI) |
+| S4 export completeness | PR #270 (awaiting review and CI) |
+| S5-S13 | Not started. Next: S5 app speed |
+
+Working notes for whoever resumes: slices are built in the worktree `.claude/worktrees/fix-85`
+(one branch per slice, from `origin/main`). After switching branches, rebuild the shared packages
+(`pnpm --filter @forjd/domain --filter @forjd/contracts build`) or the API typecheck reads a stale
+`dist`. Local repository specs need `DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd`
+(`localhost` resolves to IPv6, which the Docker Postgres resets). On Windows Jest reports
+`render-app.ts` as an empty suite (its ignore pattern uses `/`); CI on Linux ignores it.
+
 ## Triage decisions (the user, 2026-09-25)
 
 | Question | Decision |
