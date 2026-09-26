@@ -144,7 +144,7 @@ describe("WhoopConnectionRepository", () => {
 
     await repository.setPendingState(userId, "a1b2c3d4", expiresAt);
 
-    const byState = await repository.findByOAuthState("a1b2c3d4");
+    const byState = await repository.consumeOAuthState("a1b2c3d4");
     expect(byState?.userId).toBe(userId);
     expect(byState?.status).toBe("pending");
 
@@ -152,15 +152,34 @@ describe("WhoopConnectionRepository", () => {
     expect(byUser?.status).toBe("pending");
   });
 
-  it("findByOAuthState returns null for an expired state", async () => {
+  it("consumeOAuthState returns null for an expired state", async () => {
     const userId = await makeUser("expired-state");
     await repository.setPendingState(userId, "e1e2e3e4", new Date(Date.now() - 1000));
 
-    expect(await repository.findByOAuthState("e1e2e3e4")).toBeNull();
+    expect(await repository.consumeOAuthState("e1e2e3e4")).toBeNull();
   });
 
-  it("findByOAuthState returns null for a state nobody set", async () => {
-    expect(await repository.findByOAuthState("never-issued")).toBeNull();
+  it("consumeOAuthState returns null for a state nobody set", async () => {
+    expect(await repository.consumeOAuthState("never-issued")).toBeNull();
+  });
+
+  // 8.5 S11, L2-3: a state used to stay valid after a failed callback (a code exchange or profile
+  // fetch that threw) until it expired, so it could be replayed. It is now spent on first use.
+  it("consumeOAuthState is single use: the same state cannot be consumed twice", async () => {
+    const userId = await makeUser("single-use-state");
+    await repository.setPendingState(userId, "c1c2c3c4", new Date(Date.now() + 600_000));
+
+    expect((await repository.consumeOAuthState("c1c2c3c4"))?.userId).toBe(userId);
+    expect(await repository.consumeOAuthState("c1c2c3c4")).toBeNull();
+  });
+
+  it("consumeOAuthState leaves the pending connection itself in place", async () => {
+    const userId = await makeUser("consume-keeps-row");
+    await repository.setPendingState(userId, "d1d2d3d4", new Date(Date.now() + 600_000));
+
+    await repository.consumeOAuthState("d1d2d3d4");
+
+    expect((await repository.findByUserId(userId))?.status).toBe("pending");
   });
 
   it("upsertTokens clears any pending oauth state -- a completed connection has none left pending", async () => {
@@ -177,7 +196,7 @@ describe("WhoopConnectionRepository", () => {
       scopes: "offline",
     });
 
-    expect(await repository.findByOAuthState("f1f2f3f4")).toBeNull();
+    expect(await repository.consumeOAuthState("f1f2f3f4")).toBeNull();
   });
 
   it("rejects a second connection claiming a WHOOP external_user_id another user already holds (H5)", async () => {

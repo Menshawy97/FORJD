@@ -47,6 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: bash scripts/ci/check-architecture-conformance.sh
+      - run: bash scripts/ci/check-architecture-conformance.test.sh
 
   api:
     name: API lint, build, test

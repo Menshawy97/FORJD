@@ -56,7 +56,8 @@ export class WhoopCallbackService {
    *  treats that identically to any other failed callback, since there is no internal user
    *  to attribute an error to in that case. */
   async completeAuthorization(state: string, code: string): Promise<WhoopCallbackResult | null> {
-    const connection = await this.connections.findByOAuthState(state);
+    // Spent before anything that can fail, so a failed callback cannot be replayed (L2-3).
+    const connection = await this.connections.consumeOAuthState(state);
     if (!connection) {
       return null;
     }

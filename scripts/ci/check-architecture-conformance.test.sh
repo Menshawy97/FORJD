@@ -212,6 +212,21 @@ setup_everything_clean() {
 
   write "$dir/packages/domain/src/index.ts" \
     "import { z } from 'zod';"
+
+  write "$dir/.github/workflows/deploy.yml" \
+    "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/local-action
+      - uses: \"actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020\" # quoted, still pinned"
+}
+
+# 8.5 S11, L12-1: a workflow action referenced by a movable tag runs whatever that tag points
+# at today -- in the deploy and snapshot workflows, with GCP credentials. Every action must be
+# pinned to a full commit SHA, as ci.yml already is.
+setup_unpinned_workflow_action() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/.github/workflows/snapshot.yml" \
+    "        uses: google-github-actions/auth@v2"
 }
 
 # ADR-041: the native social sign-in SDKs are implementation details behind the adapters in
@@ -243,6 +258,7 @@ run_case "mobile-analytics-sdk"        fail setup_mobile_analytics_sdk
 run_case "missing-guarded-directory"   fail setup_missing_guarded_directory
 run_case "google-sdk-outside-adapter"   fail setup_google_sdk_outside_adapter
 run_case "apple-sdk-outside-adapter"    fail setup_apple_sdk_outside_adapter
+run_case "unpinned-workflow-action"    fail setup_unpinned_workflow_action
 run_case "everything-clean"            pass setup_everything_clean
 
 echo ""
