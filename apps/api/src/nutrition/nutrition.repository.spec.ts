@@ -383,6 +383,62 @@ describe("NutritionRepository", () => {
       expect(entry.groupId).toBeNull();
     });
 
+    it("stores an entry once when the same client id is sent twice, returning it both times (review 8.5, L4-1)", async () => {
+      const userId = await makeUser("log-idempotent");
+      const food = await repository.createCatalogueFood(catalogueInput(`log-idem-${randomUUID()}`));
+      createdFoodIds.push(food.id);
+      const input = {
+        id: randomUUID(),
+        foodId: food.id,
+        slot: "lunch" as const,
+        loggedDate: "2026-09-25",
+        servingLabel: "100 g",
+        grams: 100,
+      };
+
+      const first = await repository.logEntry(userId, input);
+      const replay = await repository.logEntry(userId, input);
+
+      expect(first.id).toBe(input.id);
+      expect(replay).toEqual(first);
+      const day = await repository.listLogForDate(userId, "2026-09-25");
+      expect(day.filter((entry) => entry.id === input.id)).toHaveLength(1);
+    });
+
+    it("refuses the same client id sent again with a different food, rather than returning the first entry", async () => {
+      const userId = await makeUser("log-id-different");
+      const [first, second] = await Promise.all([
+        repository.createCatalogueFood(catalogueInput(`log-id-a-${randomUUID()}`)),
+        repository.createCatalogueFood(catalogueInput(`log-id-b-${randomUUID()}`)),
+      ]);
+      createdFoodIds.push(first.id, second.id);
+      const id = randomUUID();
+      const base = { id, slot: "lunch" as const, loggedDate: "2026-09-25", servingLabel: "100 g", grams: 100 };
+
+      await repository.logEntry(userId, { ...base, foodId: first.id });
+
+      await expect(repository.logEntry(userId, { ...base, foodId: second.id })).rejects.toThrow(ConflictException);
+    });
+
+    it("refuses a client id another account already used, rather than returning their entry", async () => {
+      const owner = await makeUser("log-id-owner");
+      const stranger = await makeUser("log-id-stranger");
+      const food = await repository.createCatalogueFood(catalogueInput(`log-id-${randomUUID()}`));
+      createdFoodIds.push(food.id);
+      const input = {
+        id: randomUUID(),
+        foodId: food.id,
+        slot: "dinner" as const,
+        loggedDate: "2026-09-25",
+        servingLabel: "100 g",
+        grams: 100,
+      };
+
+      await repository.logEntry(owner, input);
+
+      await expect(repository.logEntry(stranger, input)).rejects.toThrow(ConflictException);
+    });
+
     it("logs a saved meal's items as one group sharing a groupId, snapshotting the meal's name as groupName", async () => {
       const userId = await makeUser("log-group");
       const food = await repository.createCatalogueFood(catalogueInput(`log-group-${randomUUID()}`));
@@ -397,6 +453,27 @@ describe("NutritionRepository", () => {
       expect(entries[0]?.groupId).not.toBeNull();
       expect(entries[0]?.slot).toBe("lunch");
       expect(entries[0]?.groupName).toBe(meal.name);
+    });
+
+    it("reads a saved meal's foods in one query, not one per item (review 8.5, L4-3)", async () => {
+      const userId = await makeUser("log-group-batched");
+      const created = await Promise.all(
+        [1, 2, 3].map(() => repository.createCatalogueFood(catalogueInput(`log-batch-${randomUUID()}`))),
+      );
+      created.forEach((food) => createdFoodIds.push(food.id));
+      const meal = await repository.createSavedMeal(
+        userId,
+        `Batched Meal ${randomUUID()}`,
+        created.map((food) => ({ foodId: food.id, servingLabel: "100 g", grams: 100 })),
+      );
+      const selects = jest.spyOn(db, "select");
+
+      const entries = await repository.logSavedMeal(userId, meal.id, "dinner", "2026-08-31", meal.name);
+
+      expect(entries).toHaveLength(3);
+      // One read of the meal's items, one read of their foods -- whatever the meal's size.
+      expect(selects).toHaveBeenCalledTimes(2);
+      selects.mockRestore();
     });
 
     it("an individually logged entry has a null groupName, same as groupId", async () => {

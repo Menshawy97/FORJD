@@ -11,7 +11,7 @@ import type {
   SetMacroGoalsRequest,
 } from '@forjd/contracts';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import {
@@ -122,6 +122,10 @@ export default function NutritionScreen() {
   // `s_nutrition()`'s own `toggleGroup`/`expandedGroups` interaction.
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
+  // Every food fetched while this screen is mounted, kept across focus reloads. A ref, so `loadAll`
+  // reads the latest without re-creating itself.
+  const knownFoods = useRef<Record<string, FoodResponse>>({});
+
   const loadFoods = useCallback(async (foodIds: string[], existing: Record<string, FoodResponse>) => {
     const missing = [...new Set(foodIds)].filter((id) => !existing[id]);
     if (missing.length === 0) return existing;
@@ -153,7 +157,10 @@ export default function NutritionScreen() {
           ...logResult.items.map((entry) => entry.foodId),
           ...mealsResult.items.flatMap((meal) => meal.items.map((item) => item.foodId)),
         ];
-        const foods = await loadFoods(foodIds, {});
+        // Foods already fetched are reused (whole-app review 8.5, L9a-5): passing `{}` here made
+        // every return to this screen fetch every food again, one request each.
+        const foods = await loadFoods(foodIds, knownFoods.current);
+        knownFoods.current = foods;
 
         // One commit for the whole load, not four -- every value a render could read is ready
         // before any of them changes, so there is no intermediate frame with (say) new log

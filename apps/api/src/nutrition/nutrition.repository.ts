@@ -84,6 +84,8 @@ export interface SavedMealWithItems {
 }
 
 export interface LogEntryInput {
+  /** Optional client-generated id: the same id sent twice stores one entry (review 8.5, L4-1). */
+  id?: string;
   foodId: string;
   slot: MealSlot;
   /** `YYYY-MM-DD`, the client's own local calendar day -- see nutrition.schema.ts's docblock on nutritionLogEntries for why this is never server-derived. */
@@ -651,9 +653,14 @@ export class NutritionRepository {
     const food = await this.mustFindFoodRow(input.foodId);
     const macros = this.scaleMacros(food, input.grams);
 
+    // Idempotent on a client-supplied id (whole-app review 8.5, L4-1): a retry after a dropped
+    // response must not log the food a second time, so a repeated id stores nothing new and returns
+    // the entry the first request created. The id is the table's primary key, so the conflict
+    // target needs no new index.
     const [row] = await this.db
       .insert(nutritionLogEntries)
       .values({
+        ...(input.id ? { id: input.id } : {}),
         userId,
         foodId: input.foodId,
         loggedDate: input.loggedDate,
@@ -666,10 +673,32 @@ export class NutritionRepository {
         fat: macros.fat.toString(),
         groupId: null,
       })
+      .onConflictDoNothing({ target: nutritionLogEntries.id })
       .returning();
 
-    if (!row) throw new Error("logEntry: insert returned no row");
-    return this.toLogEntry(row);
+    if (row) return this.toLogEntry(row);
+    if (!input.id) throw new Error("logEntry: insert returned no row");
+
+    const [existing] = await this.db
+      .select()
+      .from(nutritionLogEntries)
+      .where(eq(nutritionLogEntries.id, input.id))
+      .limit(1);
+    // A replay must be the same request. Another account's id, or this account's id reused for a
+    // different food, day, meal or amount, is refused with one message, rather than answering
+    // "logged" with an older entry (or revealing someone else's).
+    const sameRequest =
+      existing !== undefined &&
+      existing.userId === userId &&
+      existing.foodId === input.foodId &&
+      existing.loggedDate === input.loggedDate &&
+      existing.slot === input.slot &&
+      existing.servingLabel === input.servingLabel &&
+      Number(existing.grams) === input.grams;
+    if (!sameRequest) {
+      throw new ConflictException("This log entry id is already in use.");
+    }
+    return this.toLogEntry(existing);
   }
 
   /**
@@ -698,10 +727,17 @@ export class NutritionRepository {
 
     if (itemRows.length === 0) return [];
 
+    // Every item's food in one read (whole-app review 8.5, L4-3): one query per item paid a full
+    // database round trip per ingredient, one after another, before the insert.
+    const foodIds = [...new Set(itemRows.map((item) => item.foodId))];
+    const foodRows = await this.db.select().from(foods).where(inArray(foods.id, foodIds));
+    const foodsById = new Map(foodRows.map((food) => [food.id, food]));
+
     const groupId = crypto.randomUUID();
     const values: (typeof nutritionLogEntries.$inferInsert)[] = [];
     for (const item of itemRows) {
-      const food = await this.mustFindFoodRow(item.foodId);
+      const food = foodsById.get(item.foodId);
+      if (!food) throw new Error(`logSavedMeal: no such food ${item.foodId}`);
       const grams = Number(item.grams);
       const macros = this.scaleMacros(food, grams);
       values.push({

@@ -327,6 +327,8 @@ describe('Nutrition (e2e)', () => {
           energyChange: -0.15,
           proteinPerKg: 1.6,
           fatShare: 0.25,
+          // Above the daily minimum, so nothing was raised (review 8.5, L6-1).
+          minimumKcalApplied: null,
         },
         missing: [],
       });

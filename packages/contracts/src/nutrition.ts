@@ -126,6 +126,9 @@ export const macroGoalSuggestionResponseSchema = z.object({
       energyChange: z.number(),
       proteinPerKg: z.number(),
       fatShare: z.number(),
+      /** The daily minimum the suggestion was raised to, or `null` when the goal already cleared it
+       *  (whole-app review 8.5, L6-1). Optional so older servers' responses still parse (rule 7). */
+      minimumKcalApplied: z.number().nullable().optional(),
     })
     .nullable(),
   missing: z.array(z.enum(MACRO_SUGGESTION_MISSING)),
@@ -172,6 +175,9 @@ export type NutritionLogListResponse = z.infer<typeof nutritionLogListResponseSc
  * malicious client log any calorie count against any food.
  */
 export const logFoodRequestSchema = z.object({
+  /** Optional, client-generated: the same id sent twice logs the food once, so retrying after a
+   *  dropped response cannot double a day's calories (whole-app review 8.5, L4-1). Additive (rule 7). */
+  id: z.string().uuid().optional(),
   foodId: z.string().uuid(),
   slot: mealSlotSchema,
   loggedDate: localDateSchema,

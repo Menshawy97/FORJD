@@ -163,6 +163,7 @@ export class NutritionService {
       throw this.refuseFood();
     }
     const entry = await this.nutritionRepository.logEntry(viewer.id, {
+      id: body.id,
       foodId: body.foodId,
       slot: body.slot,
       loggedDate: body.loggedDate,

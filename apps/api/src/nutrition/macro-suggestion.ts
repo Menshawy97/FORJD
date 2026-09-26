@@ -89,6 +89,8 @@ export function buildMacroGoalSuggestion(inputs: MacroSuggestionInputs): MacroGo
     bmrKcal,
     activityLevel: profile.activityLevel,
     bodyGoal: profile.bodyGoal,
+    // Sets the minimum the suggestion never goes below (review 8.5, L6-1).
+    sex: profile.sex,
   });
   const goal = BODY_GOAL_ADJUSTMENTS[profile.bodyGoal];
   return {
@@ -105,6 +107,7 @@ export function buildMacroGoalSuggestion(inputs: MacroSuggestionInputs): MacroGo
       energyChange: goal.energyChange,
       proteinPerKg: goal.proteinPerKg,
       fatShare: FAT_SHARE_OF_KCAL,
+      minimumKcalApplied: targets.minimumApplied,
     },
     missing: [],
   };
