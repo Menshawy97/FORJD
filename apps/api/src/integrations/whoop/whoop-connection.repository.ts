@@ -109,19 +109,27 @@ export class WhoopConnectionRepository {
       });
   }
 
-  /** `null` for a state nobody issued, or one that has expired -- the callback cannot tell
-   *  those two apart, and treats both identically as "reject this callback." */
-  async findByOAuthState(state: string): Promise<WhoopConnectionRow | null> {
+  /**
+   * Spends a pending state: returns its connection and clears the state in one statement, so a
+   * state works exactly once (8.5 S11, L2-3). Before, it was only cleared on success, so a
+   * callback that failed part-way (a code exchange or profile fetch that threw) left it valid
+   * until expiry, open to replay. A person whose callback fails simply starts Connect again.
+   *
+   * `null` for a state nobody issued, one that has expired, or one already spent -- the callback
+   * cannot tell those apart, and treats all of them identically as "reject this callback."
+   */
+  async consumeOAuthState(state: string): Promise<WhoopConnectionRow | null> {
     const [row] = await this.db
-      .select()
-      .from(externalConnections)
+      .update(externalConnections)
+      .set({ oauthState: null, oauthStateExpiresAt: null, updatedAt: new Date() })
       .where(
         and(
           eq(externalConnections.provider, PROVIDER),
           eq(externalConnections.oauthState, state),
           gt(externalConnections.oauthStateExpiresAt, new Date()),
         ),
-      );
+      )
+      .returning();
 
     return row ?? null;
   }

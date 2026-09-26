@@ -29,7 +29,7 @@ describe("WhoopCallbackService", () => {
 
   function makeService(overrides: { connections?: Partial<WhoopConnectionRepository>; oauth?: Partial<WhoopOAuthService>; client?: Partial<WhoopClient> } = {}) {
     const connections = {
-      findByOAuthState: jest.fn().mockResolvedValue(pendingRow),
+      consumeOAuthState: jest.fn().mockResolvedValue(pendingRow),
       upsertTokens: jest.fn().mockResolvedValue(undefined),
       ...overrides.connections,
     } as unknown as WhoopConnectionRepository;
@@ -58,7 +58,7 @@ describe("WhoopCallbackService", () => {
   }
 
   it("returns null for a state nobody issued or that has expired", async () => {
-    const { service } = makeService({ connections: { findByOAuthState: jest.fn().mockResolvedValue(null) } });
+    const { service } = makeService({ connections: { consumeOAuthState: jest.fn().mockResolvedValue(null) } });
     expect(await service.completeAuthorization("bad-state", "some-code")).toBeNull();
   });
 
