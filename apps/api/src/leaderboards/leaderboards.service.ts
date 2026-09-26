@@ -15,6 +15,9 @@ import { PrivacyService } from '../privacy/privacy.service';
 import { rankCity } from './activity-inputs';
 import { baselineNotBefore, comparisonWeekStart, monthBounds, periodLabel } from './city-time';
 import { LeaderboardSnapshotRepository } from './leaderboard-snapshot.repository';
+
+/** How long one computed city board is reused on this server (review 8.5, L9a-2/L9a-3). */
+const CITY_BOARD_TTL_MS = 15_000;
 import { CityAthleteRow, LeaderboardsRepository } from './leaderboards.repository';
 
 /** Used to date a board that has no city to date it by: not opted in, or no city yet. */
@@ -83,7 +86,7 @@ export class LeaderboardsService {
     if (!city) return this.empty('no_eligible_sessions', query, null, now, 0);
 
     const window = period === 'month' ? monthBounds(now, city.timeZone) : null;
-    const athletes = await this.repository.cityAthletes(city.slug, city.timeZone, window);
+    const athletes = await this.cachedCityAthletes(city.slug, city.timeZone, window, now);
 
     const isCaller = (athlete: CityAthleteRow): boolean => athlete.userId === viewer.id;
     if (!athletes.some(isCaller)) return this.empty('no_eligible_sessions', query, city, now, athletes.length);
@@ -131,6 +134,32 @@ export class LeaderboardsService {
       periodLabel: board.periodLabel,
     };
   }
+
+  /**
+   * A city's athletes for one window, computed at most once per `CITY_BOARD_TTL_MS` on this server
+   * (whole-app review 8.5, L9a-2/L9a-3). Every profile view used to recompute its city's whole
+   * board to show one rank, and the all-time board re-aggregates the city's full history each time.
+   * Keyed by city and window; the cost of the short lifetime is a rank up to 15 s behind a workout
+   * just finished. The weekly snapshot job reads the repository directly, never this.
+   */
+  private async cachedCityAthletes(
+    citySlug: string,
+    timeZone: string,
+    window: { start: Date; end: Date } | null,
+    now: Date,
+  ): Promise<CityAthleteRow[]> {
+    const key = `${citySlug}|${window ? window.start.toISOString() : 'all_time'}`;
+    const cached = this.cityBoards.get(key);
+    if (cached && cached.expiresAt > now.getTime()) return cached.athletes;
+
+    const athletes = this.repository.cityAthletes(citySlug, timeZone, window);
+    this.cityBoards.set(key, { athletes, expiresAt: now.getTime() + CITY_BOARD_TTL_MS });
+    // A failed read is not kept: the next request tries again.
+    athletes.catch(() => this.cityBoards.delete(key));
+    return athletes;
+  }
+
+  private readonly cityBoards = new Map<string, { athletes: Promise<CityAthleteRow[]>; expiresAt: number }>();
 
   /** The caller's city, from their latest eligible session, with the timezone its month is measured in. */
   private async callerCity(userId: string): Promise<CityContext | null> {

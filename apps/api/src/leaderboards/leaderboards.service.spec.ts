@@ -126,6 +126,47 @@ describe('LeaderboardsService', () => {
     });
   });
 
+  describe('the city board is computed once per 15 s (review 8.5, L9a-2/L9a-3)', () => {
+    const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
+
+    it('reuses one computation for two reads of the same board', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.get(viewer, query(), NOW);
+      await service.get(viewer, query(), later(5));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(1);
+    });
+
+    it("shares it with a profile's standing, so tapping through profiles does not recompute the city", async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.standingFor(viewer.id, NOW);
+      await service.get(viewer, query(), later(1));
+      await service.standingFor('someone-else', later(2));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(1);
+    });
+
+    it('computes it again once 15 seconds have passed', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.get(viewer, query(), NOW);
+      await service.get(viewer, query(), later(16));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps this month and all time apart', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+
+      await service.get(viewer, query({ period: 'month' }), NOW);
+      await service.get(viewer, query({ period: 'all_time' }), NOW);
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('a ranked board', () => {
     it('ranks the city, marks the caller, and centres the window on them (44-50 for 47th in the design)', async () => {
       const { service } = build({ athletes: cohort(60, 20) });
