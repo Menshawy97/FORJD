@@ -57,32 +57,21 @@ export default function ProgressScreen() {
 
   const load = useCallback(async () => {
     const generation = (loadGeneration.current += 1);
-    try {
-      const response = await getProgressStrength();
-      if (generation === loadGeneration.current) setStrength(response);
-    } catch {
-      // A failed read leaves the screen in its honest-empty state, exactly as a fresh account
-      // renders -- never an error toast on a tab whose whole subject is the athlete's own past.
-      if (generation === loadGeneration.current) setStrength(null);
-    }
-    try {
-      const response = await getBodyScanSeries();
-      if (generation === loadGeneration.current) setBodySeries(response);
-    } catch {
-      if (generation === loadGeneration.current) setBodySeries(null);
-    }
-    try {
-      const response = await getHealthObservationSeries();
-      if (generation === loadGeneration.current) setHealthSeries(response);
-    } catch {
-      if (generation === loadGeneration.current) setHealthSeries(null);
-    }
-    try {
-      const response = await getReadiness();
-      if (generation === loadGeneration.current) setReadiness(response);
-    } catch {
-      if (generation === loadGeneration.current) setReadiness(null);
-    }
+    // All four at once (whole-app review 8.5, L9b-1): they are independent, and waiting for each
+    // before asking for the next cost four cross-region round trips per visit instead of one.
+    const [strengthResult, bodyResult, healthResult, readinessResult] = await Promise.allSettled([
+      getProgressStrength(),
+      getBodyScanSeries(),
+      getHealthObservationSeries(),
+      getReadiness(),
+    ]);
+    if (generation !== loadGeneration.current) return;
+    // A failed read leaves its section in the honest-empty state, exactly as a fresh account
+    // renders -- never an error toast on a tab whose whole subject is the athlete's own past.
+    setStrength(strengthResult.status === 'fulfilled' ? strengthResult.value : null);
+    setBodySeries(bodyResult.status === 'fulfilled' ? bodyResult.value : null);
+    setHealthSeries(healthResult.status === 'fulfilled' ? healthResult.value : null);
+    setReadiness(readinessResult.status === 'fulfilled' ? readinessResult.value : null);
   }, []);
 
   useFocusEffect(

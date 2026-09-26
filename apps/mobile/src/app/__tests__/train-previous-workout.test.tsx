@@ -6,7 +6,7 @@
 //
 // NOTE: RTL v14 -- render() and every fireEvent.* return Promises and must be awaited.
 import { AxiosError } from 'axios';
-import { fireEvent, render as rtlRender } from '@testing-library/react-native';
+import { fireEvent, render as rtlRender, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -135,6 +135,21 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+describe('loading (review 8.5, L9b-2)', () => {
+  it("looks up every exercise's name at once, not one after another", async () => {
+    // Never answer: a loop that waits for each lookup before the next would only ever start one.
+    (getCachedExercise as jest.Mock).mockImplementation(() => new Promise(() => undefined));
+    const bench = detail().exercises[0];
+    (getWorkoutSession as jest.Mock).mockResolvedValue(
+      detail({ exercises: [bench, { ...bench, id: 'se-2', exerciseId: 'ex-row', orderIndex: 1 }] }),
+    );
+
+    await render(<TrainScreen />);
+
+    await waitFor(() => expect(getCachedExercise).toHaveBeenCalledTimes(2));
+  });
 });
 
 describe('the card', () => {

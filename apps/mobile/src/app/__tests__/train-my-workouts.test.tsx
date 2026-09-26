@@ -12,14 +12,15 @@ import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockPush = jest.fn();
-let mockFocusCallback: (() => void) | null = null;
+// Every focus callback Train registers (it has more than one), so a test can re-run them all.
+const mockFocusCallbacks = new Set<() => void>();
 
 jest.mock('expo-router', () => {
   const react = require('react');
   return {
     router: { push: (...args: unknown[]) => mockPush(...args) },
     useFocusEffect: (callback: () => void) => {
-      mockFocusCallback = callback;
+      mockFocusCallbacks.add(callback);
       react.useEffect(() => callback(), []);
     },
   };
@@ -63,7 +64,7 @@ const template = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockFocusCallback = null;
+  mockFocusCallbacks.clear();
   (listWorkoutTemplates as jest.Mock).mockResolvedValue({ items: [template()], nextCursor: null });
   (listWorkoutSessions as jest.Mock).mockResolvedValue({ items: [], nextCursor: null });
 });
@@ -124,7 +125,7 @@ describe('the list', () => {
       nextCursor: null,
     });
     await act(async () => {
-      mockFocusCallback?.();
+      mockFocusCallbacks.forEach((callback) => callback());
     });
 
     expect(await findByText('Saturday Conditioning')).toBeTruthy();
