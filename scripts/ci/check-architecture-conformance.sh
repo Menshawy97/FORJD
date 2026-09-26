@@ -286,6 +286,19 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# 8.5 S11, L12-1: every GitHub Actions `uses:` is pinned to a full 40-character commit SHA.
+# A tag like `@v4` can be moved to different code by whoever controls the action's repository,
+# and the deploy and snapshot workflows run with GCP credentials. Local actions (`./...`) and
+# `docker://` images are not tag references and are exempt.
+if [ -d .github/workflows ]; then
+  hits=$(grep -rnE --include='*.yml' --include='*.yaml' '^[[:space:]-]*uses:[[:space:]]*[^.[:space:]]' .github/workflows \
+    | grep -vE 'uses:[[:space:]]*docker://' \
+    | grep -vE 'uses:[[:space:]]*[^@[:space:]]+@[0-9a-f]{40}([[:space:]]|$)' || true)
+  if [ -n "$hits" ]; then
+    report "GitHub Actions workflow step not pinned to a full commit SHA" "$hits"
+  fi
+fi
+
 if [ "$violations" -gt 0 ]; then
   echo ""
   echo "$violations conformance rule(s) violated. Fix the import, or change the rule in CLAUDE.md"
