@@ -87,9 +87,36 @@ describe('prepareRunHealth', () => {
     expect(markAsked).not.toHaveBeenCalled();
   });
 
-  it('has no reader when the person says no to heart rate', async () => {
+  it('has no reader when the person says no to both heart rate and calories', async () => {
     const provider = new FakeHealthProvider({ supportedMetrics: ['steps'] });
     expect(await prepareRunHealth(provider, { alreadyAsked: false, markAsked: jest.fn() })).toBeNull();
+  });
+
+  // 8.5 S10, L5-1: refusing heart rate alone used to throw away granted calories too.
+  it('keeps the watch calories when only heart rate is refused, and never reads heart rate', async () => {
+    const provider = new FakeHealthProvider({
+      supportedMetrics: ['active_energy'],
+      observations: [obs({ metricType: 'active_energy', value: 310, unit: 'kcal', startTime: new Date(T0 + 1000) })],
+    });
+    const sync = jest.spyOn(provider, 'sync');
+
+    const reader = await prepareRunHealth(provider, { alreadyAsked: false, markAsked: jest.fn() });
+
+    expect(reader).not.toBeNull();
+    expect(await reader?.readActiveEnergyKcal(T0, T0 + 60_000)).toBe(310);
+    expect(await reader?.readHeartRate(T0)).toEqual([]);
+    expect(sync.mock.calls.map(([request]) => request.metricTypes)).toEqual([['active_energy']]);
+  });
+
+  it('keeps heart rate when only calories are refused, and never reads calories', async () => {
+    const provider = new FakeHealthProvider({ supportedMetrics: ['heart_rate'], observations: [obs({ value: 148 })] });
+    const sync = jest.spyOn(provider, 'sync');
+
+    const reader = await prepareRunHealth(provider, { alreadyAsked: false, markAsked: jest.fn() });
+
+    expect(await reader?.readHeartRate(T0)).toEqual([{ timestampMs: T0 + 1000, bpm: 148 }]);
+    expect(await reader?.readActiveEnergyKcal(T0, T0 + 60_000)).toBeNull();
+    expect(sync.mock.calls.map(([request]) => request.metricTypes)).toEqual([['heart_rate']]);
   });
 
   it('has no reader when Health Connect is not available, and never throws', async () => {

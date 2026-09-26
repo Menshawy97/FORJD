@@ -59,21 +59,31 @@ export interface RunHealthAccess {
   markAsked: () => Promise<void>;
 }
 
+const RUN_METRICS = ['heart_rate', 'active_energy'] as const;
+type RunMetric = (typeof RUN_METRICS)[number];
+
 /**
- * Connects, asks once for heart rate and active energy when it has never asked, and returns a reader,
- * or `null` when there is nothing to read (unavailable, or heart rate refused). Never throws.
+ * Connects, asks once for heart rate and active energy when it has never asked, and returns a reader
+ * for whichever of the two the person granted, or `null` when there is nothing to read (unavailable,
+ * or both refused). Never throws.
+ *
+ * Each metric stands on its own (8.5 S10, L5-1): refusing heart rate alone used to discard granted
+ * calories too. A metric not granted is simply never read. On a later run nothing is asked, so
+ * nothing is known about the grant and both are read: an ungranted one returns nothing.
  */
 export async function prepareRunHealth(
   provider: HealthProvider,
   access: RunHealthAccess,
 ): Promise<RunHealthReader | null> {
+  let readable: readonly RunMetric[] = RUN_METRICS;
   try {
     await provider.connect();
     if (!access.alreadyAsked) {
       // Marked first: "asked once, ever" must hold even if the dialog fails or the app is killed in it.
       await access.markAsked();
-      const result = await provider.requestPermissions(['heart_rate', 'active_energy']);
-      if (!result.granted.includes('heart_rate')) return null;
+      const result = await provider.requestPermissions(RUN_METRICS);
+      readable = RUN_METRICS.filter((metric) => result.granted.includes(metric));
+      if (readable.length === 0) return null;
     }
   } catch {
     return null;
@@ -81,10 +91,12 @@ export async function prepareRunHealth(
 
   return {
     async readHeartRate(sinceMs) {
+      if (!readable.includes('heart_rate')) return [];
       const result = await provider.sync({ metricTypes: ['heart_rate'], since: new Date(sinceMs) });
       return toHeartRateSamples(result.observations);
     },
     async readActiveEnergyKcal(startMs, endMs) {
+      if (!readable.includes('active_energy')) return null;
       const result = await provider.sync({ metricTypes: ['active_energy'], since: new Date(startMs) });
       return sumActiveEnergyKcal(result.observations, startMs, endMs);
     },
