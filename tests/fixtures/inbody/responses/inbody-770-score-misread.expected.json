@@ -1,0 +1,26 @@
+{
+  "inbodyModel": "770",
+  "testDate": "2026-08-14",
+  "fields": {
+    "weight_kg": { "value": 72.4, "confidence": 0.98, "readingNote": "" },
+    "skeletal_muscle_mass_kg": { "value": 33.1, "confidence": 0.96, "readingNote": "" },
+    "body_fat_mass_kg": { "value": 12.6, "confidence": 0.95, "readingNote": "" },
+    "body_fat_percent": { "value": 17.4, "confidence": 0.96, "readingNote": "" },
+    "visceral_fat_level": { "value": 5, "confidence": 0.93, "readingNote": "" },
+    "total_body_water_l": { "value": 43.6, "confidence": 0.95, "readingNote": "" },
+    "bmi": { "value": 23.1, "confidence": 0.97, "readingNote": "" },
+    "basal_metabolic_rate_kcal": { "value": 1662, "confidence": 0.95, "readingNote": "" },
+    "inbody_score": { "value": 73, "confidence": 0.95, "readingNote": "" },
+    "fat_free_mass_index": { "value": null, "confidence": 0, "readingNote": "" }
+  },
+  "segmental": {
+    "right_arm": { "value": 3.4, "confidence": 0.9, "readingNote": "" },
+    "left_arm": { "value": 3.3, "confidence": 0.9, "readingNote": "" },
+    "trunk": { "value": 26.9, "confidence": 0.91, "readingNote": "" },
+    "right_leg": { "value": 9.2, "confidence": 0.89, "readingNote": "" },
+    "left_leg": { "value": 9.1, "confidence": 0.89, "readingNote": "" }
+  },
+  "heightCm": { "value": 177, "confidence": 0.97, "readingNote": "" },
+  "ageYears": { "value": 29, "confidence": 0.98, "readingNote": "" },
+  "imageQualityNotes": ""
+}
