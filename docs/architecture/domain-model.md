@@ -64,21 +64,25 @@ ADR-005.
 from `workout_sessions` → `workout_session_exercises` → `workout_sets`. See
 `workout-engine.md`.
 
-**Health** — `health_connections`, `health_permissions`,
-`health_observations` (the canonical `HealthObservation` shape),
-`health_workouts`, `sleep_sessions`. See `health-data.md`, ADR-004.
+*Checked against the Drizzle schema on 2026-09-26 (8.5 S13, L11-3). A table marked
+(planned) does not exist yet; everything else does.*
 
-**Body composition** — `body_scans`, `body_scan_files`,
-`body_scan_extractions`, `body_composition_measurements`. See
-`health-data.md`, ADR-006.
+**Health** — `health_connections`, `health_observations` (the canonical
+`HealthObservation` shape; sleep is stored here as observations). Planned:
+`health_permissions`, `health_workouts`, `sleep_sessions`. See `health-data.md`, ADR-004.
 
-**Analytics** — `daily_metrics`, `weekly_metrics`, `progress_metrics`,
-`insights`. See `analytics.md`.
+**Body composition** — `body_scans` and `body_measurements`. The finer split sketched
+earlier (`body_scan_files`, `body_scan_extractions`, `body_composition_measurements`) was
+not built. See `health-data.md`, ADR-006.
 
-**Integrations** — `external_connections`, `sync_cursors`, `sync_jobs`. See
+**Analytics** — computed on read, no tables (ADR-029). Planned only if read-time
+computation stops being enough: `daily_metrics`, `weekly_metrics`, `progress_metrics`,
+`insights`. Built: `leaderboard_rank_snapshots` (Phase 10). See `analytics.md`.
+
+**Integrations** — `external_connections`. Planned: `sync_cursors`, `sync_jobs`. See
 `integrations.md`.
 
-**Platform** — `feature_flags`, `audit_logs`, `notifications`.
+**Platform** — `feature_flags`, `audit_logs`, `waitlist_signups`. Planned: `notifications`.
 
 ## Design principles applied throughout
 
@@ -91,10 +95,10 @@ from `workout_sessions` → `workout_session_exercises` → `workout_sets`. See
 - **Source preserved, never overwritten**, wherever multiple external
   systems can report the same fact (`health_observations.source`).
 
-**Nutrition** (Phase 2.5, no schema yet) — foods with per-100 g macros and named
-servings, per-user custom foods, a dated food log across four fixed meal slots
-(`Breakfast`, `Lunch`, `Snack`, `Dinner`), saved meals with their items, and
-per-user macro goals. Two shapes carry over from the exercise domain rather than
+**Nutrition** (Phase 2.5, built from migration `0008`) — six tables: `foods` (per-100 g
+macros) with `food_servings` (named servings), `nutrition_log_entries` (a dated food log
+across four fixed meal slots, `Breakfast`, `Lunch`, `Snack`, `Dinner`), `saved_meals` with
+`saved_meal_items`, and `macro_goals` (per-user targets). Two shapes carry over from the exercise domain rather than
 being invented: custom foods live in the **same table** as catalogue foods with a
 nullable `owner_user_id` (null = catalogue), and food-name search uses the
 generated `search_vector` + GIN + `pg_trgm` pattern from migration `0006`.
