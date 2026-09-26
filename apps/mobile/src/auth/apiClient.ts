@@ -205,9 +205,22 @@ export async function socialSignIn(input: SocialSignInRequest): Promise<SocialSi
   return response.data;
 }
 
-export async function getMe(): Promise<MeResponse> {
-  const response = await apiClient.get<MeResponse>('/users/me');
-  return response.data;
+// The one `GET /users/me` currently in flight, shared by every caller that asks meanwhile (whole-app
+// review 8.5, L9b-3): at launch the root layout and Home asked at the same moment, twice across the
+// Atlantic. Deliberately not a cache of the answer -- once it lands the next call asks again, so a
+// screen opened after a profile edit never reads the profile from before it.
+let getMeInFlight: Promise<MeResponse> | null = null;
+
+export function getMe(): Promise<MeResponse> {
+  if (!getMeInFlight) {
+    getMeInFlight = apiClient
+      .get<MeResponse>('/users/me')
+      .then((response) => response.data)
+      .finally(() => {
+        getMeInFlight = null;
+      });
+  }
+  return getMeInFlight;
 }
 
 /**
