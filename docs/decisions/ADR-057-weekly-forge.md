@@ -1,6 +1,6 @@
 # ADR-057: Weekly Forge — stored weekly evaluation of progression ladders
 
-**Status:** Proposed (awaiting the user's review with the Weekly Forge plan)
+**Status:** Accepted (2026-09-27)
 **Date:** 2026-09-27
 **Extends:** ADR-047 (stored weekly snapshots are the one exception to computing on read).
 **Related:** ADR-029, ADR-046, ADR-056, CLAUDE.md rules 9, 12, 15.

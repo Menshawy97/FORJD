@@ -1,6 +1,6 @@
 # Weekly Forge — plan
 
-**Status:** Phase 1 (decisions and docs) in review. Nothing is built yet. Every phase stops for the
+**Status:** Phase 1 accepted 2026-09-27; Phase 2 (Saturday weeks, backend) next. Every phase stops for the
 user's review, and **no mobile code is written until the Phase 7 mock-ups are approved**.
 
 ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md),
@@ -57,7 +57,7 @@ ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-satu
 | Ember | 3 |
 | Anvil | 4 |
 | Tempered | 5 |
-| Forged | 6 (risk R7: say if this should be 5) |
+| Forged | 6 |
 
 ### Nourish (days with meals logged, per week; private, no Forged)
 
@@ -67,10 +67,7 @@ ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-satu
 | Ember | 3 · 4 |
 | Anvil | 5 · 6 |
 
-**Questions to settle at this review:**
-- Keep the shortened top of the Minutes ladder?
-- Should Consistency's Forged target be 6 or 5?
-- Is any Ore value too high or too low for a beginner?
+**Settled 2026-09-27 (the user accepted the table as proposed):** the shortened top of the Minutes ladder stays, Consistency's Forged target is 6, and the Ore values stand.
 
 ## Context
 

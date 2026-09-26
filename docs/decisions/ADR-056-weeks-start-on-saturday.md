@@ -1,6 +1,6 @@
 # ADR-056: Weeks start on Saturday, across the whole app
 
-**Status:** Proposed (awaiting the user's review with the Weekly Forge plan)
+**Status:** Accepted (2026-09-27)
 **Date:** 2026-09-27
 **Amends:** ADR-047 decision 5 (a leaderboard week is labelled with the coming local Monday).
 
