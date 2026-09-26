@@ -20,10 +20,18 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** `fontSize: N` and `lineHeight: N` with the same literal N, anywhere in the text. */
+/**
+ * `fontSize: N` and `lineHeight: N` side by side with the same value N, in either order, where N
+ * is a literal or a shared name (`fontSize: SIZE, lineHeight: SIZE`). An expression such as
+ * `lineHeight: 13.5 * 1.2` is not tight and does not match.
+ */
 function hasTightPair(text: string): boolean {
-  const pairs = [...text.matchAll(/fontSize:\s*([\d.]+)\s*,\s*lineHeight:\s*([\d.]+)\s*[,}\n]/g)];
-  return pairs.some((match) => match[1] === match[2]);
+  const value = String.raw`([\w.]+)\s*[,}\r\n]`;
+  const orders = [
+    new RegExp(String.raw`fontSize:\s*${value}\s*lineHeight:\s*${value}`, 'g'),
+    new RegExp(String.raw`lineHeight:\s*${value}\s*fontSize:\s*${value}`, 'g'),
+  ];
+  return orders.some((pattern) => [...text.matchAll(pattern)].some((match) => match[1] === match[2]));
 }
 
 /** Every `<Text ...>` opening tag, read up to the `>` that closes it outside any `{...}`. */
