@@ -66,6 +66,28 @@ timing attack over a network against a uniformly rate-limited endpoint (`Throttl
 applies to every route), which is impractical at the precision such an attack needs. Stated
 here rather than left to be rediscovered.
 
+## Reset and confirmation emails are throttled per IP here, per address by Supabase
+
+`POST /auth/forgot-password` and `POST /auth/resend-confirmation` each send real mail, so the
+abuse to guard against is someone flooding *another person's* inbox. Our own `@Throttle` on
+both is 3 requests per 15 minutes **per IP**, which caps an origin, not an address: someone
+rotating IPs could still aim many requests at one address (review finding L2-2, 2026-09-25).
+
+Decided (8.5 S11): **no per-email counter of our own for now.** Supabase Auth already limits
+the same flows per address, and every request goes through it (`SupabaseAuthProvider`):
+
+- `/auth/v1/recover` (password reset) and the signup confirmation each allow one request per
+  address per **60 s** by default ("Last request" in Supabase's Auth rate-limit table).
+- All email-sending endpoints together are capped per project per hour.
+
+So the worst case for one victim is about one email a minute, which is annoying but bounded,
+and the per-hour project cap stops any wider flood. A per-address counter here would duplicate
+Supabase's limit and need its own store (Redis or a table) to survive restarts and scale-out.
+Revisit this if we move off Supabase's email sending, raise its per-address interval, or see
+abuse in the logs.
+Source: Supabase, "Production Checklist" → Auth rate limits
+(<https://supabase.com/docs/guides/deployment/going-into-prod>).
+
 ## Consent model (slice 2)
 
 `privacy_settings` (see `domain-model.md`) holds six flags, all boolean, `NOT NULL`, defaulting
