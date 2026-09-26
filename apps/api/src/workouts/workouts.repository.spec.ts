@@ -1216,7 +1216,32 @@ describe("WorkoutsRepository", () => {
       expect(newYork.sessionsThisMonth).toBe(0);
     });
 
+    // Review 8.5 L9a-6 bounds the day scan to recent history; these pin that nothing older is lost.
+    it("still counts a session from years ago in the total", async () => {
+      const owner = await makeUser("stats-old");
+      await save(sessionAt(owner, new Date("2023-01-10T10:00:00Z")));
+      await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z")));
+
+      const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+      expect(stats.totalSessions).toBe(2);
+      expect(stats.weekStreak).toBe(1);
+    });
+
     describe("weekStreak", () => {
+      it("counts a streak longer than a year in full", async () => {
+        const owner = await makeUser("stats-longstreak");
+        const weeks = 60;
+        for (let week = 0; week < weeks; week += 1) {
+          await save(sessionAt(owner, new Date(Date.parse("2026-09-02T10:00:00Z") - week * 7 * 24 * 60 * 60 * 1000)));
+        }
+
+        const stats = await repository.statsForUser(owner, ZONE, NOW);
+
+        expect(stats.weekStreak).toBe(weeks);
+        expect(stats.totalSessions).toBe(weeks);
+      });
+
       it("counts consecutive weeks back from the current one", async () => {
         const owner = await makeUser("stats-streak");
         await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z"))); // this week

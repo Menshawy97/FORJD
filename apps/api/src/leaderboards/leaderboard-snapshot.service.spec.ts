@@ -135,6 +135,26 @@ describe('LeaderboardSnapshotService', () => {
     expect(summary.failures).toEqual([{ citySlug: 'bad', message: 'plain string' }]);
   });
 
+  it('captures several cities at once, never more than four in flight (review 8.5, L9a-8)', async () => {
+    const slugs = Array.from({ length: 10 }, (_, i) => `city-${i}`);
+    snapshots.eligibleCities.mockResolvedValue(slugs);
+    let inFlight = 0;
+    let peak = 0;
+    leaderboards.cityAthletes.mockImplementation(async () => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setImmediate(resolve));
+      inFlight -= 1;
+      return city(5);
+    });
+
+    const summary = await service.captureAll(NOW);
+
+    expect(peak).toBe(4);
+    expect(summary).toEqual({ cities: 10, rows: 100, failures: [] });
+    expect(new Set(snapshots.replaceWeek.mock.calls.map((c) => c[0]))).toEqual(new Set(slugs));
+  });
+
   it('does nothing when no city has a board', async () => {
     snapshots.eligibleCities.mockResolvedValue([]);
 
