@@ -367,6 +367,47 @@ describe("LeaderboardsRepository", () => {
     });
   });
 
+  describe("currentMembers (read live on every board request)", () => {
+    it("returns each athlete still in, with their current name, photo and profile setting", async () => {
+      const userId = await makeUser("member", {
+        publicProfile: true,
+        profile: { displayName: "Sara K.", username: "sarak", avatarUrl: "https://example.com/s.png" },
+      });
+
+      const members = await repository.currentMembers([userId]);
+
+      expect(members.get(userId)).toEqual({
+        displayName: "Sara K.",
+        username: "sarak",
+        avatarUrl: "https://example.com/s.png",
+        isPublicProfile: true,
+      });
+    });
+
+    it("leaves out an athlete who has withdrawn or not allowed location, the moment they do", async () => {
+      const stays = await makeUser("stays");
+      const withdraws = await makeUser("leaves");
+      const noLocation = await makeUser("nolocmember", { location: false });
+
+      await db.update(privacySettings).set({ leaderboardOptIn: false }).where(inArray(privacySettings.userId, [withdraws]));
+      const members = await repository.currentMembers([stays, withdraws, noLocation]);
+
+      expect([...members.keys()]).toEqual([stays]);
+    });
+
+    it("returns nulls for an athlete with no profile row, and nothing for no ids", async () => {
+      const userId = await makeUser("memberbare", { profile: null });
+
+      expect((await repository.currentMembers([userId])).get(userId)).toEqual({
+        displayName: null,
+        username: null,
+        avatarUrl: null,
+        isPublicProfile: false,
+      });
+      expect((await repository.currentMembers([])).size).toBe(0);
+    });
+  });
+
   describe("latestEligibleCity", () => {
     it("is the city of the most recent eligible session", async () => {
       const userId = await makeUser("latest");

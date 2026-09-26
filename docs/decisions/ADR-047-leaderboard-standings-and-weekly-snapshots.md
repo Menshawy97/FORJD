@@ -1,6 +1,6 @@
 # ADR-047: Leaderboard standings are computed on read; weekly snapshots are the only stored copy
 
-**Status:** Accepted
+**Status:** Accepted; decision 2 amended by ADR-054 (totals reused for 15 s, membership still read live)
 **Date:** 2026-09-21
 
 ## Context
