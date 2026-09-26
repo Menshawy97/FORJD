@@ -363,10 +363,33 @@ describe('apiClient - profile reads and writes', () => {
     // Launch asks from the root layout and Home at the same moment.
     const fromLayout = getMe();
     const fromHome = getMe();
+    // getMe reads the token first, so the request starts a tick later.
+    await new Promise((resolve) => setImmediate(resolve));
     answer({ data: { id: 'u1', email: 'a@example.com', profile: null, privacy: null } });
 
     await expect(Promise.all([fromLayout, fromHome])).resolves.toHaveLength(2);
     expect(instance.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('never hands one account the request another account started (a sign-out and sign-in mid-request)', async () => {
+    const { getMe } = loadApiClient();
+    const instance = apiClientInstance();
+    const answers: Array<(value: unknown) => void> = [];
+    instance.get.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+    (secureStorage.getAccessToken as jest.Mock).mockResolvedValue('token-account-a');
+    const forA = getMe();
+    await flush();
+    (secureStorage.getAccessToken as jest.Mock).mockResolvedValue('token-account-b');
+    const forB = getMe();
+    await flush();
+
+    expect(instance.get).toHaveBeenCalledTimes(2);
+    answers[0]?.({ data: { id: 'a', email: 'a@example.com', profile: null, privacy: null } });
+    answers[1]?.({ data: { id: 'b', email: 'b@example.com', profile: null, privacy: null } });
+    await expect(forA).resolves.toEqual(expect.objectContaining({ id: 'a' }));
+    await expect(forB).resolves.toEqual(expect.objectContaining({ id: 'b' }));
   });
 
   it('asks again once the shared request has finished, so a later screen never sees a stale profile', async () => {
