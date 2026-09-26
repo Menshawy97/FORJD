@@ -15,9 +15,13 @@ Plan: [whole-app-review-plan.md](whole-app-review-plan.md).
 | S2 newest-first health reads | **Merged** #268 |
 | S3 nutrition correctness and speed | **Merged** #269: cited calorie minimum (with the approved breakdown note), save-once Log button, idempotent log id, foods cache, batched saved-meal read |
 | S4 export completeness | **Merged** #270, `main` green. Follow-ups from its review: an e2e case seeding a run in `users-export.e2e-spec.ts`, and a `run` example in `packages/contracts/src/fixtures.ts` |
-| S5 app speed, part 1 | PR #272: Progress in parallel (L9b-1), Train lookups (L9b-2), programs on focus (L9b-5) |
-| S5 app speed, part 2 | Not started: one shared `getMe` cache (L9b-3), a minimum interval for tab-focus refetches (L9b-4) |
-| S6-S13 | Not started. Next after S5: S6 leaderboard and history reads, then S7 (server to europe-west1 + `--cpu-boost`) |
+| S5 app speed, part 1 | **Merged** #272, `main` green: Progress in parallel (L9b-1), Train lookups (L9b-2), programs on focus (L9b-5) |
+| S5 app speed, part 2 | PR #274: `getMe` shares one in-flight request per access token (L9b-3; reviewed, its cross-account finding fixed). **L9b-4 closed** by the user 2026-09-26: tabs keep reloading on every focus |
+| S6 part 1 | PR #275: each city board computed at most once per 15 s, shared by the board and profile standings (L9a-2, L9a-3). Needs review |
+| S6 part 2 | Not started: bound streak/"ready to progress"/first-session scans (L9a-6), bounded concurrency in the snapshot job (L9a-8), drizzle migration for the 4 unindexed FKs + a PK on `exercise_favourites` |
+| S7-S13 | Not started. Next: S7 (server to europe-west1 + `--cpu-boost`; user steps for Cloudflare Pages `PUBLIC_API_URL` and deleting the old us-central1 services) |
+
+Local note: the local Docker Postgres is missing migration 0027, so repository specs touching `profiles.activity_level` fail locally; run `pnpm --filter @forjd/api db:migrate` against the local database before relying on them (CI uses a fresh, migrated database).
 
 Working notes for whoever resumes: slices are built in the worktree `.claude/worktrees/fix-85`
 (one branch per slice, from `origin/main`). After switching branches, rebuild the shared packages
