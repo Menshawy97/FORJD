@@ -356,7 +356,7 @@ describe("workouts schema (migrations 0012, 0013)", () => {
   describe("foreign-key indexes (review 8.5, S6)", () => {
     const indexOn = async (table: string, columns: string): Promise<string | undefined> => {
       const result = await db.execute(sql`select indexdef from pg_indexes where tablename = ${table}`);
-      return (result.rows as Array<{ indexdef: string }>).map((row) => row.indexdef).find((d) => d.endsWith(`(${columns})`));
+      return (result.rows as Array<{ indexdef: string }>).map((row) => row.indexdef).find((d) => d.endsWith(`USING btree (${columns})`));
     };
 
     it.each([
