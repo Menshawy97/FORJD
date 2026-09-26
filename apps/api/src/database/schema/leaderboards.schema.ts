@@ -29,7 +29,10 @@ export const leaderboardRankSnapshots = pgTable(
     citySlug: text('city_slug').notNull(),
     metric: text('metric').notNull(),
     period: text('period').notNull(),
-    /** The Monday, in the CITY's own calendar, of the week this was captured for. */
+    /**
+     * The Saturday, in the CITY's own calendar, of the week this was captured for (weeks start on
+     * Saturday, ADR-056). Rows captured before that switch are labelled with a Monday.
+     */
     weekStart: date('week_start').notNull(),
     rank: integer('rank').notNull(),
     /** One decimal, 0.0 to 100.0: what the screen shows. */
