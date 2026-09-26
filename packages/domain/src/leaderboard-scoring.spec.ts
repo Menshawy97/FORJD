@@ -260,7 +260,7 @@ describe("scoreCohort", () => {
 
   // No wall-clock bound (8.5 S12, L10-1): `toBeLessThan(1000)` passed alone but failed at 24 s on
   // a loaded CI runner, so it measured the machine, not the code. What is checked is that a
-  // city-sized cohort is scored in full, ranked densely, with no athlete lost or duplicated.
+  // city-sized cohort is scored in full and ranked 1..n with no gaps, no athlete lost or duplicated.
   it("scores a large city completely", () => {
     const city = Array.from({ length: 10_000 }, (_, i) =>
       athlete({
@@ -277,7 +277,7 @@ describe("scoreCohort", () => {
     expect(ranked).toHaveLength(10_000);
     expect(new Set(ranked.map((r) => r.userId)).size).toBe(10_000);
     expect(ranked.every((r) => Number.isFinite(r.score))).toBe(true);
-    expect(ranked[0]?.rank).toBe(1);
+    expect(ranked.every((r, index) => r.rank === index + 1)).toBe(true);
   });
 
   it("keeps the score within 0..100", () => {
