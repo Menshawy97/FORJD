@@ -150,6 +150,23 @@ ADR it breaks. No lane edits code.
 lanes 1-3 re-run clean; the owed device tests above done, or explicitly carried into the beta
 with the user's agreement.
 
+## Weekly Forge — weekly progression ladders (new, 2026-09-27)
+
+**Status: Phase 1 (docs) in review.** Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
+ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md) (whole app),
+[ADR-057 Weekly Forge](../decisions/ADR-057-weekly-forge.md).
+
+**What it is:**
+- Five ladders: Consistency, Volume, Distance, Active minutes, and Nourish (Nourish is private).
+- Bands run Ore → Ember → Anvil → Tempered → Forged, and each week is evaluated in the user's own time zone.
+- Rewards go into an append-only ledger. Celebrations scale with the change.
+- There is no Forge ranking. Badges appear on the public athlete profile.
+- It ships dark behind the `weekly_forge` flag.
+
+**Phases:** 1 docs · 2 Saturday weeks (backend) · 3 domain rules · 4 schema and seed · 5 totals,
+evaluation and the cron · 6 API · **7 UI mock-ups for the user's approval** · 8 mobile foundations ·
+9 card and profiles · 10 celebrations, summary, share · 11 close. Every phase stops for the user's review.
+
 ## Phase 12 — Background running, notifications and widgets (new)
 
 **Why:** today FORJD works only while it is on screen. A run pauses when the phone locks
