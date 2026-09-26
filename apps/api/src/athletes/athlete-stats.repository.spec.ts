@@ -212,7 +212,7 @@ describe("AthleteStatsRepository", () => {
   });
 
   describe("weekStreak", () => {
-    const NOW = new Date("2026-09-23T12:00:00Z"); // a Wednesday; this week began Monday 21 September
+    const NOW = new Date("2026-09-23T12:00:00Z"); // a Wednesday; this week began Saturday 19 September (ADR-056)
 
     it("counts consecutive trained weeks ending this week", async () => {
       const userId = await makeUser("streak");
@@ -244,11 +244,11 @@ describe("AthleteStatsRepository", () => {
 
     it("dates a session by the athlete's own calendar", async () => {
       const userId = await makeUser("streaktz");
-      // Sunday 20 September 23:30 UTC is already Monday 21 September in Cairo (UTC+3), so there
-      // it is this week and the week of 14 September is empty. In UTC it is still the week of 14
-      // September, so the streak reaches back through the week of 7 September (the 13th).
-      await save(session(userId, "2026-09-20T23:30:00Z"));
-      await save(session(userId, "2026-09-13T10:00:00Z"));
+      // Friday 18 September 23:30 UTC is already Saturday 19 September in Cairo (UTC+3), so there
+      // it is this week and the week of 12 September is empty. In UTC it is still the week of 12
+      // September, so the streak reaches back through the week of 5 September (the 11th).
+      await save(session(userId, "2026-09-18T23:30:00Z"));
+      await save(session(userId, "2026-09-11T10:00:00Z"));
 
       expect(await repository.weekStreak(userId, "Africa/Cairo", NOW)).toBe(1);
       expect(await repository.weekStreak(userId, "UTC", NOW)).toBe(2);

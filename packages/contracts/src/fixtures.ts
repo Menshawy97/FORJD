@@ -730,7 +730,7 @@ export const responseFixtures = {
 
   /**
    * The Progress tab's Strength view (Phase 4) -- two PR tiles, an 8-week estimated-1RM
-   * trend, a Monday-first weekly-volume week, a training calendar and a muscle split that
+   * trend, a weekly-volume week in ISO 1-7 order, a training calendar and a muscle split that
    * sums to 100, plus a rules-based (not AI) insight. `insight` is populated here to pin the
    * fully-lit shape; the honest-empty `null` case is asserted separately in `progress.spec.ts`.
    */

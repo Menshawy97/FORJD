@@ -30,9 +30,11 @@ Until now, every weekly figure assumed a Monday start:
    `WEEK_START_DOW = 6` (Saturday, JavaScript `getDay()` numbering), lives in `packages/domain`,
    and every server and phone calculation reads it. No second, Monday-based helper survives.
 2. **Leaderboard snapshots are labelled with the coming local Saturday.** The half-day nudge in
-   ADR-047 decision 5 is unchanged. The cron moves to Friday 22:20 UTC: Saturday 00:20 in Cairo
-   on standard time (UTC+2), or 01:20 during Egyptian summer time (UTC+3). Either way it runs
-   after the Cairo week has closed, and the nudge makes both runs label the same Saturday.
+   ADR-047 decision 5 is unchanged. The cron moves from Monday to **Saturday 00:20 UTC**:
+   02:20 or 03:20 in Cairo, after the week there has closed. With the unchanged 12-hour nudge,
+   every zone from UTC-12 to UTC+14 labels the run with the same Saturday, exactly as Monday 00:20
+   did for Monday. (Friday 22:20 UTC was considered, so the run would land right at the Cairo
+   close, but with a 12-hour nudge it would mislabel UTC-11 and UTC-12.)
 3. **Old Monday-labelled snapshot rows are not rewritten.** The delta lookup already falls back to
    the latest earlier snapshot within two weeks, so the first Saturday after the switch compares
    against the last Monday row, or shows nothing. Snapshot rows are derived data (rule 9), and

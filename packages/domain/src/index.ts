@@ -5,6 +5,7 @@ import type { ActivityLevel, BodyGoal } from "./nutrition-targets";
  */
 
 export * from "./body-vocabulary";
+export * from "./calendar-week";
 export * from "./exercise-vocabulary";
 export * from "./health-vocabulary";
 export * from "./nutrition-vocabulary";

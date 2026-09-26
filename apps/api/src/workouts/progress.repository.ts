@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import {
   distributeSetVolume,
   estimateOneRepMaxKg,
+  isoWeekday,
   muscleSplitBucketFor,
   toPercentages,
   MuscleGroup,
@@ -93,7 +94,8 @@ export interface OneRepMaxTrendPointRow {
 
 export interface WeeklyVolumeDayRow {
   /**
-   * 1-7, Monday-first -- see `weeklyVolumeDaySchema`'s own docblock for why this
+   * 1-7, ISO weekday (1 is Monday), and the array is in that order even though the week itself
+   * runs Saturday to Friday (ADR-056) -- see `weeklyVolumeDaySchema`'s own docblock for why this
    * deliberately differs from `Date#getDay()`'s Sunday-first indexing that `statsForUser`
    * uses for `thisWeek.trainedWeekdays`.
    */
@@ -180,10 +182,13 @@ export class ProgressRepository {
       const date = civilDateString(civilDateMs(currentWeekStart) + offset * MS_PER_DAY);
       const row = weekRows.get(date);
       const volumeKg = row?.volumeKg ?? 0;
-      weeklyVolumeKg.push({ dayOfWeek: offset + 1, volumeKg });
+      weeklyVolumeKg.push({ dayOfWeek: isoWeekday(new Date(civilDateMs(date)).getUTCDay()), volumeKg });
       volumeKgThisWeek += volumeKg;
       sessionsThisWeek += row?.sessionCount ?? 0;
     }
+    // The week runs Saturday to Friday (ADR-056), but the wire keeps `dayOfWeek` as the ISO
+    // weekday and the array in 1-7 (Monday-first) order, so no shipped client mislabels a bar.
+    weeklyVolumeKg.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
     for (let offset = 0; offset < 7; offset += 1) {
       const date = civilDateString(civilDateMs(lastWeekStart) + offset * MS_PER_DAY);
       volumeKgLastWeek += weekRows.get(date)?.volumeKg ?? 0;

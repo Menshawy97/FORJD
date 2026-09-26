@@ -81,18 +81,19 @@ export function allTimeWeeks(firstStartedAt: Date, now: Date): number {
 }
 
 /**
- * The label a weekly snapshot run gets in a city: the Monday of the local week that is starting or
- * has just started. The job runs at Monday 00:20 UTC, which is still Sunday evening in the
- * Americas and already Monday afternoon in Oceania, so the instant is nudged half a day forward
- * before its local date is read. Every city then labels the run with the coming Monday, and a
- * re-run a few hours later gets the same label and so replaces the rows rather than adding a set.
+ * The label a weekly snapshot run gets in a city: the Saturday of the local week that is starting
+ * or has just started (weeks start on Saturday, ADR-056). The job runs at Saturday 00:20 UTC, which
+ * is still Friday evening in the Americas and already Saturday afternoon in Oceania, so the instant
+ * is nudged half a day forward before its local date is read. Every city then labels the run with
+ * the coming Saturday, and a re-run a few hours later gets the same label and so replaces the rows
+ * rather than adding a set.
  */
 export function snapshotWeekStart(runAt: Date, timeZone: string): string {
   return weekStartOf(localCalendarDate(new Date(runAt.getTime() + 12 * MS_PER_HOUR), timeZone));
 }
 
 /**
- * The Monday of the current local week: the label of the snapshot that says where everyone stood
+ * The Saturday of the current local week: the label of the snapshot that says where everyone stood
  * as the week began, which "up 3 this week" is measured from.
  */
 export function comparisonWeekStart(now: Date, timeZone: string): string {
@@ -103,7 +104,7 @@ export function comparisonWeekStart(now: Date, timeZone: string): string {
  * The oldest snapshot label the arrow may be measured from.
  *
  * - **A month** is scored over its own calendar month, so a baseline from last month is a
- *   different board: on Thursday 1 October the snapshot labelled Monday 28 September holds the
+ *   different board: on Thursday 1 October the snapshot labelled Saturday 26 September holds the
  *   September standings, and `september rank - october rank` is not movement. The floor is the
  *   first of the current local month.
  * - **All time** has no such break, but a baseline months old is not "this week" either, which is

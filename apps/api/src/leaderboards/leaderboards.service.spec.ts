@@ -339,13 +339,13 @@ describe('LeaderboardsService', () => {
         expect(result.rows.find((r) => r.userId === idOf(3))?.delta).toBeNull();
       });
 
-      it("reads the baseline of the caller's city, metric and period, for the Monday in the city's own calendar", async () => {
+      it("reads the baseline of the caller's city, metric and period, for the Saturday in the city's own calendar", async () => {
         const { service, snapshots } = build({ athletes: cohort(10, 5), baseline });
 
         await get(service);
 
-        // Tuesday 22 September in Cairo: the week began on Monday 21st.
-        expect(snapshots.baselineRanks).toHaveBeenCalledWith(SLUG, 'activity', 'month', '2026-09-21', '2026-09-01');
+        // Tuesday 22 September in Cairo: the week began on Saturday 19th (ADR-056).
+        expect(snapshots.baselineRanks).toHaveBeenCalledWith(SLUG, 'activity', 'month', '2026-09-19', '2026-09-01');
       });
 
       it('does not read baselines for a board that is not ranked', async () => {

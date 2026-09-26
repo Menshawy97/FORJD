@@ -1,9 +1,12 @@
 /**
  * Free-standing calendar/date arithmetic shared by the workouts repositories (`statsForUser`
  * in `workout-sessions.repository.ts`) and `progress.repository.ts`'s own calendar reads.
+ * Weeks start on Saturday (`WEEK_START_DOW`, ADR-056).
+ *
  * Extracted from `workouts.repository.ts` (R23c) -- these were previously private helpers on
  * that file's single class; nothing here touches `this.db`, so none of it needs to be a method.
  */
+import { daysSinceWeekStart } from "@forjd/domain";
 
 /** `YYYY-MM-DD` in the given zone. `en-CA` is the locale that formats exactly this shape. */
 export function localCalendarDate(instant: Date, timeZone: string): string {
@@ -22,7 +25,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  *
  * Deliberately *not* the real instant that date began in the athlete's zone. Once a timestamp
  * has been resolved to a calendar day, everything built on it here -- which weekday, which
- * Monday, how many weeks back -- is calendar arithmetic, and doing that on a UTC ruler is what
+ * week start, how many weeks back -- is calendar arithmetic, and doing that on a UTC ruler is what
  * stops a daylight-saving transition from making one week 167 hours long and shifting every
  * weekday index inside it by one.
  */
@@ -35,11 +38,10 @@ export function civilDateString(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
-/** The Monday of the week a civil date falls in -- the week the mobile app's own strip draws. */
+/** The Saturday that starts the week a civil date falls in (`WEEK_START_DOW`, ADR-056). */
 export function weekStartOf(date: string): string {
   const ms = civilDateMs(date);
-  // getUTCDay() is Sunday-based; adding 6 and taking mod 7 rotates it so Monday is 0.
-  const offset = (new Date(ms).getUTCDay() + 6) % 7;
+  const offset = daysSinceWeekStart(new Date(ms).getUTCDay());
   return civilDateString(ms - offset * MS_PER_DAY);
 }
 
@@ -48,7 +50,7 @@ export function weekStartOf(date: string): string {
  * contain at least one completed session.
  *
  * **The current week is allowed to be empty without breaking the streak.** Measured on a
- * Monday morning, a streak that required the current week would reset every week before the
+ * Saturday morning, a streak that required the current week would reset every week before the
  * athlete had any chance to train -- so a streak that reached last week is still alive, and
  * only falls to zero once the week before that is empty too.
  */
