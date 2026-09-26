@@ -134,10 +134,15 @@ export class AccountExportService {
 
   private async exportWorkoutSessions(userId: string): Promise<WorkoutSessionResponse[]> {
     const ids = await this.workoutsRepository.listSessionIdsForUser(userId);
-    const sessions = await Promise.all(ids.map((id) => this.workoutsRepository.findSessionByIdForUser(id, userId)));
+    const [sessions, runs] = await Promise.all([
+      Promise.all(ids.map((id) => this.workoutsRepository.findSessionByIdForUser(id, userId))),
+      // Whole-app review 8.5, L3-2: every run's distance, splits, heart rate and calories, which the
+      // export left out. `ids` are this user's own session ids, so the read is already scoped.
+      this.workoutsRepository.findRunSummariesForSessions(ids),
+    ]);
     return sessions
       .filter((session): session is WorkoutSession => session !== null)
-      .map((session) => this.toWorkoutSessionResponse(session));
+      .map((session) => ({ ...this.toWorkoutSessionResponse(session), run: runs.get(session.id) ?? null }));
   }
 
   // -----------------------------------------------------------------------------------------

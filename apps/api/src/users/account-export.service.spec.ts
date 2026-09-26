@@ -60,6 +60,7 @@ describe('AccountExportService', () => {
       listSessionIdsForUser: jest.fn().mockResolvedValue([]),
       findByIdForUser: jest.fn(),
       findSessionByIdForUser: jest.fn(),
+      findRunSummariesForSessions: jest.fn().mockResolvedValue(new Map()),
       ...((overrides.workoutsRepository as object) ?? {}),
     };
 
@@ -314,6 +315,48 @@ describe('AccountExportService', () => {
     expect(result.privacy).toEqual(
       expect.objectContaining({ publicProfile: false, aiFeaturesConsent: false }),
     );
+  });
+
+  it("includes each run's distance, time, splits, heart rate and calories, and null for a strength session (review 8.5, L3-2)", async () => {
+    const session = (id: string, activity: string) => ({
+      id,
+      templateId: null,
+      name: id,
+      activity,
+      status: 'completed',
+      startedAt: new Date('2026-09-20T06:00:00.000Z'),
+      endedAt: new Date('2026-09-20T06:30:00.000Z'),
+      durationSeconds: 1800,
+      perceivedEffort: null,
+      notes: null,
+      city: null,
+      citySlug: null,
+      isLiveTracked: activity === 'running',
+      exercises: [],
+    });
+    const run = {
+      distanceMeters: 5012.4,
+      movingSeconds: 1690,
+      elevationGainMeters: 21,
+      avgHeartRateBpm: 151,
+      caloriesKcal: 402,
+      caloriesSource: 'heart_rate',
+      splits: [{ index: 1, distanceMeters: 1000, durationSeconds: 338, avgHeartRateBpm: 148 }],
+    };
+    const findRunSummariesForSessions = jest.fn().mockResolvedValue(new Map([['run-1', run]]));
+    const { service } = build({
+      workoutsRepository: {
+        listSessionIdsForUser: jest.fn().mockResolvedValue(['run-1', 'lift-1']),
+        findSessionByIdForUser: jest.fn(async (id: string) => session(id, id === 'run-1' ? 'running' : 'strength')),
+        findRunSummariesForSessions,
+      },
+    });
+
+    const result = await service.exportAccount(userId, email);
+
+    expect(findRunSummariesForSessions).toHaveBeenCalledWith(['run-1', 'lift-1']);
+    expect(result.workoutSessions.find((s) => s.id === 'run-1')?.run).toEqual(run);
+    expect(result.workoutSessions.find((s) => s.id === 'lift-1')?.run).toBeNull();
   });
 
   it('includes owned programs and the active enrollment', async () => {
