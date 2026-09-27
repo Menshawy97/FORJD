@@ -27,6 +27,7 @@ import type {
   ExerciseCatalogueResponse,
   ExerciseHistoryResponse,
   ExerciseResponse,
+  FeatureFlagsResponse,
   FoodListResponse,
   FoodResponse,
   LoginRequest,
@@ -540,7 +541,7 @@ export async function listWorkoutSessions(
  * `UTC` matches the server's own default: the athlete sees figures bucketed by UTC days rather
  * than no figures at all.
  */
-function deviceTimeZone(): string {
+export function deviceTimeZone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   } catch {
@@ -749,4 +750,22 @@ export async function deleteAccount(): Promise<void> {
 export async function exportAccount(): Promise<AccountExportResponse> {
   const response = await apiClient.get<AccountExportResponse>('/users/me/export');
   return response.data;
+}
+
+/**
+ * `GET /feature-flags` -- the keys of every server-side feature flag that is switched on. Read
+ * through `features/flags/feature-flags.ts`, which asks once per launch and caches the answer, so
+ * a dark feature (Weekly Forge, ADR-057) stays invisible until the flag is on.
+ */
+export async function getFeatureFlags(): Promise<FeatureFlagsResponse> {
+  const response = await apiClient.get<FeatureFlagsResponse>('/feature-flags');
+  return response.data;
+}
+
+/**
+ * `PUT /users/me/timezone` -- the phone's IANA zone, where the athlete's Weekly Forge weeks close
+ * (ADR-057 decision 3). 204. Sent by `features/forge/time-zone-sync.ts` only when it changes.
+ */
+export async function putTimeZone(timeZone: string): Promise<void> {
+  await apiClient.put('/users/me/timezone', { timeZone });
 }

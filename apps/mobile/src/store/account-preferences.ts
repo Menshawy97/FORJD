@@ -3,10 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EXERCISE_UNITS_STORAGE_KEY } from './exercise-unit-preferences';
 import { NOTIFICATION_PREFERENCES_STORAGE_KEY } from './notification-preferences';
 import { RECENT_EXERCISES_STORAGE_KEY } from './recent-exercises';
+import { TIME_ZONE_SENT_STORAGE_KEY } from './time-zone-sent';
 
 /**
  * The device preferences that belong to one signed-in person, not to the phone (whole-app review
- * 8.5, L5-2): what they opened recently, their notification toggles, their per-exercise units.
+ * 8.5, L5-2): what they opened recently, their notification toggles, their per-exercise units,
+ * and the time zone last sent for Weekly Forge (so the next account sends its own).
  * Forgotten on every sign-out so the next account on the same phone starts clean.
  *
  * Not in this list, deliberately: the location and health consent copies (forgotten by their own
@@ -17,6 +19,7 @@ const ACCOUNT_PREFERENCE_KEYS = [
   RECENT_EXERCISES_STORAGE_KEY,
   NOTIFICATION_PREFERENCES_STORAGE_KEY,
   EXERCISE_UNITS_STORAGE_KEY,
+  TIME_ZONE_SENT_STORAGE_KEY,
 ] as const;
 
 /** Never throws: a preference that fails to clear must not stop a sign-out. */
