@@ -4,13 +4,25 @@ import type { ViewShotRef } from 'react-native-view-shot';
 
 import { getMe } from '@/auth/apiClient';
 import { useToast } from '@/components/toast';
-import { isExpoGo, shareShareCard } from '@/media/share-capture';
-import { ShareCardShot } from '@/media/share-card-shot';
+import type * as ShareCaptureModule from '@/media/share-capture';
+import type * as ShareCardShotModule from '@/media/share-card-shot';
+
+/**
+ * Required when used, not imported at the top, for the reason `forge-celebration-screen.tsx`
+ * gives: the screens that import this hook (the profile tab among them) must not load the share
+ * modules -- `expo-media-library`, `react-native-view-shot` -- just by importing it.
+ */
+function shareModules(): { capture: typeof ShareCaptureModule; shot: typeof ShareCardShotModule } {
+  return {
+    capture: require('@/media/share-capture') as typeof ShareCaptureModule,
+    shot: require('@/media/share-card-shot') as typeof ShareCardShotModule,
+  };
+}
 
 export const SHARE_ERROR_LINE = 'Could not open the share sheet. Please try again.';
 export const EXPO_GO_SHARE_LINE = 'Sharing works in the full app, not in Expo Go.';
 
-interface ForgeShare {
+export interface ForgeShare {
   /** Shares this card: lays it out, captures it at 1080 x 1350 and opens the phone's share sheet. */
   start: (card: ReactElement) => void;
   /** Render this in the screen; it is the capture's hidden full-screen layer while a share runs. */
@@ -55,7 +67,7 @@ export function useForgeShare(): ForgeShare {
 
   const start = useCallback(
     (next: ReactElement) => {
-      if (isExpoGo()) {
+      if (shareModules().capture.isExpoGo()) {
         toast.show(EXPO_GO_SHARE_LINE);
         return;
       }
@@ -83,6 +95,8 @@ export function useForgeShare(): ForgeShare {
 }
 
 function ForgeShareLayer({ card, onDone }: { card: ReactElement; onDone: (failed: boolean) => void }) {
+  const { capture: captureModule, shot } = shareModules();
+  const { ShareCardShot } = shot;
   const shotRef = useRef<ViewShotRef | null>(null);
   const hasStarted = useRef(false);
 
@@ -91,7 +105,7 @@ function ForgeShareLayer({ card, onDone }: { card: ReactElement; onDone: (failed
       return;
     }
     hasStarted.current = true;
-    shareShareCard(shotRef, 'Share your Weekly Forge').then(
+    captureModule.shareShareCard(shotRef, 'Share your Weekly Forge').then(
       () => onDone(false),
       () => onDone(true),
     );
