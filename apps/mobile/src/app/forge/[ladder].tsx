@@ -94,8 +94,11 @@ function TopCard({
   loadFailed: boolean;
 }) {
   if (!progress) {
+    const spoken = loadFailed
+      ? "Level not loaded. Your level couldn't load. Check your connection, then pull down to try again."
+      : 'Your level is loading';
     return (
-      <View className="rounded-card border border-border bg-surface">
+      <View accessible accessibilityRole="text" accessibilityLabel={spoken} className="rounded-card border border-border bg-surface">
         <View className="flex-row items-center gap-[14px] px-4 py-[14px]">
           <ForgeMark ladder={ladder} band="ore" size={48} decorative />
           <View className="min-w-0 flex-1">

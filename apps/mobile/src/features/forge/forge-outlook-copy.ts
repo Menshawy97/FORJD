@@ -17,6 +17,9 @@ export function outlookLine(progress: ForgeLadderProgress): string {
     ladder,
     {
       level,
+      // The response carries no best level, so this approximates it. Only `result.levelAfter`,
+      // `result.outcome` and `nextStep` are read here, and none depends on it. `result.rewards`
+      // would, so it must never be shown from this call.
       bestLevel: level,
       missStreak: progress.missStreak,
       temperedHoldWeeks: progress.temperedHoldWeeks ?? 0,
