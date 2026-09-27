@@ -24,6 +24,7 @@
     "cities:normalize": "ts-node src/cities/ingest/normalize.ts",
     "programs:seed": "ts-node src/programs/seed/seed.ts",
     "forge:seed": "ts-node src/forge/seed/seed.ts",
+    "forge:evaluate": "ts-node src/forge/evaluate/evaluate.ts",
     "prompt:golden": "ts-node scripts/write-inbody-prompt-golden.ts",
     "inbody:eval": "ts-node scripts/eval-inbody.ts",
     "leaderboard:snapshot": "ts-node src/leaderboards/snapshot/snapshot.ts"
