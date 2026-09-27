@@ -237,6 +237,7 @@ export const responseFixtures = {
       stats: null,
       personalRecords: [],
       recentSessions: [],
+      forge: null,
     },
   },
 
@@ -278,7 +279,6 @@ export const responseFixtures = {
           isFavourite: false,
         },
       ],
-      forge: null,
       nextCursor: 'eyJuYW1lIjoiU2FuZGJhZyBDYXJyeSIsImlkIjoiMjIyIn0',
     },
   },
