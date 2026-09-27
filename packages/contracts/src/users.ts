@@ -14,6 +14,8 @@ import {
 } from '@forjd/domain';
 import { z } from 'zod';
 
+import { publicForgeSchema } from './forge';
+
 /**
  * @deprecated A preset, not a preference — it writes `weightUnit` and `distanceUnit` and
  * says nothing about energy. Read `weightUnit`/`distanceUnit`/`energyUnit` instead. Retained
@@ -244,6 +246,11 @@ export const publicProfileResponseSchema = z.object({
   personalRecords: z.array(athleteRecordSchema).max(4),
   /** Up to three, newest first. */
   recentSessions: z.array(athleteSessionSchema).max(3),
+  /**
+   * Weekly Forge bands, badges and Forged status for the public ladders (ADR-057). `null` while the
+   * `weekly_forge` flag is off or before the athlete is enrolled. Never carries Nourish.
+   */
+  forge: publicForgeSchema.nullable(),
 });
 export type PublicProfileResponse = z.infer<typeof publicProfileResponseSchema>;
 

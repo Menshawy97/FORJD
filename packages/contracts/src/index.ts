@@ -33,4 +33,5 @@ export * from './health';
 export * from './integrations';
 export * from './account-export';
 export * from './leaderboards';
+export * from './forge';
 export * from './waitlist';

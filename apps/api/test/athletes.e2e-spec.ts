@@ -143,6 +143,7 @@ describe('Public athlete profile (e2e)', () => {
       stats: null,
       personalRecords: [],
       recentSessions: [],
+      forge: null,
     });
   });
 

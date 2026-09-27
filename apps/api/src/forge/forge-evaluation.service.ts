@@ -98,7 +98,8 @@ export class ForgeEvaluationService {
     return { weekStart, timeZone, closesAt, rulesVersion: FORGE_RULES_VERSION, totals, results };
   }
 
-  private async timeZoneFor(userId: string): Promise<string> {
+  /** The athlete's stored zone when it is a valid IANA zone, otherwise Cairo (ADR-057 decision 3). */
+  async timeZoneFor(userId: string): Promise<string> {
     const stored = await this.store.timeZoneOf(userId);
     return stored !== null && isValidTimeZone(stored) ? stored : FORGE_DEFAULT_TIME_ZONE;
   }

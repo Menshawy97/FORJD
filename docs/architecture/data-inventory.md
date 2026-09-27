@@ -46,6 +46,7 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Custom exercises, favourites | Library | `exercises`, `exercise_favourites` | No | Added in 8C | Yes |
 | Programs and enrollments | Programs | `programs`, `program_enrollments` | No | Owned programs and active enrollment; past enrollments added in 8C | Yes |
 | Goals, preferences | Settings | `goals`, `preferences` | No | Added in 8C | Yes |
+| Device time zone (IANA name, e.g. `Africa/Cairo`), sent by the phone for Weekly Forge week closes (ADR-057) | App launch, `PUT /users/me/timezone` | `preferences.timezone` | No | Yes (`preferences.timezone`) | Yes (cascade) |
 | Consent flags | Privacy screen | `privacy_settings` | No | Yes | Yes |
 | Audit trail | Auth and consent events | `audit_logs` | No | No | Rows kept with the user ID nulled; reset-request rows holding an email are scrubbed from 8B onward |
 | On-device preferences and catalogue cache | Settings, library | AsyncStorage `forjd.*`, SQLite `forjd-exercise-catalogue.db` | No | n/a | Cleared on device from 8B onward |

@@ -47,5 +47,19 @@
       "volumeKg": 0,
       "durationSeconds": 1422
     }
-  ]
+  ],
+  "forge": {
+    "ladders": [
+      {
+        "ladder": "volume",
+        "band": "ember",
+        "level": 9,
+        "forgedStreak": 0,
+        "bestForgedStreak": 0,
+        "badges": [
+          "ember"
+        ]
+      }
+    ]
+  }
 }

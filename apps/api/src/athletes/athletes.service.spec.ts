@@ -7,6 +7,7 @@ import { PrivacyRepository } from '../privacy/privacy.repository';
 import { UsersRepository } from '../users/users.repository';
 import type { AthleteStatsRepository } from './athlete-stats.repository';
 import { AthletesService } from './athletes.service';
+import { ForgeService } from '../forge/forge.service';
 
 /**
  * Carries a 100% coverage threshold (see apps/api/package.json). This is the sharpest
@@ -62,6 +63,7 @@ describe('AthletesService', () => {
   let statsRepository: { personalRecords: jest.Mock; recentSessions: jest.Mock; weekStreak: jest.Mock };
   let leaderboards: { standingFor: jest.Mock };
   let cities: { findBySlug: jest.Mock };
+  let forge: { publicForgeFor: jest.Mock };
   let service: AthletesService;
 
   const NOW = new Date('2026-09-23T12:00:00Z');
@@ -76,13 +78,29 @@ describe('AthletesService', () => {
     };
     leaderboards = { standingFor: jest.fn().mockResolvedValue(null) };
     cities = { findBySlug: jest.fn().mockReturnValue({ timezone: 'Africa/Cairo' }) };
+    forge = { publicForgeFor: jest.fn().mockResolvedValue(null) };
     service = new AthletesService(
       usersRepository as unknown as UsersRepository,
       privacyRepository as unknown as PrivacyRepository,
       statsRepository as unknown as AthleteStatsRepository,
       leaderboards as unknown as LeaderboardsService,
       cities as unknown as CityResolverService,
+      forge as unknown as ForgeService,
     );
+  });
+
+  it('carries the public Forge block from ForgeService, and never builds one itself', async () => {
+    const block = {
+      ladders: [
+        { ladder: 'volume' as const, band: 'ember' as const, level: 9, forgedStreak: 0, bestForgedStreak: 0, badges: ['ember' as const] },
+      ],
+    };
+    forge.publicForgeFor.mockResolvedValue(block);
+
+    const profile = await service.getPublicProfile(viewer, ownerId);
+
+    expect(profile.forge).toBe(block);
+    expect(forge.publicForgeFor).toHaveBeenCalledWith(ownerId);
   });
 
   describe('when the profile is public', () => {
@@ -99,6 +117,7 @@ describe('AthletesService', () => {
         stats: null,
         personalRecords: [],
         recentSessions: [],
+        forge: null,
       });
     });
 
@@ -363,3 +382,4 @@ describe('AthletesService', () => {
     });
   });
 });
+
