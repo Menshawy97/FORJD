@@ -152,7 +152,11 @@ with the user's agreement.
 
 ## Weekly Forge — weekly progression ladders (new, 2026-09-27)
 
-**Status (2026-09-27): Phases 1-4 merged (#289-#292); Phases 5-6 in review; Phase 7 awaits UI approval.** Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
+**Status (2026-09-27): built, and dark.**
+- Phases 1–10 are merged (#289–#301), apart from 10B (#301), which merges when CI is green.
+- Phase 11, the close, is done in docs.
+- The `weekly_forge` flag is **off** on staging and production.
+- **Before switching it on:** a device walk on a dev-client build (Android and iOS). It covers the share capture, the celebration-to-summary handoff and haptics. Then the flag goes on in staging first. Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
 ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md) (whole app),
 [ADR-057 Weekly Forge](../decisions/ADR-057-weekly-forge.md).
 

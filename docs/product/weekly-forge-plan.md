@@ -636,9 +636,29 @@ Two PRs, each audited against the bug checklist before its review agent runs.
 | 7 UI mock-ups | (artifacts) | **Approved**: see "Phase 7 outcome" |
 | 8A Saturday weeks in the app | #296 | Merged, `main` green |
 | 8B Forge foundations (tokens, badge, flags, time zone, haptics, reduce motion) | #297 | Merged, `main` green |
-| 9 Home card, own and public profile sections | #298 | Open: merge once CI is green, then watch `main` |
-| 10 Celebrations, week summary, share card | — | Next |
-| 11 Close | — | After 10 |
+| 9 Home card, own and public profile sections | #298 | Merged, `main` green |
+| — Program builder days start on Saturday | #299 | Merged, `main` green |
+| 10A Level-up toast, week summary, acknowledgement | #300 | Merged, `main` green |
+| 10B New-band and Forged screens, share card | #301 | Open: merge once CI is green, then watch `main` |
+| 11 Close (architecture docs, roadmap) | with #301's follow-up docs PR | Done in docs |
+
+**What remains before users see it (the user's steps, not code):**
+1. A device walk on a dev-client build, Android and iOS. With the flag on in staging and a test account that has closed weeks, check:
+   - the Home card
+   - the profile sections
+   - the level-up toast
+   - the new-band and Forged screens: animation, haptics, and reduce motion on and off
+   - Share, which should produce a real image
+   - Continue into the summary, then Done
+2. Then switch `weekly_forge` on in staging, and later in production.
+
+**Recorded follow-ups (not blocking):**
+- the refold tool, for when the rules first change
+- the Nourish hard-delete lock gap
+- calendar-valid `weekStart` checks
+- a visibility policy for the feature-flag endpoint
+- the cap of 8 pending weeks
+- a Forged screen "best streak" chip, which needs a streak field on the week summary
 
 The `weekly_forge` flag is **off** on staging and production. The hourly workflow (`forge-evaluate.yml`) runs, but it evaluates nothing while the flag is off.
 
