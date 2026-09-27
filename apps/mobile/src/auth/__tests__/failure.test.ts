@@ -9,7 +9,7 @@
 // password" is not a thing signup can say), so the wording stays at the call site.
 import { AxiosError, AxiosHeaders } from 'axios';
 
-import { actionableServerMessage, apiErrorCode, classifyRequestFailure, isConflict } from '../failure';
+import { actionableServerMessage, apiErrorCode, classifyRequestFailure, isConflict, isNotFound } from '../failure';
 
 /** A rejection shaped the way axios shapes one, for a response that did arrive. */
 function withStatus(status: number, data: unknown = {}): AxiosError {
@@ -126,6 +126,14 @@ describe('apiErrorCode', () => {
     expect(apiErrorCode(new AxiosError('Network Error'))).toBeUndefined();
     expect(apiErrorCode(undefined)).toBeUndefined();
     expect(apiErrorCode('boom')).toBeUndefined();
+  });
+});
+
+describe('isNotFound', () => {
+  it('reads a 404 as not found, and nothing else', () => {
+    expect(isNotFound(withStatus(404))).toBe(true);
+    expect(isNotFound(withStatus(500))).toBe(false);
+    expect(isNotFound(new Error('offline'))).toBe(false);
   });
 });
 

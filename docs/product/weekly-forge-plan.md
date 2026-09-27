@@ -465,6 +465,20 @@ Split into two PRs, so the change to existing screens lands on its own:
   - `progress/volume-bars.tsx`
 - **Tests:** forge-mark renders for every band and ladder (gradient stops, glyph, level), the flag hook, the time-zone sync, and the Saturday ordering.
 
+### Bug checklist for Phases 9 and 10 (from the Phase 8.5 whole-app review)
+
+The user asked for this feature to come out right the first time, with no repeat of the bug classes the Phase 8.5 review found (`whole-app-review-fix-plan.md`). Every screen piece is audited against this list before its review agent runs:
+
+1. **Stale results.** Every load takes a generation number that a blur or newer load invalidates. It also checks that the account signed in when it finishes is the one that started it. A late answer never paints over newer data or another account's screen (review S1, "late `getMe`").
+2. **The flag gates everything.** With `weekly_forge` off, or on a 404 from the server, nothing renders and no Forge request is made.
+3. **Every state is drawn.** Loading and failed reads show the approved dashes. A failed refresh keeps the last good data rather than blanking it. Nothing fails silently: every started promise either has a catch or is awaited.
+4. **One sign-in's state never reaches the next.** Anything cached per account is cleared in `forgetAccountPreferences` (review L5-2).
+5. **Accessibility.** Each row is one accessible node with a full spoken label; numbers aren't announced without their units. Tight numeric text caps font scaling at `TIGHT_TEXT_MAX_FONT_SCALE`. Anything tappable is at least 44 pt. Meaning never depends on colour alone (review S8).
+6. **Tokens only.** No inline hex or pixel values that aren't in the approved mock-up. Box-model styles go in NativeWind classes. The transform key is omitted rather than set to `undefined` (a past device crash).
+7. **Exactly the approved mock-up.** Check every size, gap and colour against the Phase 7 page and "Phase 7 outcome"; anything not mocked needs approval first.
+8. **Privacy.** Nourish never appears on the public profile or a share card, and tests prove it.
+9. **Tests.** Test-first, with no wall-clock assertions (review S12). Time comes from the server's `daysLeft`, or is injected.
+
 ### Phase 9: Card and profiles
 
 - `features/forge/weekly-forge-card.tsx` goes into `(tabs)/index.tsx`, only when the flag is on.

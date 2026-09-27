@@ -108,6 +108,14 @@ export function isConflict(error: unknown): boolean {
   return responseStatus(error) === 409;
 }
 
+/**
+ * `404 Not Found`. Weekly Forge's routes answer 404 while the `weekly_forge` flag is off (ADR-057),
+ * so the app reads it as "this feature is switched off" and hides the feature rather than erroring.
+ */
+export function isNotFound(error: unknown): boolean {
+  return responseStatus(error) === 404;
+}
+
 export function classifyRequestFailure(error: unknown): RequestFailure {
   const status = responseStatus(error);
 
