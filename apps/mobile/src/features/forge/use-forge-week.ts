@@ -15,11 +15,20 @@ export interface ForgeWeekState {
   isVisible: boolean;
   /** This week, or null before the first answer (and after failures with no earlier answer). */
   forge: ForgeResponse | null;
+  /**
+   * The week could not be read and there is nothing to show yet. False while the first read is in
+   * flight, and after any success: a later failure keeps the last good week instead. Lets the ladder
+   * screen tell "loading" from "could not load" (weekly-forge-explainer-plan.md X3).
+   */
+  loadFailed: boolean;
+  /** Reads the week again, for pull-to-refresh. */
+  reload: () => Promise<void>;
 }
 
 /**
  * This week on every Weekly Forge ladder, for the screens that show it (Home's card, the profile
- * section). One copy of the rules in the bug checklist (docs/product/weekly-forge-plan.md):
+ * section, How it works and the ladder screen). One copy of the rules in the bug checklist
+ * (docs/product/weekly-forge-plan.md):
  *
  * - **The flag gates everything.** Off, nothing is requested. A 404 from `GET /forge` means the
  *   server has the feature switched off, and hides it too.
@@ -33,7 +42,9 @@ export function useForgeWeek(): ForgeWeekState {
   const isEnabled = useFeatureFlag(WEEKLY_FORGE_FLAG);
   const [forge, setForge] = useState<ForgeResponse | null>(null);
   const [isSwitchedOff, setIsSwitchedOff] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const generation = useRef(0);
+  const hasWeek = useRef(false);
 
   const load = useCallback(async () => {
     const current = (generation.current += 1);
@@ -46,13 +57,22 @@ export function useForgeWeek(): ForgeWeekState {
       if (current !== generation.current || startedAs !== finishedAs) {
         return;
       }
+      hasWeek.current = true;
       setIsSwitchedOff(false);
+      setLoadFailed(false);
       setForge(next);
     } catch (error) {
-      if (current === generation.current && isNotFound(error)) {
+      if (current !== generation.current) {
+        return;
+      }
+      if (isNotFound(error)) {
         setIsSwitchedOff(true);
+        return;
       }
       // Any other failure keeps what is already shown: the last good week, or nothing yet.
+      if (!hasWeek.current) {
+        setLoadFailed(true);
+      }
     }
   }, []);
 
@@ -68,5 +88,5 @@ export function useForgeWeek(): ForgeWeekState {
     }, [isEnabled, load]),
   );
 
-  return { isVisible: isEnabled && !isSwitchedOff, forge };
+  return { isVisible: isEnabled && !isSwitchedOff, forge, loadFailed, reload: load };
 }
