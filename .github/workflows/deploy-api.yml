@@ -132,6 +132,10 @@ jobs:
         # `programs_preset_slug_key` partial unique index, and its workout templates are found
         # again through the `program_workouts` join rows, so template ids stay stable across
         # deploys and the sessions performed against a preset are never orphaned.
+        #
+        # `forge:seed` copies Weekly Forge's tier table from @forjd/domain into `forge_ladders` and
+        # `forge_tiers` (ADR-057). It depends on nothing but the migration and is idempotent: every
+        # row is upserted and anything the domain table no longer has is pruned.
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @forjd/domain --filter @forjd/contracts build
@@ -140,6 +144,7 @@ jobs:
           pnpm --filter @forjd/api exercises:load
           pnpm --filter @forjd/api nutrition:load
           pnpm --filter @forjd/api programs:seed
+          pnpm --filter @forjd/api forge:seed
 
       - name: Mirror exercise media
         # ADR-018 / Phase F. Separate step, not folded into the one above, because it needs

@@ -67,6 +67,9 @@ Two properties make this unlike everything ADR-029 covers:
    - A `forge:seed` script upserts them into `forge_ladders` and `forge_tiers` on every deploy, as
      `programs:seed` does.
    - Changing a value changes future weeks only; stored weeks keep their recorded target.
+   - If a ladder ever loses levels, an athlete above its new top is brought down to that top
+     before their next week is evaluated. That is a deliberate refold, recorded by the week's
+     `rules_version`, never a hand edit.
 7. **Rewards are an append-only ledger.**
    - `forge_rewards` records user, ladder, type, level, band, week and timestamp.
    - Partial unique indexes make every insert idempotent (`on conflict do nothing`).

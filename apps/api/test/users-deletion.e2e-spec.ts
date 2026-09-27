@@ -16,6 +16,7 @@ import { privacySettings } from "../src/database/schema/privacy-settings.schema"
 import { bodyScans, bodyMeasurements } from "../src/database/schema/body.schema";
 import { healthObservations } from "../src/database/schema/health-data.schema";
 import { externalConnections } from "../src/database/schema/external-connections.schema";
+import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from "../src/database/schema/forge.schema";
 import { foods, nutritionLogEntries } from "../src/database/schema/nutrition.schema";
 import { workoutTemplates, workoutSessions, programs, programEnrollments } from "../src/database/schema/workouts.schema";
 import { STORAGE_PROVIDER } from "../src/storage/providers/storage-provider.interface";
@@ -176,6 +177,29 @@ describe("Account deletion (e2e)", () => {
         encryptedRefreshToken: "cipher-refresh",
         tokenKeyVersion: 1,
       });
+
+      // Weekly Forge (ADR-057): state, a locked week, a ledger row and a seen week.
+      await db.insert(forgeUserLadders).values({ userId, ladderKey: "volume", enrolledWeek: "2026-09-26" });
+      await db.insert(forgeWeeks).values({
+        userId,
+        ladderKey: "volume",
+        weekStart: "2026-09-26",
+        timeZone: "Africa/Cairo",
+        closesAt: new Date("2026-10-02T21:00:00Z"),
+        total: "2150.00",
+        target: "2000.00",
+        levelBefore: 1,
+        levelAfter: 2,
+        bandBefore: "ore",
+        bandAfter: "ore",
+        outcome: "hit",
+        missStreakAfter: 0,
+        temperedHoldWeeksAfter: 0,
+        forgedStreakAfter: 0,
+        rulesVersion: 1,
+      });
+      await db.insert(forgeRewards).values({ userId, ladderKey: "volume", type: "forge_mark", level: 2, band: "ore", weekStart: "2026-09-26" });
+      await db.insert(forgeWeekAcks).values({ userId, weekStart: "2026-09-26" });
     };
 
     await seedFor(ownerId, "owner");
@@ -204,6 +228,10 @@ describe("Account deletion (e2e)", () => {
       { name: "workout_sessions", table: workoutSessions, userColumn: workoutSessions.userId },
       { name: "programs (owned)", table: programs, userColumn: programs.ownerUserId },
       { name: "program_enrollments", table: programEnrollments, userColumn: programEnrollments.userId },
+      { name: "forge_user_ladders", table: forgeUserLadders, userColumn: forgeUserLadders.userId },
+      { name: "forge_weeks", table: forgeWeeks, userColumn: forgeWeeks.userId },
+      { name: "forge_rewards", table: forgeRewards, userColumn: forgeRewards.userId },
+      { name: "forge_week_acks", table: forgeWeekAcks, userColumn: forgeWeekAcks.userId },
     ] as const;
 
     for (const { name, table, userColumn } of tablesWithUserId) {

@@ -87,6 +87,51 @@
       "endedAt": "2026-02-01T00:00:00.000Z"
     }
   ],
+  "weeklyForge": {
+    "ladders": [
+      {
+        "ladder": "volume",
+        "level": 2,
+        "bestLevel": 2,
+        "missStreak": 0,
+        "temperedHoldWeeks": 0,
+        "forgedStreak": 0,
+        "bestForgedStreak": 0,
+        "enrolledWeek": "2026-09-26",
+        "lastEvaluatedWeek": "2026-09-26"
+      }
+    ],
+    "weeks": [
+      {
+        "ladder": "volume",
+        "weekStart": "2026-09-26",
+        "timeZone": "Africa/Cairo",
+        "closesAt": "2026-10-02T21:00:00.000Z",
+        "total": 2150,
+        "target": 2000,
+        "levelBefore": 1,
+        "levelAfter": 2,
+        "bandBefore": "ore",
+        "bandAfter": "ore",
+        "outcome": "hit",
+        "rulesVersion": 1,
+        "evaluatedAt": "2026-10-02T21:10:00.000Z"
+      }
+    ],
+    "rewards": [
+      {
+        "ladder": "volume",
+        "type": "forge_mark",
+        "level": 2,
+        "band": "ore",
+        "weekStart": "2026-09-26",
+        "createdAt": "2026-10-02T21:10:00.000Z"
+      }
+    ],
+    "acknowledgedWeeks": [
+      "2026-09-26"
+    ]
+  },
   "version": 1,
   "exportedAt": "2026-09-13T12:00:00.000Z",
   "account": {
