@@ -94,7 +94,7 @@ describe('ForgeLadderScreen', () => {
       ['Anvil', 'Levels 7–9'],
       ['Tempered', 'Levels 10–12'],
       ['Forged', 'Levels 13–15'],
-    ]) {
+    ] as const) {
       expect(screen.getByText(band)).toBeTruthy();
       expect(screen.getByText(range)).toBeTruthy();
     }

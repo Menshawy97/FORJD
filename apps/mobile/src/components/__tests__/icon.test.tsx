@@ -169,6 +169,7 @@ describe('Icon', () => {
       'star',
       'chevron',
       'check',
+      'info',
       'clock',
       'x',
       'pencil',

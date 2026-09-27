@@ -2,10 +2,12 @@
 // week has loaded; nothing while the feature is off or before the first answer. The loading rules
 // themselves live in `useForgeWeek` and are tested through the Home section.
 jest.mock('../use-forge-week', () => ({ useForgeWeek: jest.fn() }));
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ router: { push: (...args: unknown[]) => mockPush(...args) } }));
 
 import type { ForgeResponse } from '@forjd/contracts';
 import { FORGE_LADDERS } from '@forjd/domain';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ProfileForgeSection } from '../profile-forge-section';
 import { useForgeWeek } from '../use-forge-week';
@@ -59,5 +61,14 @@ describe('ProfileForgeSection', () => {
     await render(<ProfileForgeSection />);
 
     expect(screen.queryByText('Weekly Forge')).toBeNull();
+  });
+
+  it("opens a ladder's levels from its row", async () => {
+    hook.mockReturnValue({ isVisible: true, forge: FORGE });
+
+    await render(<ProfileForgeSection />);
+    await fireEvent.press(screen.getByRole('button', { name: /^Volume, Ore level 1\./ }));
+
+    expect(mockPush).toHaveBeenCalledWith('/forge/volume');
   });
 });

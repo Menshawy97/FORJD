@@ -6,8 +6,10 @@ import {
   type ForgeBand,
   type ForgeLadder,
 } from '@forjd/domain';
-import { Text, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
+import { pressGhost } from '@/components/press-feedback';
 import { ForgeMark } from './forge-mark';
 
 /**
@@ -29,17 +31,35 @@ export interface ForgeProfileLadder {
   badges: readonly ForgeBand[];
 }
 
-export function ForgeProfileRows({ ladders }: { ladders: readonly ForgeProfileLadder[] }) {
+interface ForgeProfileRowsProps {
+  ladders: readonly ForgeProfileLadder[];
+  /**
+   * Your own profile passes this, and each row opens that ladder's levels
+   * (weekly-forge-explainer-plan.md D5). A public profile passes nothing, so its rows stay plain
+   * (D7: other people see the bands, never the ladder screen).
+   */
+  onPressLadder?: (ladder: ForgeLadder) => void;
+}
+
+export function ForgeProfileRows({ ladders, onPressLadder }: ForgeProfileRowsProps) {
   return (
     <View className="rounded-card border border-border bg-surface">
       {ladders.map((ladder, index) => (
-        <ProfileRow key={ladder.ladder} ladder={ladder} isFirst={index === 0} />
+        <ProfileRow key={ladder.ladder} ladder={ladder} isFirst={index === 0} onPress={onPressLadder} />
       ))}
     </View>
   );
 }
 
-function ProfileRow({ ladder, isFirst }: { ladder: ForgeProfileLadder; isFirst: boolean }) {
+function ProfileRow({
+  ladder,
+  isFirst,
+  onPress,
+}: {
+  ladder: ForgeProfileLadder;
+  isFirst: boolean;
+  onPress?: (ladder: ForgeLadder) => void;
+}) {
   const name = FORGE_LADDER_NAMES[ladder.ladder];
   const band = FORGE_BAND_NAMES[ladder.band];
   // Nourish ends at Anvil, so its strip has three slots, not five.
@@ -51,13 +71,10 @@ function ProfileRow({ ladder, isFirst }: { ladder: ForgeProfileLadder; isFirst: 
     `${name}, ${band} level ${ladder.level}.` +
     (earnedNames.length > 0 ? ` Bands earned: ${earnedNames.join(', ')}.` : '') +
     (record ? ` ${record.spoken}.` : '');
+  const rowClass = `flex-row items-center gap-3 px-[14px] py-3 ${isFirst ? '' : 'border-t border-borderFaint'}`;
 
-  return (
-    <View
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={spoken}
-      className={`flex-row items-center gap-3 px-[14px] py-3 ${isFirst ? '' : 'border-t border-borderFaint'}`}>
+  const content: ReactNode = (
+    <>
       <ForgeMark ladder={ladder.ladder} band={ladder.band} size={38} decorative />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-baseline justify-between gap-2">
@@ -81,6 +98,24 @@ function ProfileRow({ ladder, isFirst }: { ladder: ForgeProfileLadder; isFirst: 
           <Text className="mt-[6px] font-archivo text-row-subtitle text-forgeHeatWhite">{record.shown}</Text>
         ) : null}
       </View>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${spoken} Opens all levels`}
+        onPress={() => onPress(ladder.ladder)}
+        style={pressGhost}
+        className={rowClass}>
+        {content}
+      </Pressable>
+    );
+  }
+  return (
+    <View accessible accessibilityRole="text" accessibilityLabel={spoken} className={rowClass}>
+      {content}
     </View>
   );
 }

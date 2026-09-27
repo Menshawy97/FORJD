@@ -2,7 +2,7 @@
 // shows all five ladders with the bands earned so far and the Forged record; someone else's public
 // profile shows the four public ladders and never Nourish (ADR-057 decision 8).
 import type { PublicForge } from '@forjd/contracts';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ForgeProfileRows, type ForgeProfileLadder } from '../forge-profile-rows';
 import { PublicForgeSection } from '../public-forge-section';
@@ -75,6 +75,21 @@ describe('ForgeProfileRows', () => {
         'Distance, Forged level 28. Bands earned: Ore, Ember, Anvil, Tempered, Forged. Forged 1 week, best 3.',
       ),
     ).toBeTruthy();
+  });
+
+  it('opens a ladder when given a handler (your own profile), saying so to a screen reader', async () => {
+    const onPressLadder = jest.fn();
+    await render(<ForgeProfileRows ladders={[row({ ladder: 'minutes' })]} onPressLadder={onPressLadder} />);
+
+    await fireEvent.press(screen.getByRole('button', { name: /^Active minutes, Ember level 7\..*Opens all levels$/ }));
+
+    expect(onPressLadder).toHaveBeenCalledWith('minutes');
+  });
+
+  it('stays a plain row without a handler, as on a public profile', async () => {
+    await render(<ForgeProfileRows ladders={[row({})]} />);
+
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });
 

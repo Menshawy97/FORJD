@@ -2,7 +2,10 @@
 // copies This week's ("Weekly Forge", days left on the right), then one row per ladder with its
 // badge, band and level, total against target, and a rail. A met target turns green with a tick.
 import type { ForgeLadderProgress, ForgeResponse } from '@forjd/contracts';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ router: { push: (...args: unknown[]) => mockPush(...args) } }));
 
 import { WeeklyForgeCard } from '../weekly-forge-card';
 import { daysLeftLabel, formatForgeAmount } from '../forge-format';
@@ -69,9 +72,9 @@ describe('WeeklyForgeCard', () => {
 
     expect(screen.getByText('Consistency')).toBeTruthy();
     expect(screen.getByText('Anvil · Level 4')).toBeTruthy();
-    expect(screen.getByLabelText('Volume, Ember level 7: 3,000 of 5,600 kg')).toBeTruthy();
-    expect(screen.getByLabelText('Distance, Ore level 5: 8.4 of 11 km')).toBeTruthy();
-    expect(screen.getByLabelText('Active minutes, Ember level 9: 145 of 210 minutes')).toBeTruthy();
+    expect(screen.getByLabelText('Volume, Ember level 7: 3,000 of 5,600 kg. Opens all levels')).toBeTruthy();
+    expect(screen.getByLabelText('Distance, Ore level 5: 8.4 of 11 km. Opens all levels')).toBeTruthy();
+    expect(screen.getByLabelText('Active minutes, Ember level 9: 145 of 210 minutes. Opens all levels')).toBeTruthy();
     // One screen-reader stop per row: the badge inside it is decorative.
     expect(screen.queryByLabelText('Volume, Ember')).toBeNull();
   });
@@ -79,7 +82,7 @@ describe('WeeklyForgeCard', () => {
   it('marks a met target as done', async () => {
     await render(<WeeklyForgeCard forge={FORGE} />);
 
-    expect(screen.getByLabelText('Nourish, Ember level 4: 4 of 4 days, target met')).toBeTruthy();
+    expect(screen.getByLabelText('Nourish, Ember level 4: 4 of 4 days, target met. Opens all levels')).toBeTruthy();
   });
 
   it('shows a dash for every ladder while the week is loading or unavailable', async () => {
@@ -88,5 +91,31 @@ describe('WeeklyForgeCard', () => {
     expect(screen.getAllByText('—')).toHaveLength(5);
     expect(screen.getByLabelText('Volume: not loaded yet')).toBeTruthy();
     expect(screen.getByText('Nourish')).toBeTruthy();
+  });
+
+  describe('ways in (weekly-forge-explainer-plan.md, mock-up B)', () => {
+    beforeEach(() => mockPush.mockClear());
+
+    it('opens How it works from the info icon after the label, even while loading', async () => {
+      await render(<WeeklyForgeCard forge={null} />);
+
+      await fireEvent.press(screen.getByRole('button', { name: 'How Weekly Forge works' }));
+
+      expect(mockPush).toHaveBeenCalledWith('/forge/how-it-works');
+    });
+
+    it("opens a ladder's levels from its row", async () => {
+      await render(<WeeklyForgeCard forge={FORGE} />);
+
+      await fireEvent.press(screen.getByRole('button', { name: /^Distance, Ore level 5/ }));
+
+      expect(mockPush).toHaveBeenCalledWith('/forge/distance');
+    });
+
+    it('leaves a row still loading inert', async () => {
+      await render(<WeeklyForgeCard forge={null} />);
+
+      expect(screen.queryByRole('button', { name: /^Volume/ })).toBeNull();
+    });
   });
 });
