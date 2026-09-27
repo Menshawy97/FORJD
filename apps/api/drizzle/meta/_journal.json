@@ -218,6 +218,13 @@
       "when": 1790488568588,
       "tag": "0030_seed-weekly-forge-flag",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790522723817,
+      "tag": "0031_enable-weekly-forge-flag",
+      "breakpoints": true
     }
   ]
 }

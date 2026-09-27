@@ -49,7 +49,8 @@ describe("FeatureFlagsRepository", () => {
     expect(enabled).not.toContain(OFF);
   });
 
-  it("ships weekly_forge switched off", async () => {
-    expect(await repository.isEnabled("weekly_forge")).toBe(false);
+  // Migration 0031 switched Weekly Forge on in every environment (the user's call, 2026-09-27).
+  it("has weekly_forge switched on", async () => {
+    expect(await repository.isEnabled("weekly_forge")).toBe(true);
   });
 });

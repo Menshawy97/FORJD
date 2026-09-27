@@ -74,7 +74,9 @@ describe('Weekly Forge (e2e)', () => {
   });
 
   afterAll(async () => {
-    await setFlag(false);
+    // Put the flag back as migration 0031 left it (on), so a local test run never switches the
+    // feature off in the developer's own database.
+    await setFlag(true);
     await db.delete(users).where(inArray(users.email, [OWNER.email, VIEWER.email]));
     await app.close();
   });
