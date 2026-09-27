@@ -477,6 +477,7 @@ The user asked for this feature to come out right the first time, with no repeat
 6. **Tokens only.** No inline hex or pixel values that aren't in the approved mock-up. Box-model styles go in NativeWind classes. The transform key is omitted rather than set to `undefined` (a past device crash).
 7. **Exactly the approved mock-up.** Check every size, gap and colour against the Phase 7 page and "Phase 7 outcome"; anything not mocked needs approval first. On a tab screen, the layout already ends at the top of the floating tab bar (`(tabs)/_layout.tsx`), so measure bottom offsets from there. Anything that must cover the tab bar (a sheet, a full-screen celebration) goes in a `Modal`. The Phase 10A review caught a toast that sat 64 px too high because of this.
 10. **Wording never breaks the screen.** A helper that turns server data into words must not throw on an unexpected value; it falls back to a plainer line.
+11. **Run the full mobile suite before every PR that touches a screen**, not only the affected suites. A new import on Home reaches every test that renders Home or the root layout. In #301, the share helpers' native modules (`expo-media-library`, view-shot) crashed 13 suites that the Forge tests never exercised. Native-module-heavy helpers are `require`d on first use, like `integrations/health/device-health-provider.ts`.
 8. **Privacy.** Nourish never appears on the public profile or a share card, and tests prove it.
 9. **Tests.** Test-first, with no wall-clock assertions (review S12). Time comes from the server's `daysLeft`, or is injected.
 
