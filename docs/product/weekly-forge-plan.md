@@ -502,3 +502,58 @@ After the celebration, `forge-week.tsx` shows the week summary, and the week is 
 
 **UI:** the Phase 7 artifact must be approved before any mobile code. After that, every built screen is checked pixel by pixel against the approved mock-up.
 
+
+---
+
+## Session handoff (2026-09-27)
+
+### State
+
+| Phase | PR | State |
+|---|---|---|
+| 1 Docs, ADR-056, ADR-057 | #289 | Merged |
+| 2 Saturday weeks (backend) | #290 | Merged, `main` green |
+| 3 Domain rules | #291 | Merged, `main` green |
+| 4 Schema, seed, flag, export, deletion | #292 | Merged, `main` green; staging migrated and seeded (5 ladders, 103 tiers) |
+| 5 Totals, evaluation, hourly job | #293 | Merged, `main` green |
+| 6 API routes, flags, time zone, public block | #294 | **Open**: merge once CI is green, then watch the `main` run |
+
+The `weekly_forge` flag is **off** on staging and production. The hourly workflow (`forge-evaluate.yml`) runs, but it evaluates nothing while the flag is off.
+
+### Next: Phase 7, the UI mock-ups (an approval gate)
+
+- **The user must approve before any mobile code is written.** Their standing rule is that *every* planned UI is shown as a visual replica first.
+- Build one HTML replica artifact covering items 1–12 in the Phase 7 section above:
+  - band finishes, with the proposed new tokens
+  - the forge-mark matrix
+  - the Weekly Forge card on Home, positioned between Start workout and This week
+  - the level-up toast
+  - the band-crossing and Forged full-screen moments, with Share
+  - the cooled, missed-week and Nourish states
+  - the week-close summary
+  - the own-profile and public-profile Forge sections
+  - the share card
+  - before and after for the Saturday week on Home's This week strip, the Progress calendar and the volume bars, **including the FAQ wording** ("starting each Monday" and "saved early on Monday")
+  - reduce-motion variants
+- **Sources for the mock-ups:**
+  - Use exact values from `apps/mobile/tailwind.config.ts`, `src/theme/tokens.ts` and the prototype (`FORJD mobile app design/FORJD Mobile.dc.html`).
+  - Glyphs come from `src/components/icon.tsx`.
+- **Also ask for approval of the `expo-haptics` dependency** at the same time.
+
+### Open follow-ups (recorded, not blocking)
+
+- **Known mismatch until Phase 8:** the phone still draws Monday-to-Sunday weeks over Saturday-to-Friday data, and the FAQ still says Monday. `main` deploys only to staging.
+- **Low (security review of #294):**
+  - `weekStart` is format-checked only; reuse the calendar-validating date schema.
+  - `GET /feature-flags` lists every enabled flag; add a visibility policy before a sensitive flag exists.
+  - Pending weeks are capped at 8 with no pagination; confirm the intended behaviour.
+- **Deferred:** the refold maintenance path, until `FORGE_RULES_VERSION` 2.
+- **Documented gap:** Nourish entries are hard-deleted, so a deletion between the close and the evaluation can't be undone.
+
+### Working notes for the next session
+
+- **Work in the worktree:** `.claude/worktrees/weekly-forge`. Other sessions share the main checkout.
+- **Local API tests:**
+  - Use `DATABASE_URL=postgresql://forjd:forjd_local_dev@127.0.0.1:5432/forjd` (`localhost` resets connections) and `--runInBand`.
+  - `WorkoutsRepository listForUser` pagination fails only against leftover rows in the local database; CI passes it.
+- **e2e locally:** needs the placeholder env vars from `.github/workflows/ci.yml` (Supabase, OpenAI, WHOOP, and `TOKEN_ENCRYPTION_KEY`).
