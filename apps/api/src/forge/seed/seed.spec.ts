@@ -27,8 +27,8 @@ describe("forgeSeedRows", () => {
     expect(rows.tiers.find((tier) => tier.ladderKey === "distance" && tier.level === 7)).toEqual({
       ladderKey: "distance",
       level: 7,
-      band: "ember",
-      target: "14.50",
+      band: "anvil",
+      target: "34.00",
     });
   });
 });

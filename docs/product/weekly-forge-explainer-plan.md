@@ -86,8 +86,12 @@ deploy is dispatched only with the owner's go-ahead for that deploy.**
   the test database.
 - `deploy-api.yml`: run `forge:refold` right after `forge:seed`, with a comment explaining why the
   order matters (the seed must have pruned levels 16–33 first).
-- No schema migration: the columns already exist. No API contract change: responses keep their
-  shape, only the numbers change.
+- No schema migration: the columns already exist.
+- **One additive contract field.** `GET /forge` ladders gain an optional `temperedHoldWeeks`
+  (already stored in `forge_user_ladders`). Without it, the ladder screen could promise Forged at
+  the top of Tempered before the 4-week hold is complete. It is optional in the schema, so an app
+  build that predates it still parses the response (rule 7). Everything else keeps its shape; only
+  the numbers change.
 - Verify: the domain tests, the API unit and e2e suites, lint, build, the architecture
   conformance check, and a local run of `forge:seed` then `forge:refold` against the local
   database, checking the owner's example history lands inside 15 levels.

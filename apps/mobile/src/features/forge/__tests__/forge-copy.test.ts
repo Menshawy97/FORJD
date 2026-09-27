@@ -87,8 +87,8 @@ describe('outcomeDetail', () => {
 
   it('gives the lighter target after easing down', () => {
     expect(
-      outcomeDetail(week({ ladder: 'minutes', outcome: 'drop', total: 150, target: 210, levelBefore: 9, levelAfter: 8 }), 'minutes'),
-    ).toBe('150 of 210 min · next target 190 min');
+      outcomeDetail(week({ ladder: 'minutes', outcome: 'drop', total: 150, target: 230, levelBefore: 6, levelAfter: 5 }), 'minutes'),
+    ).toBe('150 of 230 min · next target 190 min');
   });
 
   it('still reads sensibly, rather than crashing Home, if a level is outside the table', () => {

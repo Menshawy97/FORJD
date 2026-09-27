@@ -12,11 +12,12 @@ const ladder = {
   unit: 'kg',
   band: 'ore',
   level: 2,
-  maxLevel: 33,
-  target: 2500,
+  maxLevel: 15,
+  target: 3000,
   total: 1200,
-  progress: 0.48,
+  progress: 0.4,
   missStreak: 0,
+  temperedHoldWeeks: 0,
   forgedStreak: 0,
   bestForgedStreak: 0,
   badges: ['ore'],
@@ -28,6 +29,17 @@ describe('forgeResponseSchema', () => {
       forgeResponseSchema.safeParse({ weekStart: '2026-09-26', daysLeft: 4, timeZone: 'Africa/Cairo', ladders: [ladder] })
         .success,
     ).toBe(true);
+  });
+
+  it('treats the Tempered hold as optional, so an API from before it existed still parses', () => {
+    const withoutHold = Object.fromEntries(Object.entries(ladder).filter(([key]) => key !== 'temperedHoldWeeks'));
+    const parse = (ladders: unknown[]) =>
+      forgeResponseSchema.safeParse({ weekStart: '2026-09-26', daysLeft: 4, timeZone: 'UTC', ladders });
+
+    expect(parse([withoutHold]).success).toBe(true);
+    expect(parse([{ ...ladder, temperedHoldWeeks: 3 }]).success).toBe(true);
+    expect(parse([{ ...ladder, temperedHoldWeeks: -1 }]).success).toBe(false);
+    expect(parse([{ ...ladder, temperedHoldWeeks: 1.5 }]).success).toBe(false);
   });
 
   it('keeps progress between 0 and 1 and days left between 1 and 7', () => {

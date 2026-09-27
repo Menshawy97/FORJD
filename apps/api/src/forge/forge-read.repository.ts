@@ -10,6 +10,7 @@ export interface ForgeLadderRow {
   ladder: ForgeLadder;
   level: number;
   missStreak: number;
+  temperedHoldWeeks: number;
   forgedStreak: number;
   bestForgedStreak: number;
 }
@@ -48,6 +49,7 @@ export class ForgeReadRepository {
       ladder: row.ladderKey as ForgeLadder,
       level: row.level,
       missStreak: row.missStreak,
+      temperedHoldWeeks: row.temperedHoldWeeks,
       forgedStreak: row.forgedStreak,
       bestForgedStreak: row.bestForgedStreak,
     }));

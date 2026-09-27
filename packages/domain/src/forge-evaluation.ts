@@ -48,8 +48,11 @@ export interface ForgeWeekResult {
 /**
  * The rule set in force. Stored on every evaluated week, so a future change to the rules is a
  * deliberate, recorded refold rather than a silent reinterpretation of the past.
+ *
+ * - 1: ADR-057's first table (25-33 levels on Volume, Distance and Active minutes).
+ * - 2: ADR-058's 15-level table. Every week stored under 1 was refolded by `refoldLadder`.
  */
-export const FORGE_RULES_VERSION = 1;
+export const FORGE_RULES_VERSION = 2;
 
 /**
  * If a ladder ever loses levels, an athlete above its new top is brought down to that top before
@@ -87,6 +90,25 @@ export function evaluateWeek(ladder: ForgeLadder, state: ForgeLadderState, total
   // A hit never lowers a level, even when the ceiling holds it where it is.
   const levelAfter = Math.max(reachable, levelBefore);
   return settle(ladder, state, target, levelAfter, levelAfter - levelBefore >= 2 ? 'overshoot' : 'hit', 0);
+}
+
+/**
+ * Replays one athlete's stored weeks on one ladder, oldest first, from Ore 1 under the current table
+ * (ADR-058 decision 4). The totals are the locked ones from `forge_weeks`; only their judgement is
+ * redone. Throws on a bad total, as `evaluateWeek` does, rather than folding nonsense in.
+ */
+export function refoldLadder(
+  ladder: ForgeLadder,
+  totals: readonly number[],
+): { results: ForgeWeekResult[]; state: ForgeLadderState } {
+  const results: ForgeWeekResult[] = [];
+  let state = initialForgeState();
+  for (const total of totals) {
+    const result = evaluateWeek(ladder, state, total);
+    results.push(result);
+    state = result.next;
+  }
+  return { results, state };
 }
 
 /** The highest level whose target the total meets. */

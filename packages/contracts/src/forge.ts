@@ -39,6 +39,12 @@ export const forgeLadderProgressSchema = z.object({
   /** `total / target`, capped at 1. */
   progress: z.number().min(0).max(1),
   missStreak: z.number().int().min(0),
+  /**
+   * Weeks held in Tempered so far: the gate into Forged. Added for the ladder screen's "what this
+   * week does" line (weekly-forge-explainer-plan.md, X2). Optional, so the app still parses a
+   * response from an API that predates it (CLAUDE.md rule 7).
+   */
+  temperedHoldWeeks: z.number().int().min(0).optional(),
   forgedStreak: z.number().int().min(0),
   bestForgedStreak: z.number().int().min(0),
   /** Every band the athlete has entered on this ladder (a band badge earned). */

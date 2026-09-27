@@ -140,7 +140,8 @@ describe("ForgeEvaluationService", () => {
     });
 
     it("records every ladder's locked total and result for the week", async () => {
-      const totals = new FakeTotals({ "2026-09-26": { volume: 3000 } });
+      // Level 1 (2 000 kg); 4 000 clears level 3's goal too, so the week is an overshoot.
+      const totals = new FakeTotals({ "2026-09-26": { volume: 4000 } });
       const { store, service } = build(totals);
       await store.enroll(USER, "2026-09-26");
 
@@ -148,15 +149,15 @@ describe("ForgeEvaluationService", () => {
 
       const write = store.writes[0]!;
       expect(write.results.map((r) => r.ladder)).toEqual([...FORGE_LADDERS]);
-      expect(write.totals.volume).toBe(3000);
+      expect(write.totals.volume).toBe(4000);
       expect(write.results.find((r) => r.ladder === "volume")?.result.outcome).toBe("overshoot");
     });
 
     it("catches up every closed week in order after a missed run", async () => {
       const totals = new FakeTotals({
         "2026-09-26": { volume: 2000 },
-        "2026-10-03": { volume: 2500 },
-        "2026-10-10": { volume: 3000 },
+        "2026-10-03": { volume: 3000 },
+        "2026-10-10": { volume: 4000 },
       });
       const { store, service } = build(totals);
       await store.enroll(USER, "2026-09-26");
