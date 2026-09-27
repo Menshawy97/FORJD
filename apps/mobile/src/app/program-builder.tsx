@@ -1,4 +1,5 @@
 import type { CreateProgramRequest, WorkoutTemplateSummary } from '@forjd/contracts';
+import { daysSinceWeekStart } from '@forjd/domain';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -37,15 +38,21 @@ import { colors } from '@/theme/tokens';
  * did not explicitly make.
  */
 
+/**
+ * The seven day rows, Saturday first: the week runs Saturday to Friday across the whole app
+ * (ADR-056; the user confirmed the program builder follows it too). Each row keeps its own
+ * `Date#getDay()` index, which is what is saved, so only the order changes. The workouts are sent
+ * in this order too, and the server lists a program's workouts in the order it received them.
+ */
 const DAYS: ReadonlyArray<{ key: string; label: string; jsDay: number }> = [
+  { key: 'Sun', label: 'Sun', jsDay: 0 },
   { key: 'Mon', label: 'Mon', jsDay: 1 },
   { key: 'Tue', label: 'Tue', jsDay: 2 },
   { key: 'Wed', label: 'Wed', jsDay: 3 },
   { key: 'Thu', label: 'Thu', jsDay: 4 },
   { key: 'Fri', label: 'Fri', jsDay: 5 },
   { key: 'Sat', label: 'Sat', jsDay: 6 },
-  { key: 'Sun', label: 'Sun', jsDay: 0 },
-];
+].sort((a, b) => daysSinceWeekStart(a.jsDay) - daysSinceWeekStart(b.jsDay));
 
 const REST = 'REST' as const;
 type Assignment = typeof REST | { templateId: string; name: string };
