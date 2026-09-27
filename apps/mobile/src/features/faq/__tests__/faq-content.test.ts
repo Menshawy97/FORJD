@@ -59,4 +59,12 @@ describe('FAQ content', () => {
     const route = allEntries.find((e) => e.id === 'run-route');
     expect(textOf(route?.answer ?? [])).toMatch(/Your route stays on your phone\./);
   });
+
+  it('describes weeks as Saturday to Friday, the week the whole app counts (ADR-056)', () => {
+    const all = allEntries.map((e) => textOf(e.answer)).join(' ');
+
+    expect(all).not.toMatch(/Monday/);
+    expect(all).toContain('starting each Saturday');
+    expect(all).toContain('saved just after midnight on Saturday (UTC)');
+  });
 });

@@ -11,6 +11,8 @@
  * which produces the `YYYY-MM-DD` the API keys a nutrition log by. That one is a wire format;
  * this one is display copy.
  */
+import { daysSinceWeekStart } from '@forjd/domain';
+
 const WEEKDAYS = [
   'Sunday',
   'Monday',
@@ -41,16 +43,13 @@ export function formatHomeDate(date: Date): string {
 }
 
 /**
- * The seven "This week" columns, Monday-first as the prototype renders them (M T W T F S S),
- * paired with the weekday index `Date#getDay()` returns so a caller can tell which column is
- * today without a second date calculation.
+ * The seven "This week" columns, Saturday-first (S S M T W T F): the week runs Saturday to Friday
+ * across the whole app (ADR-056), which is the week the server counts sessions in. The prototype
+ * drew them Monday-first; only the order changed, not the styling. Each is paired with the
+ * weekday index `Date#getDay()` returns, so a caller can tell which column is today without a
+ * second date calculation. The order comes from `daysSinceWeekStart`, so it follows
+ * `WEEK_START_DOW` rather than restating it.
  */
-export const WEEK_DAYS = [
-  { letter: 'M', name: 'Monday', dayIndex: 1 },
-  { letter: 'T', name: 'Tuesday', dayIndex: 2 },
-  { letter: 'W', name: 'Wednesday', dayIndex: 3 },
-  { letter: 'T', name: 'Thursday', dayIndex: 4 },
-  { letter: 'F', name: 'Friday', dayIndex: 5 },
-  { letter: 'S', name: 'Saturday', dayIndex: 6 },
-  { letter: 'S', name: 'Sunday', dayIndex: 0 },
-] as const;
+export const WEEK_DAYS = WEEKDAYS.map((name, dayIndex) => ({ letter: name.charAt(0), name, dayIndex })).sort(
+  (a, b) => daysSinceWeekStart(a.dayIndex) - daysSinceWeekStart(b.dayIndex),
+);
