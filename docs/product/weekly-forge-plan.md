@@ -591,14 +591,31 @@ After the celebration, `forge-week.tsx` shows the week summary, and the week is 
 | 5 Totals, evaluation, hourly job | #293 | Merged, `main` green |
 | 6 API routes, flags, time zone, public block | #294 | Merged, `main` green |
 | 7 UI mock-ups | (artifacts) | **Approved**: see "Phase 7 outcome" |
-| 8A Saturday weeks in the app | — | Next |
-| 8B Forge foundations | — | After 8A |
+| 8A Saturday weeks in the app | #296 | Merged, `main` green |
+| 8B Forge foundations (tokens, badge, flags, time zone, haptics, reduce motion) | #297 | Merged, `main` green |
+| 9 Home card, own and public profile sections | #298 | Open: merge once CI is green, then watch `main` |
+| 10 Celebrations, week summary, share card | — | Next |
+| 11 Close | — | After 10 |
 
 The `weekly_forge` flag is **off** on staging and production. The hourly workflow (`forge-evaluate.yml`) runs, but it evaluates nothing while the flag is off.
 
-### Next: Phase 8A, then 8B
+### Next: Phase 10
 
-Phase 7 is approved (see "Phase 7 outcome"). Build exactly what was approved, checking each value against that section and the round-1 mock-up. Any UI that wasn't mocked needs a new approval before it's built.
+Build exactly what Phase 7 approved (items D, E, F, G, H, J and L, with the knock-on colour changes in "Phase 7 outcome"). Check every piece against the "Bug checklist for Phases 9 and 10" before its review agent runs. The user asked for this to come out right the first time.
+
+**What already exists to build on:**
+- `ForgeMark`. Pass `decorative` when it sits inside a row that already has its own label; a Phase 9 review found badges inside rows were separate screen-reader stops.
+- `BAND_FINISH`, `useForgeWeek`, `useReduceMotion`, `components/haptics.ts`, `isNotFound`, and `getForge` in `apiClient.ts`.
+
+**Still to add:**
+- `getPendingForgeWeeks` and `ackForgeWeek` in `apiClient.ts`.
+- The celebration picker on Home focus, shown once per closed week.
+- The toast with a 20 px badge.
+- The new-band and Forged full screens, with at most 12 sparks and static frames under reduce motion.
+- The week summary sheet. Done acknowledges the week, with a guard so a double tap can't send it twice.
+- The share card, reusing `share-card-shot.tsx` and `share-capture.ts`. It's never offered for Nourish, and needs a dev-client build to verify (R9).
+
+**Open question for the user** (asked 2026-09-27, no answer yet): should the program builder's weekday chips (`app/program-builder.tsx`, currently Monday first) also start on Saturday? That isn't mocked, so it needs approval first.
 
 ### Done: Phase 7, the UI mock-ups (an approval gate)
 
