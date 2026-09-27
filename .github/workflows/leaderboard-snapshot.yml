@@ -1,22 +1,23 @@
 name: Snapshot leaderboard ranks
 
 # Once a week, records where everyone stands in their city so the leaderboard can show "up 3 this
-# week" (Phase 10J, ADR-047). Monday 00:20 UTC: 20 minutes past the hour because the top of the
-# hour is when GitHub's scheduler is busiest and it delays or drops runs.
+# week" (Phase 10J, ADR-047). Weeks start on Saturday (ADR-056), so it runs Saturday 00:20 UTC
+# (02:20 or 03:20 in Cairo, after the week there has closed): 20 minutes past the hour because the
+# top of the hour is when GitHub's scheduler is busiest and it delays or drops runs.
 #
 # GitHub cron is best-effort, and it disables scheduled workflows in a repository after 60 days
 # without activity. Both are accepted: a missed week means the arrow reads from the last snapshot
 # that exists, or shows nothing, and the leaderboard itself never depends on this job.
 #
 # The schedule snapshots BOTH environments; a manual dispatch snapshots the one it names. Run a
-# dispatch on a Monday: the job labels a run with the Monday of its week and replaces that week's
+# dispatch on a Saturday: the job labels a run with the Saturday of its week and replaces that week's
 # rows, so a mid-week dispatch would overwrite the start-of-week baseline with mid-week standings.
 #
 # Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire, and
 # with several instances it would fire once per instance.
 on:
   schedule:
-    - cron: "20 0 * * 1"
+    - cron: "20 0 * * 6"
   workflow_dispatch:
     inputs:
       target:

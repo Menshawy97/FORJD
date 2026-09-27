@@ -5,8 +5,8 @@ import { LeaderboardSnapshotRepository } from './leaderboard-snapshot.repository
 import { LeaderboardSnapshotService } from './leaderboard-snapshot.service';
 import { CityResolverService } from '../cities/city-resolver.service';
 
-// Monday 00:20 UTC, when the job runs.
-const NOW = new Date('2026-09-21T00:20:00Z');
+// Saturday 00:20 UTC, when the job runs (weeks start on Saturday, ADR-056).
+const NOW = new Date('2026-09-19T00:20:00Z');
 
 const athlete = (n: number): CityAthleteRow => ({
   userId: `user-${n}`,
@@ -58,8 +58,8 @@ describe('LeaderboardSnapshotService', () => {
     expect(snapshots.replaceWeek).toHaveBeenCalledTimes(2);
     const calls = snapshots.replaceWeek.mock.calls;
     expect(calls.map((c) => [c[0], c[1], c[2], c[3]])).toEqual([
-      ['cairo-eg-360630', 'activity', 'month', '2026-09-21'],
-      ['cairo-eg-360630', 'activity', 'all_time', '2026-09-21'],
+      ['cairo-eg-360630', 'activity', 'month', '2026-09-19'],
+      ['cairo-eg-360630', 'activity', 'all_time', '2026-09-19'],
     ]);
     const monthRows = calls[0]?.[4] ?? [];
     expect(monthRows).toHaveLength(6);
@@ -80,14 +80,14 @@ describe('LeaderboardSnapshotService', () => {
     expect(leaderboards.cityAthletes.mock.calls[1]?.[2]).toBeNull();
   });
 
-  it('labels each city with the Monday of its own week', async () => {
+  it('labels each city with the Saturday of its own week', async () => {
     snapshots.eligibleCities.mockResolvedValue(['nyc-us-1']);
     resolver.findBySlug.mockReturnValue({ timezone: 'America/New_York' } as never);
     leaderboards.cityAthletes.mockResolvedValue(city(5));
 
-    await service.captureAll(NOW); // Sunday evening in New York
+    await service.captureAll(NOW); // Friday evening in New York
 
-    expect(snapshots.replaceWeek.mock.calls[0]?.[3]).toBe('2026-09-21');
+    expect(snapshots.replaceWeek.mock.calls[0]?.[3]).toBe('2026-09-19');
   });
 
   it('falls back to UTC for a city missing from the current dataset', async () => {

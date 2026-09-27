@@ -94,8 +94,8 @@ export class LeaderboardSnapshotRepository {
 
   /**
    * Where everyone in the city stood at the baseline: the snapshot of `weekStart`, or the latest
-   * earlier one when this week has not been captured yet (the job runs on Monday, so a city whose
-   * Monday has begun can be a few hours ahead of it). Never a later week, and never one before
+   * earlier one when this week has not been captured yet (the job runs on Saturday, so a city whose
+   * Saturday has begun can be a few hours ahead of it). Never a later week, and never one before
    * `notBefore`, so an old or different-month baseline is not passed off as this week's.
    */
   async baselineRanks(

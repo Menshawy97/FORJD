@@ -529,13 +529,13 @@ export const workoutStatsResponseSchema = z.object({
    * least one completed session -- Home's "Streak".
    *
    * The current week counts as *not yet missed* rather than as a break: a streak measured on
-   * Monday morning would otherwise reset every week before the athlete had a chance to train.
+   * Saturday morning (weeks start on Saturday, ADR-056) would otherwise reset every week before the athlete had a chance to train.
    */
   weekStreak: z.number().int().min(0),
   thisWeek: z.object({
     sessionCount: z.number().int().min(0),
     /**
-     * Which days of the current local week were trained, indexed exactly the way
+     * Which days of the current local week (Saturday to Friday, ADR-056) were trained, indexed exactly the way
      * `Date#getDay()` is -- 0 Sunday through 6 Saturday -- so the client compares it against
      * its own day index with no conversion step that could be got backwards. Ascending, and
      * distinct: two sessions on one day light one bar.

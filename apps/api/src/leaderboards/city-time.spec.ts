@@ -155,61 +155,62 @@ describe('monthBounds at a daylight-saving boundary', () => {
   });
 });
 
-// The weekly snapshot is labelled with the local Monday NEAREST to when the job runs, so every
-// city reads it as "the state at the start of this week" however far from UTC it is: the job runs
-// on Monday 00:20 UTC, which is still Sunday evening in New York and already Monday afternoon in
-// Auckland. The arrow then compares the live rank with the snapshot labelled one week earlier.
+// The weekly snapshot is labelled with the local Saturday NEAREST to when the job runs (weeks start
+// on Saturday, ADR-056), so every city reads it as "the state at the start of this week" however far
+// from UTC it is: the job runs on Saturday 00:20 UTC, which is still Friday evening in New York and
+// already Saturday afternoon in Auckland. The arrow then compares the live rank with the snapshot
+// labelled one week earlier.
 describe('snapshotWeekStart', () => {
-  const RUN = new Date('2026-09-21T00:20:00Z'); // a Monday, 00:20 UTC
+  const RUN = new Date('2026-09-19T00:20:00Z'); // a Saturday, 00:20 UTC
 
   it.each([
-    ['UTC', '2026-09-21'],
-    ['Africa/Cairo', '2026-09-21'], // Monday 03:20 local
-    ['America/New_York', '2026-09-21'], // Sunday 20:20 local, but the week that is about to start
-    ['America/Los_Angeles', '2026-09-21'], // Sunday 17:20 local
-    ['Pacific/Auckland', '2026-09-21'], // Monday 12:20 local
-    ['Pacific/Kiritimati', '2026-09-21'], // Monday 14:20 local
-    ['Pacific/Pago_Pago', '2026-09-21'], // Sunday 13:20 local
-  ])('labels a Monday 00:20 UTC run in %s as %s', (zone, expected) => {
+    ['UTC', '2026-09-19'],
+    ['Africa/Cairo', '2026-09-19'], // Saturday 03:20 local, after the Cairo week closed
+    ['America/New_York', '2026-09-19'], // Friday 20:20 local, but the week that is about to start
+    ['America/Los_Angeles', '2026-09-19'], // Friday 17:20 local
+    ['Pacific/Auckland', '2026-09-19'], // Saturday 12:20 local
+    ['Pacific/Kiritimati', '2026-09-19'], // Saturday 14:20 local
+    ['Pacific/Pago_Pago', '2026-09-19'], // Friday 13:20 local
+  ])('labels a Saturday 00:20 UTC run in %s as %s', (zone, expected) => {
     expect(snapshotWeekStart(RUN, zone)).toBe(expected);
   });
 
   it('gives a re-run a few hours later the same label, so it replaces rather than adds', () => {
-    expect(snapshotWeekStart(new Date('2026-09-21T06:00:00Z'), 'Africa/Cairo')).toBe('2026-09-21');
+    expect(snapshotWeekStart(new Date('2026-09-19T06:00:00Z'), 'Africa/Cairo')).toBe('2026-09-19');
   });
 
-  it('moves to the next Monday when the run is a week later', () => {
-    expect(snapshotWeekStart(new Date('2026-09-28T00:20:00Z'), 'America/New_York')).toBe('2026-09-28');
+  it('moves to the next Saturday when the run is a week later', () => {
+    expect(snapshotWeekStart(new Date('2026-09-26T00:20:00Z'), 'America/New_York')).toBe('2026-09-26');
   });
 
   it('crosses a month and a year boundary correctly', () => {
-    expect(snapshotWeekStart(new Date('2026-12-28T00:20:00Z'), 'UTC')).toBe('2026-12-28');
-    expect(snapshotWeekStart(new Date('2027-01-04T00:20:00Z'), 'UTC')).toBe('2027-01-04');
+    expect(snapshotWeekStart(new Date('2026-12-26T00:20:00Z'), 'UTC')).toBe('2026-12-26');
+    expect(snapshotWeekStart(new Date('2027-01-02T00:20:00Z'), 'UTC')).toBe('2027-01-02');
   });
 });
 
 describe('comparisonWeekStart', () => {
-  // The baseline for "this week" is the snapshot labelled with the current local week's Monday.
-  it('is the Monday of the current local week, whatever day of it it is', () => {
-    for (const day of ['21', '22', '23', '24', '25', '26', '27']) {
-      expect(comparisonWeekStart(new Date(`2026-09-${day}T12:00:00Z`), 'UTC')).toBe('2026-09-21');
+  // The baseline for "this week" is the snapshot labelled with the current local week's Saturday.
+  it('is the Saturday of the current local week, whatever day of it it is', () => {
+    for (const day of ['19', '20', '21', '22', '23', '24', '25']) {
+      expect(comparisonWeekStart(new Date(`2026-09-${day}T12:00:00Z`), 'UTC')).toBe('2026-09-19');
     }
   });
 
-  it("follows the city's calendar: Sunday night UTC is already Monday in Auckland", () => {
-    const instant = new Date('2026-09-27T13:00:00Z');
-    expect(comparisonWeekStart(instant, 'UTC')).toBe('2026-09-21');
-    expect(comparisonWeekStart(instant, 'Pacific/Auckland')).toBe('2026-09-28');
+  it("follows the city's calendar: Friday afternoon UTC is already Saturday in Auckland", () => {
+    const instant = new Date('2026-09-25T13:00:00Z');
+    expect(comparisonWeekStart(instant, 'UTC')).toBe('2026-09-19');
+    expect(comparisonWeekStart(instant, 'Pacific/Auckland')).toBe('2026-09-26');
   });
 
   it('crosses a month boundary', () => {
-    expect(comparisonWeekStart(new Date('2026-10-01T12:00:00Z'), 'UTC')).toBe('2026-09-28');
+    expect(comparisonWeekStart(new Date('2026-10-01T12:00:00Z'), 'UTC')).toBe('2026-09-26');
   });
 
   it('agrees with the label a run wrote, for every moment of the week that follows it', () => {
     for (const zone of ['UTC', 'Africa/Cairo', 'America/New_York', 'Pacific/Auckland']) {
-      const label = snapshotWeekStart(new Date('2026-09-21T00:20:00Z'), zone);
-      for (const instant of ['2026-09-21T06:00:00Z', '2026-09-24T12:00:00Z', '2026-09-26T09:00:00Z']) {
+      const label = snapshotWeekStart(new Date('2026-09-19T00:20:00Z'), zone);
+      for (const instant of ['2026-09-19T06:00:00Z', '2026-09-22T12:00:00Z', '2026-09-24T09:00:00Z']) {
         expect(comparisonWeekStart(new Date(instant), zone)).toBe(label);
       }
     }
@@ -218,12 +219,12 @@ describe('comparisonWeekStart', () => {
 
 describe('baselineNotBefore', () => {
   it('is two weeks before this week for all time, so a stale baseline is not shown as this week', () => {
-    // Thursday 24 September 2026: this week began on Monday the 21st.
-    expect(baselineNotBefore('all_time', new Date('2026-09-24T12:00:00Z'), 'UTC')).toBe('2026-09-07');
+    // Thursday 24 September 2026: this week began on Saturday the 19th.
+    expect(baselineNotBefore('all_time', new Date('2026-09-24T12:00:00Z'), 'UTC')).toBe('2026-09-05');
   });
 
   it('is the first of the local month for a month, so two different months are never compared', () => {
-    // A snapshot labelled Monday 28 September scored September; on Thursday 1 October it is out of reach.
+    // A snapshot labelled Saturday 26 September scored September; on Thursday 1 October it is out of reach.
     expect(baselineNotBefore('month', new Date('2026-10-01T12:00:00Z'), 'UTC')).toBe('2026-10-01');
     expect(baselineNotBefore('month', new Date('2026-09-24T12:00:00Z'), 'UTC')).toBe('2026-09-01');
   });
@@ -236,7 +237,7 @@ describe('baselineNotBefore', () => {
   });
 
   it('is never later than the current week for a month that began mid-week', () => {
-    // Monday 28 September is inside September: a run on it may be compared with on 29 September.
+    // Saturday 26 September is inside September: a run on it may be compared with on 29 September.
     expect(baselineNotBefore('month', new Date('2026-09-29T12:00:00Z'), 'UTC') <= comparisonWeekStart(new Date('2026-09-29T12:00:00Z'), 'UTC')).toBe(true);
   });
 });

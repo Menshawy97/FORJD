@@ -375,7 +375,7 @@ export class WorkoutSessionsRepository {
    *
    * `now` is injected rather than read from the clock so the calendar boundaries these
    * aggregates turn on are testable at all -- a test asserting "two sessions this week" that
-   * reads the clock asserts something different next Monday.
+   * reads the clock asserts something different next Saturday.
    */
   async statsForUser(userId: string, timeZone: string, now: Date): Promise<WorkoutStatsRow> {
     const today = localCalendarDate(now, timeZone);

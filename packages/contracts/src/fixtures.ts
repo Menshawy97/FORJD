@@ -730,7 +730,7 @@ export const responseFixtures = {
 
   /**
    * The Progress tab's Strength view (Phase 4) -- two PR tiles, an 8-week estimated-1RM
-   * trend, a Monday-first weekly-volume week, a training calendar and a muscle split that
+   * trend, a weekly-volume week in ISO 1-7 order, a training calendar and a muscle split that
    * sums to 100, plus a rules-based (not AI) insight. `insight` is populated here to pin the
    * fully-lit shape; the honest-empty `null` case is asserted separately in `progress.spec.ts`.
    */
@@ -756,14 +756,14 @@ export const responseFixtures = {
         },
       ],
       oneRepMaxTrend: [
-        { weekStart: '2026-07-06', estimatedOneRepMaxKg: 88 },
-        { weekStart: '2026-07-13', estimatedOneRepMaxKg: 89 },
-        { weekStart: '2026-07-20', estimatedOneRepMaxKg: 91 },
-        { weekStart: '2026-07-27', estimatedOneRepMaxKg: 92 },
-        { weekStart: '2026-08-03', estimatedOneRepMaxKg: 94 },
-        { weekStart: '2026-08-10', estimatedOneRepMaxKg: 95 },
-        { weekStart: '2026-08-17', estimatedOneRepMaxKg: 97 },
-        { weekStart: '2026-08-24', estimatedOneRepMaxKg: 100 },
+        { weekStart: '2026-07-04', estimatedOneRepMaxKg: 88 },
+        { weekStart: '2026-07-11', estimatedOneRepMaxKg: 89 },
+        { weekStart: '2026-07-18', estimatedOneRepMaxKg: 91 },
+        { weekStart: '2026-07-25', estimatedOneRepMaxKg: 92 },
+        { weekStart: '2026-08-01', estimatedOneRepMaxKg: 94 },
+        { weekStart: '2026-08-08', estimatedOneRepMaxKg: 95 },
+        { weekStart: '2026-08-15', estimatedOneRepMaxKg: 97 },
+        { weekStart: '2026-08-22', estimatedOneRepMaxKg: 100 },
       ],
       weeklyVolumeKg: [
         { dayOfWeek: 1, volumeKg: 8200 },

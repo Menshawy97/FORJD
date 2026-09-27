@@ -49,19 +49,21 @@ export type ProgressPersonalRecord = z.infer<typeof progressPersonalRecordSchema
 
 /** One weekly point of the "Estimated 1RM — 8 weeks" sparkline, oldest first. */
 export const oneRepMaxTrendPointSchema = z.object({
-  /** The Monday that starts the week this point summarises, `YYYY-MM-DD`. */
+  /** The Saturday that starts the week this point summarises, `YYYY-MM-DD` (ADR-056). */
   weekStart: z.string(),
   estimatedOneRepMaxKg: z.number(),
 });
 export type OneRepMaxTrendPoint = z.infer<typeof oneRepMaxTrendPointSchema>;
 
 /**
- * One bar of "Weekly volume (kg)". `dayOfWeek` is **1-7, Monday-first** — matching the
- * calendar and legend below it, and deliberately not `Date#getDay()`'s 0-6 Sunday-first
- * indexing that `workoutStatsResponseSchema.thisWeek.trainedWeekdays` uses. The two schemas
- * answer different questions (this one draws a Monday-first bar chart; that one compares
- * against the device's own `Date#getDay()`) and mixing their indexing would be the more
- * dangerous bug of the two, so they are kept visibly different rather than accidentally alike.
+ * One bar of "Weekly volume (kg)" for the current Saturday-to-Friday week (ADR-056). `dayOfWeek`
+ * is the **ISO weekday, 1 Monday through 7 Sunday**, and the array is sent in that 1-7 order even
+ * though the week starts on Saturday: a weekday's name never depends on where the week begins,
+ * and a client that zips the array with Mon-Sun labels still labels every bar correctly.
+ *
+ * This is deliberately not `Date#getDay()`'s 0-6 Sunday-first indexing that
+ * `workoutStatsResponseSchema.thisWeek.trainedWeekdays` uses. Mixing the two indexings would be
+ * the more dangerous bug, so they are kept visibly different rather than accidentally alike.
  */
 export const weeklyVolumeDaySchema = z.object({
   dayOfWeek: z.number().int().min(1).max(7),

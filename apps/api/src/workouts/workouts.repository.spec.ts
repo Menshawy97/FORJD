@@ -1176,20 +1176,22 @@ describe("WorkoutsRepository", () => {
       expect(stats.sessionsThisMonth).toBe(2);
     });
 
-    // The week runs Monday to Sunday, matching the mobile app's own WEEK_DAYS strip.
+    // The week runs Saturday to Friday (ADR-056): NOW is Thursday 2026-09-03, so this week began
+    // Saturday 2026-08-29.
     it("reports this week's sessions and which weekdays they fell on", async () => {
       const owner = await makeUser("stats-week");
-      // 2026-08-31 is a Monday; 2026-09-02 a Wednesday.
-      await save(sessionAt(owner, new Date("2026-08-31T10:00:00Z")));
-      await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z")));
-      // The Sunday before that Monday belongs to the previous week.
+      // 2026-08-30 is a Sunday, which under the old Monday rule closed the previous week;
+      // 2026-09-02 is a Wednesday.
       await save(sessionAt(owner, new Date("2026-08-30T10:00:00Z")));
+      await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z")));
+      // The Friday before that Saturday belongs to the previous week.
+      await save(sessionAt(owner, new Date("2026-08-28T10:00:00Z")));
 
       const stats = await repository.statsForUser(owner, ZONE, NOW);
 
       expect(stats.thisWeek.sessionCount).toBe(2);
-      // Indexed like Date#getDay(): Monday is 1, Wednesday 3.
-      expect(stats.thisWeek.trainedWeekdays).toEqual([1, 3]);
+      // Indexed like Date#getDay(): Sunday is 0, Wednesday 3.
+      expect(stats.thisWeek.trainedWeekdays).toEqual([0, 3]);
     });
 
     it("lights a weekday once however many times it was trained", async () => {
@@ -1256,7 +1258,7 @@ describe("WorkoutsRepository", () => {
       it("stops at the first missed week", async () => {
         const owner = await makeUser("stats-streak-gap");
         await save(sessionAt(owner, new Date("2026-09-02T10:00:00Z")));
-        // The week of 2026-08-24 is skipped entirely.
+        // The week of 2026-08-22 is skipped entirely.
         await save(sessionAt(owner, new Date("2026-08-19T10:00:00Z")));
 
         const stats = await repository.statsForUser(owner, ZONE, NOW);
@@ -1264,7 +1266,7 @@ describe("WorkoutsRepository", () => {
         expect(stats.weekStreak).toBe(1);
       });
 
-      // Measured on a Monday morning, a streak that required *this* week would reset every
+      // Measured on a Saturday morning, a streak that required *this* week would reset every
       // week before the athlete had any chance to train.
       it("survives a current week with nothing in it yet", async () => {
         const owner = await makeUser("stats-streak-grace");

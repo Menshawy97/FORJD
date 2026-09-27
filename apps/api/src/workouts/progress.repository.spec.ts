@@ -287,6 +287,28 @@ describe("ProgressRepository", () => {
       expect(result.volumeKgThisWeek).toBe(500);
     });
 
+    it("counts the weekend before Monday in this week, because weeks start on Saturday (ADR-056)", async () => {
+      const owner = await makeUser("saturday-week");
+      const exerciseId = await makeExercise("saturday-week-lift");
+      // NOW is Wednesday 2026-08-19, so the week began Saturday 2026-08-15. Sunday 2026-08-16
+      // belonged to the previous week under the old Monday rule.
+      const sunday = new Date("2026-08-16T09:00:00Z");
+      await save(
+        sessionAt(owner, sunday, {
+          exercises: [withSet(exerciseId, 50, 10, new Date("2026-08-16T09:05:00Z"))],
+        }),
+      );
+
+      const result = await progressRepository.progressStrengthForUser(owner, ZONE, NOW);
+
+      expect(result.volumeKgThisWeek).toBe(500);
+      expect(result.sessionsThisWeek).toBe(1);
+      // dayOfWeek keeps its ISO meaning on the wire (7 is Sunday) and the array stays in
+      // 1-7 order, so a client that zips it with Mon-Sun labels still labels every bar right.
+      expect(result.weeklyVolumeKg.map((day) => day.dayOfWeek)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(result.weeklyVolumeKg.find((day) => day.dayOfWeek === 7)?.volumeKg).toBe(500);
+    });
+
     it("returns the two most recently achieved personal records, headed by exercise name", async () => {
       const owner = await makeUser("prs");
       const squat = await makeExercise("squat");

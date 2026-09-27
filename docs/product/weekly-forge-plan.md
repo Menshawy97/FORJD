@@ -273,7 +273,7 @@ Each phase follows the same loop: plan or ADR, tests first, PR, green `main`, **
   - `leaderboards/city-time.ts` (`snapshotWeekStart` labels the coming local Saturday)
   - `leaderboard-snapshot.repository.ts`
   - the doc strings and fixtures in `packages/contracts/src/{workouts,progress}.ts`
-- `leaderboard-snapshot.yml` moves its cron to Friday 22:20 UTC (Saturday 00:20 Cairo in winter, 01:20 in summer). The existing half-day nudge keeps labels stable across Egypt's summer time.
+- `leaderboard-snapshot.yml` moves its cron to Saturday 00:20 UTC (02:20 or 03:20 in Cairo, after the week closes). The existing half-day nudge keeps labels stable across Egypt's summer time.
 - The delta fallback already copes with the old Monday-labelled rows.
 - Update the FAQ wording in `faq-content.ts`.
 - Tests are updated first, so they fail on the Monday expectations.
