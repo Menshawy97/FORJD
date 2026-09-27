@@ -539,6 +539,20 @@ Two PRs, each audited against the bug checklist before its review agent runs.
   - A new band or Forged week gets its full screen (10B); until 10B lands, those weeks go straight to the sheet.
   - A cooled week, or one where nothing changed, goes straight to the sheet.
 
+**10B design details (decided 2026-09-27, before coding):**
+- **Animation:** React Native's own `Animated` with the native driver, following `components/brand/intro-splash.tsx`, not Reanimated. Transform and opacity still run on the UI thread, and it tests cleanly.
+- **Presentation:** a full-screen `Modal`, so it covers the tab bar. The background is drawn in the component (ember for a new band, white-hot `rgba(255,241,214,.18)` for Forged, the same radial geometry as `ScreenBackground`). `ScreenBackground` itself isn't changed.
+- **Wording:**
+  - The eyebrow reads "New band · Volume" or "Forged · Distance". The headline is `FORGE_COPY.band` or `FORGE_COPY.forged` in the `welcome-headline` size.
+  - The line under it reads "Volume reached Ember. Your target is now 5,600 kg a week." for a new band, and "Four weeks held in Tempered, and now Forged. 157.5 km a week." for Forged. The target comes from `targetOf`.
+- **Chips:** "Level n" and "Week of 19 Sep".
+  - The Forged screen was mocked with "Forged 1 week" and "Best 3 weeks". The week summary has no streak fields, but entering Forged always starts a run of one week, so it shows "Forged 1 week" and "Week of …".
+- **Share:** shown only when the week is `shareable` and not in Expo Go, where capture isn't possible (`isExpoGo()`).
+  - It captures an off-screen 4:5 card at 1,080 × 1,350 with `ShareCardShot` and opens the share sheet with `shareShareCard`.
+  - A failure shows the nutrition share screen's existing error line in the existing toast.
+  - The card shows the badge, the band name, the ladder and its weekly target, the level, `@username` from `getMe`, and the brand logo components.
+- **Haptics:** fired as the badge lands. Under reduce motion, they still fire and the finished frame shows at once.
+
 **10B: the new-band and Forged full screens, and the share card.**
 - **Full screens:** Reanimated for the strike (scale .6 → 1.08 → 1 over 700 ms) and at most 12 sparks, with the finished frame under reduce motion.
 - **Haptics:** medium for a new band; heavy then success for Forged.
