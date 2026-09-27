@@ -19,8 +19,8 @@ import { Icon } from '@/components/icon';
 import { pressScale } from '@/components/press-feedback';
 import { Toast, useToast } from '@/components/toast';
 import { useReduceMotion } from '@/components/use-reduce-motion';
-import { isExpoGo, shareShareCard } from '@/media/share-capture';
-import { ShareCardShot } from '@/media/share-card-shot';
+import type * as ShareCaptureModule from '@/media/share-capture';
+import type * as ShareCardShotModule from '@/media/share-card-shot';
 import { colors } from '@/theme/tokens';
 import { BAND_FINISH } from './band-finish';
 import { formatForgeAmount, unitLabel } from './forge-format';
@@ -81,6 +81,19 @@ const MONTHS = [
   'Nov',
   'Dec',
 ] as const;
+
+/**
+ * The share helpers, loaded on first use rather than imported: they pull in the photo library and
+ * view-shot native modules, which Home (where this screen lives) otherwise never needs, and which
+ * break every Home test that does not mock them. The same lazy-`require` pattern
+ * `integrations/health/device-health-provider.ts` uses.
+ */
+function shareModules(): { capture: typeof ShareCaptureModule; shot: typeof ShareCardShotModule } {
+  return {
+    capture: require('@/media/share-capture') as typeof ShareCaptureModule,
+    shot: require('@/media/share-card-shot') as typeof ShareCardShotModule,
+  };
+}
 
 /** The sparks' angles and distances, fixed: the mock-up's `i * 30 + 8` degrees and 78-106 px. */
 const SPARKS = Array.from({ length: SPARK_COUNT }, (_, i) => {
@@ -172,7 +185,7 @@ export function ForgeCelebrationScreen({
     }
     isSharing.current = true;
     try {
-      await shareShareCard(shotRef, 'Share your Weekly Forge');
+      await shareModules().capture.shareShareCard(shotRef, 'Share your Weekly Forge');
     } catch {
       toast.show(SHARE_ERROR);
     } finally {
@@ -190,7 +203,9 @@ export function ForgeCelebrationScreen({
     `Week of ${weekStartLabel(week.weekStart)}`,
   ];
   const light = BAND_FINISH[ladderWeek.bandAfter].light;
-  const canShare = week.shareable && !isExpoGo();
+  const shareKit = week.shareable ? shareModules() : null;
+  const canShare = shareKit !== null && !shareKit.capture.isExpoGo();
+  const ShareCardShot = shareKit?.shot.ShareCardShot;
 
   return (
     <Modal
@@ -201,7 +216,7 @@ export function ForgeCelebrationScreen({
       onRequestClose={onContinue}
     >
       <View className="flex-1 bg-screenBg">
-        {canShare ? (
+        {canShare && ShareCardShot ? (
           <View
             pointerEvents="none"
             importantForAccessibility="no-hide-descendants"
