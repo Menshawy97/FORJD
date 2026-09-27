@@ -11,6 +11,7 @@ jest.mock('@/auth/apiClient', () => ({ putTimeZone: jest.fn(), deviceTimeZone: j
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { deviceTimeZone, putTimeZone } from '@/auth/apiClient';
+import { forgetTimeZoneSent } from '@/store/time-zone-sent';
 import { TIME_ZONE_SENT_STORAGE_KEY, syncTimeZone } from '../time-zone-sync';
 
 const getItem = AsyncStorage.getItem as jest.Mock;
@@ -67,5 +68,20 @@ describe('syncTimeZone', () => {
     await syncTimeZone();
 
     expect(putTimeZone).toHaveBeenCalledWith('Africa/Cairo');
+  });
+
+  it('does not remember a zone whose send finished after a sign-out, so the next account sends its own', async () => {
+    let finishSend: () => void = () => undefined;
+    (putTimeZone as jest.Mock).mockReturnValue(new Promise<void>((resolve) => (finishSend = resolve)));
+
+    const sync = syncTimeZone();
+    await Promise.resolve();
+    await Promise.resolve();
+    forgetTimeZoneSent();
+    finishSend();
+    await sync;
+
+    expect(putTimeZone).toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { deviceTimeZone, putTimeZone } from '@/auth/apiClient';
-import { TIME_ZONE_SENT_STORAGE_KEY } from '@/store/time-zone-sent';
+import { TIME_ZONE_SENT_STORAGE_KEY, timeZoneSentEpoch } from '@/store/time-zone-sent';
 
 export { TIME_ZONE_SENT_STORAGE_KEY };
 
@@ -19,12 +19,16 @@ export { TIME_ZONE_SENT_STORAGE_KEY };
  * the server accepted the zone, so a failed send is retried next time. Never throws.
  */
 export async function syncTimeZone(): Promise<void> {
+  const epoch = timeZoneSentEpoch();
   try {
     const zone = deviceTimeZone();
     if ((await readLastSent()) === zone) {
       return;
     }
     await putTimeZone(zone);
+    if (timeZoneSentEpoch() !== epoch) {
+      return; // Signed out while the send was in flight: the next account sends its own.
+    }
     await AsyncStorage.setItem(TIME_ZONE_SENT_STORAGE_KEY, zone);
   } catch {
     // Offline, signed out mid-request, or storage refused: the next launch tries again.

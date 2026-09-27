@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EXERCISE_UNITS_STORAGE_KEY } from './exercise-unit-preferences';
 import { NOTIFICATION_PREFERENCES_STORAGE_KEY } from './notification-preferences';
 import { RECENT_EXERCISES_STORAGE_KEY } from './recent-exercises';
-import { TIME_ZONE_SENT_STORAGE_KEY } from './time-zone-sent';
+import { TIME_ZONE_SENT_STORAGE_KEY, forgetTimeZoneSent } from './time-zone-sent';
 
 /**
  * The device preferences that belong to one signed-in person, not to the phone (whole-app review
@@ -24,6 +24,7 @@ const ACCOUNT_PREFERENCE_KEYS = [
 
 /** Never throws: a preference that fails to clear must not stop a sign-out. */
 export async function forgetAccountPreferences(): Promise<void> {
+  forgetTimeZoneSent();
   await Promise.all(
     ACCOUNT_PREFERENCE_KEYS.map(async (key) => {
       try {
