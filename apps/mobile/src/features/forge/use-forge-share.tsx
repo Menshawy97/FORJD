@@ -22,9 +22,15 @@ function shareModules(): { capture: typeof ShareCaptureModule; shot: typeof Shar
 export const SHARE_ERROR_LINE = 'Could not open the share sheet. Please try again.';
 export const EXPO_GO_SHARE_LINE = 'Sharing works in the full app, not in Expo Go.';
 
+export type ForgeCardBuilder = (username: string | null) => ReactElement;
+
 export interface ForgeShare {
-  /** Shares this card: lays it out, captures it at 1080 x 1350 and opens the phone's share sheet. */
-  start: (card: ReactElement) => void;
+  /**
+   * Shares a card: lays it out, captures it at 1080 x 1350 and opens the phone's share sheet. Takes
+   * a builder, called when the card is drawn, so the footer gets the username even if `getMe` has
+   * not answered by the time Share was tapped.
+   */
+  start: (card: ForgeCardBuilder) => void;
   /** Render this in the screen; it is the capture's hidden full-screen layer while a share runs. */
   sheet: ReactElement | null;
   /** Feed to the screen's `<Toast>`: failures, and the Expo Go note. */
@@ -48,7 +54,7 @@ export interface ForgeShare {
  */
 export function useForgeShare(): ForgeShare {
   const toast = useToast();
-  const [card, setCard] = useState<ReactElement | null>(null);
+  const [card, setCard] = useState<ForgeCardBuilder | null>(null);
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,12 +72,13 @@ export function useForgeShare(): ForgeShare {
   }, []);
 
   const start = useCallback(
-    (next: ReactElement) => {
+    (next: ForgeCardBuilder) => {
       if (shareModules().capture.isExpoGo()) {
         toast.show(EXPO_GO_SHARE_LINE);
         return;
       }
-      setCard((current) => current ?? next);
+      // An updater, not a value: the state is itself a function, so it must never be passed bare.
+      setCard((current: ForgeCardBuilder | null) => current ?? next);
     },
     [toast],
   );
@@ -88,7 +95,7 @@ export function useForgeShare(): ForgeShare {
 
   return {
     start,
-    sheet: card ? <ForgeShareLayer card={card} onDone={finish} /> : null,
+    sheet: card ? <ForgeShareLayer card={card(username)} onDone={finish} /> : null,
     toastMessage: toast.message,
     username,
   };
@@ -121,7 +128,8 @@ function ForgeShareLayer({ card, onDone }: { card: ReactElement; onDone: (failed
           accessibilityElementsHidden
           collapsable={false}
           style={styles.shot}
-          onLayout={capture}>
+          // One frame after layout, so the card's SVG badge and glow have painted before capture.
+          onLayout={() => requestAnimationFrame(capture)}>
           <ShareCardShot ref={shotRef} options={{ format: 'jpg', quality: 0.92, width: 1080, height: 1350 }}>
             {card}
           </ShareCardShot>

@@ -96,9 +96,9 @@ export default function ForgeLadderScreen() {
             accessibilityRole="button"
             accessibilityLabel="Share"
             onPress={() =>
-              forgeShare.start(
-                <ForgeShareCard ladder={ladder} band={progress.band} level={progress.level} username={forgeShare.username} />,
-              )
+              forgeShare.start((username) => (
+                <ForgeShareCard ladder={ladder} band={progress.band} level={progress.level} username={username} />
+              ))
             }
             style={pressScale}
             className="mt-3 h-11 w-full flex-row items-center justify-center gap-2 rounded-button border border-border">

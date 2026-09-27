@@ -39,7 +39,7 @@ export function ProfileForgeSection({ share }: { share?: ForgeShare }) {
             accessibilityRole="button"
             accessibilityLabel="Share your Weekly Forge"
             hitSlop={14}
-            onPress={() => share.start(<ForgeShareAllCard ladders={forge.ladders} username={share.username} />)}>
+            onPress={() => share.start((username) => <ForgeShareAllCard ladders={forge.ladders} username={username} />)}>
             <Text
               maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
               className="font-archivo text-week-count font-semibold text-accent">

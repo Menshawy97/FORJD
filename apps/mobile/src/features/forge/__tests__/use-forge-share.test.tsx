@@ -27,7 +27,7 @@ function Harness() {
   return (
     <View>
       <Text testID="username">{share.username ?? 'none'}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Share" onPress={() => share.start(<Text>THE CARD</Text>)}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Share" onPress={() => share.start((username) => <Text>{`THE CARD by ${username ?? 'nobody'}`}</Text>)}>
         <Text>Share</Text>
       </Pressable>
       {share.sheet}
@@ -54,7 +54,7 @@ describe('useForgeShare', () => {
     await render(<Harness />);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
-    expect(screen.getByText('THE CARD', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText(/THE CARD/, { includeHiddenElements: true })).toBeTruthy();
     expect(shareShareCard).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -65,7 +65,7 @@ describe('useForgeShare', () => {
 
     await waitFor(() => expect(shareShareCard).toHaveBeenCalledTimes(1));
     expect((shareShareCard as jest.Mock).mock.calls[0]![1]).toBe('Share your Weekly Forge');
-    await waitFor(() => expect(screen.queryByText('THE CARD', { includeHiddenElements: true })).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/THE CARD/, { includeHiddenElements: true })).toBeNull());
   });
 
   it('says so, and closes, when the share sheet cannot open', async () => {
@@ -80,7 +80,20 @@ describe('useForgeShare', () => {
     });
 
     await waitFor(() => expect(screen.getByText(SHARE_ERROR_LINE)).toBeTruthy());
-    expect(screen.queryByText('THE CARD', { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByText(/THE CARD/, { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('draws the username on a card shared before the username had arrived', async () => {
+    let answer: (me: unknown) => void = () => undefined;
+    (getMe as jest.Mock).mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    await render(<Harness />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+    expect(screen.getByText('THE CARD by nobody', { includeHiddenElements: true })).toBeTruthy();
+
+    await act(async () => answer({ profile: { username: 'mostafa' } }));
+
+    expect(screen.getByText('THE CARD by mostafa', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('in Expo Go, says sharing needs the full app instead of capturing', async () => {
@@ -90,7 +103,7 @@ describe('useForgeShare', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
 
     expect(screen.getByText(EXPO_GO_SHARE_LINE)).toBeTruthy();
-    expect(screen.queryByText('THE CARD', { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByText(/THE CARD/, { includeHiddenElements: true })).toBeNull();
     expect(shareShareCard).not.toHaveBeenCalled();
   });
 });
