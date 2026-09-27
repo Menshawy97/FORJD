@@ -94,6 +94,29 @@ describe('theme tokens', () => {
     expect(colors.scrim).toBe('rgba(10,10,11,.72)');
   });
 
+  // Weekly Forge's "Heat" band colours, approved in the Phase 7 mock-ups
+  // (docs/product/weekly-forge-plan.md, "Phase 7 outcome"). Anvil reuses accent / accentHover and
+  // Forged's light colour reuses onAccent, so only these seven are new.
+  it('carries the approved Weekly Forge Heat colours', () => {
+    expect({
+      forgeHeatOre: colors.forgeHeatOre,
+      forgeHeatOreLight: colors.forgeHeatOreLight,
+      forgeHeatCherry: colors.forgeHeatCherry,
+      forgeHeatCherryLight: colors.forgeHeatCherryLight,
+      forgeHeatYellow: colors.forgeHeatYellow,
+      forgeHeatYellowLight: colors.forgeHeatYellowLight,
+      forgeHeatWhite: colors.forgeHeatWhite,
+    }).toEqual({
+      forgeHeatOre: '#5A2A22',
+      forgeHeatOreLight: '#7A3A2C',
+      forgeHeatCherry: '#C2412B',
+      forgeHeatCherryLight: '#D9573A',
+      forgeHeatYellow: '#F2B33D',
+      forgeHeatYellowLight: '#F7C866',
+      forgeHeatWhite: '#FFF1D6',
+    });
+  });
+
   // The prototype's profile name is `font:'700 19px/1 Archivo'` — the `/1` is a line height,
   // and it was the one part of that shorthand the token dropped. Without it the name renders
   // at the platform default leading and the identity row grows taller than the design's.
