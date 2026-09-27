@@ -1,0 +1,105 @@
+name: Evaluate Weekly Forge
+
+# Judges every enrolled athlete's closed Weekly Forge week (ADR-057). Weeks close at Saturday 00:00
+# in each athlete's own zone, which falls between Friday 10:00 UTC (UTC+14) and Saturday 12:00 UTC
+# (UTC-12), so the job runs at ten past every hour on Friday and Saturday UTC. Ten past, not on the
+# hour, because the top of the hour is when GitHub's scheduler is busiest and delays or drops runs.
+#
+# Safe to run any number of times: each athlete's next week is evaluated once, under a row lock,
+# and an already-evaluated week is skipped. It is also a backstop, not the only path: `GET /forge`
+# evaluates the caller on read, so a delayed or dropped run delays nobody who opens the app.
+#
+# While the `weekly_forge` flag is off the script evaluates nothing and exits cleanly, so the
+# feature stays dark. Cost: about 48 runs a week, roughly 200-400 of the private repository's 2,000
+# free Actions minutes a month.
+#
+# Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire, and
+# with several instances it would fire once per instance (ADR-047).
+on:
+  schedule:
+    - cron: "10 * * * 5,6"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment whose database to evaluate
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+# Two runs on one database would be harmless (the row lock serialises them), but there is no reason
+# to run them at once.
+concurrency:
+  group: forge-evaluate-${{ github.event_name }}-${{ inputs.target || 'all' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for google-github-actions/auth's Workload Identity Federation
+
+jobs:
+  # Same split as deploy-api.yml: missing GCP setup shows as a skipped job (green), not a red
+  # failure every hour until the credentials exist.
+  check:
+    name: Check prerequisites
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && [ -n "${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}" ] && [ -n "${{ vars.GCP_PROJECT_ID }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GCP config not set yet (GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOY_SERVICE_ACCOUNT, GCP_PROJECT_ID) — skipping the evaluation."
+          fi
+
+  evaluate:
+    name: Evaluate closed Forge weeks
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    environment: ${{ matrix.target }}
+    strategy:
+      # One environment failing (say production is not provisioned yet) must not stop the other.
+      fail-fast: false
+      matrix:
+        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["staging","production"]') }}
+    env:
+      TARGET: ${{ matrix.target }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - id: auth
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+      - name: Evaluate the closed weeks
+        # The database URL comes from Secret Manager (forjd-<target>-database-url), the same
+        # secret the deploy uses, and must be the Supabase session pooler string: the direct one
+        # fails over IPv6 from GitHub-hosted runners. The workspace packages are built first
+        # because ts-node resolves `@forjd/domain` through `dist/`, as in deploy-api.yml.
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @forjd/domain --filter @forjd/contracts build
+          DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
+          # Read from Secret Manager at run time, so GitHub does not know to mask it; a printed
+          # error must never show the connection string.
+          echo "::add-mask::${DATABASE_URL}"
+          export DATABASE_URL
+          pnpm --filter @forjd/api forge:evaluate

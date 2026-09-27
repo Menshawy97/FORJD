@@ -1,6 +1,6 @@
 # Weekly Forge — plan
 
-**Status:** Phase 1 accepted, Phases 2-3 merged (#290, #291), Phase 4 (schema and seed) in review, 2026-09-27. Every phase stops for the
+**Status:** Phases 1-4 merged (#289-#292), Phase 5 (totals, evaluation, the job) in review, 2026-09-27. Every phase stops for the
 user's review, and **no mobile code is written until the Phase 7 mock-ups are approved**.
 
 ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md),
@@ -325,7 +325,7 @@ Each phase follows the same loop: plan or ADR, tests first, PR, green `main`, **
 - It only proceeds when `last_evaluated_week` is the previous week.
 - It inserts the week rows, updates state, and writes ledger rows with `on conflict do nothing`, so a re-run changes nothing.
 
-**Recompute.** A maintenance path refolds state from the stored locked totals, for rule-9 recovery. It never removes ledger rows.
+**Recompute.** A maintenance path refolds state from the stored locked totals, for rule-9 recovery. It never removes ledger rows. **Deferred (decided in Phase 5):** with one rule set in force it would have nothing to do, so it is built with the first rule change (`FORGE_RULES_VERSION` 2) that needs it. Every input it needs is already stored in `forge_weeks`.
 
 **The job.**
 - The `forge:evaluate` script, `apps/api/src/forge/evaluate/evaluate.ts`, follows the snapshot pattern: one user's failure doesn't stop the others, and the script exits 1 if any failed.

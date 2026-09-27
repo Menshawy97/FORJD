@@ -10,6 +10,8 @@ import { AuthModule } from './auth/auth.module';
 import { BodyModule } from './body/body.module';
 import { AthletesModule } from './athletes/athletes.module';
 import { ExercisesModule } from './exercises/exercises.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
+import { ForgeModule } from './forge/forge.module';
 import { CitiesModule } from './cities/cities.module';
 import { HealthDataModule } from './health-data/health-data.module';
 import { LeaderboardsModule } from './leaderboards/leaderboards.module';
@@ -52,6 +54,8 @@ import { validateEnv } from './common/config/env-validation';
     AccountModule,
     AthletesModule,
     ExercisesModule,
+    FeatureFlagsModule,
+    ForgeModule,
     HealthDataModule,
     CitiesModule,
     LeaderboardsModule,

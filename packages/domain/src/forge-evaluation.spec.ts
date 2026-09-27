@@ -1,5 +1,7 @@
 import {
+  clampForgeState,
   evaluateWeek,
+  FORGE_RULES_VERSION,
   FORGE_HOLD_WEEKS,
   FORGE_MAX_CLIMB,
   FORGE_MISSES_BEFORE_DROP,
@@ -34,6 +36,29 @@ describe('the rule constants', () => {
     expect(FORGE_MAX_CLIMB).toBe(3);
     expect(FORGE_MISSES_BEFORE_DROP).toBe(3);
     expect(FORGE_HOLD_WEEKS).toBe(4);
+  });
+});
+
+describe('FORGE_RULES_VERSION', () => {
+  it('is recorded on every stored week so a future rule change is a deliberate refold', () => {
+    expect(FORGE_RULES_VERSION).toBe(1);
+  });
+});
+
+describe('clampForgeState (a ladder that lost levels, ADR-057 decision 6)', () => {
+  it('leaves a state inside the ladder untouched', () => {
+    const inside = state({ level: 4, bestLevel: 5 });
+    expect(clampForgeState('nourish', inside)).toEqual(inside);
+  });
+
+  it('brings a level above the top down to the top, and the best level with it', () => {
+    const above = state({ level: 8, bestLevel: 9, missStreak: 1 });
+    expect(clampForgeState('nourish', above)).toEqual({ ...above, level: 6, bestLevel: 6 });
+  });
+
+  it('lets a clamped state be evaluated instead of throwing', () => {
+    const clamped = clampForgeState('nourish', state({ level: 8, bestLevel: 8 }));
+    expect(evaluateWeek('nourish', clamped, 6).levelAfter).toBe(6);
   });
 });
 

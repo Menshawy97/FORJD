@@ -45,6 +45,24 @@ export interface ForgeWeekResult {
   next: ForgeLadderState;
 }
 
+/**
+ * The rule set in force. Stored on every evaluated week, so a future change to the rules is a
+ * deliberate, recorded refold rather than a silent reinterpretation of the past.
+ */
+export const FORGE_RULES_VERSION = 1;
+
+/**
+ * If a ladder ever loses levels, an athlete above its new top is brought down to that top before
+ * their next week is evaluated (ADR-057 decision 6). Otherwise the state is returned unchanged.
+ */
+export function clampForgeState(ladder: ForgeLadder, state: ForgeLadderState): ForgeLadderState {
+  const top = maxLevelOf(ladder);
+  if (state.level <= top && state.bestLevel <= top) {
+    return state;
+  }
+  return { ...state, level: Math.min(state.level, top), bestLevel: Math.min(state.bestLevel, top) };
+}
+
 /** Every ladder starts at Ore 1. There is no backfill from history (ADR-057 decision 10). */
 export function initialForgeState(): ForgeLadderState {
   return { level: 1, bestLevel: 1, missStreak: 0, temperedHoldWeeks: 0, forgedStreak: 0, bestForgedStreak: 0 };
