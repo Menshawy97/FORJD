@@ -516,6 +516,34 @@ After the celebration, `forge-week.tsx` shows the week summary, and the week is 
 - No Share button for Nourish.
 - No shame wording, checked against a banned-word list.
 
+#### Phase 10 implementation plan (2026-09-27)
+
+Two PRs, each audited against the bug checklist before its review agent runs.
+
+**10A: pending weeks, the level-up toast, the week summary and acknowledgement.**
+- **`apiClient.ts`:** add `getPendingForgeWeeks()` (`GET /forge/weeks/pending`) and `ackForgeWeek(weekStart)` (`POST /forge/weeks/:weekStart/ack`).
+- **`features/forge/forge-copy.ts`** holds the pure wording, all derived from the server's week summary (`forgeWeekSummarySchema`):
+  - `weekRangeLabel`: "19 – 25 Sep", or "28 Sep – 4 Oct" across a month, with the Friday worked out by date arithmetic.
+  - `outcomeChip`: "Level 3 → 4", "+2 levels", "New band", "Held", "Eased to 8", "Cooled", or "Target met" at the top level.
+  - `outcomeDetail`: "5,100 of 5,000 kg · level 6 → 7", "· stays at level 5", or "· next target 190 min" (next target from `targetOf`). For a cooled week it's the agreed line.
+  - `toastLine`: "Struck. Volume rose to level 8." or "Struck. Distance climbed 2 levels to level 6." For Nourish, a plain "Nourish reached Ember." with no flavour line.
+- **`features/forge/use-pending-forge-weeks.ts`:**
+  - Fetches on Home focus, only while the flag is on, with the same stale-load and account guards as `useForgeWeek`.
+  - It doesn't fetch again while a week's flow is on screen.
+  - `acknowledge(weekStart)` has an in-flight guard, so a double tap sends once. On failure the week is closed for this app run only, and the server shows it again next launch.
+- **`features/forge/forge-toast.tsx`:** a new toast with the existing toast's exact values plus a 20 px badge. The existing `Toast` component isn't changed.
+- **`features/forge/week-summary-sheet.tsx`:** the approved sheet, with rows using decorative 30 px badges and Done disabled while busy.
+- **`features/forge/forge-celebrations.tsx`:** on Home, after the ScrollView, one week at a time and oldest first:
+  - The celebration plays first, then the sheet. A level-up shows the toast (and a light haptic, except for Nourish, which stays calm) for 1.9 s before the sheet opens.
+  - A new band or Forged week gets its full screen (10B); until 10B lands, those weeks go straight to the sheet.
+  - A cooled week, or one where nothing changed, goes straight to the sheet.
+
+**10B: the new-band and Forged full screens, and the share card.**
+- **Full screens:** Reanimated for the strike (scale .6 → 1.08 → 1 over 700 ms) and at most 12 sparks, with the finished frame under reduce motion.
+- **Haptics:** medium for a new band; heavy then success for Forged.
+- **Buttons:** Share and Continue. Continue opens the week's sheet.
+- **Share card:** 4:5, built on `share-card-shot.tsx` and `share-capture.ts`. It's offered only when `shareable`, and never for Nourish (the server already refuses it).
+
 ### Phase 11: Close
 
 - Update `analytics.md`, `domain-model.md` and the roadmap.
@@ -615,7 +643,7 @@ Build exactly what Phase 7 approved (items D, E, F, G, H, J and L, with the knoc
 - The week summary sheet. Done acknowledges the week, with a guard so a double tap can't send it twice.
 - The share card, reusing `share-card-shot.tsx` and `share-capture.ts`. It's never offered for Nourish, and needs a dev-client build to verify (R9).
 
-**Open question for the user** (asked 2026-09-27, no answer yet): should the program builder's weekday chips (`app/program-builder.tsx`, currently Monday first) also start on Saturday? That isn't mocked, so it needs approval first.
+**Answered 2026-09-27:** the program builder's days also start on Saturday ("All on Saturday"), done in #299. Every weekday list in the app now runs Saturday to Friday.
 
 ### Done: Phase 7, the UI mock-ups (an approval gate)
 
