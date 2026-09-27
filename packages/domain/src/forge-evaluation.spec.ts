@@ -8,6 +8,7 @@ import {
   ForgeLadderState,
   ForgeWeekResult,
   initialForgeState,
+  refoldLadder,
 } from './forge-evaluation';
 import { FORGE_LADDERS, ForgeLadder } from './forge-vocabulary';
 import { firstLevelOf, maxLevelOf, targetOf, topLevelOf } from './forge-tiers';
@@ -41,7 +42,8 @@ describe('the rule constants', () => {
 
 describe('FORGE_RULES_VERSION', () => {
   it('is recorded on every stored week so a future rule change is a deliberate refold', () => {
-    expect(FORGE_RULES_VERSION).toBe(1);
+    // 2: the 15-level table (ADR-058), under which every stored week was refolded.
+    expect(FORGE_RULES_VERSION).toBe(2);
   });
 });
 
@@ -87,7 +89,7 @@ describe('hitting the target', () => {
   });
 
   it('moves up one level when the total clears this target but not the next', () => {
-    const result = evaluateWeek('volume', state(), 2499);
+    const result = evaluateWeek('volume', state(), 2999);
 
     expect(result.outcome).toBe('hit');
     expect(result.levelAfter).toBe(2);
@@ -102,15 +104,15 @@ describe('hitting the target', () => {
 
 describe('overshooting', () => {
   it('moves to the highest level the total clears', () => {
-    // Level 1 (2 000 kg); 3 000 clears level 3's target, so the athlete lands on level 3.
-    const result = evaluateWeek('volume', state(), 3000);
+    // Level 1 (2 000 kg); 4 000 clears level 3's target, so the athlete lands on level 3.
+    const result = evaluateWeek('volume', state(), 4000);
 
     expect(result.outcome).toBe('overshoot');
     expect(result.levelAfter).toBe(3);
   });
 
   it('climbs +3 at most in one week', () => {
-    // 50 000 kg clears level 26, but a week moves three levels at most.
+    // 50 000 kg clears level 12, but a week moves three levels at most.
     const result = evaluateWeek('volume', state(), 50_000);
 
     expect(result.outcome).toBe('overshoot');
@@ -186,7 +188,7 @@ describe('Forge marks and band badges', () => {
   });
 
   it('awards a mark for every new level an overshoot carries the athlete through', () => {
-    const result = evaluateWeek('volume', state(), 3000);
+    const result = evaluateWeek('volume', state(), 4000);
 
     expect(result.rewards.filter((r) => r.type === 'forge_mark').map((r) => r.level)).toEqual([2, 3]);
   });
@@ -374,5 +376,59 @@ describe('every ladder', () => {
     evaluateWeek('volume', frozen, 0);
 
     expect(frozen).toEqual(before);
+  });
+});
+
+describe('refoldLadder (recomputing stored weeks under the current table, ADR-058 decision 4)', () => {
+  it('returns no weeks and the starting state for an empty history', () => {
+    expect(refoldLadder('volume', [])).toEqual({ results: [], state: initialForgeState() });
+  });
+
+  it('is exactly the week-by-week fold the evaluation job performs, from Ore 1', () => {
+    const totals = [2000, 0, 9000, 0, 0, 0, 30_000, 1e6];
+
+    const refolded = refoldLadder('volume', totals);
+
+    const expected = run('volume', totals);
+    expect(refolded.results).toEqual(expected);
+    expect(refolded.state).toEqual(last(expected).next);
+  });
+
+  it('carries miss streaks and drops across the whole history', () => {
+    const { results, state: after } = refoldLadder('volume', [2000, 3000, 0, 0, 0]);
+
+    expect(results.map((r) => r.outcome)).toEqual(['hit', 'hit', 'miss', 'miss', 'drop']);
+    expect(after.level).toBe(2);
+    expect(after.bestLevel).toBe(3);
+  });
+
+  it('only reaches Forged through the four-week Tempered hold', () => {
+    // Consistency: 1, 2, 3, 4 workouts climb Ore to Tempered. Weeks of 6 are then capped at the top
+    // of Tempered until four have been held there, and only the week after opens Forged.
+    const { results, state: after } = refoldLadder('consistency', [1, 2, 3, 4, 6, 6, 6, 6, 6]);
+
+    expect(results.map((r) => r.bandAfter)).toEqual([
+      'ore',
+      'ember',
+      'anvil',
+      'tempered',
+      'tempered',
+      'tempered',
+      'tempered',
+      'forged',
+      'forged',
+    ]);
+    expect(after.forgedStreak).toBe(2);
+  });
+
+  it('never ends above the ladder, however big the old weeks were', () => {
+    const { results, state: after } = refoldLadder('distance', Array.from({ length: 30 }, () => 1e6));
+
+    expect(after.level).toBe(maxLevelOf('distance'));
+    expect(results.every((r) => r.levelAfter <= maxLevelOf('distance'))).toBe(true);
+  });
+
+  it('refuses a bad stored total rather than folding nonsense into the athlete', () => {
+    expect(() => refoldLadder('volume', [2000, Number.NaN])).toThrow(RangeError);
   });
 });

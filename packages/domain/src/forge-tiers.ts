@@ -1,19 +1,19 @@
 import { FORGE_BANDS, ForgeBand, ForgeLadder } from './forge-vocabulary';
 
 /**
- * Weekly Forge's tier table: every level's weekly target, per ladder (ADR-057 decision 6).
+ * Weekly Forge's tier table: every level's weekly target, per ladder (ADR-057 decision 6, as
+ * amended by ADR-058).
  *
  * **This file is the single source.** The `forge:seed` script copies it into `forge_ladders` and
- * `forge_tiers` on every deploy, and no other code carries a target. The values were accepted by
- * the user on 2026-09-27 (docs/product/weekly-forge-plan.md).
+ * `forge_tiers` on every deploy, and no other code carries a target. The values were approved by
+ * the user on 2026-09-27 (docs/decisions/ADR-058-weekly-forge-fifteen-levels.md).
  *
- * - Ore is written by hand, so beginners see friendly round numbers.
- * - From Ember up, each level is 12% above the one before, computed on the unrounded chain and then
- *   rounded (Volume to 50 kg, Distance to 0.5 km, Minutes to 5 minutes), so every climb is equally
- *   hard. Ember has 7 levels and Anvil 8, so the band widths match the brief's anchors.
- * - Active minutes has only 3 levels each in Tempered and Forged: at 12% a level, six each would
- *   reach about 40 hours a week.
- * - Consistency is one step per band (Forged is 6 workouts, held through the 4-week gate).
+ * - Volume, Distance and Active minutes have 3 levels in every band, 15 in total.
+ * - Each band starts where a published source puts it (ADR-058 decision 2): 150 and 300 minutes
+ *   are the WHO weekly range, and Forged Distance starts at the 100 km the fastest marathoners run.
+ *   The steps inside a band are even round numbers.
+ * - Volume's kilograms are an estimate built from the sources' sets and reps (ADR-058 decision 3).
+ * - Consistency is one step per band, two in Ore (Forged is 6 workouts, held through the 4-week gate).
  * - Nourish counts days with meals logged, tops out at 6, and ends at Anvil.
  */
 export interface ForgeTier {
@@ -35,25 +35,25 @@ const TARGETS: Record<ForgeLadder, BandTargets> = {
     forged: [6],
   },
   volume: {
-    ore: [2000, 2500, 3000, 3500, 4200, 5000],
-    ember: [5600, 6250, 7000, 7850, 8800, 9850, 11050],
-    anvil: [12400, 13850, 15550, 17400, 19500, 21800, 24450, 27350],
-    tempered: [30650, 34350, 38450, 43050, 48250, 54000],
-    forged: [60500, 67750, 75900, 85000, 95200, 106600],
+    ore: [2000, 3000, 4000],
+    ember: [5500, 7500, 10000],
+    anvil: [13000, 17000, 22000],
+    tempered: [28000, 35000, 43000],
+    forged: [52000, 62000, 75000],
   },
   distance: {
-    ore: [3, 5, 7, 9, 11, 13],
-    ember: [14.5, 16.5, 18.5, 20.5, 23, 25.5, 28.5],
-    anvil: [32, 36, 40.5, 45, 50.5, 56.5, 63.5, 71],
-    tempered: [79.5, 89.5, 100, 112, 125.5, 140.5],
-    forged: [157.5, 176, 197.5, 221, 247.5, 277],
+    ore: [5, 8, 12],
+    ember: [16, 21, 27],
+    anvil: [34, 42, 52],
+    tempered: [63, 75, 88],
+    forged: [100, 115, 130],
   },
   minutes: {
-    ore: [60, 80, 100, 120, 135, 150],
-    ember: [170, 190, 210, 235, 265, 295],
-    anvil: [330, 370, 415, 465, 520, 585, 655],
-    tempered: [735, 820, 920],
-    forged: [1030, 1155, 1290],
+    ore: [60, 90, 120],
+    ember: [150, 190, 230],
+    anvil: [300, 360, 420],
+    tempered: [480, 560, 640],
+    forged: [720, 810, 900],
   },
   nourish: {
     ore: [1, 2],

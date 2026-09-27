@@ -62,12 +62,24 @@ class FakeTotals {
   }
 }
 
+/** Records each stale-check, and how many weeks had been written when it ran. */
+class FakeRefold {
+  calls: Array<{ userId: string; writesBefore: number }> = [];
+  constructor(private readonly store: FakeStore) {}
+
+  async refoldUserIfStale(userId: string): Promise<boolean> {
+    this.calls.push({ userId, writesBefore: this.store.writes.length });
+    return false;
+  }
+}
+
 const USER = "user-1";
 
 function build(totals = new FakeTotals()) {
   const store = new FakeStore();
-  const service = new ForgeEvaluationService(store, totals);
-  return { store, totals, service };
+  const refold = new FakeRefold(store);
+  const service = new ForgeEvaluationService(store, totals, refold);
+  return { store, totals, refold, service };
 }
 
 const levelOf = (store: FakeStore, ladder: ForgeLadder) =>
@@ -140,7 +152,8 @@ describe("ForgeEvaluationService", () => {
     });
 
     it("records every ladder's locked total and result for the week", async () => {
-      const totals = new FakeTotals({ "2026-09-26": { volume: 3000 } });
+      // Level 1 (2 000 kg); 4 000 clears level 3's goal too, so the week is an overshoot.
+      const totals = new FakeTotals({ "2026-09-26": { volume: 4000 } });
       const { store, service } = build(totals);
       await store.enroll(USER, "2026-09-26");
 
@@ -148,15 +161,28 @@ describe("ForgeEvaluationService", () => {
 
       const write = store.writes[0]!;
       expect(write.results.map((r) => r.ladder)).toEqual([...FORGE_LADDERS]);
-      expect(write.totals.volume).toBe(3000);
+      expect(write.totals.volume).toBe(4000);
       expect(write.results.find((r) => r.ladder === "volume")?.result.outcome).toBe("overshoot");
+    });
+
+    it("recomputes an athlete left on an older rules version before evaluating anything (ADR-058)", async () => {
+      // The backstop for a deploy window: an old API revision may close a week under the old table
+      // after that deploy's refold has already run.
+      const totals = new FakeTotals({ "2026-09-26": { volume: 2000 } });
+      const { store, refold, service } = build(totals);
+      await store.enroll(USER, "2026-09-26");
+
+      await service.evaluateDue(USER, new Date("2026-10-03T00:00:00Z"));
+
+      expect(refold.calls).toEqual([{ userId: USER, writesBefore: 0 }]);
+      expect(store.writes).toHaveLength(1);
     });
 
     it("catches up every closed week in order after a missed run", async () => {
       const totals = new FakeTotals({
         "2026-09-26": { volume: 2000 },
-        "2026-10-03": { volume: 2500 },
-        "2026-10-10": { volume: 3000 },
+        "2026-10-03": { volume: 3000 },
+        "2026-10-10": { volume: 4000 },
       });
       const { store, service } = build(totals);
       await store.enroll(USER, "2026-09-26");

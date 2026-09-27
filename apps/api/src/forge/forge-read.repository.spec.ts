@@ -68,7 +68,7 @@ describe("ForgeReadRepository", () => {
     ]);
 
     expect(await repository.ladders(userId)).toEqual([
-      { ladder: "volume", level: 7, missStreak: 0, forgedStreak: 0, bestForgedStreak: 0 },
+      { ladder: "volume", level: 7, missStreak: 0, temperedHoldWeeks: 0, forgedStreak: 0, bestForgedStreak: 0 },
     ]);
     expect(await repository.badges(userId)).toEqual([{ ladder: "volume", band: "ember" }]);
   });

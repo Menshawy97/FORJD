@@ -11,6 +11,7 @@ const row = (ladder: ForgeLadderRow["ladder"], level = 1): ForgeLadderRow => ({
   ladder,
   level,
   missStreak: 0,
+  temperedHoldWeeks: 0,
   forgedStreak: 0,
   bestForgedStreak: 0,
 });
@@ -91,13 +92,14 @@ describe("ForgeService", () => {
       expect(volume).toEqual({
         ladder: "volume",
         unit: "kg",
-        band: "ember",
+        band: "anvil",
         level: 7,
-        maxLevel: 33,
-        target: 5600,
+        maxLevel: 15,
+        target: 13000,
         total: 3000,
-        progress: 3000 / 5600,
+        progress: 3000 / 13000,
         missStreak: 0,
+        temperedHoldWeeks: 0,
         forgedStreak: 0,
         bestForgedStreak: 0,
         badges: ["ember"],
@@ -178,7 +180,7 @@ describe("ForgeService", () => {
       expect(block?.ladders.map((ladder) => ladder.ladder)).toEqual(["consistency", "volume", "distance", "minutes"]);
       expect(block?.ladders.find((ladder) => ladder.ladder === "volume")).toEqual({
         ladder: "volume",
-        band: "ember",
+        band: "anvil",
         level: 7,
         forgedStreak: 0,
         bestForgedStreak: 0,

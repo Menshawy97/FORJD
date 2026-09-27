@@ -26,27 +26,27 @@ type LadderWeek = ForgeWeekSummary['ladders'][number];
 const bandLadder: LadderWeek = {
   ladder: 'volume',
   outcome: 'hit',
-  levelBefore: 6,
-  levelAfter: 7,
+  levelBefore: 3,
+  levelAfter: 4,
   bandBefore: 'ore',
   bandAfter: 'ember',
-  total: 5100,
-  target: 5000,
+  total: 4100,
+  target: 4000,
   celebration: 'band',
-  rewards: [{ type: 'band_badge', level: 7, band: 'ember' }],
+  rewards: [{ type: 'band_badge', level: 4, band: 'ember' }],
 };
 
 const forgedLadder: LadderWeek = {
   ladder: 'distance',
   outcome: 'hit',
-  levelBefore: 27,
-  levelAfter: 28,
+  levelBefore: 12,
+  levelAfter: 13,
   bandBefore: 'tempered',
   bandAfter: 'forged',
-  total: 150,
-  target: 140.5,
+  total: 92,
+  target: 88,
   celebration: 'forged',
-  rewards: [{ type: 'forged', level: 28, band: 'forged' }],
+  rewards: [{ type: 'forged', level: 13, band: 'forged' }],
 };
 
 const summary = (ladder: LadderWeek, shareable = true): ForgeWeekSummary => ({
@@ -78,8 +78,8 @@ describe('ForgeCelebrationScreen', () => {
 
     expect(screen.getByText('New band · Volume')).toBeTruthy();
     expect(screen.getByText('Heat rising.')).toBeTruthy();
-    expect(screen.getByText('Volume reached Ember. Your target is now 5,600 kg a week.')).toBeTruthy();
-    expect(screen.getByText('Level 7')).toBeTruthy();
+    expect(screen.getByText('Volume reached Ember. Your target is now 5,500 kg a week.')).toBeTruthy();
+    expect(screen.getByText('Level 4')).toBeTruthy();
     expect(screen.getByText('Week of 19 Sep')).toBeTruthy();
 
     await act(async () => {
@@ -94,7 +94,7 @@ describe('ForgeCelebrationScreen', () => {
 
     expect(screen.getByText('Forged · Distance')).toBeTruthy();
     expect(screen.getByText('Forged.')).toBeTruthy();
-    expect(screen.getByText('Four weeks held in Tempered, and now Forged. 157.5 km a week.')).toBeTruthy();
+    expect(screen.getByText('Four weeks held in Tempered, and now Forged. 100 km a week.')).toBeTruthy();
     expect(screen.getByText('Forged 1 week')).toBeTruthy();
 
     await act(async () => {

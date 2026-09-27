@@ -9,6 +9,7 @@ export * from "./calendar-week";
 export * from "./exercise-vocabulary";
 export * from "./forge-celebration";
 export * from "./forge-evaluation";
+export * from "./forge-outlook";
 export * from "./forge-tiers";
 export * from "./forge-vocabulary";
 export * from "./forge-week";

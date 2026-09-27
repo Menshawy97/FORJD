@@ -80,6 +80,7 @@ export class ForgeService {
             total: totals[ladder],
             progress: Math.min(1, totals[ladder] / target),
             missStreak: row.missStreak,
+            temperedHoldWeeks: row.temperedHoldWeeks,
             forgedStreak: row.forgedStreak,
             bestForgedStreak: row.bestForgedStreak,
             badges: badgesFor(badges, ladder),

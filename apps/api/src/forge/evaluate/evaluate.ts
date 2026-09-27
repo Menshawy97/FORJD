@@ -5,6 +5,7 @@ import { Database } from "../../database/database.module";
 import { FeatureFlagsRepository, WEEKLY_FORGE_FLAG } from "../../feature-flags/feature-flags.repository";
 import { describeError } from "../../leaderboards/snapshot/snapshot";
 import { ForgeEvaluationService } from "../forge-evaluation.service";
+import { ForgeRefoldRepository } from "../forge-refold.repository";
 import { ForgeStateRepository } from "../forge-state.repository";
 import { ForgeTotalsRepository } from "../forge-totals.repository";
 
@@ -77,7 +78,7 @@ async function main(): Promise<void> {
       {
         flags: new FeatureFlagsRepository(db),
         users: state,
-        service: new ForgeEvaluationService(state, new ForgeTotalsRepository(db)),
+        service: new ForgeEvaluationService(state, new ForgeTotalsRepository(db), new ForgeRefoldRepository(db)),
       },
       new Date(),
     );

@@ -9,29 +9,29 @@ import {
   topLevelOf,
 } from './forge-tiers';
 
-// The table the user accepted on 2026-09-27 (docs/product/weekly-forge-plan.md). A change to any
-// value is a product decision, so these are pinned literally rather than recomputed here.
+// The table the user approved on 2026-09-27 (ADR-058, replacing ADR-057's 12%-per-level table). A
+// change to any value is a product decision, so these are pinned literally rather than recomputed.
 const ACCEPTED: Record<string, Record<string, number[]>> = {
   volume: {
-    ore: [2000, 2500, 3000, 3500, 4200, 5000],
-    ember: [5600, 6250, 7000, 7850, 8800, 9850, 11050],
-    anvil: [12400, 13850, 15550, 17400, 19500, 21800, 24450, 27350],
-    tempered: [30650, 34350, 38450, 43050, 48250, 54000],
-    forged: [60500, 67750, 75900, 85000, 95200, 106600],
+    ore: [2000, 3000, 4000],
+    ember: [5500, 7500, 10000],
+    anvil: [13000, 17000, 22000],
+    tempered: [28000, 35000, 43000],
+    forged: [52000, 62000, 75000],
   },
   distance: {
-    ore: [3, 5, 7, 9, 11, 13],
-    ember: [14.5, 16.5, 18.5, 20.5, 23, 25.5, 28.5],
-    anvil: [32, 36, 40.5, 45, 50.5, 56.5, 63.5, 71],
-    tempered: [79.5, 89.5, 100, 112, 125.5, 140.5],
-    forged: [157.5, 176, 197.5, 221, 247.5, 277],
+    ore: [5, 8, 12],
+    ember: [16, 21, 27],
+    anvil: [34, 42, 52],
+    tempered: [63, 75, 88],
+    forged: [100, 115, 130],
   },
   minutes: {
-    ore: [60, 80, 100, 120, 135, 150],
-    ember: [170, 190, 210, 235, 265, 295],
-    anvil: [330, 370, 415, 465, 520, 585, 655],
-    tempered: [735, 820, 920],
-    forged: [1030, 1155, 1290],
+    ore: [60, 90, 120],
+    ember: [150, 190, 230],
+    anvil: [300, 360, 420],
+    tempered: [480, 560, 640],
+    forged: [720, 810, 900],
   },
   consistency: {
     ore: [1, 2],
@@ -75,15 +75,22 @@ describe('FORGE_TIERS', () => {
   });
 
   it.each(['volume', 'distance', 'minutes'] as const)(
-    'grows %s by 12% a level from Ember up, within rounding',
+    'gives %s exactly three levels in every band, fifteen in all (ADR-058 decision 1)',
     (ladder) => {
-      const fromEmber = FORGE_TIERS[ladder].filter((tier) => tier.band !== 'ore').map((t) => t.target);
-      for (let i = 1; i < fromEmber.length; i += 1) {
-        expect(fromEmber[i]! / fromEmber[i - 1]!).toBeGreaterThan(1.1);
-        expect(fromEmber[i]! / fromEmber[i - 1]!).toBeLessThan(1.14);
+      for (const band of FORGE_BANDS) {
+        expect(FORGE_TIERS[ladder].filter((tier) => tier.band === band)).toHaveLength(3);
       }
+      expect(maxLevelOf(ladder)).toBe(15);
     },
   );
+
+  it('starts the bands where ADR-058 pins them to its sources', () => {
+    // WHO: 150 to 300 minutes a week (R1).
+    expect(targetOf('minutes', firstLevelOf('minutes', 'ember')!)).toBe(150);
+    expect(targetOf('minutes', firstLevelOf('minutes', 'anvil')!)).toBe(300);
+    // The fastest marathoners and the high-volume plans train at 100 km a week or more (R5, R6).
+    expect(targetOf('distance', firstLevelOf('distance', 'forged')!)).toBe(100);
+  });
 
   it('caps Nourish at six days a week, ending at Anvil with no Forged tier', () => {
     expect(maxLevelOf('nourish')).toBe(6);
@@ -95,14 +102,14 @@ describe('FORGE_TIERS', () => {
 describe('lookups', () => {
   it('reads the band and target of a level', () => {
     expect(bandOf('volume', 1)).toBe('ore');
-    expect(bandOf('volume', 7)).toBe('ember');
-    expect(targetOf('volume', 7)).toBe(5600);
+    expect(bandOf('volume', 4)).toBe('ember');
+    expect(targetOf('volume', 4)).toBe(5500);
     expect(bandOf('consistency', 6)).toBe('forged');
   });
 
   it('finds the first and top level of a band', () => {
-    expect(firstLevelOf('volume', 'anvil')).toBe(14);
-    expect(topLevelOf('volume', 'tempered')).toBe(27);
+    expect(firstLevelOf('volume', 'anvil')).toBe(7);
+    expect(topLevelOf('volume', 'tempered')).toBe(12);
     expect(topLevelOf('consistency', 'tempered')).toBe(5);
     expect(firstLevelOf('nourish', 'forged')).toBeNull();
     expect(topLevelOf('nourish', 'tempered')).toBeNull();

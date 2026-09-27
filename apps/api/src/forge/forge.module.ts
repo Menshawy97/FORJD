@@ -5,6 +5,7 @@ import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
 import { UsersModule } from '../users/users.module';
 import { ForgeEvaluationService } from './forge-evaluation.service';
 import { ForgeReadRepository } from './forge-read.repository';
+import { ForgeRefoldRepository } from './forge-refold.repository';
 import { ForgeStateRepository } from './forge-state.repository';
 import { ForgeTotalsRepository } from './forge-totals.repository';
 import { ForgeController } from './forge.controller';
@@ -19,7 +20,14 @@ import { TimeZoneController } from './time-zone.controller';
 @Module({
   imports: [AuthProviderModule, UsersModule, FeatureFlagsModule],
   controllers: [ForgeController, TimeZoneController],
-  providers: [ForgeTotalsRepository, ForgeStateRepository, ForgeReadRepository, ForgeEvaluationService, ForgeService],
+  providers: [
+    ForgeTotalsRepository,
+    ForgeStateRepository,
+    ForgeReadRepository,
+    ForgeRefoldRepository,
+    ForgeEvaluationService,
+    ForgeService,
+  ],
   exports: [ForgeService, ForgeEvaluationService],
 })
 export class ForgeModule {}
