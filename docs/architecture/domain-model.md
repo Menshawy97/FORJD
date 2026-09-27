@@ -84,6 +84,18 @@ computation stops being enough: `daily_metrics`, `weekly_metrics`, `progress_met
 
 **Platform** — `feature_flags`, `audit_logs`, `waitlist_signups`. Planned: `notifications`.
 
+**Weekly Forge** (ADR-057): weekly progression ladders computed only from data the app already logs.
+- **Rules:** pure, in `packages/domain` (`forge-*.ts`): five ladders (Consistency, Volume, Distance,
+  Active minutes, Nourish), bands Ore to Forged, and the tier table.
+- **Tables:** `forge_ladders` and `forge_tiers` (seeded from the domain table), `forge_user_ladders`
+  (current state), `forge_weeks` (locked weekly results), `forge_rewards` (append-only ledger) and
+  `forge_week_acks` (weeks seen).
+- **Rules that hold everywhere:** weeks run Saturday to Friday in the athlete's own zone (ADR-056,
+  `preferences.timezone`). Nourish is never public. There is no Forge ranking.
+- **Where it shows:** Home's card and celebrations, and the own and public profile sections. It
+  ships dark behind the `weekly_forge` feature flag. How results are stored and kept rebuildable is
+  in `analytics.md`.
+
 ## Design principles applied throughout
 
 - **Extensible observation over rigid columns** where external data shapes

@@ -477,6 +477,7 @@ The user asked for this feature to come out right the first time, with no repeat
 6. **Tokens only.** No inline hex or pixel values that aren't in the approved mock-up. Box-model styles go in NativeWind classes. The transform key is omitted rather than set to `undefined` (a past device crash).
 7. **Exactly the approved mock-up.** Check every size, gap and colour against the Phase 7 page and "Phase 7 outcome"; anything not mocked needs approval first. On a tab screen, the layout already ends at the top of the floating tab bar (`(tabs)/_layout.tsx`), so measure bottom offsets from there. Anything that must cover the tab bar (a sheet, a full-screen celebration) goes in a `Modal`. The Phase 10A review caught a toast that sat 64 px too high because of this.
 10. **Wording never breaks the screen.** A helper that turns server data into words must not throw on an unexpected value; it falls back to a plainer line.
+11. **Run the full mobile suite before every PR that touches a screen**, not only the affected suites. A new import on Home reaches every test that renders Home or the root layout. In #301, the share helpers' native modules (`expo-media-library`, view-shot) crashed 13 suites that the Forge tests never exercised. Native-module-heavy helpers are `require`d on first use, like `integrations/health/device-health-provider.ts`.
 8. **Privacy.** Nourish never appears on the public profile or a share card, and tests prove it.
 9. **Tests.** Test-first, with no wall-clock assertions (review S12). Time comes from the server's `daysLeft`, or is injected.
 
@@ -636,9 +637,29 @@ Two PRs, each audited against the bug checklist before its review agent runs.
 | 7 UI mock-ups | (artifacts) | **Approved**: see "Phase 7 outcome" |
 | 8A Saturday weeks in the app | #296 | Merged, `main` green |
 | 8B Forge foundations (tokens, badge, flags, time zone, haptics, reduce motion) | #297 | Merged, `main` green |
-| 9 Home card, own and public profile sections | #298 | Open: merge once CI is green, then watch `main` |
-| 10 Celebrations, week summary, share card | — | Next |
-| 11 Close | — | After 10 |
+| 9 Home card, own and public profile sections | #298 | Merged, `main` green |
+| — Program builder days start on Saturday | #299 | Merged, `main` green |
+| 10A Level-up toast, week summary, acknowledgement | #300 | Merged, `main` green |
+| 10B New-band and Forged screens, share card | #301 | Merged, `main` green |
+| 11 Close (architecture docs, roadmap) | with #301's follow-up docs PR | Done in docs |
+
+**What remains before users see it (the user's steps, not code):**
+1. A device walk on a dev-client build, Android and iOS. With the flag on in staging and a test account that has closed weeks, check:
+   - the Home card
+   - the profile sections
+   - the level-up toast
+   - the new-band and Forged screens: animation, haptics, and reduce motion on and off
+   - Share, which should produce a real image
+   - Continue into the summary, then Done
+2. Then switch `weekly_forge` on in staging, and later in production.
+
+**Recorded follow-ups (not blocking):**
+- the refold tool, for when the rules first change
+- the Nourish hard-delete lock gap
+- calendar-valid `weekStart` checks
+- a visibility policy for the feature-flag endpoint
+- the cap of 8 pending weeks
+- a Forged screen "best streak" chip, which needs a streak field on the week summary
 
 The `weekly_forge` flag is **off** on staging and production. The hourly workflow (`forge-evaluate.yml`) runs, but it evaluates nothing while the flag is off.
 
