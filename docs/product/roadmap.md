@@ -152,13 +152,20 @@ with the user's agreement.
 
 ## Weekly Forge — weekly progression ladders (new, 2026-09-27)
 
-**Status (2026-09-27): built, and dark.**
+**Status (2026-09-27): built and switched on.**
 - Phases 1–10 are merged (#289–#301), with `main` green after each.
 - Phase 11, the close, is done in docs.
-- The `weekly_forge` flag is **off** on staging and production.
-- **Before switching it on:** a device walk on a dev-client build (Android and iOS). It covers the share capture, the celebration-to-summary handoff and haptics. Then the flag goes on in staging first. Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
+- The `weekly_forge` flag is **on** in every environment, at the owner's request (migration 0031,
+  #303, deployed to staging and production). The owner has been walking it in Expo Go.
+- A dev-client device walk (share capture, celebration handoff, haptics) is still owed.
+- **Follow-up in progress: the explainer.** Fewer levels (15, anchored to published sources), a How
+  it works screen, a ladder screen with every level, sharing any time, and FAQ entries. Plan:
+  [weekly-forge-explainer-plan.md](weekly-forge-explainer-plan.md), phases X1–X5.
+
+Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
 ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md) (whole app),
-[ADR-057 Weekly Forge](../decisions/ADR-057-weekly-forge.md).
+[ADR-057 Weekly Forge](../decisions/ADR-057-weekly-forge.md),
+[ADR-058 15 levels, anchored to sources](../decisions/ADR-058-weekly-forge-fifteen-levels.md).
 
 **What it is:**
 - Five ladders: Consistency, Volume, Distance, Active minutes, and Nourish (Nourish is private).

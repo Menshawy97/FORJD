@@ -79,6 +79,65 @@ main city's board.
 
 ---
 
+## Weekly Forge
+
+Approved by the user on 2026-09-27 (mock-up section H of the Weekly Forge explainer, see
+[weekly-forge-explainer-plan.md](weekly-forge-explainer-plan.md)). Shown only while the
+`weekly_forge` flag is on. The goals' sources are in
+[ADR-058](../decisions/ADR-058-weekly-forge-fifteen-levels.md).
+
+### What is Weekly Forge?
+Five weekly goals, one for each ladder: Consistency, Volume, Distance, Active minutes and Nourish.
+Each ladder has a level, and your level sets that week's goal. Reach it and the goal grows. Miss it
+and you stay where you are.
+
+### What counts toward each ladder?
+Every completed workout you log counts, whether you used the live timer or added it afterwards.
+- Consistency: completed workouts.
+- Volume: weight × reps across all sets, warm-ups included.
+- Distance: kilometres from running workouts.
+- Active minutes: workout time, up to 2 hours per workout.
+- Nourish: days you logged at least one meal.
+
+### When does my week start and end?
+Weeks run Saturday to Friday and close at midnight on Friday night, in your own time zone. Anything
+you log after that counts toward the new week. Editing an old workout later doesn't change a week
+that has already closed.
+
+### How do I go up a level?
+Reach your goal by the end of the week and you go up one level. If your total also beats the goal of
+a higher level, you land on that level instead, up to 3 levels in one week.
+
+### What happens if I miss a week?
+Nothing is taken away. You keep your level and the same goal. Only after 3 misses in a row does your
+level ease down by one, and level 1 is the lowest it goes.
+
+### What are the bands, and where do the goals come from?
+Bands group the levels: Ore, Ember, Anvil, Tempered, then Forged. Volume, Distance and Active
+minutes have 3 levels in each band. Consistency has one or two, and Nourish stops at Anvil.
+
+The goals follow published guidance: the World Health Organization's 150–300 active minutes a
+week, the American College of Sports Medicine's strength training advice, and studies of how much
+recreational and competitive runners train. Tap a ladder on Home to see every level and its goal.
+
+### How do I reach Forged?
+Forged is the top band. To get there, stay in Tempered for 4 weeks in a row. While you're Forged, a
+missed week moves you back to the top of Tempered, and you can climb back from there. Nourish has no
+Forged band: it tops out at Anvil, 6 days a week.
+
+### Can I share my level?
+Yes. Open a ladder and tap Share, or tap its badge to replay your band's celebration and share from
+there. To share all your ladders on one card, tap Share on the Weekly Forge section of your Profile.
+Nourish is never included.
+
+### Who can see my levels?
+If your profile is public, other people can see your bands and levels for Consistency, Volume,
+Distance and Active minutes. Nourish is only ever shown to you. Weekly Forge has no ranking.
+
+For the full picture, open How it works from the Weekly Forge card on Home.
+
+---
+
 ## Your training numbers
 
 ### How is my estimated one-rep max worked out?

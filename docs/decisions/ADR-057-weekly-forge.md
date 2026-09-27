@@ -62,7 +62,9 @@ Two properties make this unlike everything ADR-029 covers:
      - Any miss while Forged drops the athlete to the top Tempered level and resets the hold.
      - Both the current and the best-ever Forged streaks are kept.
    - **Nourish** tops out at Anvil (6 days a week) and has no Forged tier.
-6. **Tier values are configuration.**
+6. **Tier values are configuration.** *Amended by [ADR-058](ADR-058-weekly-forge-fifteen-levels.md)
+   (2026-09-27): 15 levels anchored to published sources replace the 12%-per-level table, and
+   existing levels were recomputed from stored weeks rather than clamped.*
    - They live in `packages/domain/src/forge-tiers.ts`: hand-written for Ore, then 12% per level.
    - A `forge:seed` script upserts them into `forge_ladders` and `forge_tiers` on every deploy, as
      `programs:seed` does.
