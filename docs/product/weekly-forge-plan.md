@@ -475,7 +475,8 @@ The user asked for this feature to come out right the first time, with no repeat
 4. **One sign-in's state never reaches the next.** Anything cached per account is cleared in `forgetAccountPreferences` (review L5-2).
 5. **Accessibility.** Each row is one accessible node with a full spoken label; numbers aren't announced without their units. Tight numeric text caps font scaling at `TIGHT_TEXT_MAX_FONT_SCALE`. Anything tappable is at least 44 pt. Meaning never depends on colour alone (review S8).
 6. **Tokens only.** No inline hex or pixel values that aren't in the approved mock-up. Box-model styles go in NativeWind classes. The transform key is omitted rather than set to `undefined` (a past device crash).
-7. **Exactly the approved mock-up.** Check every size, gap and colour against the Phase 7 page and "Phase 7 outcome"; anything not mocked needs approval first.
+7. **Exactly the approved mock-up.** Check every size, gap and colour against the Phase 7 page and "Phase 7 outcome"; anything not mocked needs approval first. On a tab screen, the layout already ends at the top of the floating tab bar (`(tabs)/_layout.tsx`), so measure bottom offsets from there. Anything that must cover the tab bar (a sheet, a full-screen celebration) goes in a `Modal`. The Phase 10A review caught a toast that sat 64 px too high because of this.
+10. **Wording never breaks the screen.** A helper that turns server data into words must not throw on an unexpected value; it falls back to a plainer line.
 8. **Privacy.** Nourish never appears on the public profile or a share card, and tests prove it.
 9. **Tests.** Test-first, with no wall-clock assertions (review S12). Time comes from the server's `daysLeft`, or is injected.
 

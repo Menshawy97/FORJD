@@ -64,12 +64,28 @@ export function outcomeDetail(week: LadderWeek, unit: ForgeUnit): string {
   switch (week.outcome) {
     case 'miss':
       return `${amounts} · stays at level ${week.levelAfter}`;
-    case 'drop':
-      return `${amounts} · next target ${formatForgeAmount(targetOf(week.ladder, week.levelAfter), unit)} ${unitLabel(unit)}`;
+    case 'drop': {
+      const nextTarget = targetFor(week);
+      return nextTarget === null
+        ? `${amounts} · eased to level ${week.levelAfter}`
+        : `${amounts} · next target ${formatForgeAmount(nextTarget, unit)} ${unitLabel(unit)}`;
+    }
     default:
       return week.levelAfter > week.levelBefore
         ? `${amounts} · level ${week.levelBefore} → ${week.levelAfter}`
         : `${amounts} · top level`;
+  }
+}
+
+/**
+ * The target of the level a week eased down to. `targetOf` throws for a level outside the tier
+ * table; the server only sends real levels, but a wording helper must never be what crashes Home.
+ */
+function targetFor(week: LadderWeek): number | null {
+  try {
+    return targetOf(week.ladder, week.levelAfter);
+  } catch {
+    return null;
   }
 }
 

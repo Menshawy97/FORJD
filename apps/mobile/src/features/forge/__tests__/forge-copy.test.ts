@@ -91,6 +91,12 @@ describe('outcomeDetail', () => {
     ).toBe('150 of 210 min · next target 190 min');
   });
 
+  it('still reads sensibly, rather than crashing Home, if a level is outside the table', () => {
+    expect(outcomeDetail(week({ ladder: 'nourish', outcome: 'drop', total: 1, target: 6, levelBefore: 9, levelAfter: 8 }), 'days')).toBe(
+      '1 of 6 days · eased to level 8',
+    );
+  });
+
   it('uses the agreed line for cooling', () => {
     expect(outcomeDetail(week({ outcome: 'cooled' }), 'kg')).toBe('Cooled to Tempered. Hold 4 weeks to re-forge.');
   });
@@ -128,5 +134,21 @@ describe('toastLine', () => {
         week({ ladder: 'nourish', celebration: 'level', levelBefore: 3, levelAfter: 4, bandBefore: 'ember', bandAfter: 'ember' }),
       ),
     ).toBe('Nourish rose to level 4.');
+  });
+});
+
+// The plan's rule for this feature's copy: never shaming. Every line a closed week can produce,
+// for every outcome, is checked against words that blame, scold or dramatise a short week.
+describe('no shaming words', () => {
+  const BANNED = /\b(fail\w*|lost|lose|losing|bad|lazy|missed|miss|behind|shame\w*|weak\w*|quit\w*|broke\w*|slack\w*|ruin\w*|penalt\w*)\b/i;
+  const outcomes: LadderWeek['outcome'][] = ['hit', 'overshoot', 'miss', 'drop', 'cooled'];
+
+  it.each(outcomes)('keeps every %s line calm', (outcome) => {
+    for (const ladder of ['volume', 'nourish'] as const) {
+      const w = week({ ladder, outcome, levelBefore: 5, levelAfter: outcome === 'drop' ? 4 : 5 });
+      for (const line of [outcomeChip(w).label, outcomeDetail(w, 'kg'), toastLine(w)]) {
+        expect(line).not.toMatch(BANNED);
+      }
+    }
   });
 });

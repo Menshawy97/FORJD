@@ -107,3 +107,16 @@ describe('ForgeCelebrations', () => {
     expect(acknowledge).toHaveBeenCalledWith('2026-09-19');
   });
 });
+
+describe('ForgeToast placement', () => {
+  // Home is a tab screen: its layout already ends at the top of the floating tab bar
+  // (`(tabs)/_layout.tsx` pads each scene by the bar's height). The approved mock-up puts the toast
+  // 18 px above the tab bar (96 px up, over a 78 px bar), so on Home it sits 18 px up, not 96.
+  it('sits 18 px above the tab bar, as in the approved mock-up', async () => {
+    const { ForgeToast } = require('../forge-toast');
+    const view = await render(<ForgeToast ladder="volume" band="ember" message="Struck." />);
+    const pill = view.toJSON() as { props: { className?: string } };
+
+    expect(pill.props.className).toContain('bottom-[18px]');
+  });
+});
