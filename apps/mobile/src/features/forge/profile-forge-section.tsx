@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
@@ -25,7 +26,7 @@ export function ProfileForgeSection() {
         className="mb-[9px] mt-[22px] font-archivo text-section-label font-semibold uppercase text-label">
         Weekly Forge
       </Text>
-      <ForgeProfileRows ladders={forge.ladders} />
+      <ForgeProfileRows ladders={forge.ladders} onPressLadder={(ladder) => router.push(`/forge/${ladder}`)} />
       <Text className="mt-[10px] font-archivo text-legal">Nourish is only ever shown to you.</Text>
     </View>
   );

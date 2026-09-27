@@ -81,7 +81,7 @@ describe('WeeklyForgeSection', () => {
     expect(screen.getByLabelText('Volume: not loaded yet')).toBeTruthy();
 
     await act(async () => resolve(forge(3)));
-    expect(screen.getByLabelText('Volume, Ember level 7: 3,000 of 5,600 kg')).toBeTruthy();
+    expect(screen.getByLabelText('Volume, Ember level 7: 3,000 of 5,600 kg. Opens all levels')).toBeTruthy();
     expect(screen.getByText('3 days left')).toBeTruthy();
   });
 

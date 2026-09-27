@@ -1,8 +1,10 @@
 import type { ForgeLadderProgress, ForgeResponse } from '@forjd/contracts';
 import { FORGE_BAND_NAMES, FORGE_LADDER_NAMES, FORGE_LADDERS, type ForgeLadder } from '@forjd/domain';
-import { Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { pressGhost } from '@/components/press-feedback';
 import { colors } from '@/theme/tokens';
 import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 import { BAND_FINISH } from './band-finish';
@@ -34,8 +36,18 @@ export function WeeklyForgeCard({ forge }: WeeklyForgeCardProps) {
 
   return (
     <View>
-      <View className="mb-[9px] mt-5 flex-row items-baseline justify-between">
-        <Text className="font-archivo text-section-label font-semibold uppercase text-label">Weekly Forge</Text>
+      <View className="mb-[9px] mt-5 flex-row items-center justify-between">
+        <View className="flex-row items-center gap-[6px]">
+          <Text className="font-archivo text-section-label font-semibold uppercase text-label">Weekly Forge</Text>
+          {/* Mock-up B: a 14 px glyph with a 44 x 44 tap area (15 px of slop on every side). */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="How Weekly Forge works"
+            hitSlop={15}
+            onPress={() => router.push('/forge/how-it-works')}>
+            <Icon name="info" size={14} color={colors.metadata} />
+          </Pressable>
+        </View>
         {forge ? (
           <Text
             maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
@@ -70,10 +82,11 @@ function LadderRow({ progress, isFirst }: { progress: ForgeLadderProgress; isFir
   const spoken = `${name}, ${band} level ${progress.level}: ${total} of ${target} ${progress.unit}${isMet ? ', target met' : ''}`;
 
   return (
-    <View
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={spoken}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${spoken}. Opens all levels`}
+      onPress={() => router.push(`/forge/${progress.ladder}`)}
+      style={pressGhost}
       className={`flex-row items-center gap-3 px-[14px] py-3 ${isFirst ? '' : 'border-t border-borderFaint'}`}>
       <ForgeMark ladder={progress.ladder} band={progress.band} size={34} decorative />
       <View className="min-w-0 flex-1">
@@ -105,7 +118,7 @@ function LadderRow({ progress, isFirst }: { progress: ForgeLadderProgress; isFir
           ) : null}
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

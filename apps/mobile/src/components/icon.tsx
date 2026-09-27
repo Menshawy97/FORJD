@@ -122,6 +122,12 @@ const GLYPHS = {
   },
   chevron: { viewBox: '0 0 24 24', shapes: [path('m9.6 6.4 5 5.6-5 5.6')] },
   check: { viewBox: '0 0 24 24', shapes: [path('m5.6 12.4 4 4 8.8-9')] },
+  // The Weekly Forge card's "How it works" icon (weekly-forge-explainer-plan.md, mock-up B): the
+  // clock's circle with a stem and a dot, at the app's 1.6 line.
+  info: {
+    viewBox: '0 0 24 24',
+    shapes: [{ kind: 'circle', cx: 12, cy: 12, r: 7.8 }, path('M12 11v5'), path('M12 8.1v.01')],
+  },
   clock: {
     viewBox: '0 0 24 24',
     shapes: [{ kind: 'circle', cx: 12, cy: 12, r: 7.8 }, path('M12 7.6V12l3 2')],
