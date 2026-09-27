@@ -39,9 +39,12 @@ import { ForgeShareCard } from './forge-share-card';
  *   the headline (`welcome-headline`, 14 px below), the line under it (14 px, 1.5), two chips 18 px
  *   below, and Share and Continue pinned to the bottom, 9 px apart.
  * - The haptic lands with the badge: medium for a new band, heavy then success for Forged.
- * - Reduce motion: the finished frame at once, no sparks, and the haptic still plays.
- * - Share, only when the week may be shared and outside Expo Go: captures an off-screen 4:5 card
- *   and opens the share sheet. A second tap while it opens is ignored; a failure says so.
+ * - Reduce motion: the finished frame at once, no sparks, and the haptic still plays. Nothing moves
+ *   until the phone has said whether it wants reduced motion, so no frame of animation slips out.
+ * - Share, only when the week may be shared and outside Expo Go: captures the 4:5 card and opens the
+ *   share sheet. A second tap while it opens is ignored; a failure says so. The card is laid out on
+ *   screen, hidden under the celebration's own opaque layer, the way `nutrition-share.tsx` captures
+ *   on screen: `react-native-view-shot` is not reliable for views parked outside the window.
  *
  * Animated with React Native's own `Animated` and the native driver, like the brand splash.
  */
@@ -64,7 +67,20 @@ const HALO_INSET = 18;
 const MARK_SIZE = 132;
 const SHARE_ERROR = 'Could not open the share sheet. Please try again.';
 const ZERO_INSETS = { top: 0, bottom: 0, left: 0, right: 0 };
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
 
 /** The sparks' angles and distances, fixed: the mock-up's `i * 30 + 8` degrees and 78-106 px. */
 const SPARKS = Array.from({ length: SPARK_COUNT }, (_, i) => {
@@ -73,7 +89,11 @@ const SPARKS = Array.from({ length: SPARK_COUNT }, (_, i) => {
   return { key: i, x: Math.sin(radians) * distance, y: -Math.cos(radians) * distance };
 });
 
-export function ForgeCelebrationScreen({ week, ladderWeek, onContinue }: ForgeCelebrationScreenProps) {
+export function ForgeCelebrationScreen({
+  week,
+  ladderWeek,
+  onContinue,
+}: ForgeCelebrationScreenProps) {
   const isForged = ladderWeek.bandAfter === 'forged';
   const reduceMotion = useReduceMotion();
   const insets = useContext(SafeAreaInsetsContext) ?? ZERO_INSETS;
@@ -94,6 +114,9 @@ export function ForgeCelebrationScreen({ week, ladderWeek, onContinue }: ForgeCe
         void (isForged ? hapticForged() : hapticNewBand());
       }
     };
+    if (reduceMotion === null) {
+      return undefined;
+    }
     if (reduceMotion) {
       strike.setValue(1);
       halo.setValue(1);
@@ -101,8 +124,18 @@ export function ForgeCelebrationScreen({ week, ladderWeek, onContinue }: ForgeCe
       return undefined;
     }
     const animation = Animated.parallel([
-      Animated.timing(strike, { toValue: 1, duration: STRIKE_MS, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(halo, { toValue: 1, duration: HALO_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(strike, {
+        toValue: 1,
+        duration: STRIKE_MS,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(halo, {
+        toValue: 1,
+        duration: HALO_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
       Animated.timing(sparks, {
         toValue: 1,
         duration: SPARK_MS,
@@ -152,138 +185,34 @@ export function ForgeCelebrationScreen({ week, ladderWeek, onContinue }: ForgeCe
   const line = isForged
     ? `Four weeks held in Tempered, and now Forged.${target ? ` ${target} a week.` : ''}`
     : `${name} reached ${FORGE_BAND_NAMES[ladderWeek.bandAfter]}.${target ? ` Your target is now ${target} a week.` : ''}`;
-  const chips = [isForged ? 'Forged 1 week' : `Level ${ladderWeek.levelAfter}`, `Week of ${weekStartLabel(week.weekStart)}`];
+  const chips = [
+    isForged ? 'Forged 1 week' : `Level ${ladderWeek.levelAfter}`,
+    `Week of ${weekStartLabel(week.weekStart)}`,
+  ];
   const light = BAND_FINISH[ladderWeek.bandAfter].light;
   const canShare = week.shareable && !isExpoGo();
 
   return (
-    <Modal visible transparent={false} animationType="fade" statusBarTranslucent onRequestClose={onContinue}>
+    <Modal
+      visible
+      transparent={false}
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onContinue}
+    >
       <View className="flex-1 bg-screenBg">
-        <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Defs>
-            <RadialGradient id={glowId} cx="0.5" cy="-0.1" rx="1.3" ry="0.9" gradientUnits="objectBoundingBox">
-              <Stop
-                offset="0"
-                stopColor={isForged ? colors.forgeHeatWhite : colors.accent}
-                stopOpacity={isForged ? 0.18 : 0.2}
-              />
-              <Stop offset="0.55" stopColor={colors.screenBg} stopOpacity="1" />
-            </RadialGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${glowId})`} />
-        </Svg>
-
-        <View
-          className="flex-1 items-center px-[26px]"
-          style={{ paddingTop: insets.top + 40, paddingBottom: insets.bottom + 28 }}>
-          <Text className="font-archivo text-section-label font-semibold uppercase text-label">
-            {isForged ? `Forged · ${name}` : `New band · ${name}`}
-          </Text>
-
-          <View className="mb-2 mt-[34px] items-center justify-center" style={{ width: STAGE, height: STAGE }}>
-            <Animated.View
-              pointerEvents="none"
-              importantForAccessibility="no-hide-descendants"
-              accessibilityElementsHidden
-              style={[
-                styles.halo,
-                {
-                  opacity: halo.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 1, 0.85] }),
-                  transform: [{ scale: halo.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }],
-                },
-              ]}>
-              <Svg width="100%" height="100%">
-                <Defs>
-                  <RadialGradient id={`${glowId}-halo`} cx="50%" cy="50%" r="50%">
-                    <Stop offset="0" stopColor={isForged ? colors.forgeHeatWhite : light} stopOpacity={isForged ? 0.34 : 0.28} />
-                    <Stop offset="1" stopColor={isForged ? colors.forgeHeatWhite : light} stopOpacity="0" />
-                  </RadialGradient>
-                </Defs>
-                <Circle cx="50%" cy="50%" r="50%" fill={`url(#${glowId}-halo)`} />
-              </Svg>
-            </Animated.View>
-
-            {reduceMotion ? null : (
-              <View
-                pointerEvents="none"
-                importantForAccessibility="no-hide-descendants"
-                accessibilityElementsHidden
-                style={StyleSheet.absoluteFill}>
-                {SPARKS.map((spark) => (
-                  <Animated.View
-                    key={spark.key}
-                    testID="forge-spark"
-                    style={[
-                      styles.spark,
-                      {
-                        backgroundColor: light,
-                        opacity: sparks.interpolate({ inputRange: [0, 0.01, 1], outputRange: [0, 1, 0] }),
-                        transform: [
-                          { translateX: sparks.interpolate({ inputRange: [0, 1], outputRange: [0, spark.x] }) },
-                          { translateY: sparks.interpolate({ inputRange: [0, 1], outputRange: [0, spark.y] }) },
-                        ],
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-            )}
-
-            <Animated.View
-              style={{
-                opacity: strike.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1, 1] }),
-                transform: [{ scale: strike.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.6, 1.08, 1] }) }],
-              }}>
-              <ForgeMark ladder={ladderWeek.ladder} band={ladderWeek.bandAfter} size={MARK_SIZE} />
-            </Animated.View>
-          </View>
-
-          <Text accessibilityRole="header" className="mb-2 mt-[14px] text-center font-archivo text-welcome-headline font-bold text-text">
-            {isForged ? FORGE_COPY.forged : FORGE_COPY.band}
-          </Text>
-          <Text className="max-w-[280px] text-center font-archivo text-[14px] leading-[21px] text-textSecondary">{line}</Text>
-
-          <View className="mt-[18px] flex-row flex-wrap justify-center gap-[10px]">
-            {chips.map((chip) => (
-              <Text
-                key={chip}
-                className="rounded-chip border border-border bg-elevated2 px-[11px] py-2 font-archivo text-chip font-semibold text-textSecondary"
-                style={{ fontVariant: ['tabular-nums'] }}>
-                {chip}
-              </Text>
-            ))}
-          </View>
-
-          <View className="mt-auto w-full gap-[9px] pt-[30px]">
-            {canShare ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Share"
-                onPress={() => void share()}
-                style={pressScale}
-                className="h-[52px] w-full flex-row items-center justify-center gap-[9px] rounded-button bg-accentDark shadow-primary-button">
-                <Icon name="share" size={18} color={colors.onAccent} />
-                <Text className="font-archivo text-button font-bold text-white">Share</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Continue"
-              onPress={onContinue}
-              style={pressScale}
-              className="h-[52px] w-full items-center justify-center rounded-button border border-border">
-              <Text className="font-archivo text-button font-bold text-text">Continue</Text>
-            </Pressable>
-          </View>
-        </View>
-
         {canShare ? (
           <View
             pointerEvents="none"
             importantForAccessibility="no-hide-descendants"
             accessibilityElementsHidden
-            style={styles.offscreen}>
-            <ShareCardShot ref={shotRef} options={{ format: 'jpg', quality: 0.92, width: 1080, height: 1350 }}>
+            collapsable={false}
+            style={styles.shareCard}
+          >
+            <ShareCardShot
+              ref={shotRef}
+              options={{ format: 'jpg', quality: 0.92, width: 1080, height: 1350 }}
+            >
               <ForgeShareCard
                 ladder={ladderWeek.ladder}
                 band={ladderWeek.bandAfter}
@@ -294,7 +223,187 @@ export function ForgeCelebrationScreen({ week, ladderWeek, onContinue }: ForgeCe
           </View>
         ) : null}
 
-        <Toast message={toast.message} />
+        <View style={StyleSheet.absoluteFill} className="bg-screenBg">
+          <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Defs>
+              <RadialGradient
+                id={glowId}
+                cx="0.5"
+                cy="-0.1"
+                rx="1.3"
+                ry="0.9"
+                gradientUnits="objectBoundingBox"
+              >
+                <Stop
+                  offset="0"
+                  stopColor={isForged ? colors.forgeHeatWhite : colors.accent}
+                  stopOpacity={isForged ? 0.18 : 0.2}
+                />
+                <Stop offset="0.55" stopColor={colors.screenBg} stopOpacity="1" />
+              </RadialGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${glowId})`} />
+          </Svg>
+
+          <View
+            className="flex-1 items-center px-[26px]"
+            style={{ paddingTop: insets.top + 40, paddingBottom: insets.bottom + 28 }}
+          >
+            <Text className="font-archivo text-section-label font-semibold uppercase text-label">
+              {isForged ? `Forged · ${name}` : `New band · ${name}`}
+            </Text>
+
+            <View
+              className="mb-2 mt-[34px] items-center justify-center"
+              style={{ width: STAGE, height: STAGE }}
+            >
+              <Animated.View
+                pointerEvents="none"
+                importantForAccessibility="no-hide-descendants"
+                accessibilityElementsHidden
+                style={[
+                  styles.halo,
+                  {
+                    opacity: halo.interpolate({
+                      inputRange: [0, 0.4, 1],
+                      outputRange: [0, 1, 0.85],
+                    }),
+                    transform: [
+                      { scale: halo.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) },
+                    ],
+                  },
+                ]}
+              >
+                <Svg width="100%" height="100%">
+                  <Defs>
+                    <RadialGradient id={`${glowId}-halo`} cx="50%" cy="50%" r="50%">
+                      <Stop
+                        offset="0"
+                        stopColor={isForged ? colors.forgeHeatWhite : light}
+                        stopOpacity={isForged ? 0.34 : 0.28}
+                      />
+                      <Stop
+                        offset="1"
+                        stopColor={isForged ? colors.forgeHeatWhite : light}
+                        stopOpacity="0"
+                      />
+                    </RadialGradient>
+                  </Defs>
+                  <Circle cx="50%" cy="50%" r="50%" fill={`url(#${glowId}-halo)`} />
+                </Svg>
+              </Animated.View>
+
+              {reduceMotion !== false ? null : (
+                <View
+                  pointerEvents="none"
+                  importantForAccessibility="no-hide-descendants"
+                  accessibilityElementsHidden
+                  style={StyleSheet.absoluteFill}
+                >
+                  {SPARKS.map((spark) => (
+                    <Animated.View
+                      key={spark.key}
+                      testID="forge-spark"
+                      style={[
+                        styles.spark,
+                        {
+                          backgroundColor: light,
+                          opacity: sparks.interpolate({
+                            inputRange: [0, 0.01, 1],
+                            outputRange: [0, 1, 0],
+                          }),
+                          transform: [
+                            {
+                              translateX: sparks.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, spark.x],
+                              }),
+                            },
+                            {
+                              translateY: sparks.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, spark.y],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+
+              <Animated.View
+                style={{
+                  opacity: strike.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1, 1] }),
+                  transform: [
+                    {
+                      scale: strike.interpolate({
+                        inputRange: [0, 0.6, 1],
+                        outputRange: [0.6, 1.08, 1],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <ForgeMark
+                  ladder={ladderWeek.ladder}
+                  band={ladderWeek.bandAfter}
+                  size={MARK_SIZE}
+                  decorative
+                />
+              </Animated.View>
+            </View>
+
+            <Text
+              accessibilityRole="header"
+              className="mb-2 mt-[14px] text-center font-archivo text-welcome-headline font-bold text-text"
+            >
+              {isForged ? FORGE_COPY.forged : FORGE_COPY.band}
+            </Text>
+            <Text className="max-w-[280px] text-center font-archivo text-[14px] leading-[21px] text-textSecondary">
+              {line}
+            </Text>
+
+            <View className="mt-[18px] flex-row flex-wrap justify-center gap-[10px]">
+              {chips.map((chip) => (
+                <Text
+                  key={chip}
+                  className="rounded-chip border border-border bg-elevated2 px-[11px] py-2 font-archivo text-chip font-semibold text-textSecondary"
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {chip}
+                </Text>
+              ))}
+            </View>
+
+            <View className="mt-auto w-full gap-[9px] pt-[30px]">
+              {canShare ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Share"
+                  onPress={() => void share()}
+                  style={pressScale}
+                  className="h-[52px] w-full flex-row items-center justify-center gap-[9px] rounded-button bg-accentDark shadow-primary-button"
+                >
+                  <Icon name="share" size={18} color={colors.onAccent} />
+                  <Text className="font-archivo text-button font-bold text-white">Share</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Continue"
+                onPress={onContinue}
+                style={pressScale}
+                className="h-[52px] w-full items-center justify-center rounded-button border border-border"
+              >
+                <Text className="font-archivo text-button font-bold text-text">Continue</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <Toast message={toast.message} />
+        </View>
       </View>
     </Modal>
   );
@@ -317,7 +426,21 @@ function weekStartLabel(weekStart: string): string {
 }
 
 const styles = StyleSheet.create({
-  halo: { position: 'absolute', top: HALO_INSET, left: HALO_INSET, right: HALO_INSET, bottom: HALO_INSET },
-  spark: { position: 'absolute', left: STAGE / 2 - 2, top: STAGE / 2 - 2, width: 4, height: 4, borderRadius: 2 },
-  offscreen: { position: 'absolute', left: -10000, top: 0 },
+  halo: {
+    position: 'absolute',
+    top: HALO_INSET,
+    left: HALO_INSET,
+    right: HALO_INSET,
+    bottom: HALO_INSET,
+  },
+  spark: {
+    position: 'absolute',
+    left: STAGE / 2 - 2,
+    top: STAGE / 2 - 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  /** On screen but under the opaque celebration layer drawn after it: captured, never seen. */
+  shareCard: { position: 'absolute', left: 0, top: 0 },
 });

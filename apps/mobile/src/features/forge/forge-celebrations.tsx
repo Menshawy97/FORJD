@@ -1,6 +1,6 @@
 import type { ForgeWeekSummary } from '@forjd/contracts';
 import { FORGE_LADDER_IS_PUBLIC } from '@forjd/domain';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { hapticLevelUp } from '@/components/haptics';
 import { TOAST_DURATION_MS } from '@/components/toast';
@@ -24,17 +24,33 @@ import { WeekSummarySheet } from './week-summary-sheet';
  * Rendered after Home's ScrollView, so the toast and the sheet sit over the screen. Everything it
  * shows comes from `usePendingForgeWeeks`, which renders nothing while the feature is off.
  */
+/** Long enough for a fading Modal to finish dismissing before the next one is presented. */
+export const MODAL_HANDOFF_MS = 350;
+
 export function ForgeCelebrations() {
   const { current, isAcking, acknowledge } = usePendingForgeWeeks();
   const [screenWeek, setScreenWeek] = useState<string | null>(null);
   const [toastWeek, setToastWeek] = useState<string | null>(null);
   const [sheetWeek, setSheetWeek] = useState<string | null>(null);
+  const handoff = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (handoff.current) {
+        clearTimeout(handoff.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!current) {
       return undefined;
     }
-    if ((current.biggest === 'band' || current.biggest === 'forged') && biggestLadderWeek(current)) {
+    if (
+      (current.biggest === 'band' || current.biggest === 'forged') &&
+      biggestLadderWeek(current)
+    ) {
       setScreenWeek(current.weekStart);
       return undefined;
     }
@@ -68,22 +84,41 @@ export function ForgeCelebrations() {
         week={current}
         ladderWeek={celebrated}
         onContinue={() => {
+          // One Modal at a time: the celebration closes, and the sheet opens once its dismissal has
+          // finished. Presenting a Modal while another is still animating away can drop it on iOS.
           setScreenWeek(null);
-          setSheetWeek(current.weekStart);
+          const weekStart = current.weekStart;
+          handoff.current = setTimeout(() => setSheetWeek(weekStart), MODAL_HANDOFF_MS);
         }}
       />
     );
   }
   if (toastWeek === current.weekStart && celebrated) {
-    return <ForgeToast ladder={celebrated.ladder} band={celebrated.bandAfter} message={toastLine(celebrated)} />;
+    return (
+      <ForgeToast
+        ladder={celebrated.ladder}
+        band={celebrated.bandAfter}
+        message={toastLine(celebrated)}
+      />
+    );
   }
   if (sheetWeek === current.weekStart) {
-    return <WeekSummarySheet week={current} isBusy={isAcking} onDone={() => void acknowledge(current.weekStart)} />;
+    return (
+      <WeekSummarySheet
+        week={current}
+        isBusy={isAcking}
+        onDone={() => void acknowledge(current.weekStart)}
+      />
+    );
   }
   return null;
 }
 
 /** The ladder that earned the week's one celebration, if any. */
-function biggestLadderWeek(week: ForgeWeekSummary): ForgeWeekSummary['ladders'][number] | undefined {
-  return week.biggestLadder === null ? undefined : week.ladders.find((ladder) => ladder.ladder === week.biggestLadder);
+function biggestLadderWeek(
+  week: ForgeWeekSummary,
+): ForgeWeekSummary['ladders'][number] | undefined {
+  return week.biggestLadder === null
+    ? undefined
+    : week.ladders.find((ladder) => ladder.ladder === week.biggestLadder);
 }

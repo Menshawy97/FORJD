@@ -18,7 +18,7 @@ jest.mock('../forge-celebration-screen', () => {
 
 import { hapticLevelUp } from '@/components/haptics';
 import { TOAST_DURATION_MS } from '@/components/toast';
-import { ForgeCelebrations } from '../forge-celebrations';
+import { ForgeCelebrations, MODAL_HANDOFF_MS } from '../forge-celebrations';
 import { usePendingForgeWeeks } from '../use-pending-forge-weeks';
 
 const hook = usePendingForgeWeeks as jest.Mock;
@@ -115,7 +115,13 @@ describe('ForgeCelebrations', () => {
     expect(screen.queryByText('Week of 19 – 25 Sep')).toBeNull();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    // One Modal at a time: nothing opens until the celebration has finished closing.
     expect(screen.queryByText('Full screen for volume')).toBeNull();
+    expect(screen.queryByText('Week of 19 – 25 Sep')).toBeNull();
+
+    await act(async () => {
+      jest.advanceTimersByTime(MODAL_HANDOFF_MS);
+    });
     expect(screen.getByText('Week of 19 – 25 Sep')).toBeTruthy();
     expect(hapticLevelUp).not.toHaveBeenCalled();
   });

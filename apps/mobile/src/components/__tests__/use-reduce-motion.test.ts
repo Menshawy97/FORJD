@@ -23,6 +23,14 @@ describe('useReduceMotion', () => {
 
   afterEach(() => jest.restoreAllMocks());
 
+  it('is unknown (null) until the phone answers, so nothing moves on a guess', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockReturnValue(new Promise<boolean>(() => undefined));
+
+    const { result } = await renderHook(() => useReduceMotion());
+
+    expect(result.current).toBeNull();
+  });
+
   it('reports the phone setting', async () => {
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
 
@@ -48,7 +56,6 @@ describe('useReduceMotion', () => {
 
     const { result } = await renderHook(() => useReduceMotion());
 
-    await waitFor(() => expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalled());
-    expect(result.current).toBe(false);
+    await waitFor(() => expect(result.current).toBe(false));
   });
 });

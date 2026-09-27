@@ -1,13 +1,13 @@
 // The new-band and Forged full screens, as approved in the Phase 7 mock-ups (items E, F and L, with
 // the 10B design notes in docs/product/weekly-forge-plan.md).
 import type { ForgeWeekSummary } from '@forjd/contracts';
+import { AccessibilityInfo } from 'react-native';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 jest.mock('@/components/haptics', () => ({
   hapticNewBand: jest.fn(async () => undefined),
   hapticForged: jest.fn(async () => undefined),
 }));
-jest.mock('@/components/use-reduce-motion', () => ({ useReduceMotion: jest.fn(() => false) }));
 jest.mock('@/media/share-capture', () => ({ isExpoGo: jest.fn(() => false), shareShareCard: jest.fn() }));
 jest.mock('@/media/share-card-shot', () => {
   const { View } = require('react-native');
@@ -18,7 +18,6 @@ jest.mock('@/auth/apiClient', () => ({ getMe: jest.fn() }));
 
 import { getMe } from '@/auth/apiClient';
 import { hapticForged, hapticNewBand } from '@/components/haptics';
-import { useReduceMotion } from '@/components/use-reduce-motion';
 import { isExpoGo, shareShareCard } from '@/media/share-capture';
 import { ForgeCelebrationScreen } from '../forge-celebration-screen';
 
@@ -65,7 +64,7 @@ describe('ForgeCelebrationScreen', () => {
     jest.useFakeTimers();
     jest.clearAllMocks();
     (getMe as jest.Mock).mockResolvedValue({ profile: { username: 'mostafa' } });
-    (useReduceMotion as jest.Mock).mockReturnValue(false);
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
     (isExpoGo as jest.Mock).mockReturnValue(false);
     (shareShareCard as jest.Mock).mockResolvedValue(undefined);
   });
@@ -110,11 +109,32 @@ describe('ForgeCelebrationScreen', () => {
     await first.unmount();
 
     jest.clearAllMocks();
-    (useReduceMotion as jest.Mock).mockReturnValue(true);
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
     await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
 
     expect(screen.queryAllByTestId('forge-spark', { includeHiddenElements: true })).toHaveLength(0);
     expect(hapticNewBand).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads the reduce-motion setting before anything moves, so a reduced-motion phone never sees a frame of animation', async () => {
+    let answer: (value: boolean) => void = () => undefined;
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockReturnValue(new Promise<boolean>((r) => (answer = r)));
+    const start = jest.fn();
+    const parallel = jest.spyOn(require('react-native').Animated, 'parallel').mockReturnValue({ start, stop: jest.fn(), reset: jest.fn() });
+
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    expect(start).not.toHaveBeenCalled();
+
+    await act(async () => answer(true));
+    expect(start).not.toHaveBeenCalled();
+    expect(hapticNewBand).toHaveBeenCalledTimes(1);
+    parallel.mockRestore();
+  });
+
+  it('keeps the big badge out of the screen reader, since the words around it already say it all', async () => {
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+
+    expect(screen.queryByLabelText('Volume, Ember')).toBeNull();
   });
 
   it('continues to the week summary', async () => {
