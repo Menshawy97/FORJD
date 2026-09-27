@@ -640,7 +640,7 @@ Two PRs, each audited against the bug checklist before its review agent runs.
 | 9 Home card, own and public profile sections | #298 | Merged, `main` green |
 | — Program builder days start on Saturday | #299 | Merged, `main` green |
 | 10A Level-up toast, week summary, acknowledgement | #300 | Merged, `main` green |
-| 10B New-band and Forged screens, share card | #301 | Open: merge once CI is green, then watch `main` |
+| 10B New-band and Forged screens, share card | #301 | Merged, `main` green |
 | 11 Close (architecture docs, roadmap) | with #301's follow-up docs PR | Done in docs |
 
 **What remains before users see it (the user's steps, not code):**
