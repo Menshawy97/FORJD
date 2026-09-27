@@ -75,7 +75,7 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
         question: `What does "up 3 this week" mean?`,
         answer: [
           {
-            p: `It's your rank at the start of this week minus your rank now, so a positive number means you moved up. The start-of-week rank is saved early on Monday (UTC); if that one is missing, FORJD uses the latest earlier one, up to two weeks old. Comparing September's rank with October's isn't movement, so nothing is shown across a month change.`,
+            p: `It's your rank at the start of this week minus your rank now, so a positive number means you moved up. The start-of-week rank is saved just after midnight on Saturday (UTC); if that one is missing, FORJD uses the latest earlier one, up to two weeks old. Comparing September's rank with October's isn't movement, so nothing is shown across a month change.`,
           },
         ],
       },
@@ -150,7 +150,7 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
         question: `What is a week streak?`,
         answer: [
           {
-            p: `The number of weeks in a row, starting each Monday, with at least one finished workout. A week that has just started with no workout yet doesn't break your streak.`,
+            p: `The number of weeks in a row, starting each Saturday, with at least one finished workout. A week that has just started with no workout yet doesn't break your streak.`,
           },
         ],
       },

@@ -1,13 +1,15 @@
 import { Text, View } from 'react-native';
 
 import type { TrainingCalendar as TrainingCalendarData } from '@forjd/contracts';
+import { daysSinceWeekStart } from '@forjd/domain';
 
 /**
  * "Training calendar" -- `progress strength.png`'s month grid, transcribed from the
  * prototype's `calVals()` (`FORJD Mobile.dc.html:3368`).
  *
  * The API sends only the days that were actually trained (`TrainingCalendarDay[]`); this
- * component is what expands that into a full Monday-first month grid with leading blanks for
+ * component is what expands that into a full Saturday-first month grid (the app's week runs
+ * Saturday to Friday, ADR-056; the prototype drew it Monday-first) with leading blanks for
  * the days before the 1st and rest cells for every other day, exactly as `calVals()` builds
  * `calDays` from its own `trained` map. There are no trailing blanks -- the grid ends with the
  * month's last day, the same asymmetry the prototype's own loop has.
@@ -18,7 +20,7 @@ interface TrainingCalendarProps {
   today: string;
 }
 
-const WEEKDAY_HEADS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const WEEKDAY_HEADS = ['S', 'S', 'M', 'T', 'W', 'T', 'F'];
 const CELL_SIZE = 30;
 
 const MONTH_NAMES = [
@@ -40,10 +42,9 @@ function daysInMonth(year: number, monthIndexZeroBased: number): number {
   return new Date(Date.UTC(year, monthIndexZeroBased + 1, 0)).getUTCDate();
 }
 
-/** Monday-first weekday of the 1st: 0 for Monday through 6 for Sunday. */
-function leadingBlanks(year: number, monthIndexZeroBased: number): number {
-  const sundayFirst = new Date(Date.UTC(year, monthIndexZeroBased, 1)).getUTCDay();
-  return (sundayFirst + 6) % 7;
+/** Saturday-first weekday of the 1st: 0 for Saturday through 6 for Friday. */
+export function leadingBlanks(year: number, monthIndexZeroBased: number): number {
+  return daysSinceWeekStart(new Date(Date.UTC(year, monthIndexZeroBased, 1)).getUTCDay());
 }
 
 export function TrainingCalendar({ data, today }: TrainingCalendarProps) {

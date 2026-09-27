@@ -1,11 +1,11 @@
-import { render } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 
-import { TrainingCalendar } from '../training-calendar';
+import { leadingBlanks, TrainingCalendar } from '../training-calendar';
 
 describe('TrainingCalendar', () => {
   it('draws leading blanks for the days before the 1st, and no trailing blanks', async () => {
-    // August 2026's 1st is a Saturday -- Monday-first that is 5 leading blanks, and the grid
-    // ends with day 31, the same asymmetry the prototype's own loop has.
+    // The grid ends with day 31 and no trailing blanks, the same asymmetry the prototype's own
+    // loop has.
     const { getByLabelText, queryByLabelText } = await render(
       <TrainingCalendar
         data={{ month: '2026-08', days: [], daysTrained: 0 }}
@@ -46,5 +46,29 @@ describe('TrainingCalendar', () => {
     );
 
     expect(getByText('1 day trained')).toBeTruthy();
+  });
+
+  it('heads the columns Saturday to Friday (ADR-056)', async () => {
+    await render(
+      <TrainingCalendar data={{ month: '2026-09', days: [], daysTrained: 0 }} today="2026-09-30" />,
+    );
+
+    expect(screen.getAllByText(/^[SMTWF]$/).map((node) => node.props.children)).toEqual([
+      'S',
+      'S',
+      'M',
+      'T',
+      'W',
+      'T',
+      'F',
+    ]);
+  });
+});
+
+describe('leadingBlanks', () => {
+  it('counts the Saturday-first blanks before the 1st', () => {
+    expect(leadingBlanks(2026, 7)).toBe(0); // 1 August 2026 is a Saturday.
+    expect(leadingBlanks(2026, 8)).toBe(3); // 1 September 2026 is a Tuesday.
+    expect(leadingBlanks(2026, 4)).toBe(6); // 1 May 2026 is a Friday.
   });
 });
