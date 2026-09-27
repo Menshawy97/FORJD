@@ -106,6 +106,7 @@ describe('theme tokens', () => {
       forgeHeatYellow: colors.forgeHeatYellow,
       forgeHeatYellowLight: colors.forgeHeatYellowLight,
       forgeHeatWhite: colors.forgeHeatWhite,
+      forgeBandSlotBorder: colors.forgeBandSlotBorder,
     }).toEqual({
       forgeHeatOre: '#5A2A22',
       forgeHeatOreLight: '#7A3A2C',
@@ -114,6 +115,7 @@ describe('theme tokens', () => {
       forgeHeatYellow: '#F2B33D',
       forgeHeatYellowLight: '#F7C866',
       forgeHeatWhite: '#FFF1D6',
+      forgeBandSlotBorder: 'rgba(255,255,255,.14)',
     });
   });
 

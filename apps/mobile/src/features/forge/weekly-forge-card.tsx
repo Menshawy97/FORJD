@@ -83,7 +83,7 @@ function LadderRow({ progress, isFirst }: { progress: ForgeLadderProgress; isFir
             {isMet ? <Icon name="check" size={12} color={colors.green} /> : null}
             <Text
               maxFontSizeMultiplier={TIGHT_TEXT_MAX_FONT_SCALE}
-              className={`font-archivo text-[12px] font-semibold ${isMet ? 'text-green' : 'text-text'}`}
+              className={`font-archivo text-week-count font-semibold ${isMet ? 'text-green' : 'text-text'}`}
               style={{ fontVariant: ['tabular-nums'] }}>
               {`${total} `}
               <Text className={`font-medium ${isMet ? 'text-green' : 'text-dimmer'}`}>
@@ -125,7 +125,7 @@ function PendingRow({ ladder, isFirst }: { ladder: ForgeLadder; isFirst: boolean
       <View className="min-w-0 flex-1">
         <View className="flex-row items-baseline justify-between gap-2">
           <Text className="font-archivo text-row-title font-semibold text-text">{name}</Text>
-          <Text className="font-archivo text-[12px] font-medium text-dimmer">—</Text>
+          <Text className="font-archivo text-week-count font-medium text-dimmer">—</Text>
         </View>
         <Text className="mt-[3px] font-archivo text-row-subtitle text-dimmer"> </Text>
         <View className="mt-2 h-[3px] rounded-[2px] bg-weekRailTrack" />

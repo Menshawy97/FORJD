@@ -10,6 +10,7 @@ import { clearSession } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { shareAccountExport } from '@/data-export/share-account-export';
+import { ProfileForgeSection } from '@/features/forge/profile-forge-section';
 import { activityLevelLabel, bodyGoalSummary } from '@/features/targets/labels';
 import { colors } from '@/theme/tokens';
 
@@ -340,6 +341,8 @@ export default function ProfileScreen() {
 
         <IdentityRow identity={identity} />
         <GoProBanner />
+        {/* Weekly Forge (ADR-057): renders nothing until the weekly_forge flag is on. */}
+        <ProfileForgeSection />
 
         {buildGroups(identity, handleExportData, isExportingData).map((group, groupIndex) => (
           <View key={group.label}>

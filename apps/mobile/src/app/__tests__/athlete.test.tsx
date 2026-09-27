@@ -132,6 +132,29 @@ describe('AthleteScreen', () => {
       expect(queryByText('City rank')).toBeNull();
     });
 
+    it('shows the Weekly Forge block when the athlete has one, with the public ladders only', async () => {
+      (getAthlete as jest.Mock).mockResolvedValue({
+        ...FULL_PROFILE,
+        forge: {
+          ladders: [
+            { ladder: 'volume', band: 'ember', level: 7, forgedStreak: 0, bestForgedStreak: 0, badges: ['ore', 'ember'] },
+          ],
+        },
+      });
+      const { findByText, getByText, queryByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('Weekly Forge')).toBeTruthy();
+      expect(getByText('Ember · Level 7')).toBeTruthy();
+      expect(queryByText('Nourish')).toBeNull();
+    });
+
+    it('leaves Weekly Forge out when the server sends no block (feature off, or an older API)', async () => {
+      const { findByText, queryByText } = await render(<AthleteScreen />);
+
+      expect(await findByText('James Mitchell')).toBeTruthy();
+      expect(queryByText('Weekly Forge')).toBeNull();
+    });
+
     it('says what is never public', async () => {
       const { findByText } = await render(<AthleteScreen />);
 
