@@ -81,6 +81,15 @@ describe('day pickers', () => {
     expect((await findAllByText('Leg Day')).length).toBe(7);
   });
 
+  it('lists the days Saturday to Friday, the week the whole app uses (ADR-056)', async () => {
+    const { findAllByLabelText } = await render(<ProgramBuilderScreen />);
+
+    const days = (await findAllByLabelText(/^Build a new workout for /)).map((node) =>
+      String(node.props.accessibilityLabel).replace('Build a new workout for ', ''),
+    );
+    expect(days).toEqual(['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  });
+
   it('opens the workout builder from + New', async () => {
     const { findByLabelText } = await render(<ProgramBuilderScreen />);
 
@@ -160,6 +169,21 @@ describe('save flow', () => {
       ],
     });
     await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+  });
+
+  it('sends the workouts in week order, Saturday first', async () => {
+    const { getByLabelText, findByLabelText } = await render(<ProgramBuilderScreen />);
+
+    fireEvent.changeText(getByLabelText('Program name'), 'Weekend block');
+    await fireEvent.press(await findByLabelText('Assign Push Day to Mon'));
+    await fireEvent.press(await findByLabelText('Assign Pull Day to Sat'));
+    await fireEvent.press(await findByLabelText('Save Program'));
+
+    await waitFor(() => expect(createProgram).toHaveBeenCalledTimes(1));
+    expect((createProgram as jest.Mock).mock.calls[0][0].workouts).toEqual([
+      { templateId: 'own-2', dayOfWeek: 6 },
+      { templateId: 'own-1', dayOfWeek: 1 },
+    ]);
   });
 
   it('never sends a rest day as a workout', async () => {
