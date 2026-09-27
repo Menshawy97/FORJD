@@ -43,7 +43,9 @@ export const forgeTotalsRowSchema = z.object({
  * - **Active minutes:** working time, each session capped at `ACTIVITY_SESSION_CAP_SECONDS` as the
  *   leaderboard does (ADR-046), so a session left running all night counts two hours.
  * - **Nourish:** distinct days in the week with at least one meal logged. `logged_date` is already
- *   the athlete's own calendar day.
+ *   the athlete's own calendar day. Meal entries are hard-deleted (the table has no `deleted_at`),
+ *   so this is the one ladder where a deletion made between the close and the evaluation cannot be
+ *   undone; the hourly job and evaluate-on-read keep that window short, and it is accepted.
  */
 @Injectable()
 export class ForgeTotalsRepository {

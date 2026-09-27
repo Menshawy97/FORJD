@@ -1,7 +1,7 @@
 import { FORGE_LADDERS, FORGE_RULES_VERSION, ForgeLadder, initialForgeState } from "@forjd/domain";
 
 import { ForgeEvaluationService } from "./forge-evaluation.service";
-import { ForgeStateRow, ForgeStateStore, ForgeWeekWrite } from "./forge-state.repository";
+import { ForgeLastWeek, ForgeStateRow, ForgeStateStore, ForgeWeekWrite } from "./forge-state.repository";
 import { ForgeWeeklyTotals, ForgeWeekWindow } from "./forge-totals.repository";
 
 const ZERO: ForgeWeeklyTotals = { consistency: 0, volume: 0, distance: 0, minutes: 0, nourish: 0 };
@@ -12,6 +12,7 @@ class FakeStore implements ForgeStateStore {
   writes: ForgeWeekWrite[] = [];
   enrolled: Array<{ userId: string; weekStart: string }> = [];
   timeZones = new Map<string, string | null>();
+  lastClose = new Map<string, ForgeLastWeek>();
 
   async timeZoneOf(userId: string): Promise<string | null> {
     return this.timeZones.get(userId) ?? null;
@@ -34,11 +35,12 @@ class FakeStore implements ForgeStateStore {
 
   async lockAndApply(
     userId: string,
-    plan: (rows: ForgeStateRow[]) => Promise<ForgeWeekWrite | null>,
+    plan: (rows: ForgeStateRow[], lastWeek: ForgeLastWeek | null) => Promise<ForgeWeekWrite | null>,
   ): Promise<ForgeWeekWrite | null> {
-    const write = await plan(this.rows.get(userId) ?? []);
+    const write = await plan(this.rows.get(userId) ?? [], this.lastClose.get(userId) ?? null);
     if (write === null) return null;
     this.writes.push(write);
+    this.lastClose.set(userId, { weekStart: write.weekStart, closesAt: write.closesAt });
     this.rows.set(
       userId,
       (this.rows.get(userId) ?? []).map((row) => {
@@ -187,6 +189,25 @@ describe("ForgeEvaluationService", () => {
       // Saturday 3 October 00:00 in New York is 04:00 UTC.
       expect(await service.evaluateDue(USER, new Date("2026-10-03T03:59:00Z"))).toBe(0);
       expect(await service.evaluateDue(USER, new Date("2026-10-03T04:00:00Z"))).toBe(1);
+    });
+
+    it("starts the next week exactly where the last one closed, even after the athlete changes time zone", async () => {
+      const totals = new FakeTotals();
+      const { store, service } = build(totals);
+      store.timeZones.set(USER, "Africa/Cairo");
+      await store.enroll(USER, "2026-09-26");
+      await service.evaluateDue(USER, new Date("2026-10-03T00:00:00Z"));
+
+      // The athlete flies to Los Angeles; the next week closes on Pacific time, but it must start at
+      // the Cairo close, so no workout falls between the two weeks or into both.
+      store.timeZones.set(USER, "America/Los_Angeles");
+      await service.evaluateDue(USER, new Date("2026-10-10T08:00:00Z"));
+
+      expect(totals.calls[1]?.week).toEqual({
+        weekStart: "2026-10-03",
+        start: new Date("2026-10-02T21:00:00Z"),
+        end: new Date("2026-10-10T07:00:00Z"),
+      });
     });
 
     it("evaluates a ladder added later from its own enrolment week, alongside the others", async () => {

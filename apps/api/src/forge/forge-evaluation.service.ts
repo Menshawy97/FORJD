@@ -11,7 +11,7 @@ import {
   weekClosesAt,
 } from '@forjd/domain';
 
-import { ForgeStateRepository, ForgeStateRow, ForgeStateStore, ForgeWeekWrite } from './forge-state.repository';
+import { ForgeLastWeek, ForgeStateRepository, ForgeStateRow, ForgeStateStore, ForgeWeekWrite } from './forge-state.repository';
 import { ForgeTotalsRepository, ForgeWeeklyTotals, ForgeWeekWindow } from './forge-totals.repository';
 
 /** The slice of the totals repository the service uses, so its spec can pass a fake. */
@@ -48,7 +48,7 @@ export class ForgeEvaluationService {
     const timeZone = await this.timeZoneFor(userId);
     let written = 0;
     while (written < MAX_WEEKS_PER_CALL) {
-      const write = await this.store.lockAndApply(userId, (rows) => this.planNextWeek(userId, rows, timeZone, now));
+      const write = await this.store.lockAndApply(userId, (rows, lastWeek) => this.planNextWeek(userId, rows, lastWeek, timeZone, now));
       if (write === null) {
         break;
       }
@@ -64,6 +64,7 @@ export class ForgeEvaluationService {
   private async planNextWeek(
     userId: string,
     rows: ForgeStateRow[],
+    lastWeek: ForgeLastWeek | null,
     timeZone: string,
     now: Date,
   ): Promise<ForgeWeekWrite | null> {
@@ -81,7 +82,11 @@ export class ForgeEvaluationService {
       return null;
     }
 
-    const window = { weekStart, start: weekClosesAt(previousWeekStart(weekStart), timeZone), end: closesAt };
+    // Chain from the stored close of the week before, not a recomputation in today's zone: after a
+    // time-zone change the two would differ, and a workout could fall between the weeks or in both.
+    const previous = previousWeekStart(weekStart);
+    const start = lastWeek?.weekStart === previous ? lastWeek.closesAt : weekClosesAt(previous, timeZone);
+    const window = { weekStart, start, end: closesAt };
     const totals = await this.totals.weeklyTotals(userId, window, closesAt);
     const results = pending
       .filter((item) => item.week === weekStart)
