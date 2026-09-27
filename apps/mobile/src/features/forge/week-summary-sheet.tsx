@@ -27,7 +27,8 @@ interface WeekSummarySheetProps {
   onDone: () => void;
 }
 
-const CHIP_CLASS: Record<ChipTone, { box: string; text: string }> = {
+/** The outcome chip colours, shared with How it works so its rules read like Saturday's summary. */
+export const CHIP_CLASS: Record<ChipTone, { box: string; text: string }> = {
   up: { box: 'bg-readinessChipBg', text: 'text-readinessChipText' },
   band: { box: 'bg-accentHover', text: 'text-screenBg' },
   hold: { box: 'bg-iconButtonPressedBg', text: 'text-textSecondary' },
