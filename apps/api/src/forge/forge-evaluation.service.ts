@@ -11,12 +11,18 @@ import {
   weekClosesAt,
 } from '@forjd/domain';
 
+import { ForgeRefoldRepository } from './forge-refold.repository';
 import { ForgeLastWeek, ForgeStateRepository, ForgeStateRow, ForgeStateStore, ForgeWeekWrite } from './forge-state.repository';
 import { ForgeTotalsRepository, ForgeWeeklyTotals, ForgeWeekWindow } from './forge-totals.repository';
 
 /** The slice of the totals repository the service uses, so its spec can pass a fake. */
 export interface ForgeTotalsSource {
   weeklyTotals(userId: string, week: ForgeWeekWindow, lockAt: Date): Promise<ForgeWeeklyTotals>;
+}
+
+/** The slice of the refold repository the service uses, so its spec can pass a fake. */
+export interface ForgeRefoldBackstop {
+  refoldUserIfStale(userId: string): Promise<boolean>;
 }
 
 /**
@@ -35,6 +41,7 @@ export class ForgeEvaluationService {
   constructor(
     @Inject(ForgeStateRepository) private readonly store: ForgeStateStore,
     @Inject(ForgeTotalsRepository) private readonly totals: ForgeTotalsSource,
+    @Inject(ForgeRefoldRepository) private readonly refold: ForgeRefoldBackstop,
   ) {}
 
   /** Enrols the athlete at Ore 1 in the current week of their zone. Idempotent. */
@@ -45,6 +52,9 @@ export class ForgeEvaluationService {
 
   /** Evaluates every closed, unevaluated week, oldest first. Returns how many weeks were written. */
   async evaluateDue(userId: string, now: Date): Promise<number> {
+    // Weeks closed by an older API revision during a deploy are refolded before any new week is
+    // judged on top of them (ADR-058 decision 4). A no-op once the athlete is current.
+    await this.refold.refoldUserIfStale(userId);
     const timeZone = await this.timeZoneFor(userId);
     let written = 0;
     while (written < MAX_WEEKS_PER_CALL) {

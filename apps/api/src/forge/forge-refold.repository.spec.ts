@@ -178,4 +178,39 @@ describe("ForgeRefoldRepository", () => {
 
     expect(await repository.refoldUser(userId)).toEqual({ weeks: 0 });
   });
+
+  describe("refoldUserIfStale (the evaluation's backstop)", () => {
+    it("refolds an athlete who still has a week on an older rules version", async () => {
+      const userId = await makeUser("if-stale");
+      await storeOldVolumeWeeks(userId);
+
+      expect(await repository.refoldUserIfStale(userId)).toBe(true);
+      expect(await repository.staleUserIds()).not.toContain(userId);
+    });
+
+    it("leaves an up-to-date athlete alone and reports that it did", async () => {
+      const userId = await makeUser("current");
+      await storeOldVolumeWeeks(userId);
+      await repository.refoldUser(userId);
+      const before = await db.select().from(forgeWeeks).where(eq(forgeWeeks.userId, userId));
+
+      expect(await repository.refoldUserIfStale(userId)).toBe(false);
+      expect(await db.select().from(forgeWeeks).where(eq(forgeWeeks.userId, userId))).toEqual(before);
+    });
+  });
+
+  it("refuses to refold weeks for a ladder the athlete has no row for, rather than writing them unlocked", async () => {
+    const userId = await makeUser("no-row");
+    await storeOldVolumeWeeks(userId);
+    await db
+      .delete(forgeUserLadders)
+      .where(and(eq(forgeUserLadders.userId, userId), eq(forgeUserLadders.ladderKey, "volume")));
+
+    await expect(repository.refoldUser(userId)).rejects.toThrow(/volume/);
+    const [week] = await db
+      .select({ rulesVersion: forgeWeeks.rulesVersion })
+      .from(forgeWeeks)
+      .where(and(eq(forgeWeeks.userId, userId), eq(forgeWeeks.weekStart, WEEKS[0]!)));
+    expect(week!.rulesVersion).toBe(1);
+  });
 });

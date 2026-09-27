@@ -8,6 +8,7 @@ import { forgeRewards, forgeUserLadders, forgeWeeks } from "../database/schema/f
 import { preferences } from "../database/schema/preferences.schema";
 import { users } from "../database/schema/users.schema";
 import { ForgeEvaluationService } from "./forge-evaluation.service";
+import { ForgeRefoldRepository } from "./forge-refold.repository";
 import { ForgeStateRepository } from "./forge-state.repository";
 import { ForgeTotalsRepository } from "./forge-totals.repository";
 
@@ -39,7 +40,11 @@ describe("ForgeStateRepository", () => {
     pool = new Pool({ connectionString, max: 6 });
     db = drizzle(pool) as NodePgDatabase<Record<string, never>>;
     repository = new ForgeStateRepository(db as unknown as Database);
-    service = new ForgeEvaluationService(repository, new ForgeTotalsRepository(db as unknown as Database));
+    service = new ForgeEvaluationService(
+      repository,
+      new ForgeTotalsRepository(db as unknown as Database),
+      new ForgeRefoldRepository(db as unknown as Database),
+    );
   });
 
   afterAll(async () => {

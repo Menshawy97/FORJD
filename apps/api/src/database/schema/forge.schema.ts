@@ -88,8 +88,10 @@ export const forgeUserLadders = pgTable(
 );
 
 /**
- * One closed week on one ladder: the locked total and what it did. Written once by the evaluation
- * job and never updated, so edits after the close never change a closed week (ADR-057 decision 2).
+ * One closed week on one ladder: the locked total and what it did. The total is written once by the
+ * evaluation job and never changes, so edits after the close never change a closed week (ADR-057
+ * decision 2). The judgement columns (levels, bands, target, outcome, streaks) are rewritten only by
+ * a deliberate refold under a newer `rules_version` (ADR-058 decision 4, `ForgeRefoldRepository`).
  */
 export const forgeWeeks = pgTable(
   'forge_weeks',
