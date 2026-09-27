@@ -388,17 +388,76 @@ Also for approval here: **`expo-haptics`**.
 - Nothing already installed can do light, medium and heavy haptics.
 - It sits behind the seam `src/components/haptics.ts`, so Jest never touches it.
 
+#### Phase 7 outcome (approved 2026-09-27)
+
+The mock-ups went through three rounds, each published as a claude.ai artifact: every screen and state, then badge styles and colours, then icons. **Everything in the list above is approved, and so is `expo-haptics`.** The user rejected the round-1 ingot badge and temper colours and chose these instead:
+
+**Badge: "Hallmark".** A silversmith's stamp on a 48 × 48 box:
+- Octagon `M15 4H33L44 15V33L33 44H15L4 33V15Z`, stroke 2.2 in the band's light colour, round joins, filled with the band's main colour at 16% opacity.
+- The ladder icon sits at `translate(15.36 12.36) scale(.72)`, centred at (24, 21). It's stroked in the band's light colour at 1.6 on its own 24 grid, with round caps and joins.
+- One dot per band (r 1.5, 5 apart, centred at y 37.6): Ore 1 through Forged 5, so bands read without colour.
+- Forged only: an inner octagon `M16.4 7.4H31.6L40.6 16.4V31.6L31.6 40.6H16.4L7.4 31.6V16.4Z` (stroke 1, 60% opacity), and a glow `rgba(255,241,214,.55)` whose blur is `max(3, size/10)`.
+- Sizes used: 20 (toast), 30 (summary rows), 34 (Home card), 38 (profile), 18 (profile badge strip), 128 or 132 (full screens), 110 (share card).
+
+**Colours: "Heat"**, the colours steel glows as it heats. Main and light colour per band:
+
+| Band | Main | Light | Tokens |
+|---|---|---|---|
+| Ore | `#5A2A22` | `#7A3A2C` | **new** `forgeHeatOre`, `forgeHeatOreLight` |
+| Ember | `#C2412B` | `#D9573A` | **new** `forgeHeatCherry`, `forgeHeatCherryLight` |
+| Anvil | `#E9712F` | `#F4894C` | existing `accent`, `accentHover` |
+| Tempered | `#F2B33D` | `#F7C866` | **new** `forgeHeatYellow`, `forgeHeatYellowLight` |
+| Forged | `#FFF1D6` | `#FFFFFF` | **new** `forgeHeatWhite`; light is existing `onAccent` |
+
+The Home card's rail uses the light colour; a met target turns it `green`. Round 1's six tokens (`forgeSteel*`, `forgeTemper*`, `forgeWhiteHot`, `forgeGold`) are **not** added.
+
+**Icons** (24 grid, 1.6 stroke, round caps and joins):
+
+| Ladder | Icon | Path data |
+|---|---|---|
+| Consistency | streak flame | `M12 3.4c.5 2.9 5 4.9 5 9.7a5 5 0 0 1-10 0c0-2.1 1-3.6 2.1-4.7.2 1.5 1.1 2.4 2 2.6-.5-3 .2-5.4.9-7.6z` + `M12 20.4a2 2 0 0 1-2-2c0-1.2 1-2 2-3 1 1 2 1.8 2 3a2 2 0 0 1-2 2z` |
+| Volume | loaded barbell | rects (5,6,3×12,r1), (16,6,3×12,r1), (2.4,8.8,2.6×6.4,r.8), (19,8.8,2.6×6.4,r.8) + `M8 12h8` |
+| Distance | route and pin | circle (5.6,18.4,r1.6) + `M7.2 18.2c3.2-.4 3.4-4 6.4-4.2 2-.1 3.4-.8 3.4-2.6` + `M17 3.6a3.2 3.2 0 0 1 3.2 3.2c0 2.3-3.2 5.2-3.2 5.2s-3.2-2.9-3.2-5.2A3.2 3.2 0 0 1 17 3.6z` + circle (17,6.8,r.9) |
+| Active minutes | energy bolt | `M13.4 3.4 6 13.2h5.4l-.8 7.4 7.4-9.8h-5.4z` |
+| Nourish | apple | `M12 8c-1.7-1.1-4.8-.9-6 1.4-1.5 2.7-.4 7.1 1.9 9.5 1.2 1.2 2.5 1.6 4.1.8 1.6.8 2.9.4 4.1-.8 2.3-2.4 3.4-6.8 1.9-9.5-1.2-2.3-4.3-2.5-6-1.4z` + `M12 8c0-1.8.7-3.3 2.2-4.2` |
+
+These are Forge-only icons. The app-wide `icon.tsx` set is left alone (no restyling of existing glyphs).
+
+**Knock-on changes from the Heat choice.** Three approved screens referred to round-1 colours that are no longer added, so they now use Heat colours. The layouts are unchanged:
+- The Forged full screen and its share card: the background gradient uses `rgba(255,241,214,.18)` (Forged white-hot) in place of round 1's gold.
+- The summary's "Cooled" label: the neutral "Held" label style in place of temper blue.
+- The new-band glow uses the entered band's light colour.
+
+**Everything else is as mocked in round 1.**
+- **Home card:** between Start Workout and This week; "n days left", with "Last day" on Friday.
+- **Level-up:** the existing toast with a 20 px badge, and "Struck." plus what changed.
+- **New band and Forged:** full screens with Share and Continue, and at most 12 sparks.
+- **Quiet states:** Held, "Eased to n", Cooled. Nourish is only ever a plain toast.
+- **Week summary:** a sheet in the existing style. Done acknowledges the week.
+- **Profiles:** your own shows 5 ladders with a band strip; the public block shows 4 and never Nourish.
+- **Share card:** 4:5.
+- **Saturday-first order:** This week, the training calendar and the volume bars.
+- **FAQ:** "starting each Saturday" and "saved just after midnight on Saturday (UTC)".
+- **Reduce motion:** static frames, and haptics are kept.
+- **Haptics:** light for a level-up, medium for a new band, heavy then success for Forged.
+
 ### Phase 8: Mobile foundations (after Phase 7 approval)
 
-- The approved tokens go into `tailwind.config.ts`, `src/theme/tokens.ts` and the tokens test.
-- `features/forge/band-finish.ts` holds the finish definitions.
+Split into two PRs, so the change to existing screens lands on its own:
+
+- **8A, Saturday weeks in the app.** The Saturday-first order and the two FAQ rewrites (the last four bullets below plus `faq-content.ts`).
+- **8B, Forge foundations.** Everything else below. Nothing in it is visible, because nothing renders the new pieces until Phase 9.
+
+- The seven approved Heat tokens (see "Phase 7 outcome") go into `tailwind.config.ts`, `src/theme/tokens.ts` and the tokens test.
+- `features/forge/band-finish.ts` maps each band to its main and light colour, its dot count and its glow.
+- `features/forge/forge-glyphs.ts` holds the five Forge icons.
+- `features/forge/forge-mark.tsx` draws the Hallmark badge, parameterised by ladder × band × size.
 - `features/flags/use-feature-flag.ts`:
   - Fetches once per launch.
   - Caches in `forjd.flags`.
   - Is cleared by `local-data.ts`.
 - Time-zone sync on launch, sent only when it changes.
-- `components/haptics.ts` and a reduce-motion hook.
-- `features/forge/forge-mark.tsx`: one SVG component, parameterised by ladder × band × level.
+- `components/haptics.ts` (over `expo-haptics`) and a reduce-motion hook.
 - Saturday ordering in:
   - `home/this-week.tsx`
   - `home/date.ts`
@@ -516,11 +575,18 @@ After the celebration, `forge-week.tsx` shows the week summary, and the week is 
 | 3 Domain rules | #291 | Merged, `main` green |
 | 4 Schema, seed, flag, export, deletion | #292 | Merged, `main` green; staging migrated and seeded (5 ladders, 103 tiers) |
 | 5 Totals, evaluation, hourly job | #293 | Merged, `main` green |
-| 6 API routes, flags, time zone, public block | #294 | **Open**: merge once CI is green, then watch the `main` run |
+| 6 API routes, flags, time zone, public block | #294 | Merged, `main` green |
+| 7 UI mock-ups | (artifacts) | **Approved**: see "Phase 7 outcome" |
+| 8A Saturday weeks in the app | — | Next |
+| 8B Forge foundations | — | After 8A |
 
 The `weekly_forge` flag is **off** on staging and production. The hourly workflow (`forge-evaluate.yml`) runs, but it evaluates nothing while the flag is off.
 
-### Next: Phase 7, the UI mock-ups (an approval gate)
+### Next: Phase 8A, then 8B
+
+Phase 7 is approved (see "Phase 7 outcome"). Build exactly what was approved, checking each value against that section and the round-1 mock-up. Any UI that wasn't mocked needs a new approval before it's built.
+
+### Done: Phase 7, the UI mock-ups (an approval gate)
 
 - **The user must approve before any mobile code is written.** Their standing rule is that *every* planned UI is shown as a visual replica first.
 - Build one HTML replica artifact covering items 1–12 in the Phase 7 section above:
