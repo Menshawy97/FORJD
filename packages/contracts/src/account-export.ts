@@ -145,6 +145,8 @@ export const accountExportWeeklyForgeSchema = z.object({
       bandBefore: z.enum(FORGE_BANDS),
       bandAfter: z.enum(FORGE_BANDS),
       outcome: z.enum(FORGE_OUTCOMES),
+      /** Which rule set judged the week (ADR-057). */
+      rulesVersion: z.number().int().min(1),
       evaluatedAt: z.string().datetime(),
     }),
   ),

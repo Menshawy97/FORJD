@@ -188,6 +188,7 @@ export class AccountExportExtrasRepository {
         bandBefore: row.bandBefore as ForgeBand,
         bandAfter: row.bandAfter as ForgeBand,
         outcome: row.outcome as ForgeOutcome,
+        rulesVersion: row.rulesVersion,
         evaluatedAt: row.evaluatedAt.toISOString(),
       })),
       rewards: rewardRows.map((row) => ({

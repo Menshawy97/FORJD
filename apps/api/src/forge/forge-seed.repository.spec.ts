@@ -50,6 +50,11 @@ describe("ForgeSeedRepository", () => {
     expect(again.pruned).toBe(0);
   });
 
+  it("refuses an empty seed rather than pruning every ladder and tier", async () => {
+    await expect(repository.replaceAll({ ladders: [], tiers: [] })).rejects.toThrow(/Refusing/);
+    expect((await count()).ladders).toBe(forgeSeedRows().ladders.length);
+  });
+
   it("updates a changed target in place", async () => {
     const rows = forgeSeedRows();
     const changed = {

@@ -255,7 +255,7 @@ describe('AccountExportExtrasRepository', () => {
       lastEvaluatedWeek: "2026-09-26",
     });
     expect(weeklyForge.weeks).toEqual([
-      expect.objectContaining({ ladder: "volume", total: 2150.5, target: 2000, closesAt: "2026-10-02T21:00:00.000Z", outcome: "hit" }),
+      expect.objectContaining({ ladder: "volume", total: 2150.5, target: 2000, closesAt: "2026-10-02T21:00:00.000Z", outcome: "hit", rulesVersion: 1 }),
     ]);
     expect(weeklyForge.rewards).toEqual([
       expect.objectContaining({ ladder: "volume", type: "forge_mark", level: 2, band: "ore", weekStart: "2026-09-26" }),

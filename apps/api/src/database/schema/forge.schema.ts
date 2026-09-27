@@ -129,6 +129,11 @@ export const forgeWeeks = pgTable(
  * The rewards ledger: append-only (ADR-057 decision 7). No code path updates or deletes a row; only
  * the account-deletion cascade removes them. The partial unique indexes make every insert
  * idempotent, so a re-run evaluation writes `on conflict do nothing` and adds nothing twice.
+ *
+ * **An `on conflict` insert must restate the partial index's predicate**, or Postgres finds no
+ * matching unique index: `on conflict (user_id, ladder_key, level) where type = 'forge_mark' do
+ * nothing` (drizzle: `onConflictDoNothing({ target: [...], where: sql`...` })`). A bare
+ * `on conflict do nothing` with no target also works, and is what the evaluation job uses.
  */
 export const forgeRewards = pgTable(
   'forge_rewards',

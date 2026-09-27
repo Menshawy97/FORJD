@@ -44,6 +44,11 @@ export class ForgeSeedRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async replaceAll(rows: ForgeSeedRows): Promise<ForgeSeedSummary> {
+    // An empty seed is a caller bug, never "delete all reference data": pruning against an empty
+    // list would remove every ladder and tier.
+    if (rows.ladders.length === 0 || rows.tiers.length === 0) {
+      throw new Error("Refusing to seed Weekly Forge with no ladders or no tiers.");
+    }
     return this.db.transaction(async (tx) => {
       for (const ladder of rows.ladders) {
         await tx
@@ -61,15 +66,13 @@ export class ForgeSeedRepository {
           });
       }
 
-      if (rows.tiers.length > 0) {
-        await tx
-          .insert(forgeTiers)
-          .values(rows.tiers)
-          .onConflictDoUpdate({
-            target: [forgeTiers.ladderKey, forgeTiers.level],
-            set: { band: sql`excluded.band`, target: sql`excluded.target` },
-          });
-      }
+      await tx
+        .insert(forgeTiers)
+        .values(rows.tiers)
+        .onConflictDoUpdate({
+          target: [forgeTiers.ladderKey, forgeTiers.level],
+          set: { band: sql`excluded.band`, target: sql`excluded.target` },
+        });
 
       const keep = rows.ladders.map((ladder) => ladder.key);
       // A retired ladder's tiers go with it (`on delete cascade`), so remove them explicitly first

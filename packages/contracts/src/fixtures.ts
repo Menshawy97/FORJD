@@ -1108,6 +1108,7 @@ export const responseFixtures = {
             bandBefore: 'ore',
             bandAfter: 'ore',
             outcome: 'hit',
+            rulesVersion: 1,
             evaluatedAt: '2026-10-02T21:10:00.000Z',
           },
         ],
