@@ -28,9 +28,9 @@ describe('ForgeProfileRows', () => {
   it('draws a badge for every band earned and an empty slot for each one still to come', async () => {
     await render(<ForgeProfileRows ladders={[row({})]} />);
 
-    expect(screen.getByLabelText('Volume, Ore')).toBeTruthy();
-    // The current band appears twice: the row's own badge and its place in the strip.
-    expect(screen.getAllByLabelText('Volume, Ember')).toHaveLength(2);
+    // The row's own badge plus Ore and Ember in the strip; all decorative, so the row is one stop.
+    expect(screen.getAllByTestId('forge-mark', { includeHiddenElements: true })).toHaveLength(3);
+    expect(screen.queryByLabelText('Volume, Ember')).toBeNull();
     expect(screen.getAllByTestId('forge-band-slot-empty')).toHaveLength(3);
   });
 

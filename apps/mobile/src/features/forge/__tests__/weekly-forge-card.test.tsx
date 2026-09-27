@@ -72,7 +72,8 @@ describe('WeeklyForgeCard', () => {
     expect(screen.getByLabelText('Volume, Ember level 7: 3,000 of 5,600 kg')).toBeTruthy();
     expect(screen.getByLabelText('Distance, Ore level 5: 8.4 of 11 km')).toBeTruthy();
     expect(screen.getByLabelText('Active minutes, Ember level 9: 145 of 210 minutes')).toBeTruthy();
-    expect(screen.getByLabelText('Volume, Ember')).toBeTruthy();
+    // One screen-reader stop per row: the badge inside it is decorative.
+    expect(screen.queryByLabelText('Volume, Ember')).toBeNull();
   });
 
   it('marks a met target as done', async () => {

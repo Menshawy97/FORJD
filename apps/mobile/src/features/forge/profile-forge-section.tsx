@@ -26,7 +26,7 @@ export function ProfileForgeSection() {
         Weekly Forge
       </Text>
       <ForgeProfileRows ladders={forge.ladders} />
-      <Text className="mt-[10px] font-archivo text-legal text-legal">Nourish is only ever shown to you.</Text>
+      <Text className="mt-[10px] font-archivo text-legal">Nourish is only ever shown to you.</Text>
     </View>
   );
 }

@@ -75,7 +75,7 @@ function LadderRow({ progress, isFirst }: { progress: ForgeLadderProgress; isFir
       accessibilityRole="text"
       accessibilityLabel={spoken}
       className={`flex-row items-center gap-3 px-[14px] py-3 ${isFirst ? '' : 'border-t border-borderFaint'}`}>
-      <ForgeMark ladder={progress.ladder} band={progress.band} size={34} />
+      <ForgeMark ladder={progress.ladder} band={progress.band} size={34} decorative />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-baseline justify-between gap-2">
           <Text className="font-archivo text-row-title font-semibold text-text">{name}</Text>

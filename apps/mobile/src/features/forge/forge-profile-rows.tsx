@@ -58,7 +58,7 @@ function ProfileRow({ ladder, isFirst }: { ladder: ForgeProfileLadder; isFirst: 
       accessibilityRole="text"
       accessibilityLabel={spoken}
       className={`flex-row items-center gap-3 px-[14px] py-3 ${isFirst ? '' : 'border-t border-borderFaint'}`}>
-      <ForgeMark ladder={ladder.ladder} band={ladder.band} size={38} />
+      <ForgeMark ladder={ladder.ladder} band={ladder.band} size={38} decorative />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-baseline justify-between gap-2">
           <Text className="font-archivo text-row-title font-semibold text-text">{name}</Text>
@@ -67,7 +67,7 @@ function ProfileRow({ ladder, isFirst }: { ladder: ForgeProfileLadder; isFirst: 
         <View className="mt-2 flex-row gap-[6px]">
           {bands.map((b) =>
             earned.has(b) ? (
-              <ForgeMark key={b} ladder={ladder.ladder} band={b} size={18} />
+              <ForgeMark key={b} ladder={ladder.ladder} band={b} size={18} decorative />
             ) : (
               <View
                 key={b}
