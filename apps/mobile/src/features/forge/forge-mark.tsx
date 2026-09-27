@@ -31,9 +31,14 @@ interface ForgeMarkProps {
   ladder: ForgeLadder;
   band: ForgeBand;
   size: number;
+  /**
+   * Hidden from screen readers. Set wherever the badge sits inside a row whose own label already
+   * names the ladder and band, so the row stays one screen-reader stop.
+   */
+  decorative?: boolean;
 }
 
-export function ForgeMark({ ladder, band, size }: ForgeMarkProps) {
+export function ForgeMark({ ladder, band, size, decorative = false }: ForgeMarkProps) {
   const finish = BAND_FINISH[band];
   // `useId` returns ":r0:"-style ids; colons are not safe inside an SVG `url(#...)` reference.
   const glowId = `forge-glow-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -42,9 +47,13 @@ export function ForgeMark({ ladder, band, size }: ForgeMarkProps) {
   return (
     <View
       testID="forge-mark"
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={`${FORGE_LADDER_NAMES[ladder]}, ${FORGE_BAND_NAMES[band]}`}
+      {...(decorative
+        ? { accessible: false, importantForAccessibility: 'no-hide-descendants' as const, accessibilityElementsHidden: true }
+        : {
+            accessible: true,
+            accessibilityRole: 'image' as const,
+            accessibilityLabel: `${FORGE_LADDER_NAMES[ladder]}, ${FORGE_BAND_NAMES[band]}`,
+          })}
       style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 48 48">
         {finish.glow ? (

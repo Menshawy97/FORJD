@@ -17,6 +17,7 @@ import {
   RecentSessions,
   StatTiles,
 } from '@/features/athlete/athlete-sections';
+import { PublicForgeSection } from '@/features/forge/public-forge-section';
 import { colors } from '@/theme/tokens';
 
 // Ports the prototype's `s_athlete()`. Reached from `privacy.tsx`'s "Preview my public profile"
@@ -59,7 +60,7 @@ export default function AthleteScreen() {
     : params.publicProfile;
   const [profile, setProfile] = useState<Pick<
     PublicProfileResponse,
-    'displayName' | 'username' | 'city' | 'isSelf' | 'stats' | 'personalRecords' | 'recentSessions'
+    'displayName' | 'username' | 'city' | 'isSelf' | 'stats' | 'personalRecords' | 'recentSessions' | 'forge'
   > | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -92,6 +93,9 @@ export default function AthleteScreen() {
           stats: athlete.stats ?? null,
           personalRecords: athlete.personalRecords ?? [],
           recentSessions: athlete.recentSessions ?? [],
+          // Weekly Forge (ADR-057): null unless the profile is public and the feature is on, and
+          // absent from an API older than Phase 6 of Weekly Forge.
+          forge: athlete.forge ?? null,
         });
       })
       .catch((cause: unknown) => {
@@ -195,6 +199,7 @@ export default function AthleteScreen() {
         {profile && !isPrivateSelfView && (
           <>
             {profile.stats && <StatTiles stats={profile.stats} />}
+            <PublicForgeSection forge={profile.forge} />
             <PersonalRecords records={profile.personalRecords} />
             <RecentSessions sessions={profile.recentSessions} />
             <PrivacyNote />

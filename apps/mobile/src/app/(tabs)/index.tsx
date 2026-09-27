@@ -24,6 +24,7 @@ import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { getAccountId } from '@/auth/secureStorage';
 import { ScreenBackground } from '@/components/screen-background';
+import { WeeklyForgeSection } from '@/features/forge/weekly-forge-section';
 import { formatHomeDate } from '@/features/home/date';
 import { FailedSyncBanner, FailedSyncBannerSession } from '@/features/home/failed-sync-banner';
 import { latestReading, sumForLocalDate } from '@/features/health/health-metrics';
@@ -301,6 +302,8 @@ export default function HomeScreen() {
               : router.push('/(tabs)/train')
           }
         />
+        {/* Weekly Forge (ADR-057): renders nothing until the weekly_forge flag is on. */}
+        <WeeklyForgeSection />
         <ThisWeek
           sessionCount={stats?.thisWeek.sessionCount ?? null}
           trainedWeekdays={stats?.thisWeek.trainedWeekdays ?? []}

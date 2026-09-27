@@ -145,6 +145,8 @@ export default {
         forgeHeatYellow: '#F2B33D',
         forgeHeatYellowLight: '#F7C866',
         forgeHeatWhite: '#FFF1D6',
+        // The dashed outline of a band not yet earned, in the profile's badge strip (Phase 7 mock-up).
+        forgeBandSlotBorder: 'rgba(255,255,255,.14)',
 
         // Home dashboard (the prototype's `isHome` branch, lines 130-283). The readiness
         // card is the only surface in the app painted on a green ground rather than the

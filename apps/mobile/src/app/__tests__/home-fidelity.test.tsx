@@ -218,6 +218,17 @@ describe('Start Workout', () => {
   });
 });
 
+describe('Weekly Forge', () => {
+  // ADR-057: the feature ships dark. The feature flags cannot be read here (the API mock has no
+  // getFeatureFlags), which is exactly the "off" case: Home must look as it did before.
+  it('is absent while the weekly_forge flag is off, leaving Home unchanged', async () => {
+    const screen = await render(<HomeScreen />);
+
+    expect(screen.getByText('This week')).toBeTruthy();
+    expect(screen.queryByText('Weekly Forge')).toBeNull();
+  });
+});
+
 describe('This week', () => {
   it('renders seven day bars and a zero session count', async () => {
     const screen = await render(<HomeScreen />);

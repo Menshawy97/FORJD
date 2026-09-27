@@ -28,6 +28,7 @@ import type {
   ExerciseHistoryResponse,
   ExerciseResponse,
   FeatureFlagsResponse,
+  ForgeResponse,
   FoodListResponse,
   FoodResponse,
   LoginRequest,
@@ -768,4 +769,14 @@ export async function getFeatureFlags(): Promise<FeatureFlagsResponse> {
  */
 export async function putTimeZone(timeZone: string): Promise<void> {
   await apiClient.put('/users/me/timezone', { timeZone });
+}
+
+/**
+ * `GET /forge` -- this week on every Weekly Forge ladder, in the athlete's own zone (ADR-057). The
+ * server enrols the athlete on first read and evaluates any closed week first, so the answer is
+ * never stale. 404 while the `weekly_forge` flag is off (`isNotFound`).
+ */
+export async function getForge(): Promise<ForgeResponse> {
+  const response = await apiClient.get<ForgeResponse>('/forge');
+  return response.data;
 }

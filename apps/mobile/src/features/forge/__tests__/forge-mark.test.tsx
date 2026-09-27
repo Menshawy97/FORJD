@@ -92,6 +92,16 @@ describe('ForgeMark', () => {
     expect(screen.getByLabelText('Distance, Tempered')).toBeTruthy();
   });
 
+  it('stays out of the screen reader when decorative, inside a row that already says it all', async () => {
+    const screen = await render(<ForgeMark ladder="volume" band="ember" size={34} decorative />);
+    const root = flatten(screen.toJSON()).find((node) => node.props.testID === 'forge-mark');
+
+    expect(screen.queryByLabelText('Volume, Ember')).toBeNull();
+    expect(root?.props.accessible).toBe(false);
+    expect(root?.props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(root?.props.accessibilityElementsHidden).toBe(true);
+  });
+
   it('renders at the size it is given', async () => {
     const { nodes } = await renderMark('ore');
     const root = nodes.find((node) => node.props.testID === 'forge-mark');
