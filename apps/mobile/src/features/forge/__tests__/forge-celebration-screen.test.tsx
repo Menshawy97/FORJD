@@ -1,0 +1,163 @@
+// The new-band and Forged full screens, as approved in the Phase 7 mock-ups (items E, F and L, with
+// the 10B design notes in docs/product/weekly-forge-plan.md).
+import type { ForgeWeekSummary } from '@forjd/contracts';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+
+jest.mock('@/components/haptics', () => ({
+  hapticNewBand: jest.fn(async () => undefined),
+  hapticForged: jest.fn(async () => undefined),
+}));
+jest.mock('@/components/use-reduce-motion', () => ({ useReduceMotion: jest.fn(() => false) }));
+jest.mock('@/media/share-capture', () => ({ isExpoGo: jest.fn(() => false), shareShareCard: jest.fn() }));
+jest.mock('@/media/share-card-shot', () => {
+  const { View } = require('react-native');
+  const react = require('react');
+  return { ShareCardShot: react.forwardRef((props: { children: unknown }, ref: unknown) => <View ref={ref}>{props.children}</View>) };
+});
+jest.mock('@/auth/apiClient', () => ({ getMe: jest.fn() }));
+
+import { getMe } from '@/auth/apiClient';
+import { hapticForged, hapticNewBand } from '@/components/haptics';
+import { useReduceMotion } from '@/components/use-reduce-motion';
+import { isExpoGo, shareShareCard } from '@/media/share-capture';
+import { ForgeCelebrationScreen } from '../forge-celebration-screen';
+
+type LadderWeek = ForgeWeekSummary['ladders'][number];
+
+const bandLadder: LadderWeek = {
+  ladder: 'volume',
+  outcome: 'hit',
+  levelBefore: 6,
+  levelAfter: 7,
+  bandBefore: 'ore',
+  bandAfter: 'ember',
+  total: 5100,
+  target: 5000,
+  celebration: 'band',
+  rewards: [{ type: 'band_badge', level: 7, band: 'ember' }],
+};
+
+const forgedLadder: LadderWeek = {
+  ladder: 'distance',
+  outcome: 'hit',
+  levelBefore: 27,
+  levelAfter: 28,
+  bandBefore: 'tempered',
+  bandAfter: 'forged',
+  total: 150,
+  target: 140.5,
+  celebration: 'forged',
+  rewards: [{ type: 'forged', level: 28, band: 'forged' }],
+};
+
+const summary = (ladder: LadderWeek, shareable = true): ForgeWeekSummary => ({
+  weekStart: '2026-09-19',
+  biggest: ladder.celebration,
+  biggestLadder: ladder.ladder,
+  shareable,
+  levelsGained: 1,
+  marksEarned: 1,
+  ladders: [ladder],
+});
+
+describe('ForgeCelebrationScreen', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    (getMe as jest.Mock).mockResolvedValue({ profile: { username: 'mostafa' } });
+    (useReduceMotion as jest.Mock).mockReturnValue(false);
+    (isExpoGo as jest.Mock).mockReturnValue(false);
+    (shareShareCard as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('strikes a new band: the agreed line, the new target, its level and week, and a medium tap', async () => {
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+
+    expect(screen.getByText('New band · Volume')).toBeTruthy();
+    expect(screen.getByText('Heat rising.')).toBeTruthy();
+    expect(screen.getByText('Volume reached Ember. Your target is now 5,600 kg a week.')).toBeTruthy();
+    expect(screen.getByText('Level 7')).toBeTruthy();
+    expect(screen.getByText('Week of 19 Sep')).toBeTruthy();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(hapticNewBand).toHaveBeenCalledTimes(1);
+    expect(hapticForged).not.toHaveBeenCalled();
+  });
+
+  it('marks Forged with its own line, the start of the run, and the heavy strike', async () => {
+    await render(<ForgeCelebrationScreen week={summary(forgedLadder)} ladderWeek={forgedLadder} onContinue={jest.fn()} />);
+
+    expect(screen.getByText('Forged · Distance')).toBeTruthy();
+    expect(screen.getByText('Forged.')).toBeTruthy();
+    expect(screen.getByText('Four weeks held in Tempered, and now Forged. 157.5 km a week.')).toBeTruthy();
+    expect(screen.getByText('Forged 1 week')).toBeTruthy();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(hapticForged).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws at most 12 sparks, and none when the phone asks for reduced motion, where the tap comes at once', async () => {
+    const first = await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    expect(screen.getAllByTestId('forge-spark', { includeHiddenElements: true }).length).toBeLessThanOrEqual(12);
+    await first.unmount();
+
+    jest.clearAllMocks();
+    (useReduceMotion as jest.Mock).mockReturnValue(true);
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+
+    expect(screen.queryAllByTestId('forge-spark', { includeHiddenElements: true })).toHaveLength(0);
+    expect(hapticNewBand).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues to the week summary', async () => {
+    const onContinue = jest.fn();
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={onContinue} />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the share sheet once, however often Share is tapped', async () => {
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await waitFor(() => expect(getMe).toHaveBeenCalled());
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+      fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+    });
+
+    expect(shareShareCard).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so when the share sheet cannot open', async () => {
+    (shareShareCard as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+    });
+
+    expect(screen.getByText('Could not open the share sheet. Please try again.')).toBeTruthy();
+  });
+
+  it('offers no Share when the week may not be shared, or in Expo Go, where capture is impossible', async () => {
+    const first = await render(
+      <ForgeCelebrationScreen week={summary(bandLadder, false)} ladderWeek={bandLadder} onContinue={jest.fn()} />,
+    );
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull();
+    await first.unmount();
+
+    (isExpoGo as jest.Mock).mockReturnValue(true);
+    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull();
+  });
+});

@@ -5,6 +5,16 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 jest.mock('../use-pending-forge-weeks', () => ({ usePendingForgeWeeks: jest.fn() }));
 jest.mock('@/components/haptics', () => ({ hapticLevelUp: jest.fn(async () => undefined) }));
+jest.mock('../forge-celebration-screen', () => {
+  const { Pressable, Text } = require('react-native');
+  return {
+    ForgeCelebrationScreen: ({ ladderWeek, onContinue }: { ladderWeek: { ladder: string }; onContinue: () => void }) => (
+      <Pressable accessibilityRole="button" accessibilityLabel="Continue" onPress={onContinue}>
+        <Text>{`Full screen for ${ladderWeek.ladder}`}</Text>
+      </Pressable>
+    ),
+  };
+});
 
 import { hapticLevelUp } from '@/components/haptics';
 import { TOAST_DURATION_MS } from '@/components/toast';
@@ -89,6 +99,23 @@ describe('ForgeCelebrations', () => {
 
     await render(<ForgeCelebrations />);
 
+    expect(screen.getByText('Week of 19 – 25 Sep')).toBeTruthy();
+    expect(hapticLevelUp).not.toHaveBeenCalled();
+  });
+
+  it('plays the full screen for a new band, then opens the summary on Continue', async () => {
+    hook.mockReturnValue({
+      current: levelWeek('volume', { biggest: 'band', shareable: true }),
+      isAcking: false,
+      acknowledge: jest.fn(),
+    });
+
+    await render(<ForgeCelebrations />);
+    expect(screen.getByText('Full screen for volume')).toBeTruthy();
+    expect(screen.queryByText('Week of 19 – 25 Sep')).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.queryByText('Full screen for volume')).toBeNull();
     expect(screen.getByText('Week of 19 – 25 Sep')).toBeTruthy();
     expect(hapticLevelUp).not.toHaveBeenCalled();
   });
