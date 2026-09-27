@@ -1,6 +1,6 @@
 # Weekly Forge — plan
 
-**Status:** Phase 1 accepted 2026-09-27; Phase 2 (Saturday weeks, backend) next. Every phase stops for the
+**Status:** Phase 1 accepted, Phase 2 merged (#290), Phase 3 (domain rules) in review, 2026-09-27. Every phase stops for the
 user's review, and **no mobile code is written until the Phase 7 mock-ups are approved**.
 
 ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md),

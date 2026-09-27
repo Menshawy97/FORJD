@@ -152,7 +152,7 @@ with the user's agreement.
 
 ## Weekly Forge — weekly progression ladders (new, 2026-09-27)
 
-**Status: Phase 1 accepted (2026-09-27); Phase 2 next.** Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
+**Status (2026-09-27): Phase 1 accepted, Phase 2 merged (#290), Phase 3 in review.** Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
 ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md) (whole app),
 [ADR-057 Weekly Forge](../decisions/ADR-057-weekly-forge.md).
 

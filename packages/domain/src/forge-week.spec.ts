@@ -60,6 +60,20 @@ describe('weekClosesAt', () => {
     expect(weekClosesAt('2026-04-18', 'Africa/Cairo').toISOString()).toBe('2026-04-24T21:00:00.000Z');
   });
 
+  it('handles a zone west of Greenwich across its autumn clock change', () => {
+    // New York leaves daylight time on Sunday 1 November 2026, so the week of 24 October closes at
+    // UTC-4 and the week of 31 October at UTC-5.
+    expect(weekClosesAt('2026-10-24', 'America/New_York').toISOString()).toBe('2026-10-31T04:00:00.000Z');
+    expect(weekClosesAt('2026-10-31', 'America/New_York').toISOString()).toBe('2026-11-07T05:00:00.000Z');
+  });
+
+  it('handles half-hour and quarter-hour offsets, including a quarter-hour zone with daylight time', () => {
+    expect(weekClosesAt('2026-09-19', 'Asia/Kolkata').toISOString()).toBe('2026-09-25T18:30:00.000Z');
+    // Chatham is UTC+12:45, moving to +13:45 on Sunday 27 September 2026.
+    expect(weekClosesAt('2026-09-19', 'Pacific/Chatham').toISOString()).toBe('2026-09-25T11:15:00.000Z');
+    expect(weekClosesAt('2026-09-26', 'Pacific/Chatham').toISOString()).toBe('2026-10-02T10:15:00.000Z');
+  });
+
   it('is exactly seven days after the previous close outside a clock change', () => {
     const a = weekClosesAt('2026-09-12', 'Africa/Cairo').getTime();
     const b = weekClosesAt('2026-09-19', 'Africa/Cairo').getTime();
