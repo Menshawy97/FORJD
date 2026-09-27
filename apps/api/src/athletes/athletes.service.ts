@@ -3,6 +3,7 @@ import type { PublicProfileResponse } from '@forjd/contracts';
 import { Profile, User } from '@forjd/domain';
 
 import { CityResolverService } from '../cities/city-resolver.service';
+import { ForgeService } from '../forge/forge.service';
 import { LeaderboardsService } from '../leaderboards/leaderboards.service';
 import { PrivacyRepository } from '../privacy/privacy.repository';
 import { UsersRepository } from '../users/users.repository';
@@ -32,6 +33,7 @@ export class AthletesService {
     private readonly statsRepository: AthleteStatsRepository,
     private readonly leaderboards: LeaderboardsService,
     private readonly cityResolver: CityResolverService,
+    private readonly forge: ForgeService,
   ) {}
 
   async getPublicProfile(
@@ -96,10 +98,12 @@ export class AthletesService {
    * edit to a file about what strangers can see.
    */
   private async toPublicProfile(profile: Profile, isSelf: boolean, now: Date): Promise<PublicProfileResponse> {
-    const [standing, records, sessions] = await Promise.all([
+    const [standing, records, sessions, forge] = await Promise.all([
       this.leaderboards.standingFor(profile.userId, now),
       this.statsRepository.personalRecords(profile.userId, RECORD_COUNT),
       this.statsRepository.recentSessions(profile.userId, RECENT_SESSION_COUNT),
+      // Public ladders only, never Nourish, and null while the flag is off (ADR-057 decision 8).
+      this.forge.publicForgeFor(profile.userId),
     ]);
 
     // The tiles exist only for an athlete who is ranked this month, and the streak goes with
@@ -139,6 +143,7 @@ export class AthletesService {
         volumeKg: session.volumeKg,
         durationSeconds: session.durationSeconds,
       })),
+      forge,
     };
   }
 }

@@ -211,6 +211,11 @@ export const responseFixtures = {
         { name: 'Upper Body Push', startedAt: '2026-09-19T10:00:00.000Z', volumeKg: 14200, durationSeconds: 3600 },
         { name: '5K Run', startedAt: '2026-09-16T06:30:00.000Z', volumeKg: 0, durationSeconds: 1422 },
       ],
+      forge: {
+        ladders: [
+          { ladder: 'volume', band: 'ember', level: 9, forgedStreak: 0, bestForgedStreak: 0, badges: ['ember'] },
+        ],
+      },
     },
   },
 
@@ -273,6 +278,7 @@ export const responseFixtures = {
           isFavourite: false,
         },
       ],
+      forge: null,
       nextCursor: 'eyJuYW1lIjoiU2FuZGJhZyBDYXJyeSIsImlkIjoiMjIyIn0',
     },
   },
