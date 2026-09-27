@@ -239,10 +239,11 @@ describe("Weekly Forge tables (ADR-057)", () => {
     });
   });
 
-  it("ships the weekly_forge flag switched off, so the feature starts dark", async () => {
+  // It shipped dark (0030) and migration 0031 switched it on everywhere (the user's call, 2026-09-27).
+  it("has the weekly_forge flag, switched on by migration 0031", async () => {
     const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, "weekly_forge"));
 
-    expect(flag).toMatchObject({ key: "weekly_forge", enabled: false });
+    expect(flag).toMatchObject({ key: "weekly_forge", enabled: true });
   });
 
   it("indexes the per-week reads by athlete and week", async () => {
