@@ -135,6 +135,16 @@ export default {
         weekScoreLabel: '#C9906C',
         metricSleep: '#8FB4C9',
         badgeGold: '#C9A03C',
+        // Weekly Forge "Heat" band colours (docs/product/weekly-forge-plan.md, "Phase 7 outcome"): the
+        // colours steel glows as it heats. Each band has a main and a light colour; Anvil reuses
+        // accent / accentHover and Forged's light colour reuses onAccent, so only these seven are new.
+        forgeHeatOre: '#5A2A22',
+        forgeHeatOreLight: '#7A3A2C',
+        forgeHeatCherry: '#C2412B',
+        forgeHeatCherryLight: '#D9573A',
+        forgeHeatYellow: '#F2B33D',
+        forgeHeatYellowLight: '#F7C866',
+        forgeHeatWhite: '#FFF1D6',
 
         // Home dashboard (the prototype's `isHome` branch, lines 130-283). The readiness
         // card is the only surface in the app painted on a green ground rather than the

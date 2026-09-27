@@ -22,6 +22,7 @@ import {
 import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secureStorage';
 import { markIntroShown, shouldShowIntro } from '@/components/brand/intro-gate';
 import { IntroSplash } from '@/components/brand/intro-splash';
+import { syncTimeZone } from '@/features/forge/time-zone-sync';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
@@ -103,12 +104,18 @@ export default function RootLayout() {
    *
    * Deliberately not awaited and never surfaced: sync is not something the athlete asked for at
    * this moment, and the queue is durable, so a failure simply waits for the next trigger.
+   *
+   * The phone's time zone rides the same two triggers (Weekly Forge, ADR-057): `syncTimeZone`
+   * sends only when the zone changed, so on most launches it is one storage read.
    */
   useEffect(() => {
     if (!authChecked || !authenticated) return;
     void syncPendingSessions();
+    void syncTimeZone();
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void syncPendingSessions();
+      if (state !== 'active') return;
+      void syncPendingSessions();
+      void syncTimeZone();
     });
     return () => subscription.remove();
   }, [authChecked, authenticated]);
