@@ -1,11 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AccountExportExtras } from '@forjd/contracts';
+import type { AccountExportExtras, AccountExportWeeklyForge } from '@forjd/contracts';
+import type { ForgeBand, ForgeLadder, ForgeOutcome, ForgeRewardType } from '@forjd/domain';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 import { Database, DRIZZLE } from '../database/database.module';
 import { exerciseFavourites, exercises } from '../database/schema/exercises.schema';
 import { goals } from '../database/schema/goals.schema';
 import { healthConnections } from '../database/schema/health-data.schema';
+import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from '../database/schema/forge.schema';
 import { foods, foodServings, macroGoals, savedMealItems, savedMeals } from '../database/schema/nutrition.schema';
 import { preferences } from '../database/schema/preferences.schema';
 import { programEnrollments } from '../database/schema/workouts.schema';
@@ -53,6 +55,8 @@ export class AccountExportExtrasRepository {
         .where(eq(programEnrollments.userId, userId))
         .orderBy(asc(programEnrollments.startedAt)),
     ]);
+
+    const weeklyForge = await this.weeklyForge(userId);
 
     const foodIds = foodRows.map((food) => food.id);
     const mealIds = mealRows.map((meal) => meal.id);
@@ -139,6 +143,62 @@ export class AccountExportExtrasRepository {
         startedAt: row.startedAt.toISOString(),
         endedAt: row.endedAt ? row.endedAt.toISOString() : null,
       })),
+      weeklyForge,
+    };
+  }
+
+  /**
+   * Weekly Forge (ADR-057). The vocabulary columns are text in the database and were written only by
+   * the evaluation job from `@forjd/domain`'s tuples, so they are narrowed here, and the contract's
+   * enums check them again when the export is serialised.
+   */
+  private async weeklyForge(userId: string): Promise<AccountExportWeeklyForge> {
+    const [ladderRows, weekRows, rewardRows, ackRows] = await Promise.all([
+      this.db.select().from(forgeUserLadders).where(eq(forgeUserLadders.userId, userId)).orderBy(asc(forgeUserLadders.ladderKey)),
+      this.db
+        .select()
+        .from(forgeWeeks)
+        .where(eq(forgeWeeks.userId, userId))
+        .orderBy(asc(forgeWeeks.weekStart), asc(forgeWeeks.ladderKey)),
+      this.db.select().from(forgeRewards).where(eq(forgeRewards.userId, userId)).orderBy(asc(forgeRewards.createdAt)),
+      this.db.select().from(forgeWeekAcks).where(eq(forgeWeekAcks.userId, userId)).orderBy(asc(forgeWeekAcks.weekStart)),
+    ]);
+
+    return {
+      ladders: ladderRows.map((row) => ({
+        ladder: row.ladderKey as ForgeLadder,
+        level: row.level,
+        bestLevel: row.bestLevel,
+        missStreak: row.missStreak,
+        temperedHoldWeeks: row.temperedHoldWeeks,
+        forgedStreak: row.forgedStreak,
+        bestForgedStreak: row.bestForgedStreak,
+        enrolledWeek: row.enrolledWeek,
+        lastEvaluatedWeek: row.lastEvaluatedWeek,
+      })),
+      weeks: weekRows.map((row) => ({
+        ladder: row.ladderKey as ForgeLadder,
+        weekStart: row.weekStart,
+        timeZone: row.timeZone,
+        closesAt: row.closesAt.toISOString(),
+        total: Number(row.total),
+        target: Number(row.target),
+        levelBefore: row.levelBefore,
+        levelAfter: row.levelAfter,
+        bandBefore: row.bandBefore as ForgeBand,
+        bandAfter: row.bandAfter as ForgeBand,
+        outcome: row.outcome as ForgeOutcome,
+        evaluatedAt: row.evaluatedAt.toISOString(),
+      })),
+      rewards: rewardRows.map((row) => ({
+        ladder: row.ladderKey as ForgeLadder,
+        type: row.type as ForgeRewardType,
+        level: row.level,
+        band: row.band as ForgeBand,
+        weekStart: row.weekStart,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      acknowledgedWeeks: ackRows.map((row) => row.weekStart),
     };
   }
 }

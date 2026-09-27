@@ -1,4 +1,11 @@
-import { EXTERNAL_CONNECTION_PROVIDERS, EXTERNAL_CONNECTION_STATUSES } from '@forjd/domain';
+import {
+  EXTERNAL_CONNECTION_PROVIDERS,
+  EXTERNAL_CONNECTION_STATUSES,
+  FORGE_BANDS,
+  FORGE_LADDERS,
+  FORGE_OUTCOMES,
+  FORGE_REWARD_TYPES,
+} from '@forjd/domain';
 import { z } from 'zod';
 
 import { bodyScanResponseSchema } from './body';
@@ -106,6 +113,55 @@ export const accountExportEnrollmentHistorySchema = z.object({
 });
 export type AccountExportEnrollmentHistory = z.infer<typeof accountExportEnrollmentHistorySchema>;
 
+/**
+ * Weekly Forge (ADR-057): the athlete's position on every ladder, every closed week's locked total
+ * and result, the rewards ledger, and which week summaries they have seen. Dates are the Saturday
+ * that starts the week, `YYYY-MM-DD`.
+ */
+export const accountExportWeeklyForgeSchema = z.object({
+  ladders: z.array(
+    z.object({
+      ladder: z.enum(FORGE_LADDERS),
+      level: z.number().int().min(1),
+      bestLevel: z.number().int().min(1),
+      missStreak: z.number().int().min(0),
+      temperedHoldWeeks: z.number().int().min(0),
+      forgedStreak: z.number().int().min(0),
+      bestForgedStreak: z.number().int().min(0),
+      enrolledWeek: z.string(),
+      lastEvaluatedWeek: z.string().nullable(),
+    }),
+  ),
+  weeks: z.array(
+    z.object({
+      ladder: z.enum(FORGE_LADDERS),
+      weekStart: z.string(),
+      timeZone: z.string(),
+      closesAt: z.string().datetime(),
+      total: z.number().min(0),
+      target: z.number().min(0),
+      levelBefore: z.number().int().min(1),
+      levelAfter: z.number().int().min(1),
+      bandBefore: z.enum(FORGE_BANDS),
+      bandAfter: z.enum(FORGE_BANDS),
+      outcome: z.enum(FORGE_OUTCOMES),
+      evaluatedAt: z.string().datetime(),
+    }),
+  ),
+  rewards: z.array(
+    z.object({
+      ladder: z.enum(FORGE_LADDERS),
+      type: z.enum(FORGE_REWARD_TYPES),
+      level: z.number().int().min(1),
+      band: z.enum(FORGE_BANDS),
+      weekStart: z.string(),
+      createdAt: z.string().datetime(),
+    }),
+  ),
+  acknowledgedWeeks: z.array(z.string()),
+});
+export type AccountExportWeeklyForge = z.infer<typeof accountExportWeeklyForgeSchema>;
+
 /** Everything in the export that comes from `AccountExportExtrasRepository` (8C). */
 export const accountExportExtrasSchema = z.object({
   customExercises: z.array(accountExportCustomExerciseSchema),
@@ -125,6 +181,8 @@ export const accountExportExtrasSchema = z.object({
     .nullable(),
   healthConnections: z.array(accountExportHealthConnectionSchema),
   programEnrollmentHistory: z.array(accountExportEnrollmentHistorySchema),
+  /** Added with Weekly Forge (additive, so `version` stays 1). */
+  weeklyForge: accountExportWeeklyForgeSchema,
 });
 export type AccountExportExtras = z.infer<typeof accountExportExtrasSchema>;
 

@@ -32,6 +32,10 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Run summary: distance, moving time, elevation gain, splits (ADR-050) | Run screen | `workout_run_summaries`, `workout_run_splits` | No | Yes (added with R2) | Yes (cascade) |
 | Run heart rate and calories, from a watch or estimated (ADR-050) | Run screen, Health Connect | Same tables, **only with health-data consent**; dropped by the server otherwise | No | Yes (added with R2) | Yes (cascade) |
 | Weekly city rank (rank, score, cohort size) | Weekly snapshot job | `leaderboard_rank_snapshots` (derived, replaced never patched) | No | No | Yes (cascade) |
+| Weekly Forge position per ladder (level, best level, streaks, enrolment week), ADR-057 | Weekly evaluation job, from logged workouts and meal days | `forge_user_ladders` (derived; rebuilt by a refold, never patched) | No | Yes (`weeklyForge.ladders`) | Yes (cascade) |
+| Weekly Forge locked weekly totals and results (workouts, kg lifted, km run, active minutes, days with meals logged; time zone) | Weekly evaluation job | `forge_weeks` (written once per week, never updated) | No | Yes (`weeklyForge.weeks`) | Yes (cascade) |
+| Weekly Forge rewards ledger (Forge marks, band badges, Forged weeks) | Weekly evaluation job | `forge_rewards` (append-only) | No | Yes (`weeklyForge.rewards`) | Yes (cascade) |
+| Weekly Forge summaries seen | Week-close summary screen | `forge_week_acks` | No | Yes (`weeklyForge.acknowledgedWeeks`) | Yes (cascade) |
 | Avatar image | Profile photo | Storage bucket `avatars` (public URL) | Storage default | URL only | Yes (explicit delete) |
 | InBody photo and body composition, plus the height and age on each scan | InBody scan, manual entry | Bucket `inbody` (private), `body_scans` (with `height_cm`, `age_years`), `body_measurements` | Storage default | Measurements, height and age yes; photo file no | Yes |
 | Health metrics (heart rate, HRV, sleep, steps, active energy, weight, VO2 max, respiratory rate and others), only after health-data consent | Health Connect, WHOOP | `health_observations`, `health_connections` | No | Observations yes; connection rows added in 8C | Yes |

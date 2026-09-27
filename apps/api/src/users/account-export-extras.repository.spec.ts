@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { exerciseFavourites, exercises } from '../database/schema/exercises.schema';
 import { goals } from '../database/schema/goals.schema';
 import { healthConnections } from '../database/schema/health-data.schema';
+import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from '../database/schema/forge.schema';
 import { foods, foodServings, macroGoals, savedMealItems, savedMeals } from '../database/schema/nutrition.schema';
 import { preferences } from '../database/schema/preferences.schema';
 import { users } from '../database/schema/users.schema';
@@ -204,6 +205,62 @@ describe('AccountExportExtrasRepository', () => {
       preferences: null,
       healthConnections: [],
       programEnrollmentHistory: [],
+      weeklyForge: { ladders: [], weeks: [], rewards: [], acknowledgedWeeks: [] },
     });
+  });
+
+  it("returns the owner's Weekly Forge ladders, locked weeks, rewards and seen weeks, as numbers", async () => {
+    const email = `extras-forge-${suite}@example.com`;
+    emails.push(email);
+    const [user] = await db.insert(users).values({ email }).returning();
+    const userId = user!.id;
+    await db.insert(forgeUserLadders).values([
+      { userId, ladderKey: "volume", level: 2, bestLevel: 2, enrolledWeek: "2026-09-26", lastEvaluatedWeek: "2026-09-26" },
+      { userId, ladderKey: "consistency", enrolledWeek: "2026-09-26" },
+    ]);
+    await db.insert(forgeWeeks).values({
+      userId,
+      ladderKey: "volume",
+      weekStart: "2026-09-26",
+      timeZone: "Africa/Cairo",
+      closesAt: new Date("2026-10-02T21:00:00Z"),
+      total: "2150.50",
+      target: "2000.00",
+      levelBefore: 1,
+      levelAfter: 2,
+      bandBefore: "ore",
+      bandAfter: "ore",
+      outcome: "hit",
+      missStreakAfter: 0,
+      temperedHoldWeeksAfter: 0,
+      forgedStreakAfter: 0,
+      rulesVersion: 1,
+    });
+    await db.insert(forgeRewards).values({ userId, ladderKey: "volume", type: "forge_mark", level: 2, band: "ore", weekStart: "2026-09-26" });
+    await db.insert(forgeWeekAcks).values({ userId, weekStart: "2026-09-26" });
+
+    const { weeklyForge } = await repository.getExtras(userId);
+    const other = await repository.getExtras(otherId);
+
+    expect(weeklyForge.ladders.map((row) => row.ladder)).toEqual(["consistency", "volume"]);
+    expect(weeklyForge.ladders[1]).toEqual({
+      ladder: "volume",
+      level: 2,
+      bestLevel: 2,
+      missStreak: 0,
+      temperedHoldWeeks: 0,
+      forgedStreak: 0,
+      bestForgedStreak: 0,
+      enrolledWeek: "2026-09-26",
+      lastEvaluatedWeek: "2026-09-26",
+    });
+    expect(weeklyForge.weeks).toEqual([
+      expect.objectContaining({ ladder: "volume", total: 2150.5, target: 2000, closesAt: "2026-10-02T21:00:00.000Z", outcome: "hit" }),
+    ]);
+    expect(weeklyForge.rewards).toEqual([
+      expect.objectContaining({ ladder: "volume", type: "forge_mark", level: 2, band: "ore", weekStart: "2026-09-26" }),
+    ]);
+    expect(weeklyForge.acknowledgedWeeks).toEqual(["2026-09-26"]);
+    expect(other.weeklyForge).toEqual({ ladders: [], weeks: [], rewards: [], acknowledgedWeeks: [] });
   });
 });
