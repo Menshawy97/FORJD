@@ -24,6 +24,7 @@ import { rememberLocationConsent } from '@/store/leaderboard-consent';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { getAccountId } from '@/auth/secureStorage';
 import { ScreenBackground } from '@/components/screen-background';
+import { ForgeCelebrations } from '@/features/forge/forge-celebrations';
 import { WeeklyForgeSection } from '@/features/forge/weekly-forge-section';
 import { formatHomeDate } from '@/features/home/date';
 import { FailedSyncBanner, FailedSyncBannerSession } from '@/features/home/failed-sync-banner';
@@ -310,6 +311,8 @@ export default function HomeScreen() {
         />
         <RecentPr record={stats?.recentPersonalRecord ?? null} />
       </ScrollView>
+      {/* Weekly Forge (ADR-057): a closed week's celebration and summary; nothing while the flag is off. */}
+      <ForgeCelebrations />
     </ScreenBackground>
   );
 }

@@ -68,6 +68,16 @@ describe('WeekSummarySheet', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
+  it('opens above everything, the tab bar included, and treats Android back as Done', async () => {
+    const onDone = jest.fn();
+    await render(<WeekSummarySheet week={WEEK} isBusy={false} onDone={onDone} />);
+
+    const modal = screen.getByTestId('forge-week-summary');
+    expect(modal.props.transparent).toBe(true);
+    modal.props.onRequestClose();
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
   it('says "no levels" plainly for a quiet week', async () => {
     await render(<WeekSummarySheet week={{ ...WEEK, levelsGained: 0, marksEarned: 0 }} isBusy={false} onDone={jest.fn()} />);
 

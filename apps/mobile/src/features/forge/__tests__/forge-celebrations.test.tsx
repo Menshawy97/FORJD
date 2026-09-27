@@ -1,0 +1,109 @@
+// Home's Weekly Forge celebrations: for each closed week, oldest first, the celebration plays, then
+// the week summary sheet, and Done acknowledges it (Phase 7 items D, G, H).
+import type { ForgeWeekSummary } from '@forjd/contracts';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+
+jest.mock('../use-pending-forge-weeks', () => ({ usePendingForgeWeeks: jest.fn() }));
+jest.mock('@/components/haptics', () => ({ hapticLevelUp: jest.fn(async () => undefined) }));
+
+import { hapticLevelUp } from '@/components/haptics';
+import { TOAST_DURATION_MS } from '@/components/toast';
+import { ForgeCelebrations } from '../forge-celebrations';
+import { usePendingForgeWeeks } from '../use-pending-forge-weeks';
+
+const hook = usePendingForgeWeeks as jest.Mock;
+
+const levelWeek = (ladder: 'volume' | 'nourish', over: Partial<ForgeWeekSummary> = {}): ForgeWeekSummary => ({
+  weekStart: '2026-09-19',
+  biggest: 'level',
+  biggestLadder: ladder,
+  shareable: false,
+  levelsGained: 1,
+  marksEarned: 1,
+  ladders: [
+    {
+      ladder,
+      outcome: 'hit',
+      levelBefore: ladder === 'nourish' ? 2 : 7,
+      levelAfter: ladder === 'nourish' ? 3 : 8,
+      bandBefore: ladder === 'nourish' ? 'ore' : 'ember',
+      bandAfter: 'ember',
+      total: 10,
+      target: 5,
+      celebration: 'level',
+      rewards: [],
+    },
+  ],
+  ...over,
+});
+
+describe('ForgeCelebrations', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('shows nothing when no week is waiting', async () => {
+    hook.mockReturnValue({ current: null, isAcking: false, acknowledge: jest.fn() });
+
+    await render(<ForgeCelebrations />);
+
+    expect(screen.queryByText(/Week of/)).toBeNull();
+  });
+
+  it('strikes a level-up with the toast and a light tap, then opens the summary', async () => {
+    hook.mockReturnValue({ current: levelWeek('volume'), isAcking: false, acknowledge: jest.fn() });
+
+    await render(<ForgeCelebrations />);
+
+    expect(screen.getByText('Struck. Volume rose to level 8.')).toBeTruthy();
+    expect(hapticLevelUp).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Week of 19 – 25 Sep')).toBeNull();
+
+    await act(async () => {
+      jest.advanceTimersByTime(TOAST_DURATION_MS);
+    });
+    expect(screen.queryByText('Struck. Volume rose to level 8.')).toBeNull();
+    expect(screen.getByText('Week of 19 – 25 Sep')).toBeTruthy();
+  });
+
+  it('keeps Nourish calm: a plain toast and no tap', async () => {
+    hook.mockReturnValue({ current: levelWeek('nourish'), isAcking: false, acknowledge: jest.fn() });
+
+    await render(<ForgeCelebrations />);
+
+    expect(screen.getByText('Nourish reached Ember.')).toBeTruthy();
+    expect(hapticLevelUp).not.toHaveBeenCalled();
+  });
+
+  it('goes straight to the summary for a quiet week', async () => {
+    hook.mockReturnValue({
+      current: levelWeek('volume', { biggest: 'none', biggestLadder: null, levelsGained: 0, marksEarned: 0 }),
+      isAcking: false,
+      acknowledge: jest.fn(),
+    });
+
+    await render(<ForgeCelebrations />);
+
+    expect(screen.getByText('Week of 19 – 25 Sep')).toBeTruthy();
+    expect(hapticLevelUp).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges the week from Done', async () => {
+    const acknowledge = jest.fn(async () => undefined);
+    hook.mockReturnValue({
+      current: levelWeek('volume', { biggest: 'cooled', biggestLadder: 'volume' }),
+      isAcking: false,
+      acknowledge,
+    });
+
+    await render(<ForgeCelebrations />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
+
+    expect(acknowledge).toHaveBeenCalledWith('2026-09-19');
+  });
+});
