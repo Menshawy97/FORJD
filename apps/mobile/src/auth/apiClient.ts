@@ -28,6 +28,7 @@ import type {
   ExerciseHistoryResponse,
   ExerciseResponse,
   FeatureFlagsResponse,
+  ForgePendingWeeksResponse,
   ForgeResponse,
   FoodListResponse,
   FoodResponse,
@@ -779,4 +780,18 @@ export async function putTimeZone(timeZone: string): Promise<void> {
 export async function getForge(): Promise<ForgeResponse> {
   const response = await apiClient.get<ForgeResponse>('/forge');
   return response.data;
+}
+
+/**
+ * `GET /forge/weeks/pending` -- closed Weekly Forge weeks the athlete has not seen yet, oldest first,
+ * each with its one celebration and every ladder's result. 404 while the flag is off.
+ */
+export async function getPendingForgeWeeks(): Promise<ForgePendingWeeksResponse> {
+  const response = await apiClient.get<ForgePendingWeeksResponse>('/forge/weeks/pending');
+  return response.data;
+}
+
+/** `POST /forge/weeks/:weekStart/ack` -- marks one closed week as seen, so it never shows again. 204. */
+export async function ackForgeWeek(weekStart: string): Promise<void> {
+  await apiClient.post(`/forge/weeks/${encodeURIComponent(weekStart)}/ack`);
 }
