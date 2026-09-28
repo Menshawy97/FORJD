@@ -11,6 +11,9 @@ jest.mock('expo-router', () => ({
   router: { replace: (...args: unknown[]) => mockReplace(...args), push: jest.fn() },
 }));
 
+jest.mock('@/features/flags/feature-flags', () => ({ useFeatureFlag: jest.fn(() => false) }));
+
+import { useFeatureFlag } from '@/features/flags/feature-flags';
 import FaqScreen from '../faq';
 
 const METRICS = {
@@ -61,5 +64,50 @@ describe('FaqScreen', () => {
     await render(<FaqScreen />);
     await fireEvent.press(screen.getByLabelText('Back'));
     expect(mockReplace).toHaveBeenCalledWith('/profile');
+  });
+
+  describe('Weekly Forge (weekly-forge-explainer-plan.md X5, approved wording in faq-copy.md)', () => {
+    it('stays hidden while Weekly Forge is switched off', async () => {
+      (useFeatureFlag as jest.Mock).mockReturnValue(false);
+      await render(<FaqScreen />);
+
+      expect(screen.queryByText('Weekly Forge')).toBeNull();
+      expect(screen.queryByText('What is Weekly Forge?')).toBeNull();
+    });
+
+    it('lists its nine questions once Weekly Forge is on, after the Rank section', async () => {
+      (useFeatureFlag as jest.Mock).mockReturnValue(true);
+      await render(<FaqScreen />);
+
+      expect(useFeatureFlag).toHaveBeenCalledWith('weekly_forge');
+      for (const question of [
+        'What is Weekly Forge?',
+        'What counts toward each ladder?',
+        'When does my week start and end?',
+        'How do I go up a level?',
+        'What happens if I miss a week?',
+        'What are the bands, and where do the goals come from?',
+        'How do I reach Forged?',
+        'Can I share my level?',
+        'Who can see my levels?',
+      ]) {
+        expect(screen.getByText(question)).toBeTruthy();
+      }
+      const titles = screen.getAllByText(/^(Your rank and the leaderboard|Weekly Forge|Your training numbers)$/);
+      expect(titles.map((title) => title.props.children)).toEqual([
+        'Your rank and the leaderboard',
+        'Weekly Forge',
+        'Your training numbers',
+      ]);
+    });
+
+    it('opens an answer, with its list', async () => {
+      (useFeatureFlag as jest.Mock).mockReturnValue(true);
+      await render(<FaqScreen />);
+
+      await fireEvent.press(screen.getByText('What counts toward each ladder?'));
+
+      expect(screen.getByText('Volume: weight × reps across all sets, warm-ups included.')).toBeTruthy();
+    });
   });
 });

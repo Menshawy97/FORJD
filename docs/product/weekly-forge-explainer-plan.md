@@ -2,11 +2,12 @@
 
 **Status:** Approved by the user on 2026-09-27 (mock-up parts A–H and sources R1–R6).
 - X1 docs: merged (#304).
-- X2 table and refold: merged (#305), `main` green. It deploys to staging automatically; production
-  needs the owner's go-ahead.
-- X3 How it works, ladder screen, ways in: this PR. The ladder screen has no Share button or replay
-  yet; those are X4.
-- X4 sharing and X5 FAQ: to do.
+- X2 table and refold: merged (#305), `main` green, deployed to staging and, with the owner's
+  go-ahead, to production (no stored weeks there needed refolding).
+- X3 How it works, ladder screen, ways in: merged (#306), `main` green.
+- X4 sharing: #307.
+- X5 FAQ section: #308.
+- Still owed: checking real share capture on a dev-client build (ADR-028), since Expo Go can't capture.
 **Mock-ups:** [Weekly Forge Explainer](https://claude.ai/artifact/WtAfKpW3tTZWsbqV32yXDf) (claude.ai artifact, private to the owner).
 **Decision record:** [ADR-058](../decisions/ADR-058-weekly-forge-fifteen-levels.md).
 **Builds on:** [weekly-forge-plan.md](weekly-forge-plan.md) and [ADR-057](../decisions/ADR-057-weekly-forge.md).

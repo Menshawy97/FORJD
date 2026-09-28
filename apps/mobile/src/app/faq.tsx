@@ -8,6 +8,8 @@ import { pressGhost } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { FAQ_SECTIONS, type FaqBlock, type FaqEntry } from '@/features/faq/faq-content';
+import { useFeatureFlag } from '@/features/flags/feature-flags';
+import { WEEKLY_FORGE_FLAG } from '@/features/forge/use-forge-week';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -77,6 +79,9 @@ function FaqRow({ entry, open, onToggle }: { entry: FaqEntry; open: boolean; onT
 
 export default function FaqScreen() {
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(new Set());
+  // A section tied to a feature flag shows only while that feature does (Weekly Forge, X5).
+  const isForgeOn = useFeatureFlag(WEEKLY_FORGE_FLAG);
+  const sections = FAQ_SECTIONS.filter((section) => section.flag !== WEEKLY_FORGE_FLAG || isForgeOn);
 
   const toggle = (id: string) =>
     setOpenIds((current) => {
@@ -98,7 +103,7 @@ export default function FaqScreen() {
           How FORJD works out the numbers you see, and where the method comes from. It compares training; it is not medical advice.
         </Text>
 
-        {FAQ_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <View key={section.title}>
             <Text className="mb-[2px] mt-6 font-archivo text-section-label font-semibold uppercase text-label">
               {section.title}

@@ -9,9 +9,10 @@ const textOf = (blocks: readonly FaqBlock[]): string =>
 const allEntries = FAQ_SECTIONS.flatMap((s) => s.entries);
 
 describe('FAQ content', () => {
-  it('has the five approved sections in order', () => {
+  it('has the six approved sections in order, Weekly Forge after the rank (X5)', () => {
     expect(FAQ_SECTIONS.map((s) => s.title)).toEqual([
       'Your rank and the leaderboard',
+      'Weekly Forge',
       'Your training numbers',
       'Recovery and health data',
       'Runs',
@@ -19,9 +20,13 @@ describe('FAQ content', () => {
     ]);
   });
 
-  it('has the approved 24 questions, seven, six, four, four and three per section', () => {
-    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 6, 4, 4, 3]);
-    expect(allEntries).toHaveLength(24);
+  it('has the approved 33 questions, seven, nine, six, four, four and three per section', () => {
+    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 9, 6, 4, 4, 3]);
+    expect(allEntries).toHaveLength(33);
+  });
+
+  it('ties only the Weekly Forge section to a feature flag', () => {
+    expect(FAQ_SECTIONS.filter((s) => s.flag).map((s) => [s.title, s.flag])).toEqual([['Weekly Forge', 'weekly_forge']]);
   });
 
   it('gives every entry a unique id, a question and an answer', () => {

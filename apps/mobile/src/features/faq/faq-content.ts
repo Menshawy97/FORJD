@@ -20,6 +20,8 @@ export interface FaqEntry {
 export interface FaqSection {
   title: string;
   entries: readonly FaqEntry[];
+  /** A feature flag the section waits for: hidden while it is off, like the feature itself. */
+  flag?: string;
 }
 
 export const FAQ_SECTIONS: readonly FaqSection[] = [
@@ -104,6 +106,106 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
           {
             p: `When you start a workout, and only if you allowed it, your phone sends a position rounded to about 110 metres. Our server matches it to the nearest city of about 15,000 people or more, within 120 km, from a public dataset (GeoNames, CC BY 4.0), and throws the position away. Only the city name is kept, on the workout. Nearby suburbs join their main city's board.`,
           },
+        ],
+      },
+    ],
+  },
+  {
+    // docs/product/faq-copy.md "Weekly Forge", approved by the user on 2026-09-27
+    // (weekly-forge-explainer-plan.md X5). Shown only while the weekly_forge flag is on.
+    title: `Weekly Forge`,
+    flag: 'weekly_forge',
+    entries: [
+      {
+        id: 'forge-what',
+        question: `What is Weekly Forge?`,
+        answer: [
+          {
+            p: `Five weekly goals, one for each ladder: Consistency, Volume, Distance, Active minutes and Nourish. Each ladder has a level, and your level sets that week's goal. Reach it and the goal grows. Miss it and you stay where you are.`,
+          },
+        ],
+      },
+      {
+        id: 'forge-counts',
+        question: `What counts toward each ladder?`,
+        answer: [
+          { p: `Every completed workout you log counts, whether you used the live timer or added it afterwards.` },
+          {
+            list: [
+              `Consistency: completed workouts.`,
+              `Volume: weight × reps across all sets, warm-ups included.`,
+              `Distance: kilometres from running workouts.`,
+              `Active minutes: workout time, up to 2 hours per workout.`,
+              `Nourish: days you logged at least one meal.`,
+            ],
+          },
+        ],
+      },
+      {
+        id: 'forge-week',
+        question: `When does my week start and end?`,
+        answer: [
+          {
+            p: `Weeks run Saturday to Friday and close at midnight on Friday night, in your own time zone. Anything you log after that counts toward the new week. Editing an old workout later doesn't change a week that has already closed.`,
+          },
+        ],
+      },
+      {
+        id: 'forge-level-up',
+        question: `How do I go up a level?`,
+        answer: [
+          {
+            p: `Reach your goal by the end of the week and you go up one level. If your total also beats the goal of a higher level, you land on that level instead, up to 3 levels in one week.`,
+          },
+        ],
+      },
+      {
+        id: 'forge-miss',
+        question: `What happens if I miss a week?`,
+        answer: [
+          {
+            p: `Nothing is taken away. You keep your level and the same goal. Only after 3 misses in a row does your level ease down by one, and level 1 is the lowest it goes.`,
+          },
+        ],
+      },
+      {
+        id: 'forge-bands',
+        question: `What are the bands, and where do the goals come from?`,
+        answer: [
+          {
+            p: `Bands group the levels: Ore, Ember, Anvil, Tempered, then Forged. Volume, Distance and Active minutes have 3 levels in each band. Consistency has one or two, and Nourish stops at Anvil.`,
+          },
+          {
+            p: `The goals follow published guidance: the World Health Organization's 150–300 active minutes a week, the American College of Sports Medicine's strength training advice, and studies of how much recreational and competitive runners train. Tap a ladder on Home to see every level and its goal.`,
+          },
+        ],
+      },
+      {
+        id: 'forge-forged',
+        question: `How do I reach Forged?`,
+        answer: [
+          {
+            p: `Forged is the top band. To get there, stay in Tempered for 4 weeks in a row. While you're Forged, a missed week moves you back to the top of Tempered, and you can climb back from there. Nourish has no Forged band: it tops out at Anvil, 6 days a week.`,
+          },
+        ],
+      },
+      {
+        id: 'forge-share',
+        question: `Can I share my level?`,
+        answer: [
+          {
+            p: `Yes. Open a ladder and tap Share, or tap its badge to replay your band's celebration and share from there. To share all your ladders on one card, tap Share on the Weekly Forge section of your Profile. Nourish is never included.`,
+          },
+        ],
+      },
+      {
+        id: 'forge-who-sees',
+        question: `Who can see my levels?`,
+        answer: [
+          {
+            p: `If your profile is public, other people can see your bands and levels for Consistency, Volume, Distance and Active minutes. Nourish is only ever shown to you. Weekly Forge has no ranking.`,
+          },
+          { p: `For the full picture, open How it works from the Weekly Forge card on Home.` },
         ],
       },
     ],
