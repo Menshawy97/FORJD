@@ -2,6 +2,7 @@ import type { ForgeLadderProgress } from '@forjd/contracts';
 import {
   FORGE_BAND_NAMES,
   FORGE_BANDS,
+  FORGE_LADDER_IS_PUBLIC,
   FORGE_LADDER_NAMES,
   FORGE_LADDER_UNITS,
   FORGE_LADDERS,
@@ -11,16 +12,21 @@ import {
 } from '@forjd/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
+import { pressScale } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
+import { Toast } from '@/components/toast';
 import { BAND_FINISH } from '@/features/forge/band-finish';
+import { ForgeCelebrationScreen } from '@/features/forge/forge-celebration-screen';
 import { formatForgeAmount, unitLabel, type ForgeUnit } from '@/features/forge/forge-format';
 import { ForgeMark } from '@/features/forge/forge-mark';
 import { outlookLine } from '@/features/forge/forge-outlook-copy';
+import { ForgeShareCard } from '@/features/forge/forge-share-card';
+import { useForgeShare } from '@/features/forge/use-forge-share';
 import { useForgeWeek } from '@/features/forge/use-forge-week';
 import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
 import { colors } from '@/theme/tokens';
@@ -41,7 +47,9 @@ export default function ForgeLadderScreen() {
   const { ladder: param } = useLocalSearchParams<{ ladder?: string }>();
   const ladder = isForgeLadder(param) ? param : null;
   const { forge, loadFailed, reload } = useForgeWeek();
+  const forgeShare = useForgeShare();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isReplaying, setIsReplaying] = useState(false);
 
   useEffect(() => {
     if (!ladder) {
@@ -62,6 +70,8 @@ export default function ForgeLadderScreen() {
     return null;
   }
   const progress = forge?.ladders.find((candidate) => candidate.ladder === ladder) ?? null;
+  // Nourish is never shared or celebrated, and nothing is offered before your level has loaded.
+  const canShare = progress !== null && FORGE_LADDER_IS_PUBLIC[ladder];
 
   return (
     <ScreenBackground>
@@ -72,14 +82,49 @@ export default function ForgeLadderScreen() {
         contentContainerStyle={{ paddingBottom: 26 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.dim} />}>
-        <TopCard ladder={ladder} progress={progress} loadFailed={loadFailed} />
+        <TopCard
+          ladder={ladder}
+          progress={progress}
+          loadFailed={loadFailed}
+          onReplay={canShare ? () => setIsReplaying(true) : undefined}
+        />
         {progress ? (
           <Text className="mt-3 font-archivo text-[13px] leading-[1.5] text-dim">{outlookLine(progress)}</Text>
+        ) : null}
+        {canShare && progress ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Share"
+            onPress={() =>
+              forgeShare.start((username) => (
+                <ForgeShareCard ladder={ladder} band={progress.band} level={progress.level} username={username} />
+              ))
+            }
+            style={pressScale}
+            className="mt-3 h-11 w-full flex-row items-center justify-center gap-2 rounded-button border border-border">
+            <Icon name="share" size={18} color={colors.text} />
+            <Text className="font-archivo text-[14px] font-bold text-text">Share</Text>
+          </Pressable>
         ) : null}
         <LevelList ladder={ladder} level={progress?.level ?? null} />
       </ScrollView>
 
       <TabBar active="home" />
+      <Toast message={forgeShare.toastMessage} />
+      {forgeShare.sheet}
+      {isReplaying && progress ? (
+        <ForgeCelebrationScreen
+          subject={{
+            ladder,
+            band: progress.band,
+            level: progress.level,
+            weekStart: null,
+            forgedWeeks: Math.max(1, progress.forgedStreak),
+          }}
+          isShareable={canShare}
+          onContinue={() => setIsReplaying(false)}
+        />
+      ) : null}
     </ScreenBackground>
   );
 }
@@ -88,10 +133,13 @@ function TopCard({
   ladder,
   progress,
   loadFailed,
+  onReplay,
 }: {
   ladder: ForgeLadder;
   progress: ForgeLadderProgress | null;
   loadFailed: boolean;
+  /** Replays the band's celebration from the badge (X4). Absent for Nourish and while not loaded. */
+  onReplay?: () => void;
 }) {
   if (!progress) {
     const spoken = loadFailed
@@ -133,7 +181,17 @@ function TopCard({
       accessibilityLabel={`${band}, level ${progress.level}. This week ${total} of ${target} ${unitLabel(progress.unit)}${isMet ? ', target met' : ''}`}
       className="rounded-card border border-border bg-surface">
       <View className="flex-row items-center gap-[14px] px-4 py-[14px]">
-        <ForgeMark ladder={ladder} band={progress.band} size={48} decorative />
+        {onReplay ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Replay your ${band} celebration`}
+            onPress={onReplay}
+            style={pressScale}>
+            <ForgeMark ladder={ladder} band={progress.band} size={48} decorative />
+          </Pressable>
+        ) : (
+          <ForgeMark ladder={ladder} band={progress.band} size={48} decorative />
+        )}
         <View className="min-w-0 flex-1">
           <Text className="font-archivo text-[19px] font-bold leading-[1.15] tracking-[-0.19px] text-text">
             {`${band} · Level ${progress.level}`}

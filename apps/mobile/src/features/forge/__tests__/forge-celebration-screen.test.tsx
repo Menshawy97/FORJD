@@ -19,7 +19,7 @@ jest.mock('@/auth/apiClient', () => ({ getMe: jest.fn() }));
 import { getMe } from '@/auth/apiClient';
 import { hapticForged, hapticNewBand } from '@/components/haptics';
 import { isExpoGo, shareShareCard } from '@/media/share-capture';
-import { ForgeCelebrationScreen } from '../forge-celebration-screen';
+import { ForgeCelebrationScreen, type ForgeCelebrationSubject } from '../forge-celebration-screen';
 
 type LadderWeek = ForgeWeekSummary['ladders'][number];
 
@@ -49,14 +49,13 @@ const forgedLadder: LadderWeek = {
   rewards: [{ type: 'forged', level: 13, band: 'forged' }],
 };
 
-const summary = (ladder: LadderWeek, shareable = true): ForgeWeekSummary => ({
+/** What `ForgeCelebrations` hands the screen for a closed week. */
+const subjectOf = (ladder: LadderWeek): ForgeCelebrationSubject => ({
+  ladder: ladder.ladder,
+  band: ladder.bandAfter,
+  level: ladder.levelAfter,
   weekStart: '2026-09-19',
-  biggest: ladder.celebration,
-  biggestLadder: ladder.ladder,
-  shareable,
-  levelsGained: 1,
-  marksEarned: 1,
-  ladders: [ladder],
+  forgedWeeks: 1,
 });
 
 describe('ForgeCelebrationScreen', () => {
@@ -74,7 +73,7 @@ describe('ForgeCelebrationScreen', () => {
   });
 
   it('strikes a new band: the agreed line, the new target, its level and week, and a medium tap', async () => {
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
 
     expect(screen.getByText('New band · Volume')).toBeTruthy();
     expect(screen.getByText('Heat rising.')).toBeTruthy();
@@ -90,7 +89,7 @@ describe('ForgeCelebrationScreen', () => {
   });
 
   it('marks Forged with its own line, the start of the run, and the heavy strike', async () => {
-    await render(<ForgeCelebrationScreen week={summary(forgedLadder)} ladderWeek={forgedLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(forgedLadder)} isShareable onContinue={jest.fn()} />);
 
     expect(screen.getByText('Forged · Distance')).toBeTruthy();
     expect(screen.getByText('Forged.')).toBeTruthy();
@@ -103,14 +102,22 @@ describe('ForgeCelebrationScreen', () => {
     expect(hapticForged).toHaveBeenCalledTimes(1);
   });
 
+  it('replays from the ladder screen with the current Forged run and no week (X4)', async () => {
+    const replay: ForgeCelebrationSubject = { ...subjectOf(forgedLadder), weekStart: null, forgedWeeks: 3 };
+    await render(<ForgeCelebrationScreen subject={replay} isShareable onContinue={jest.fn()} />);
+
+    expect(screen.getByText('Forged 3 weeks')).toBeTruthy();
+    expect(screen.queryByText(/^Week of/)).toBeNull();
+  });
+
   it('draws at most 12 sparks, and none when the phone asks for reduced motion, where the tap comes at once', async () => {
-    const first = await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    const first = await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
     expect(screen.getAllByTestId('forge-spark', { includeHiddenElements: true }).length).toBeLessThanOrEqual(12);
     await first.unmount();
 
     jest.clearAllMocks();
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
 
     expect(screen.queryAllByTestId('forge-spark', { includeHiddenElements: true })).toHaveLength(0);
     expect(hapticNewBand).toHaveBeenCalledTimes(1);
@@ -122,7 +129,7 @@ describe('ForgeCelebrationScreen', () => {
     const start = jest.fn();
     const parallel = jest.spyOn(require('react-native').Animated, 'parallel').mockReturnValue({ start, stop: jest.fn(), reset: jest.fn() });
 
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
     expect(start).not.toHaveBeenCalled();
 
     await act(async () => answer(true));
@@ -132,14 +139,14 @@ describe('ForgeCelebrationScreen', () => {
   });
 
   it('keeps the big badge out of the screen reader, since the words around it already say it all', async () => {
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
 
     expect(screen.queryByLabelText('Volume, Ember')).toBeNull();
   });
 
   it('continues to the week summary', async () => {
     const onContinue = jest.fn();
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={onContinue} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={onContinue} />);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
 
@@ -147,7 +154,7 @@ describe('ForgeCelebrationScreen', () => {
   });
 
   it('opens the share sheet once, however often Share is tapped', async () => {
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
     await waitFor(() => expect(getMe).toHaveBeenCalled());
 
     await act(async () => {
@@ -160,7 +167,7 @@ describe('ForgeCelebrationScreen', () => {
 
   it('says so when the share sheet cannot open', async () => {
     (shareShareCard as jest.Mock).mockRejectedValue(new Error('unavailable'));
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
 
     await act(async () => {
       fireEvent.press(screen.getByRole('button', { name: 'Share' }));
@@ -171,13 +178,13 @@ describe('ForgeCelebrationScreen', () => {
 
   it('offers no Share when the week may not be shared, or in Expo Go, where capture is impossible', async () => {
     const first = await render(
-      <ForgeCelebrationScreen week={summary(bandLadder, false)} ladderWeek={bandLadder} onContinue={jest.fn()} />,
+      <ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable={false} onContinue={jest.fn()} />,
     );
     expect(screen.queryByRole('button', { name: 'Share' })).toBeNull();
     await first.unmount();
 
     (isExpoGo as jest.Mock).mockReturnValue(true);
-    await render(<ForgeCelebrationScreen week={summary(bandLadder)} ladderWeek={bandLadder} onContinue={jest.fn()} />);
+    await render(<ForgeCelebrationScreen subject={subjectOf(bandLadder)} isShareable onContinue={jest.fn()} />);
     expect(screen.queryByRole('button', { name: 'Share' })).toBeNull();
   });
 });

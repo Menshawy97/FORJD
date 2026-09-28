@@ -9,8 +9,10 @@ import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { clearSession } from '@/auth/secureStorage';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
+import { Toast } from '@/components/toast';
 import { shareAccountExport } from '@/data-export/share-account-export';
 import { ProfileForgeSection } from '@/features/forge/profile-forge-section';
+import { useForgeShare } from '@/features/forge/use-forge-share';
 import { activityLevelLabel, bodyGoalSummary } from '@/features/targets/labels';
 import { colors } from '@/theme/tokens';
 
@@ -253,6 +255,7 @@ function describeLoadFailure(error: unknown): string {
 }
 
 export default function ProfileScreen() {
+  const forgeShare = useForgeShare();
   const [identity, setIdentity] = useState<Identity>(EMPTY_IDENTITY);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -342,7 +345,7 @@ export default function ProfileScreen() {
         <IdentityRow identity={identity} />
         <GoProBanner />
         {/* Weekly Forge (ADR-057): renders nothing until the weekly_forge flag is on. */}
-        <ProfileForgeSection />
+        <ProfileForgeSection share={forgeShare} />
 
         {buildGroups(identity, handleExportData, isExportingData).map((group, groupIndex) => (
           <View key={group.label}>
@@ -378,6 +381,17 @@ export default function ProfileScreen() {
           </Text>
         )}
       </ScrollView>
+
+      {/*
+        The Weekly Forge share flow's toast and capture layer (weekly-forge-explainer-plan.md X4).
+        This is a tab screen, whose layout already ends at the top of the tab bar, and `Toast` sits
+        96 px up from its parent's bottom. So it hangs from a zero-height anchor 78 px below the
+        screen's bottom edge, landing 18 px above the tab bar, where Home's Forge toast sits.
+      */}
+      <View pointerEvents="box-none" className="absolute inset-x-0 -bottom-[78px] h-0">
+        <Toast message={forgeShare.toastMessage} />
+      </View>
+      {forgeShare.sheet}
     </ScreenBackground>
   );
 }

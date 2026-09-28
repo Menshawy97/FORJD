@@ -20,6 +20,16 @@ jest.mock('expo-router', () => ({
 jest.mock('@/features/forge/use-forge-week', () => ({
   useForgeWeek: () => ({ isVisible: true, reload: jest.fn(), ...mockWeek }),
 }));
+jest.mock('@/media/share-capture', () => ({ isExpoGo: jest.fn(() => true), shareShareCard: jest.fn() }));
+jest.mock('@/auth/apiClient', () => ({ getMe: jest.fn(async () => ({ profile: { username: 'mostafa' } })) }));
+jest.mock('@/features/forge/forge-celebration-screen', () => {
+  const { Text } = require('react-native');
+  return {
+    ForgeCelebrationScreen: ({ subject }: { subject: { ladder: string; band: string; weekStart: string | null } }) => (
+      <Text>{`Replaying ${subject.ladder} ${subject.band}${subject.weekStart ? '' : ', no week'}`}</Text>
+    ),
+  };
+});
 
 import ForgeLadderScreen from '../forge/[ladder]';
 
@@ -144,6 +154,41 @@ describe('ForgeLadderScreen', () => {
 
     expect(screen.getByText('—')).toBeTruthy();
     expect(screen.queryByText('Level not loaded')).toBeNull();
+  });
+
+  describe('sharing (X4)', () => {
+    it('offers Share for a public ladder, and in Expo Go says sharing needs the full app', async () => {
+      await render(<ForgeLadderScreen />);
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+
+      expect(screen.getByText('Sharing works in the full app, not in Expo Go.')).toBeTruthy();
+    });
+
+    it('replays the band celebration from the badge, with no week', async () => {
+      await render(<ForgeLadderScreen />);
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Replay your Ember celebration' }));
+
+      expect(screen.getByText('Replaying volume ember, no week')).toBeTruthy();
+    });
+
+    it('never offers Share or a replay for Nourish', async () => {
+      mockParams = { ladder: 'nourish' };
+      mockWeek = { forge: week(progress('nourish', 5, 'anvil', 0)), loadFailed: false };
+      await render(<ForgeLadderScreen />);
+
+      expect(screen.queryByRole('button', { name: 'Share' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Replay/ })).toBeNull();
+    });
+
+    it('offers neither while your level is not loaded', async () => {
+      mockWeek = { forge: null, loadFailed: true };
+      await render(<ForgeLadderScreen />);
+
+      expect(screen.queryByRole('button', { name: 'Share' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Replay/ })).toBeNull();
+    });
   });
 
   it('goes home for a ladder that does not exist, and back from a real one', async () => {

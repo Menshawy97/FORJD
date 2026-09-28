@@ -81,8 +81,15 @@ export function ForgeCelebrations() {
   if (screenWeek === current.weekStart && celebrated) {
     return (
       <ForgeCelebrationScreen
-        week={current}
-        ladderWeek={celebrated}
+        subject={{
+          ladder: celebrated.ladder,
+          band: celebrated.bandAfter,
+          level: celebrated.levelAfter,
+          weekStart: current.weekStart,
+          // Entering Forged always starts a run of one week (weekly-forge-plan.md, Phase 10B).
+          forgedWeeks: 1,
+        }}
+        isShareable={current.shareable}
         onContinue={() => {
           // One Modal at a time: the celebration closes, and the sheet opens once its dismissal has
           // finished. Presenting a Modal while another is still animating away can drop it on iOS.

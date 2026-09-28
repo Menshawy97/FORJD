@@ -1,10 +1,10 @@
-import type { ForgeWeekSummary } from '@forjd/contracts';
 import {
   FORGE_BAND_NAMES,
   FORGE_COPY,
   FORGE_LADDER_NAMES,
   FORGE_LADDER_UNITS,
   targetOf,
+  type ForgeBand,
   type ForgeLadder,
 } from '@forjd/domain';
 import { useContext, useEffect, useId, useRef, useState } from 'react';
@@ -48,11 +48,24 @@ import { ForgeShareCard } from './forge-share-card';
  *
  * Animated with React Native's own `Animated` and the native driver, like the brand splash.
  */
-type LadderWeek = ForgeWeekSummary['ladders'][number];
+/**
+ * What a celebration shows: the band a ladder entered and its level. `weekStart` is the week it
+ * happened, or null for a replay from the ladder screen (weekly-forge-explainer-plan.md X4), which
+ * then shows no week chip. `forgedWeeks` is how long the athlete has been Forged: 1 on the week they
+ * enter, the current run on a replay.
+ */
+export interface ForgeCelebrationSubject {
+  ladder: ForgeLadder;
+  band: ForgeBand;
+  level: number;
+  weekStart: string | null;
+  forgedWeeks: number;
+}
 
 interface ForgeCelebrationScreenProps {
-  week: ForgeWeekSummary;
-  ladderWeek: LadderWeek;
+  subject: ForgeCelebrationSubject;
+  /** False keeps Share off the screen: never for Nourish, and never for an unshareable week. */
+  isShareable: boolean;
   onContinue: () => void;
 }
 
@@ -103,11 +116,11 @@ const SPARKS = Array.from({ length: SPARK_COUNT }, (_, i) => {
 });
 
 export function ForgeCelebrationScreen({
-  week,
-  ladderWeek,
+  subject,
+  isShareable,
   onContinue,
 }: ForgeCelebrationScreenProps) {
-  const isForged = ladderWeek.bandAfter === 'forged';
+  const isForged = subject.band === 'forged';
   const reduceMotion = useReduceMotion();
   const insets = useContext(SafeAreaInsetsContext) ?? ZERO_INSETS;
   const toast = useToast();
@@ -193,17 +206,18 @@ export function ForgeCelebrationScreen({
     }
   };
 
-  const name = FORGE_LADDER_NAMES[ladderWeek.ladder];
-  const target = targetLine(ladderWeek.ladder, ladderWeek.levelAfter);
+  const name = FORGE_LADDER_NAMES[subject.ladder];
+  const target = targetLine(subject.ladder, subject.level);
   const line = isForged
     ? `Four weeks held in Tempered, and now Forged.${target ? ` ${target} a week.` : ''}`
-    : `${name} reached ${FORGE_BAND_NAMES[ladderWeek.bandAfter]}.${target ? ` Your target is now ${target} a week.` : ''}`;
+    : `${name} reached ${FORGE_BAND_NAMES[subject.band]}.${target ? ` Your target is now ${target} a week.` : ''}`;
+  const forgedRun = `Forged ${subject.forgedWeeks} ${subject.forgedWeeks === 1 ? 'week' : 'weeks'}`;
   const chips = [
-    isForged ? 'Forged 1 week' : `Level ${ladderWeek.levelAfter}`,
-    `Week of ${weekStartLabel(week.weekStart)}`,
+    isForged ? forgedRun : `Level ${subject.level}`,
+    ...(subject.weekStart ? [`Week of ${weekStartLabel(subject.weekStart)}`] : []),
   ];
-  const light = BAND_FINISH[ladderWeek.bandAfter].light;
-  const shareKit = week.shareable ? shareModules() : null;
+  const light = BAND_FINISH[subject.band].light;
+  const shareKit = isShareable ? shareModules() : null;
   const canShare = shareKit !== null && !shareKit.capture.isExpoGo();
   const ShareCardShot = shareKit?.shot.ShareCardShot;
 
@@ -229,9 +243,9 @@ export function ForgeCelebrationScreen({
               options={{ format: 'jpg', quality: 0.92, width: 1080, height: 1350 }}
             >
               <ForgeShareCard
-                ladder={ladderWeek.ladder}
-                band={ladderWeek.bandAfter}
-                level={ladderWeek.levelAfter}
+                ladder={subject.ladder}
+                band={subject.band}
+                level={subject.level}
                 username={username}
               />
             </ShareCardShot>
@@ -362,8 +376,8 @@ export function ForgeCelebrationScreen({
                 }}
               >
                 <ForgeMark
-                  ladder={ladderWeek.ladder}
-                  band={ladderWeek.bandAfter}
+                  ladder={subject.ladder}
+                  band={subject.band}
                   size={MARK_SIZE}
                   decorative
                 />

@@ -8,9 +8,9 @@ jest.mock('@/components/haptics', () => ({ hapticLevelUp: jest.fn(async () => un
 jest.mock('../forge-celebration-screen', () => {
   const { Pressable, Text } = require('react-native');
   return {
-    ForgeCelebrationScreen: ({ ladderWeek, onContinue }: { ladderWeek: { ladder: string }; onContinue: () => void }) => (
+    ForgeCelebrationScreen: ({ subject, onContinue }: { subject: { ladder: string }; onContinue: () => void }) => (
       <Pressable accessibilityRole="button" accessibilityLabel="Continue" onPress={onContinue}>
-        <Text>{`Full screen for ${ladderWeek.ladder}`}</Text>
+        <Text>{`Full screen for ${subject.ladder}`}</Text>
       </Pressable>
     ),
   };
