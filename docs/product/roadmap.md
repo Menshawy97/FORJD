@@ -55,6 +55,10 @@ owed item**: it is the only check on code users will run.
 
 ### Known engineering gaps (in plans, not yet scheduled until now)
 
+**2026-10-01:** the ones that need no device, account or product decision are planned in
+[engineering-gaps-plan.md](engineering-gaps-plan.md) (G1-G7: Sentry scrub, CI permissions,
+board-cache eviction, flaky timing tests, batch food lookup, run follow-ups, Phase 12 ADR drafts).
+
 They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed there:
 
 - **Privacy:** ~~crash-recovery snapshots and the late `getMe` consent race after sign-out~~ fixed
