@@ -177,7 +177,10 @@ export class LeaderboardsService {
     this.evictExpiredBoards(now.getTime());
     this.cityBoards.set(key, { athletes, expiresAt: now.getTime() + CITY_BOARD_TTL_MS });
     // A failed read is not kept: the next request tries again.
-    athletes.catch(() => this.cityBoards.delete(key));
+    // Only this read's own entry: a newer board stored under the same key since then is kept.
+    athletes.catch(() => {
+      if (this.cityBoards.get(key)?.athletes === athletes) this.cityBoards.delete(key);
+    });
     return { athletes: await athletes, reused: false };
   }
 

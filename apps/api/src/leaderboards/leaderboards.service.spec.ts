@@ -231,6 +231,25 @@ describe('LeaderboardsService', () => {
       expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps a newer board when an older, superseded read of the same board fails late', async () => {
+      const { service, repository } = build({ athletes: cohort(60, 20) });
+      let failOldRead: (error: Error) => void = () => undefined;
+      repository.cityAthletes.mockImplementationOnce(
+        () => new Promise<CityAthleteRow[]>((_resolve, reject) => (failOldRead = reject)),
+      );
+
+      const oldRequest = service.get(viewer, query(), NOW);
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(1);
+      await service.get(viewer, query(), later(16));
+      failOldRead(new Error('database unavailable'));
+      await expect(oldRequest).rejects.toThrow('database unavailable');
+
+      await service.get(viewer, query(), later(17));
+
+      expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
+    });
+
     it('lets go of boards that have expired, so past months do not pile up in memory (8.5E, low)', async () => {
       const { service } = build({ athletes: cohort(60, 20) });
       const boards = (service as unknown as { cityBoards: Map<string, unknown> }).cityBoards;
