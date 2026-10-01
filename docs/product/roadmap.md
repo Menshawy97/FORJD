@@ -158,9 +158,11 @@ with the user's agreement.
 - The `weekly_forge` flag is **on** in every environment, at the owner's request (migration 0031,
   #303, deployed to staging and production). The owner has been walking it in Expo Go.
 - A dev-client device walk (share capture, celebration handoff, haptics) is still owed.
-- **Follow-up in progress: the explainer.** Fewer levels (15, anchored to published sources), a How
-  it works screen, a ladder screen with every level, sharing any time, and FAQ entries. Plan:
-  [weekly-forge-explainer-plan.md](weekly-forge-explainer-plan.md), phases X1–X5.
+- **Follow-up done (2026-09-28): the explainer.** Fewer levels (15, anchored to published
+  sources, ADR-058, deployed to staging and production), a How it works screen, a ladder screen
+  with every level, sharing any time, and FAQ entries (#304–#308). Plan:
+  [weekly-forge-explainer-plan.md](weekly-forge-explainer-plan.md). Still owed: real share capture
+  on a dev-client build.
 
 Plan: [weekly-forge-plan.md](weekly-forge-plan.md).
 ADRs: [ADR-056 Weeks start on Saturday](../decisions/ADR-056-weeks-start-on-saturday.md) (whole app),

@@ -1,13 +1,17 @@
 # Weekly Forge: fewer levels, explained in the app, shareable any time
 
-**Status:** Approved by the user on 2026-09-27 (mock-up parts A–H and sources R1–R6).
+**Status: done (2026-09-28).** Approved by the user on 2026-09-27 (mock-up parts A–H and sources R1–R6).
 - X1 docs: merged (#304).
 - X2 table and refold: merged (#305), `main` green, deployed to staging and, with the owner's
-  go-ahead, to production (no stored weeks there needed refolding).
+  go-ahead, to production (no stored weeks there needed refolding). The owner's local example
+  history was refolded too.
 - X3 How it works, ladder screen, ways in: merged (#306), `main` green.
-- X4 sharing: #307.
-- X5 FAQ section: #308.
-- Still owed: checking real share capture on a dev-client build (ADR-028), since Expo Go can't capture.
+- X4 sharing: merged (#307), `main` green.
+- X5 FAQ section: merged (#308), `main` green.
+- **Still owed:** checking real share capture on a dev-client build (ADR-028). Expo Go can't
+  capture, so its Share buttons only say "Sharing works in the full app, not in Expo Go."
+- The app-only phases (X3–X5) reach production with the next app build; there is no mobile
+  deploy to run.
 **Mock-ups:** [Weekly Forge Explainer](https://claude.ai/artifact/WtAfKpW3tTZWsbqV32yXDf) (claude.ai artifact, private to the owner).
 **Decision record:** [ADR-058](../decisions/ADR-058-weekly-forge-fifteen-levels.md).
 **Builds on:** [weekly-forge-plan.md](weekly-forge-plan.md) and [ADR-057](../decisions/ADR-057-weekly-forge.md).
