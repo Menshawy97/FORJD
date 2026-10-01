@@ -433,14 +433,15 @@ export function useRunSession(): RunSession {
         });
         // Closed before the enqueue, so a late autosave cannot write the snapshot back afterwards.
         closedRef.current = true;
-        await enqueueSessionUpload(db, await getAccountId(), request);
-        // From here the run is safely queued: nothing below may report it as "not saved".
-        try {
+        const accountId = await getAccountId();
+        // One transaction (G6): either the run is queued and its recovery snapshot gone, or neither
+        // happened and the "not saved" path below lets the person try again. A crash between two
+        // separate writes used to leave a snapshot of a queued run to be offered back later.
+        await db.withTransactionAsync(async () => {
+          await enqueueSessionUpload(db, accountId, request);
           await clearRunSnapshot(db, finished.id);
-        } catch {
-          // A leftover snapshot for a queued run could be offered back; retry once, best effort.
-          await clearRunSnapshot(db, finished.id).catch(() => undefined);
-        }
+        });
+        // From here the run is safely queued: nothing below may report it as "not saved".
         stopWatching();
         try {
           setCompletedRun(toRunSummary(request, stats.route));
