@@ -44,7 +44,7 @@ class FakeSqliteConnection implements SqliteConnection {
     throw new Error(`FakeSqliteConnection: unhandled runAsync "${source}"`);
   }
 
-  async getAllAsync<T>(source: string, params: unknown[]): Promise<T[]> {
+  async getAllAsync<T>(source: string): Promise<T[]> {
     if (source.startsWith('SELECT session_id, payload, started_at, account_id FROM run_snapshot')) {
       return [...this.snapshots].sort((a, b) => b.started_at.localeCompare(a.started_at)) as T[];
     }

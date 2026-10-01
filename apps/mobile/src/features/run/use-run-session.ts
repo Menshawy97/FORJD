@@ -27,6 +27,7 @@ import {
   pauseRun,
   resumeRun,
   runStats,
+  runTrackStats,
   startRun,
   toRunUploadRequest,
   type RunState,
@@ -458,7 +459,13 @@ export function useRunSession(): RunSession {
     })();
   }, [discard, getDb, showToast, stopWatching]);
 
-  const stats = useMemo(() => (run ? runStats(run, nowMs) : null), [run, nowMs]);
+  // The GPS-only part changes only when a reading arrives; the clock part every second.
+  const fixes = run?.fixes;
+  const trackStats = useMemo(() => (fixes ? runTrackStats(fixes) : null), [fixes]);
+  const stats = useMemo(
+    () => (run && trackStats ? runStats(run, nowMs, trackStats) : null),
+    [run, nowMs, trackStats],
+  );
 
   const splits = useMemo<RunSplitView[]>(
     () =>
