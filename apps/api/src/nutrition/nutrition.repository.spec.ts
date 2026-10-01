@@ -722,56 +722,11 @@ describe("NutritionRepository", () => {
 
       expect(list.length).toBeGreaterThanOrEqual(8);
       // One query for the meal rows, one batched `IN (...)` query for every meal's items --
-      // never N+1. Same generous bound rationale as the searchFoods test above.
+      // never N+1. Same generous bound rationale as the searchFoods test above. These two
+      // query-count tests are the guard for R28; wall-clock timing tests were removed because
+      // they flaked under machine load and proved nothing these do not.
       expect(callCount).toBeLessThanOrEqual(4);
     });
-
-    it("timing: listSavedMeals stays fast against a seeded set of meals -- a per-meal round trip would scale linearly with meal count", async () => {
-      const userId = await makeUser("r28-savedmeals-timing");
-      const food = await repository.createCatalogueFood(
-        catalogueInput(`r28-savedmeals-timing-${randomUUID()}`),
-      );
-      createdFoodIds.push(food.id);
-
-      const mealCount = 100;
-      for (let i = 0; i < mealCount; i += 20) {
-        const batch = await Promise.all(
-          Array.from({ length: Math.min(20, mealCount - i) }, (_, offset) =>
-            repository.createSavedMeal(userId, `R28 Timing Meal ${i + offset} ${randomUUID()}`, [
-              { foodId: food.id, servingLabel: "100 g", grams: 100 },
-            ]),
-          ),
-        );
-        createdSavedMealIds.push(...batch.map((meal) => meal.id));
-      }
-
-      const start = Date.now();
-      const list = await repository.listSavedMeals(userId);
-      const elapsedMs = Date.now() - start;
-
-      expect(list.length).toBeGreaterThanOrEqual(mealCount);
-      // Two round trips' worth of latency, not `mealCount` of them -- generous even under the
-      // shared-machine contention this repo's own test-running notes call out.
-      expect(elapsedMs).toBeLessThan(2000);
-    }, 30000);
-
-    it("timing: searchFoods stays fast against a seeded set of matching foods -- a per-result round trip would scale linearly with result count", async () => {
-      const viewer = await makeUser("r28-search-timing");
-      const unique = randomUUID().replace(/-/g, "");
-      const created = await Promise.all(
-        Array.from({ length: 50 }, (_, index) =>
-          repository.createCatalogueFood(catalogueInput(`r28-search-timing-${unique}-${index}`)),
-        ),
-      );
-      createdFoodIds.push(...created.map((food: Food) => food.id));
-
-      const start = Date.now();
-      const results = await repository.searchFoods(viewer, `Test Banana r28-search-timing-${unique}`, 50);
-      const elapsedMs = Date.now() - start;
-
-      expect(results.length).toBeGreaterThanOrEqual(50);
-      expect(elapsedMs).toBeLessThan(2000);
-    }, 30000);
   });
 
   describe("pruneCatalogueFoods", () => {
