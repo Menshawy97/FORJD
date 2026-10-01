@@ -13,7 +13,7 @@ feature changes what is collected, update this file in the same PR.
 | Google / Apple (sign-in) | The user's own Google or Apple account identity, only when they choose that sign-in | Added by Phase 8 slices 8F/8G. FORJD receives an ID token with email and a stable subject ID, never a password. |
 | OpenAI (`gpt-5.4-mini`, ADR-053) | The InBody scan photo | Only after the user grants AI consent (`privacy_settings.ai_features_consent`). Enforced in `BodyService.requireAiConsent`. |
 | WHOOP | OAuth exchange; FORJD reads recovery, sleep and workout data from WHOOP | Only after the user connects WHOOP. |
-| Sentry (server only) | Error reports with the user ID stripped unless crash diagnostics is on | The mobile app has no Sentry SDK. |
+| Sentry (server only) | Error type and stack frames only, no text; not sent at all for a user with crash diagnostics off; user ID kept only when it is on | The mobile app has no Sentry SDK. |
 | NVIDIA | Nothing. A provider class exists but is not wired up. | Development only. |
 | Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` is used for local rest-timer alerts only. |
 
@@ -68,9 +68,10 @@ Derived from the table. Confirm against the final build and the lawyer's privacy
 
 ## Known mismatches, tracked as follow-ups
 
-- `privacy_settings.crash_diagnostics` is documented as controlling whether reports are sent, but
-  `sentry-scrub.ts` only strips the user field. Reports are still sent. Nothing scrubs health
-  values from exception messages or request bodies; rule 15 is policy, not code.
+- ~~`crash_diagnostics` only stripped the user field, and nothing scrubbed health values from
+  exception messages or request bodies.~~ Fixed 2026-10-01 (G1): a user's "off" means their
+  server crashes are not sent, and every server report keeps no text at all
+  (`docs/architecture/security.md`).
 - `security.md` says "encrypted DB fields where appropriate", but only WHOOP tokens are
   encrypted at the application layer.
 - No data retention periods are defined anywhere yet. The privacy policy needs one.
