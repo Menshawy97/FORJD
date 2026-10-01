@@ -130,7 +130,11 @@ export function useRunSession(): RunSession {
       if (closedRef.current) return;
       try {
         const db = await getDb();
-        await saveRunSnapshot(db, await getAccountId(), state.id, toRunSnapshot(state, Date.now()), new Date(state.startedAtMs).toISOString());
+        const accountId = await getAccountId();
+        // Checked again with no await before the write: Finish may have started while this waited,
+        // and a write issued now could land inside its transaction and restore the snapshot (G6).
+        if (closedRef.current) return;
+        await saveRunSnapshot(db, accountId, state.id, toRunSnapshot(state, Date.now()), new Date(state.startedAtMs).toISOString());
       } catch {
         // Recovery is best effort, but a runner who would lose the run to a crash should know.
         if (!saveWarnedRef.current) {
@@ -406,6 +410,9 @@ export function useRunSession(): RunSession {
     }
 
     finishingRef.current = true;
+    // Closed before the first await, so no autosave writes the snapshot while Finish waits on
+    // consent, weight or the watch, and none can land inside the finish transaction (G6 review).
+    closedRef.current = true;
     setIsFinishing(true);
     void (async () => {
       try {
@@ -431,8 +438,6 @@ export function useRunSession(): RunSession {
           healthDataAllowed: healthAllowed,
           watchCaloriesKcal: healthAllowed ? finalHealth.caloriesKcal : null,
         });
-        // Closed before the enqueue, so a late autosave cannot write the snapshot back afterwards.
-        closedRef.current = true;
         const accountId = await getAccountId();
         // One transaction (G6): either the run is queued and its recovery snapshot gone, or neither
         // happened and the "not saved" path below lets the person try again. A crash between two

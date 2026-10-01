@@ -400,6 +400,26 @@ describe('RunScreen -- finishing', () => {
    * transaction, so a crash between them can never leave a snapshot of a run that is already
    * queued (and later uploaded) to be offered back as unfinished.
    */
+  /**
+   * The G6 review's race: an autosave that starts while Finish is waiting (consent, weight, the
+   * watch) must not write the snapshot back -- it could land inside the finish transaction, after
+   * the clear, and restore the snapshot of a queued run.
+   */
+  it('stops saving the recovery snapshot as soon as Finish starts, before it waits on anything', async () => {
+    let releaseConsent: (value: boolean) => void = () => undefined;
+    (readHealthConsent as jest.Mock).mockReturnValue(new Promise<boolean>((resolve) => (releaseConsent = resolve)));
+    await runOneHundredMetres();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+    (saveRunSnapshot as jest.Mock).mockClear();
+    const pauseButton = screen.queryByText('Pause');
+    if (pauseButton) await fireEvent.press(pauseButton);
+    releaseConsent(false);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(saveRunSnapshot).not.toHaveBeenCalled();
+  });
+
   it('queues the run and clears its recovery snapshot in one transaction', async () => {
     await runOneHundredMetres();
 
