@@ -159,7 +159,7 @@ route-tree suites (signup, welcome, profile navigation); they pass alone and in 
 - **Run snapshot at sign-out.** The crash-recovery snapshot (with every GPS fix, and heart rate when consent was
   on) is not cleared on logout, so a second account on the same phone could be offered the first account's
   unfinished run. The strength session snapshot has the same gap. Clear both in `clearSession`.
-- **Leftover snapshot of a queued run.** Recovery now drops a snapshot whose run is still in the upload queue, but
+- ~~**Leftover snapshot of a queued run.**~~ **Fixed 2026-10-01 (G6):** enqueue and clear are one SQLite transaction. Recovery now drops a snapshot whose run is still in the upload queue, but
   one whose run has already uploaded (a crash between enqueue and clear, then a successful sync) could still be
   offered. Fix by also checking the server, or by enqueueing and clearing in one SQLite transaction.
 - **Source-blind calories.** The watch energy is summed across every source that writes to Health Connect, so a
@@ -169,8 +169,8 @@ route-tree suites (signup, welcome, profile navigation); they pass alone and in 
 - **Stale consent write after sign-out.** Home writes the health consent copy after `getMe`; a response that lands
   after `clearSession` could put the old account's yes back. Check a session still exists before writing (the
   location consent copy has the same narrow race). The server still drops health fields either way.
-- **Live-screen cost on long runs.** The route array is rebuilt every second; memoise it on the fixes.
-- **`run_points`** in `store/run-session.ts` is unused (the snapshot carries the fixes); remove it or use it.
+- ~~**Live-screen cost on long runs.**~~ **Fixed (G6):** `runTrackStats` is memoised on the fixes; only time and pace tick.
+- ~~**`run_points`** unused~~ **Removed (G6):** on-phone migration step 5 drops it.
 - **Miles.** The run screens are kilometres only; there is no miles option yet.
 - **Share card.** The summary's share tile says "coming soon"; the run share card ("Route & Splits") is unbuilt.
 - **Discard of a run whose snapshot clear fails** is silent; the screen closes and the run could come back. Tell the
