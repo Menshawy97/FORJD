@@ -230,6 +230,19 @@ describe('LeaderboardsService', () => {
 
       expect(repository.cityAthletes).toHaveBeenCalledTimes(2);
     });
+
+    it('lets go of boards that have expired, so past months do not pile up in memory (8.5E, low)', async () => {
+      const { service } = build({ athletes: cohort(60, 20) });
+      const boards = (service as unknown as { cityBoards: Map<string, unknown> }).cityBoards;
+
+      await service.get(viewer, query({ period: 'month' }), NOW);
+      await service.get(viewer, query({ period: 'all_time' }), NOW);
+      expect(boards.size).toBe(2);
+
+      await service.get(viewer, query({ period: 'month' }), later(16));
+
+      expect(boards.size).toBe(1);
+    });
   });
 
   describe('a ranked board', () => {
