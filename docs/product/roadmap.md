@@ -66,11 +66,10 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
   from exception messages (`sentry-scrub.ts` strips only the user; `data-inventory.md`).
   Unconfirmed (8.5E): the date-of-birth `getMe` in `AuthenticatedGate` could, if the gate stays
   mounted across a quick account switch, redirect the new account on the old one's profile.
-- **Speed (8.5E, low):** the leaderboard's 15 s board cache never drops past months' keys
-  (`leaderboards.service.ts`); a first Nutrition visit still reads each food separately (no batch
-  `GET /nutrition/foods?ids=`; revisits are cached). The two R28 timing tests in
-  `nutrition.repository.spec.ts` keep 2 s wall-clock bounds (same flake class as L10-1).
-- **CI (8.5E, unconfirmed):** `ci.yml` has no top-level `permissions:` block; it touches no
+- **Speed (8.5E, low):** ~~the board cache never drops past months' keys~~ fixed (G3);
+  a first Nutrition visit still reads each food separately (no batch
+  `GET /nutrition/foods?ids=`; revisits are cached). ~~The two R28 timing tests~~ removed (G4).
+- ~~**CI (8.5E, unconfirmed):** `ci.yml` had no top-level `permissions:` block~~ added (G2); it touches no
   credentials, so this rests on the repository's default token permission.
 - **Rule 10:** watch calories are summed across every Health Connect data origin (possible
   double count); filter by origin.
