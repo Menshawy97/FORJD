@@ -33,6 +33,40 @@ describe('nutrition contracts', () => {
     it('rejects an unknown category rather than silently ignoring it', () => {
       expect(foodSearchQuerySchema.safeParse({ category: 'not-a-real-category' }).success).toBe(false);
     });
+
+    describe('ids (G5: one request for every food a screen references)', () => {
+      const A = '11111111-1111-4111-8111-111111111111';
+      const B = '22222222-2222-4222-8222-222222222222';
+
+      it('parses a comma-separated list, trimming and dropping repeats in order', () => {
+        expect(foodSearchQuerySchema.parse({ ids: ` ${B},${A} , ${B}` }).ids).toEqual([B, A]);
+      });
+
+      it('is absent for an ordinary search', () => {
+        expect(foodSearchQuerySchema.parse({ q: 'oats' }).ids).toBeUndefined();
+      });
+
+      it('rejects anything that is not a uuid', () => {
+        expect(foodSearchQuerySchema.safeParse({ ids: `${A},nope` }).success).toBe(false);
+      });
+
+      it('accepts up to 100 ids and rejects 101', () => {
+        const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+        const many = (count: number) => Array.from({ length: count }, (_, n) => id(n)).join(',');
+        expect(foodSearchQuerySchema.safeParse({ ids: many(100) }).success).toBe(true);
+        expect(foodSearchQuerySchema.safeParse({ ids: many(101) }).success).toBe(false);
+      });
+
+      it('rejects an empty list', () => {
+        expect(foodSearchQuerySchema.safeParse({ ids: '' }).success).toBe(false);
+        expect(foodSearchQuerySchema.safeParse({ ids: ' , ' }).success).toBe(false);
+      });
+
+      it('cannot be combined with a search term or a category', () => {
+        expect(foodSearchQuerySchema.safeParse({ ids: A, q: 'oats' }).success).toBe(false);
+        expect(foodSearchQuerySchema.safeParse({ ids: A, category: 'grains' }).success).toBe(false);
+      });
+    });
   });
 
   describe('foodListResponseSchema', () => {
