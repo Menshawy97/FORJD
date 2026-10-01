@@ -7,9 +7,7 @@ import type {
   UpdateProfileRequest,
 } from '@forjd/contracts';
 import { Plan, PrivacySettings, Profile, UnitSystem, User } from '@forjd/domain';
-import * as Sentry from '@sentry/nestjs';
 
-import { applyCrashDiagnosticsConsent } from '../observability/sentry-scrub';
 import { PrivacyService } from '../privacy/privacy.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { slugifyCity } from './city-slug';
@@ -70,11 +68,6 @@ export class UsersService {
       this.privacyService.get(user.id),
       this.subscriptionService.getPlan(user.id),
     ]);
-
-    // The one point in a request that has genuinely read this user's diagnostics choice, so
-    // it is where the crash reporter is told about it. Not cached: the tag is set from the
-    // row that was just read.
-    applyCrashDiagnosticsConsent(Sentry.getCurrentScope(), privacy.crashDiagnostics);
 
     return {
       id: user.id,

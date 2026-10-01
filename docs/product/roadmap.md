@@ -62,8 +62,8 @@ board-cache eviction, flaky timing tests, batch food lookup, run follow-ups, Pha
 They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed there:
 
 - **Privacy:** ~~crash-recovery snapshots and the late `getMe` consent race after sign-out~~ fixed
-  in 8.5 S1. Still open, **scheduled at 8.5 triage (L3-3):** Sentry does not scrub health values
-  from exception messages (`sentry-scrub.ts` strips only the user; `data-inventory.md`).
+  in 8.5 S1. ~~L3-3, Sentry not scrubbing health values~~ fixed 2026-10-01 (G1): reports keep
+  no text, and none is sent for a user with crash diagnostics off.
   Unconfirmed (8.5E): the date-of-birth `getMe` in `AuthenticatedGate` could, if the gate stays
   mounted across a quick account switch, redirect the new account on the old one's profile.
 - **Speed (8.5E, low):** the leaderboard's 15 s board cache never drops past months' keys
@@ -82,7 +82,7 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
   the site sends CSP, HSTS and framing headers (8.5 S11).
 - **Readiness:** Phase 7 decision E's baseline-crossover surfacing.
 - **Tooling:** Expo web cannot bundle (expo-sqlite's web worker), so UI previews rely on HTML
-  mirrors or a device; `crash_diagnostics` strips only the user id (data inventory).
+  mirrors or a device.
 - **Product decisions still open:** Free versus Pro, subscriptions (RevenueCat, deferred with
   Phase 10, needs Play Console), terms of use, the launch email service, and Phase 11's iOS
   health library ADR.

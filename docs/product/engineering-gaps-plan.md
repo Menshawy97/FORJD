@@ -26,6 +26,10 @@ roadmap's "Known engineering gaps", the 8.5E re-run reports (`docs/reviews/2026-
 ### G1 — Sentry: drop on "off", strip all text (L3-3)
 - **Files:** `apps/api/src/observability/sentry-scrub.ts` (+ spec), `apps/api/src/instrument.ts`,
   `docs/architecture/data-inventory.md` (close the "Known mismatch").
+- **As built:** `JwtAuthGuard` → `markCrashSubject(user.id)`; `beforeSend` =
+  `createCrashReportFilter` (reads the choice via `CrashConsentRegistrar` only when a crash
+  happens); the old `GET /me` tag (`applyCrashDiagnosticsConsent`) was removed, since it covered
+  only that one route. The original design notes follow.
 - **Behaviour** (`scrubCrashReport(event)`, replacing `scrubUnlessDiagnosticsConsented`):
   - tag `crash_diagnostics` = `'off'` → return `null` (not sent);
   - tag `'on'` → keep `event.user`; anything else (absent, unknown) → delete `event.user`;
