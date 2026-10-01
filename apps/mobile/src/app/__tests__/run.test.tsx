@@ -42,7 +42,6 @@ jest.mock('@/store/run-session', () => ({
   getUnfinishedRunSnapshot: jest.fn(),
   saveRunSnapshot: jest.fn(),
   clearRunSnapshot: jest.fn(),
-  clearRunPoints: jest.fn(),
 }));
 
 jest.mock('@/integrations/health/device-health-provider', () => ({ getDeviceHealthProvider: jest.fn() }));

@@ -1,9 +1,6 @@
 import {
-  appendRunPoint,
-  clearRunPoints,
   clearRunSnapshot,
   ensureRunSessionSchema,
-  getRunPoints,
   getUnfinishedRunSnapshot,
   saveRunSnapshot,
 } from '../run-session';
@@ -15,8 +12,6 @@ import type { SqliteConnection } from '../exercise-catalogue';
  * touches the real module; a device walk is the check for that.
  */
 class FakeSqliteConnection implements SqliteConnection {
-  points: Array<{ id: number; session_id: string; payload: string }> = [];
-  nextPointId = 1;
   snapshots: Array<{ session_id: string; payload: string; started_at: string; account_id: string | null }> = [];
   userVersion: number;
 
@@ -35,14 +30,6 @@ class FakeSqliteConnection implements SqliteConnection {
   }
 
   async runAsync(source: string, params: unknown[]): Promise<unknown> {
-    if (source.startsWith('INSERT INTO run_points')) {
-      this.points.push({ id: this.nextPointId++, session_id: params[0] as string, payload: params[1] as string });
-      return undefined;
-    }
-    if (source.startsWith('DELETE FROM run_points')) {
-      this.points = this.points.filter((p) => p.session_id !== params[0]);
-      return undefined;
-    }
     if (source.startsWith('INSERT OR REPLACE INTO run_snapshot')) {
       this.snapshots = [
         ...this.snapshots.filter((s) => s.session_id !== params[0]),
@@ -58,12 +45,6 @@ class FakeSqliteConnection implements SqliteConnection {
   }
 
   async getAllAsync<T>(source: string, params: unknown[]): Promise<T[]> {
-    if (source.startsWith('SELECT payload FROM run_points')) {
-      return this.points
-        .filter((p) => p.session_id === params[0])
-        .sort((a, b) => a.id - b.id)
-        .map((p) => ({ payload: p.payload }) as T);
-    }
     if (source.startsWith('SELECT session_id, payload, started_at, account_id FROM run_snapshot')) {
       return [...this.snapshots].sort((a, b) => b.started_at.localeCompare(a.started_at)) as T[];
     }
@@ -83,42 +64,6 @@ describe('run-session store', () => {
   beforeEach(async () => {
     db = new FakeSqliteConnection();
     await ensureRunSessionSchema(db);
-  });
-
-  describe('appendRunPoint / getRunPoints / clearRunPoints', () => {
-    it('reads points back in the order they were written', async () => {
-      await appendRunPoint(db, 'run-1', { latitude: 31.2, longitude: 29.9, movingMs: 0 });
-      await appendRunPoint(db, 'run-1', { latitude: 31.201, longitude: 29.901, movingMs: 1000 });
-
-      const points = await getRunPoints(db, 'run-1');
-
-      expect(points).toEqual([
-        { latitude: 31.2, longitude: 29.9, movingMs: 0 },
-        { latitude: 31.201, longitude: 29.901, movingMs: 1000 },
-      ]);
-    });
-
-    it('keeps points from different runs apart', async () => {
-      await appendRunPoint(db, 'run-1', { latitude: 1, longitude: 1, movingMs: 0 });
-      await appendRunPoint(db, 'run-2', { latitude: 2, longitude: 2, movingMs: 0 });
-
-      await expect(getRunPoints(db, 'run-1')).resolves.toHaveLength(1);
-      await expect(getRunPoints(db, 'run-2')).resolves.toHaveLength(1);
-    });
-
-    it('returns an empty list for a run with no points yet', async () => {
-      await expect(getRunPoints(db, 'run-none')).resolves.toEqual([]);
-    });
-
-    it('clears only the named run', async () => {
-      await appendRunPoint(db, 'run-1', { latitude: 1, longitude: 1, movingMs: 0 });
-      await appendRunPoint(db, 'run-2', { latitude: 2, longitude: 2, movingMs: 0 });
-
-      await clearRunPoints(db, 'run-1');
-
-      await expect(getRunPoints(db, 'run-1')).resolves.toEqual([]);
-      await expect(getRunPoints(db, 'run-2')).resolves.toHaveLength(1);
-    });
   });
 
   describe('saveRunSnapshot / getUnfinishedRunSnapshot / clearRunSnapshot', () => {
@@ -165,7 +110,7 @@ describe('run-session store', () => {
     it('is safe to run more than once', async () => {
       await ensureRunSessionSchema(db);
       await ensureRunSessionSchema(db);
-      await expect(getRunPoints(db, 'run-1')).resolves.toEqual([]);
+      await expect(getUnfinishedRunSnapshot(db, ACCOUNT_A)).resolves.toBeNull();
     });
 
     it('brings a fresh device up to the same schema version as the strength runner, called alone', async () => {
