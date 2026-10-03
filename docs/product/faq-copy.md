@@ -313,3 +313,28 @@ Finish buttons, so you can control the run without unlocking your phone. Android
 your location while a run is open, never in the background otherwise, and your route stays on your
 phone. When the run is finished or discarded, both notices go. If you swipe FORJD away, tracking
 stops and the run is offered back the next time you open the app."
+
+## Proposed for 12B, awaiting the owner's approval (2026-10-03)
+
+Not in the app yet. Shown to the owner before it goes into `faq-content.ts`. There is no workout section
+in the FAQ today, so this proposes a small new one, placed after "Runs".
+
+### Workouts → new entry: What is the notification during my workout? (Android)
+
+"While a workout is open, FORJD shows a notification with your current exercise, the set you are on and
+its weight and reps, so you can see what is next with your phone locked. Tap Done to log the set, as if
+you had ticked it in the app. During rest it shows a countdown and a Skip rest button, and when rest
+ends it switches to the next set and FORJD buzzes as usual. Everything stays on your phone: nothing in
+it is sent anywhere. It goes away when you finish or leave the workout. On iPhone this arrives later,
+as a Live Activity."
+
+### Workouts → new entry: Why does FORJD ask to send notifications when I start a workout?
+
+"FORJD asks once, at the start of your first workout, so it can show the workout notification and buzz
+when a rest is over. If you say no, the workout and its on-screen rest timer work exactly the same; you
+just won't see the notification or get the buzz. You can change this in your phone's settings."
+
+### Workouts → "Tapped Done on the lock screen but the set isn't ticked"
+
+Not proposed as an entry. Noted for the device walk: a Done tapped while the app was fully stopped is
+applied the next time the workout is opened, if that set is still the one you were on.

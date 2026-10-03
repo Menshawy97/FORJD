@@ -15,7 +15,7 @@ feature changes what is collected, update this file in the same PR.
 | WHOOP | OAuth exchange; FORJD reads recovery, sleep and workout data from WHOOP | Only after the user connects WHOOP. |
 | Sentry (server only) | Error type and stack frames only, no text; not sent at all for a user with crash diagnostics off; user ID kept only when it is on | The mobile app has no Sentry SDK. |
 | NVIDIA | Nothing. A provider class exists but is not wired up. | Development only. |
-| Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` is used for local rest-timer alerts only. |
+| Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` and the small local Android notice module (ADR-063) post local notices only: the rest-complete alert, the run notice and the workout notice. Nothing is sent. |
 
 Health data is never sent to analytics or advertising services (CLAUDE.md rule 15).
 
@@ -68,6 +68,11 @@ Derived from the table. Confirm against the final build and the lawyer's privacy
   continues with the screen off, through a location foreground service with an ongoing notification;
   the form's "precise location" answer must say "while a run is open, including with the screen
   off". No background location permission is declared.
+- **On the lock screen, on the device only (12B-2, ADR-061 decision 3):** the workout notice shows the
+  current exercise, the set count and its weight and reps, and the elapsed time. They are training
+  values, built on the phone and never sent. The Android notice module also keeps, on the phone, up to
+  20 button ids (no values) tapped while the app was stopped, until the app next reads them. The
+  "hide values on the lock screen" setting (12H) will govern the visibility.
 
 ## Known mismatches, tracked as follow-ups
 

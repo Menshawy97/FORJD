@@ -1,6 +1,6 @@
 # Phase 12B — a strength workout on the lock screen
 
-**Status:** 12B-1 built 2026-10-03 (the native module and its seam, awaiting the owner's device walk before merge); 12B-2 and 12B-3 not started. Each slice is its own PR, test-first, reviewed, merged with
+**Status:** 12B-1 and 12B-2 built 2026-10-03 (PRs #323 and the one stacked on it, both waiting for the owner's one device walk before merge); 12B-3 docs written, FAQ wording awaiting approval. Each slice is its own PR, test-first, reviewed, merged with
 `main` green. The native slice also needs the owner's device walk before merge (ADR-063 decision 4).
 
 ## Owner decisions (2026-10-03)
@@ -78,6 +78,38 @@ does not come back after being swiped away mid-rest; the small icon is the FORJD
 - **A tap that arrives late** (kept while the app was stopped) must be checked against the session before
   it acts: a Done for a set that is no longer the current one is dropped, never applied to the next set.
 - **Tests first:** content for each state, the transitions, the action routing, dismiss on every exit.
+
+**Built (2026-10-03), stacked on 12B-1:**
+- `workouts/workout-notice-content.ts` (pure cards and the tap ids) and `workouts/workout-notice.ts` (the
+  controller), 45 tests in `workouts/__tests__/workout-notice.test.ts`. `app/live.tsx` attaches the
+  controller, syncs it on every session, pause and unit change, and starts each rest through it.
+  `app/rest.tsx` no longer owns the rest: it follows the controller (ADR-026's amendment).
+- Set card: exercise, `Set 3 of 4 · 82.5 kg × 6` in the live screen's own unit, Done, a count-up header.
+  Rest card: `REST`, the native countdown, `Next · …`, Skip rest, with the next set as its `then`.
+  Timed set: a `Start timer` button that opens the app. Paused: no ticking time, header says "Paused".
+- **Late taps.** Button ids name the session and target. A Done for a set no longer open, a Skip for a
+  rest that was adjusted or is over, any tap from another workout, and any Done after Finish are dropped.
+  Taps kept while the app was stopped wait for the session to be restored, then pass the same checks;
+  a Done that passes is logged with the time it is applied, not the time it was tapped.
+- Dismissed on finish and on unmount (leaving the live screen), with the rest and its alert.
+- Three reviewers (typescript, react, code) ran; every real finding was fixed or is listed below.
+
+**Differences from the approved design, for the owner to confirm or reverse:**
+1. **No progress bar on the rest card.** Android cannot move one without code running every few seconds
+   (ADR-063 amendment). The countdown ticks natively; the bar would be frozen.
+2. **The notification permission is asked at the start of the first workout**, not at the first rest,
+   because the notice shows from set 1 (ADR-026 amendment).
+3. **Leaving the live screen takes the notice down** (the plan said dismiss on unmount); the workout is
+   offered back from Home as before.
+
+**Known limits, to watch on the device walk:**
+- A Skip rest tapped after Android killed the process cannot cancel the "Rest complete" alert (its id was
+  lost with the process); the card goes back to the set and the alert still buzzes once.
+- A lock-screen Done pushes `/rest` while the app is in the background; if the rest expires before the
+  app is opened, the rest screen closes itself at once. Several lock-screen-only sets in a row are the
+  case to try.
+- A Done tapped while the app was fully stopped is only applied when the workout is next opened.
+- Tapping the card body opens the app wherever it was; it does not yet deep-link to the workout.
 
 ### 12B-3 — Docs and the device test
 - FAQ wording proposed for approval (as 12A-4 did), `data-inventory.md` if anything new is stored,
