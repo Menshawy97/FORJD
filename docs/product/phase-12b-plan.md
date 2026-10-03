@@ -92,7 +92,7 @@ does not come back after being swiped away mid-rest; the small icon is the FORJD
   Taps kept while the app was stopped wait for the session to be restored, then pass the same checks;
   a Done that passes is logged with the time it is applied, not the time it was tapped.
 - Dismissed on finish and on unmount (leaving the live screen), with the rest and its alert.
-- Three reviewers (typescript, react, code) ran; every real finding was fixed or is listed below.
+- Three reviewers (typescript, react, code) ran; every real finding was fixed or is listed below. `live.test.tsx` also fires a captured lock-screen Done through the real screen.
 
 **Differences from the approved design, for the owner to confirm or reverse:**
 1. **No progress bar on the rest card.** Android cannot move one without code running every few seconds
@@ -110,6 +110,17 @@ does not come back after being swiped away mid-rest; the small icon is the FORJD
   case to try.
 - A Done tapped while the app was fully stopped is only applied when the workout is next opened.
 - Tapping the card body opens the app wherever it was; it does not yet deep-link to the workout.
+
+**Owed phone tests (nothing here can be checked in CI or Jest):** the whole of 12B-1 and 12B-2 on a
+physical Android phone, on one dev-client build, as listed under 12B-3 below. An emulator check was tried
+on 2026-10-03 and could not be done: a local Android build fails on the owner's Windows laptop (the C++
+step of `react-native-screens` and `react-native-worklets` makes ninja re-run CMake about 100 times and
+give up, even from a clean cache; the emulator and the build together also exceed its 6.9 GB of RAM).
+The owner's only phone is an OPPO A37f on Android 5.1.1, which the app cannot install on and whose
+Android has no ticking countdown (needs Android 7.0 or newer). So the route is a cloud build (EAS, one
+Expo login by the owner) installed on an Android 7+ phone, or on the emulator once a build exists. Until
+then the emulator can still run the app from that build to check the buttons and the countdown; the real
+lock screen, vibration and battery-saver behaviour still need a phone.
 
 ### 12B-3 — Docs and the device test
 - FAQ wording proposed for approval (as 12A-4 did), `data-inventory.md` if anything new is stored,

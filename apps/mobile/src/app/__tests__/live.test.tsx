@@ -60,6 +60,22 @@ jest.mock('@/store/workout-session', () => ({
 
 // ADR-048: the start position is read after the workout has started and never awaited by it. It
 // is mocked here so each test decides when, whether and how it answers.
+// 12B-2: the lock-screen notice. The seam is replaced so a tap on its Done button can be fired by hand.
+let mockNoticeTap: ((event: { noticeId: string; actionId: string }) => void) | null = null;
+jest.mock('@/integrations/notifications/ongoing-notice', () => ({
+  ongoingNotice: {
+    isAvailable: () => true,
+    show: jest.fn().mockResolvedValue(false),
+    dismiss: jest.fn().mockResolvedValue(undefined),
+    onAction: (handler: (event: { noticeId: string; actionId: string }) => void) => {
+      mockNoticeTap = handler;
+      return () => {
+        mockNoticeTap = null;
+      };
+    },
+  },
+}));
+
 jest.mock('@/workouts/capture-start-location', () => ({
   captureStartLocation: jest.fn(),
 }));
@@ -508,6 +524,35 @@ describe('logging a set', () => {
 
     await unmount();
     expect(workoutNotice.getRest()).toBeNull();
+  });
+
+  it('a Done tapped on the lock-screen notice ticks and logs the open set exactly as the screen does', async () => {
+    stageSession();
+    const { findByText } = await render(<LiveScreen />);
+    await waitFor(() => expect(mockNoticeTap).not.toBeNull());
+
+    mockNoticeTap!({ noticeId: 'forjd-workout-live', actionId: 'done:session-1:0:0' });
+
+    expect(await findByText('1/4 sets')).toBeTruthy();
+    await waitFor(() => {
+      const types = (appendSessionEvent as jest.Mock).mock.calls.map((call) => call[2]);
+      expect(types).toEqual(['set_completed', 'rest_started']);
+    });
+    expect(mockPush).toHaveBeenCalledWith('/rest');
+  });
+
+  it('drops a lock-screen Done for a set that is no longer the open one', async () => {
+    stageSession();
+    const { findByLabelText, findByText } = await render(<LiveScreen />);
+    await waitFor(() => expect(mockNoticeTap).not.toBeNull());
+    await fireEvent.press(await findByLabelText('Complete set 1 of Bench Press'));
+    expect(await findByText('1/4 sets')).toBeTruthy();
+    (appendSessionEvent as jest.Mock).mockClear();
+
+    mockNoticeTap!({ noticeId: 'forjd-workout-live', actionId: 'done:session-1:0:0' });
+
+    expect(await findByText('1/4 sets')).toBeTruthy();
+    expect(appendSessionEvent).not.toHaveBeenCalled();
   });
 
   it('opens the set timer for a timed set instead of ticking it', async () => {
