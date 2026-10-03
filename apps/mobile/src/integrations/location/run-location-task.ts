@@ -86,8 +86,9 @@ export function setRunFixListener(next: RunFixListener | null): void {
 }
 
 /**
- * Registers the task with TaskManager. Safe to call more than once. Called at module scope by the
- * app's entry, and again before every start, so the service always has somewhere to deliver.
+ * Registers the task with TaskManager. Safe to call more than once. It runs when this module loads
+ * (below), which the app's root layout makes happen at every start of the JavaScript bundle, so a
+ * process Android restarts mid-run still has the task to deliver to; and again before every start.
  */
 export function defineRunLocationTask(): void {
   const taskManager = load<TaskManagerSdk>('expo-task-manager');
@@ -144,3 +145,7 @@ export async function stopRunLocationUpdates(): Promise<void> {
     // Nothing to stop, or the module is gone: either way the run is over.
   }
 }
+
+// TaskManager requires the task to be defined when the bundle loads, not only when a run starts:
+// after a process restart only module-scope code runs before the service delivers (12A-1 review).
+defineRunLocationTask();

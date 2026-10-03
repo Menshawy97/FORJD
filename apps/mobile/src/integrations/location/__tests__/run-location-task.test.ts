@@ -49,6 +49,17 @@ function registeredExecutor(): (body: { data?: unknown; error?: unknown }) => Pr
 }
 
 describe('run location task (ADR-059)', () => {
+  it('defines the task as soon as the module loads, so a restarted process can receive fixes', () => {
+    mockDefineTask.mockClear();
+    mockIsTaskDefined.mockReturnValue(false);
+
+    jest.isolateModules(() => {
+      require('../run-location-task');
+    });
+
+    expect(mockDefineTask).toHaveBeenCalledWith(RUN_LOCATION_TASK, expect.any(Function));
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsTaskDefined.mockReturnValue(false);
