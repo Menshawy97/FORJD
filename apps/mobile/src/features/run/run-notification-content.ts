@@ -6,7 +6,7 @@ import { formatDistanceKm, formatDuration, formatPace } from './run-format';
 export type RunNotificationCategory = 'run-running' | 'run-paused';
 
 export interface RunNotificationContent {
-  /** Android's header text, after the app name: "FORJD · Run". */
+  /** Android's subText (`subtitle`): shown beside the app name or the title; the exact place varies by phone. */
   header: string;
   title: string;
   body: string;
