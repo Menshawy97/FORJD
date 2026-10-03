@@ -1,6 +1,9 @@
 # The live run — "Start a run" on Train
 
 Status: **built and merged** (2026-09-22): R1 to R8 and F1. Open points and follow-ups are at the end of this file.
+**Since Phase 12A (2026-10-03, ADR-059):** a run keeps tracking with the screen off through a location
+foreground service, with a live notice (time, distance, pace; Pause, Resume, Finish). ADR-049 decision 2
+is superseded; see [phase-12a-plan.md](phase-12a-plan.md).
 
 Train's "Start a run" tile (`apps/mobile/src/app/(tabs)/train.tsx:53`, `href: null`) was left inert
 by Phase 2 and Phase 3 because a run needs GPS, and Phase 3H deferred it ("a different modality
