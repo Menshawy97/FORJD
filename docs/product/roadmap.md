@@ -204,7 +204,8 @@ ask for. iPhone widgets (12I) are in scope; other iOS parts follow Phase 11 (ADR
 
 ### Decisions to settle first (each an ADR, docs-only PR)
 
-**Drafted 2026-10-03, all Proposed and awaiting the owner:**
+**2026-10-03: ADR-059, ADR-060 and ADR-061 accepted by the owner (ADR-062 still Proposed). 12A is
+planned in [phase-12a-plan.md](phase-12a-plan.md) and under way.** The drafts:
 [ADR-059 background run](../decisions/ADR-059-background-run-tracking.md) (spike done: the foreground
 service adds only `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION`; background location stays
 removed), [ADR-060 push transport](../decisions/ADR-060-push-notification-transport.md) (one open

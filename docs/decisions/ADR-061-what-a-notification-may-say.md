@@ -1,6 +1,6 @@
 # ADR-061: What a notification may say
 
-**Status:** Proposed (2026-10-03), awaiting the owner's decision. Nothing is built on it yet.
+**Status:** Accepted (2026-10-03, by the owner).
 **Date:** 2026-10-03
 **Plan:** roadmap Phase 12, decision 3 (slices 12B, 12E-12G); drafted under G7 of
 [engineering-gaps-plan.md](../product/engineering-gaps-plan.md).
@@ -20,7 +20,7 @@ Rule 15 says health data never reaches an analytics or advertising SDK. A push s
 but it is a third party, and a lock screen is visible to anyone near the phone. The rule's intent
 covers both.
 
-## Decision (proposed)
+## Decision
 
 1. **Push text carries no health value, ever.** No weight, heart rate, HRV, sleep, calories, body
    composition or readiness score, in the title, the body or the data payload. "Your recovery changed:
@@ -28,7 +28,7 @@ covers both.
    details after it opens.
 2. **Training facts that the person published are allowed in push**: a leaderboard rank or a PR
    exercise name ("New PR on Back Squat"). Weights lifted count as training, not health data (they are
-   already on the public profile when the person allows it). The owner should confirm this line.
+   already on the public profile when the person allows it). Confirmed by the owner (2026-10-03).
 3. **Local notifications may show values**, because they never leave the phone (the run's time,
    distance and pace; a session's next set and rest countdown). The 12H widget setting "Hide health
    values from the home screen" also applies to the ongoing notifications' lock-screen view

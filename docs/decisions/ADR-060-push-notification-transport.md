@@ -1,6 +1,6 @@
 # ADR-060: How push notifications reach the phone
 
-**Status:** Proposed (2026-10-03), awaiting the owner's decision. Nothing is built on it yet.
+**Status:** Accepted (2026-10-03, by the owner). Built in slice 12F.
 **Date:** 2026-10-03
 **Plan:** roadmap Phase 12, decision 2 and slice 12F; drafted under G7 of
 [engineering-gaps-plan.md](../product/engineering-gaps-plan.md). What a push may *say* is
@@ -28,7 +28,7 @@ notifications (ADR-026). A push needs a transport from the NestJS API to the pho
 | Credentials | FCM key and APNs key uploaded to the Expo account (EAS) | FCM service account and APNs key in Google Secret Manager |
 | iOS without a Mac (ADR-007) | Works through EAS credentials | Works, with more setup |
 
-## Decision (proposed)
+## Decision
 
 1. **A `NotificationProvider` interface** in `apps/api/src/integrations/push/` (`send(tokens, message)`,
    plus `invalidTokens()` for tokens the platform rejects). It has a fake for tests and contract tests
@@ -44,10 +44,10 @@ notifications (ADR-026). A push needs a transport from the NestJS API to the pho
 4. **Permission is asked at the moment it is first useful**, never at launch. A refusal leaves the app
    working as it does today.
 
-## Open question for the owner
+## Owner's answer (2026-10-03)
 
-Is routing generic notification text through Expo's servers acceptable? If not, choose FCM direct;
-iOS push then waits for the Apple Developer account in Phase 11.
+Routing generic notification text through Expo's servers is acceptable, so the first adapter is the
+Expo push service. FCM direct stays the fallback behind the same interface.
 
 ## Consequences
 

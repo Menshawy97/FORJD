@@ -1,8 +1,8 @@
 # ADR-059: A run keeps tracking with the screen off, through a location foreground service
 
-**Status:** Proposed (2026-10-03), awaiting the owner's decision. Nothing is built on it yet.
+**Status:** Accepted (2026-10-03, by the owner), with the amendment below.
 **Date:** 2026-10-03
-**Would supersede:** [ADR-049](ADR-049-precise-foreground-location-for-runs.md) decision 2 ("Foreground only").
+**Supersedes:** [ADR-049](ADR-049-precise-foreground-location-for-runs.md) decision 2 ("Foreground only").
 **Plan:** roadmap Phase 12, decision 1 and slice 12A; drafted under G7 of
 [engineering-gaps-plan.md](../product/engineering-gaps-plan.md).
 
@@ -37,7 +37,7 @@ Checked against the installed `expo-location` 57.0.20 (the SDK 57 pin, ADR-027),
 Not yet proven, and only a phone can: that updates keep arriving with the screen off under Doze and
 battery saver, including on Samsung and Xiaomi battery killers (12A's exit criterion).
 
-## Decision (proposed)
+## Decision
 
 1. **Android:** while a run is open, `Location.startLocationUpdatesAsync` runs with `foregroundService`
    set (an ongoing notification showing time, distance and pace, with Pause and Finish). It is started
@@ -67,3 +67,22 @@ battery saver, including on Samsung and Xiaomi battery killers (12A's exit crite
 - **Background location ("Allow all the time").** Rejected: a broader permission than the job needs, a
   separate Play review, and a scarier prompt.
 - **Keep the screen on.** Today's behaviour. Drains the battery and fails when the phone is pocketed.
+
+## Amendment on acceptance (2026-10-03)
+
+The spike also showed that `expo-location`'s own service notification is **fixed text**: a title and
+body set at start, tap to open the app, no live values and no buttons (`LocationTaskService.kt`
+`buildServiceNotification`). The owner chose, for both platforms:
+
+- **Android: live numbers and buttons.** Besides the fixed service notification Android requires, the
+  app posts its own ongoing notification through `expo-notifications` (already installed, ADR-026),
+  updated as fixes arrive, with time, distance and pace, and Pause/Resume and Finish actions. It is a
+  *local* notification, so it may show values (ADR-061 decision 3). Its exact look is a UI change and is
+  approved as a replica before it is built.
+- **iPhone: the same live numbers and buttons as a Live Activity**, through `expo-widgets` (ADR-062).
+  It needs the Apple Developer account and an iPhone build (ADR-007), so it is planned now and built
+  with Phase 11.
+- **The screen is no longer kept awake** during a run (`useKeepAwake` removed); tracking carries on
+  with it off, and the "Paused when the phone locked" behaviour goes.
+
+Plan: [phase-12a-plan.md](../product/phase-12a-plan.md).
