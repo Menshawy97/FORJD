@@ -22,7 +22,11 @@
      columns Time / Avg pace (/km) / Distance (km), Pause (Resume) and an ember Finish.
 6. **The same idea for strength workouts** (owner, 2026-10-03): slice 12B, a lock-screen card with the
    current exercise, the set and the rest countdown and a done button, after the owner's Hevy example.
-   Its own replica comes before it is built, straight after 12A.
+   **Its replica was approved on 2026-10-03:** header = symbol, workout name and elapsed time; a set
+   card with the exercise, `Set 3 of 4`, `82.5 kg × 6` and an ember tick (Android: a Done action);
+   a rest card with `REST`, the countdown, a progress bar, `Next · Bench Press · 82.5 kg × 6` and
+   Skip (Android: Skip rest, the countdown drawn by Android's own chronometer so it stays exact with
+   the screen off). Built in 12B after 12A; the iPhone Live Activity with Phase 11.
 
 ## What exists today (read before changing it)
 
