@@ -63,9 +63,10 @@ const config: ExpoConfig = {
     'expo-secure-store',
     'expo-font',
     'expo-sqlite',
-    // Local notifications only -- the rest timer's "rest complete" alert (ADR-026). No push
-    // registration, no device token, no server involvement.
-    'expo-notifications',
+    // Local notifications only: the rest timer's "rest complete" alert (ADR-026) and the live run
+    // notice (12A-3). No push registration yet (ADR-060, slice 12F). The FORJD symbol in ember is
+    // their icon, as the approved replica v2 shows (2026-10-03).
+    ['expo-notifications', { icon: './assets/images/android-icon-monochrome.png', color: '#E9712F' }],
     // Required as a config plugin from SDK 57; it was implicit before. The app opens the WHOOP
     // OAuth flow and external links through it.
     'expo-web-browser',

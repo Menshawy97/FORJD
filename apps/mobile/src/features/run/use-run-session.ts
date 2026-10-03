@@ -39,6 +39,8 @@ import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { gpsQuality, type GpsQuality } from './gps-quality';
 import { fetchRunCalorieInputs } from './latest-weight';
 import { HEART_RATE_POLL_MS, prepareRunHealth, readFinalHealth, type FinalHealth, type RunHealthReader } from './run-health';
+import { runNotifier } from './run-notification';
+import { runNotificationContent } from './run-notification-content';
 import { restoreRunSnapshot, toRunSnapshot } from './run-snapshot';
 import { toRunSummary } from './run-summary';
 
@@ -70,6 +72,8 @@ type TrackingStart =
 const TICK_MS = 1000;
 /** How often a running run is written to the recovery snapshot, besides on pause and finish. */
 const AUTOSAVE_MS = 10_000;
+/** How often the live notice (12A-3) is refreshed while running; a pause or resume refreshes it at once. */
+const NOTICE_UPDATE_MS = 5000;
 /** How many recent heart-rate samples the live sparkline draws. */
 const HEART_RATE_POINTS = 60;
 
@@ -108,6 +112,9 @@ export function useRunSession(): RunSession {
 
   const dbRef = useRef<Promise<SqliteConnection> | null>(null);
   const stopWatchRef = useRef<(() => void) | null>(null);
+  const noticeReadyRef = useRef(false);
+  const [noticeReady, setNoticeReady] = useState(false);
+  const noticeShownRef = useRef<{ atMs: number; status: RunState['status'] } | null>(null);
   const finishingRef = useRef(false);
   const closedRef = useRef(false);
   const saveWarnedRef = useRef(false);
@@ -157,6 +164,9 @@ export function useRunSession(): RunSession {
   const stopWatching = useCallback(() => {
     stopWatchRef.current?.();
     stopWatchRef.current = null;
+    // The live notice (12A-3) belongs to tracking: it goes when tracking stops (finish, discard, leave).
+    noticeReadyRef.current = false;
+    void runNotifier.clear();
   }, []);
 
   const permissionRef = useRef<RunPermission>('checking');
@@ -497,6 +507,42 @@ export function useRunSession(): RunSession {
         avgHeartRateBpm: run ? averageHeartRate(run.heartRate, split.startTimestampMs, split.endTimestampMs) : null,
       })),
     [run, stats],
+  );
+
+  // 12A-3: the live notice. Ready (channel, buttons, permission asked only while undecided) once the
+  // run is being tracked; then the run's time, distance and pace every few seconds, and at once on a
+  // pause or resume. Android only; nothing on iPhone until its Live Activity (Phase 11).
+  useEffect(() => {
+    if (permission !== 'granted') return undefined;
+    let cancelled = false;
+    void runNotifier.ensureReady().then((ready) => {
+      if (cancelled || closedRef.current) return;
+      noticeReadyRef.current = ready;
+      setNoticeReady(ready);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [permission]);
+
+  useEffect(() => {
+    if (!run || !stats || run.status === 'finished' || closedRef.current || !noticeReadyRef.current) return;
+    const shown = noticeShownRef.current;
+    const now = Date.now();
+    if (shown && shown.status === run.status && now - shown.atMs < NOTICE_UPDATE_MS) return;
+    noticeShownRef.current = { atMs: now, status: run.status };
+    void runNotifier.show(runNotificationContent(stats, run.status));
+  }, [run, stats, noticeReady]);
+
+  // The notice's buttons: Pause and Resume act in place; Finish has opened the app and finishes here.
+  useEffect(
+    () =>
+      runNotifier.onAction((action) => {
+        if (action === 'pause') pause();
+        else if (action === 'resume') resume();
+        else finish();
+      }),
+    [pause, resume, finish],
   );
 
   const heartRate = useMemo(() => {
