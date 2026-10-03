@@ -30,6 +30,16 @@ jest.mock('@/integrations/location/location-provider', () => ({
   requestPrecisePermission: jest.fn(),
 }));
 
+let runNoticeAction: (action: string) => void = () => undefined;
+jest.mock('@/features/run/run-notification', () => ({
+  runNotifier: {
+    ensureReady: jest.fn(),
+    show: jest.fn(),
+    clear: jest.fn(),
+    onAction: jest.fn(),
+  },
+}));
+
 jest.mock('@/integrations/location/run-location-task', () => ({
   startRunLocationUpdates: jest.fn(),
   stopRunLocationUpdates: jest.fn(),
@@ -66,6 +76,7 @@ import {
 } from '@/integrations/location/location-provider';
 import { setRunFixListener, startRunLocationUpdates, stopRunLocationUpdates } from '@/integrations/location/run-location-task';
 import { useKeepAwake } from 'expo-keep-awake';
+import { runNotifier } from '@/features/run/run-notification';
 import { getDeviceHealthProvider } from '@/integrations/health/device-health-provider';
 import { readHealthConsent } from '@/store/health-consent-local';
 import { hasAskedRunHealthAccess, markRunHealthAccessAsked } from '@/store/run-health-access';
@@ -134,6 +145,13 @@ beforeEach(() => {
     deliverFix = listener ? (fix: PreciseFix) => listener([fix]) : () => undefined;
   });
   (startRunLocationUpdates as jest.Mock).mockResolvedValue('started');
+  (runNotifier.ensureReady as jest.Mock).mockResolvedValue(true);
+  (runNotifier.show as jest.Mock).mockResolvedValue(undefined);
+  (runNotifier.clear as jest.Mock).mockResolvedValue(undefined);
+  (runNotifier.onAction as jest.Mock).mockImplementation((handler: (action: string) => void) => {
+    runNoticeAction = handler;
+    return () => undefined;
+  });
   (stopRunLocationUpdates as jest.Mock).mockResolvedValue(undefined);
   (openWorkoutSessionDb as jest.Mock).mockResolvedValue(DB);
   (enqueueSessionUpload as jest.Mock).mockImplementation(() => { noteInTransaction('enqueue'); return Promise.resolve(); });
@@ -732,6 +750,72 @@ describe('RunScreen -- review fixes', () => {
 
     await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText('Location is off for FORJD')).toBeNull());
+  });
+});
+
+describe('RunScreen -- the live notice (12A-3, approved replica v2)', () => {
+  const lastShown = () => (runNotifier.show as jest.Mock).mock.calls.at(-1)?.[0];
+  const runOneHundredMetres = async () => {
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 100, 31));
+  };
+
+  it('shows the run on the notice once it is being tracked', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(runNotifier.show).toHaveBeenCalled());
+
+    expect(lastShown()).toEqual({ header: 'Run', title: expect.stringMatching(/^0:0\d · 0\.00 km$/), body: 'Avg pace — /km', category: 'run-running' });
+  });
+
+  it('says paused on the notice at once when the run is paused', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(runNotifier.show).toHaveBeenCalled());
+
+    await fireEvent.press(screen.getByText('Pause'));
+
+    await waitFor(() => expect(lastShown()).toEqual(expect.objectContaining({ header: 'Run paused', category: 'run-paused' })));
+  });
+
+  it("pauses and resumes from the notice's buttons", async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(runNotifier.onAction).toHaveBeenCalled());
+
+    await act(async () => {
+      runNoticeAction('pause');
+    });
+    expect(screen.getByText('Paused · Outdoor run')).toBeTruthy();
+
+    await act(async () => {
+      runNoticeAction('resume');
+    });
+    expect(screen.getByText('Live · Outdoor run')).toBeTruthy();
+  });
+
+  it('finishes from the notice like the Finish button, and the notice goes', async () => {
+    await runOneHundredMetres();
+
+    await act(async () => {
+      runNoticeAction('finish');
+    });
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(runNotifier.clear).toHaveBeenCalled();
+  });
+
+  it('removes the notice when the run is discarded', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+    await fireEvent.press(screen.getByLabelText('Discard run'));
+    const buttons = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+
+    await act(async () => {
+      buttons.find((b) => b.text === 'Discard')?.onPress?.();
+    });
+
+    await waitFor(() => expect(runNotifier.clear).toHaveBeenCalled());
   });
 });
 

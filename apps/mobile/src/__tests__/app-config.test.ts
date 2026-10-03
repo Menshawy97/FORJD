@@ -11,6 +11,16 @@ const locationPlugin = (): [string, Record<string, unknown>] | undefined =>
     (plugin): plugin is [string, Record<string, unknown>] => Array.isArray(plugin) && plugin[0] === 'expo-location',
   );
 
+describe('app config: notifications (12A-3)', () => {
+  it('draws notifications with the FORJD symbol in ember, as the approved replica shows', () => {
+    const entry = (config.plugins as PluginEntry[]).find(
+      (plugin): plugin is [string, Record<string, unknown>] => Array.isArray(plugin) && plugin[0] === 'expo-notifications',
+    );
+
+    expect(entry?.[1]).toEqual({ icon: './assets/images/android-icon-monochrome.png', color: '#E9712F' });
+  });
+});
+
 describe('app config: location', () => {
   it('registers the expo-location plugin with a purpose string that says what it is for', () => {
     const options = locationPlugin()?.[1];
