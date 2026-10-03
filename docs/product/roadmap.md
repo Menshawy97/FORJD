@@ -25,8 +25,12 @@ the quick-reference for "what phase are we in and what's next."
    config), then the 12A-4 device test in [phase-12a-plan.md](phase-12a-plan.md): a 30-minute locked-phone run.
 2. Approve the proposed FAQ wording in [faq-copy.md](faq-copy.md) ("Proposed for 12A").
 
-**Next for a session:** 12B-1 (the native module, ADR-063) once the owner is ready to walk it on a phone;
-or 12C (background upload). 12D-12I wait for the beta.
+**12B-1 built** (the Kotlin module, its seam and conformance rule; compiles locally): its PR waits for the
+owner's device walk, done together with 12B-2. The owner kept the run notice as approved (no ticking
+time; ADR-063 decision 6).
+
+**Next for a session:** 12B-2 (the workout notice, stacked on 12B-1's branch), then one dev-client build
+and the owner's walk of 12A and 12B together; or 12C (background upload). 12D-12I wait for the beta.
 
 ## Current status (last updated 2026-09-25)
 

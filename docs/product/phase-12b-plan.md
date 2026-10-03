@@ -1,6 +1,6 @@
 # Phase 12B — a strength workout on the lock screen
 
-**Status:** planned 2026-10-03, not started. Each slice is its own PR, test-first, reviewed, merged with
+**Status:** 12B-1 built 2026-10-03 (the native module and its seam, awaiting the owner's device walk before merge); 12B-2 and 12B-3 not started. Each slice is its own PR, test-first, reviewed, merged with
 `main` green. The native slice also needs the owner's device walk before merge (ADR-063 decision 4).
 
 ## Owner decisions (2026-10-03)
@@ -44,6 +44,22 @@
   physical Android phone before merge: the countdown ticks with the screen off, Done and Skip work with
   the app in the background and after it was stopped, dismiss removes it, nothing re-alerts.
 
+**Built (2026-10-03), as ADR-063's amendment records:**
+- `modules/forjd-ongoing-notice/`: generated with `create-expo-module --local --platform android --features
+  Function Event`, the web stub and the template licence removed. Kotlin in two files:
+  `ForjdOngoingNoticeModule.kt` (the bridge and its records) and `OngoingNotices.kt` (posting, the
+  countdown's follow-up alarm, the receiver, the pending-tap list). Framework APIs only, no new dependency.
+- `show` also takes a `then` notice, posted by the module when the countdown ends (the countdown itself
+  times out at zero), so the rest card turns into the next set with the app asleep. This is what makes the
+  approved "card switches back to the next set" work without JavaScript.
+- Taps made while the app was stopped are kept (ids only, at most 20) and handed over on the next
+  subscribe; `opensApp` taps travel in the launch intent.
+- Seam `src/integrations/notifications/ongoing-notice.ts` + 31 Jest tests; conformance rule + two fixture
+  cases. `gradlew :forjd-ongoing-notice:compileDebugKotlin` passes locally (a throwaway prebuild).
+
+**Device walk for 12B-1 (the owner, before merge):** needs 12B-2's wiring to see it in the app, so 12B-1 and
+12B-2 are walked together on one dev-client build; 12B-1's PR waits for that walk.
+
 ### 12B-2 — The workout notice
 - Pure `workoutNoticeContent(session, nowMs)`: the set card or the rest card, exactly as approved, in
   the live screen's own formats (kg or lb per exercise), only training values (ADR-061).
@@ -51,6 +67,8 @@
   `countDownToMs = restEndsAt` when rest starts; back to the next set when rest ends or is skipped;
   dismiss on finish or discard. Done → the same event as ticking the set on the live screen; Skip → the
   same as Skip Rest. Notification permission: the rest timer already asks at the first rest; reuse it.
+- **A tap that arrives late** (kept while the app was stopped) must be checked against the session before
+  it acts: a Done for a set that is no longer the current one is dropped, never applied to the next set.
 - **Tests first:** content for each state, the transitions, the action routing, dismiss on every exit.
 
 ### 12B-3 — Docs and the device test

@@ -43,8 +43,31 @@ chose the live countdown.
    not exercised by Jest or CI, so the countdown, the buttons and the dismiss are walked on a device.
 5. **iPhone** gets the same card as a Live Activity through `expo-widgets` (ADR-062), with Phase 11. No
    Swift is written for this ADR.
-6. **The run notice may adopt it** (a time that ticks every second instead of every 5 s, ADR-059's
-   amendment), as a later, separate change. 12A ships on `expo-notifications` as built.
+6. **The run notice keeps `expo-notifications`.** The owner was shown the run notice with a time ticking
+   every second (Android can only tick it in the header line, beside the app name, with the distance alone
+   in the title) and chose to keep the approved replica v2, updated every 5 s (2026-10-03).
+
+## Amendment — how 12B-1 built it (2026-10-03)
+
+- **No timer runs below zero.** A countdown times out at zero (`setTimeoutAfter`), and the module posts the
+  notice's `then` content (the next set) in its place from an alarm, without JavaScript, because a
+  strength session has no foreground service and its JavaScript may be frozen. The alarm is exact where
+  Android allows it without a new permission (before Android 12) and otherwise "allowed while idle",
+  which Android may deliver a little late; the timeout covers that gap and the rest-complete alert
+  (ADR-026) still fires. No exact-alarm permission is added.
+- **A swipe is respected.** Android 14 lets people swipe ongoing notices away; the delete intent then
+  cancels the pending follow-up so it cannot bring the notice back (a removal within a second of zero is
+  the timeout's own, and keeps the follow-up).
+- **Taps made while the app was stopped are kept, not lost.** Actions that act in the background go to an
+  unexported `BroadcastReceiver`; when no JavaScript listens, the tap is written to a small on-phone list
+  (ids only, at most 20) that the seam hands over, in order, when the app next subscribes. An `opensApp`
+  action starts the app with the tap in its intent instead (Android 12+ forbids opening an activity from a
+  receiver). What a late tap means is the caller's decision (12B-2).
+- **Framework APIs only** (`android.app.Notification.Builder`): no new Gradle dependency. The small icon
+  is the `notification_icon` that `expo-notifications` already generates from `app.config.ts`.
+- **Seam:** `apps/mobile/src/integrations/notifications/ongoing-notice.ts` validates every option (ids,
+  `#RRGGBB`, at most three actions, finite times, a follow-up only after a countdown) before Kotlin,
+  never throws, and is a no-op where the module is missing (`requireOptionalNativeModule`).
 
 ## Consequences
 
