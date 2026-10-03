@@ -70,6 +70,8 @@ export interface RunNotifier {
 
 export function createRunNotifier(api: RunNotificationApi = defaultRunNotificationApi): RunNotifier {
   let ready = false;
+  /** Bumped by every clear, so a refresh that was in flight can tell it lost the race. */
+  let generation = 0;
 
   return {
     ensureReady: async () => {
@@ -96,6 +98,7 @@ export function createRunNotifier(api: RunNotificationApi = defaultRunNotificati
     },
     show: async (content) => {
       if (!ready) return;
+      const mine = generation;
       try {
         await api.scheduleNotificationAsync({
           identifier: RUN_NOTIFICATION_ID,
@@ -112,11 +115,16 @@ export function createRunNotifier(api: RunNotificationApi = defaultRunNotificati
           },
           trigger: { channelId: RUN_CHANNEL_ID },
         });
+        // Cleared while this was posting: posting landed after the dismiss, so a sticky notice would
+        // otherwise stay on a phone whose run is over. Take it down again.
+        if (mine !== generation) await api.dismissNotificationAsync(RUN_NOTIFICATION_ID);
       } catch {
         // A missed update is a few stale seconds on the lock screen, not a broken run.
       }
     },
     clear: async () => {
+      ready = false;
+      generation += 1;
       try {
         await api.dismissNotificationAsync(RUN_NOTIFICATION_ID);
       } catch {

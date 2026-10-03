@@ -121,6 +121,35 @@ describe('run notifier (12A-3)', () => {
     expect(handler.mock.calls).toEqual([['pause'], ['resume'], ['finish']]);
   });
 
+  it('a refresh still in flight when the notice is cleared does not bring it back', async () => {
+    let finishSchedule: () => void = () => undefined;
+    const { api } = fakeApi({
+      scheduleNotificationAsync: jest.fn(
+        () => new Promise<string>((resolve) => (finishSchedule = () => resolve(RUN_NOTIFICATION_ID))),
+      ),
+    });
+    const notifier = createRunNotifier(api);
+    await notifier.ensureReady();
+
+    const showing = notifier.show(content);
+    await notifier.clear();
+    finishSchedule();
+    await showing;
+
+    expect(api.dismissNotificationAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows nothing after it is cleared, until made ready again for the next run', async () => {
+    const { api } = fakeApi();
+    const notifier = createRunNotifier(api);
+    await notifier.ensureReady();
+    await notifier.clear();
+
+    await notifier.show(content);
+
+    expect(api.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
   it('removes the notice', async () => {
     const { api } = fakeApi();
     const notifier = createRunNotifier(api);
