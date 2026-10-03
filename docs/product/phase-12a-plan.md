@@ -1,6 +1,7 @@
 # Phase 12A — a run keeps going with the screen off
 
-**Status:** planned 2026-10-03. Owner decisions recorded in [ADR-059](../decisions/ADR-059-background-run-tracking.md)
+**Status:** 12A-1 (#318) and 12A-2 (#319) merged; 12A-3 (#320) in review; 12A-4 docs in progress (2026-10-03).
+Originally planned 2026-10-03. Owner decisions recorded in [ADR-059](../decisions/ADR-059-background-run-tracking.md)
 (accepted, with its amendment). Each slice is its own PR, test-first, reviewed, merged with `main` green.
 
 ## Owner decisions (2026-10-03)

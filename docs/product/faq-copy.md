@@ -295,3 +295,21 @@ are in Profile → Account (Export my data, Delete account).
 
 Every source above was recorded by earlier sessions or is named in this session's plan; none was added
 from memory that isn't already in the repository, except item 5, which is new with the run feature.
+
+## Proposed for 12A, awaiting the owner's approval (2026-10-03)
+
+Not in the app yet. Shown to the owner before it goes into `faq-content.ts`.
+
+### Runs → How does FORJD measure a run? (first sentence changes)
+
+Was: "From your phone's GPS while the run screen is open."
+Proposed: "From your phone's GPS while a run is open, including with the screen locked."
+
+### Runs → new entry: Why is there a notification while I run?
+
+"While a run is open, FORJD shows a notification with your time, distance and pace, and Pause and
+Finish buttons, so you can control the run without unlocking your phone. Android also shows a small
+'Location' notice: it is how Android lets an app keep using GPS with the screen off. FORJD only uses
+your location while a run is open, never in the background otherwise, and your route stays on your
+phone. When the run is finished or discarded, both notices go. If you swipe FORJD away, tracking
+stops and the run is offered back the next time you open the app."
