@@ -15,6 +15,7 @@ import {
   pauseRun,
   resumeRun,
   runStats,
+  runTrackStats,
   startRun,
   toRunUploadRequest,
   type RunState,
@@ -176,6 +177,28 @@ describe('runStats', () => {
   it('stops counting time when the run is paused for the whole of it', () => {
     const paused = pauseRun(runSteadily(3, 20), T0 + 20_000);
     expect(runStats(paused, T0 + 900_000).movingSeconds).toBe(20);
+  });
+
+  /**
+   * The live screen ticks once a second; only the moving time and pace depend on the clock. The
+   * GPS-only part (distance, splits, climb, the route) is passed in so the screen can keep it until
+   * a new reading arrives, instead of re-walking every fix each second (live-run-plan follow-up, G6).
+   */
+  it('gives the same answer whether the GPS-only part is passed in or worked out', () => {
+    const state = runSteadily(3, 120);
+
+    expect(runStats(state, T0 + 130_000, runTrackStats(state.fixes))).toEqual(runStats(state, T0 + 130_000));
+  });
+
+  it('reuses the GPS-only part it is given, so the route is the same array from tick to tick', () => {
+    const state = runSteadily(3, 120);
+    const track = runTrackStats(state.fixes);
+
+    const first = runStats(state, T0 + 120_000, track);
+    const second = runStats(state, T0 + 121_000, track);
+
+    expect(second.route).toBe(first.route);
+    expect(second.movingSeconds).toBe(first.movingSeconds + 1);
   });
 });
 

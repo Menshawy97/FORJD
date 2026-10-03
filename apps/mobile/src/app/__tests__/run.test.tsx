@@ -42,7 +42,6 @@ jest.mock('@/store/run-session', () => ({
   getUnfinishedRunSnapshot: jest.fn(),
   saveRunSnapshot: jest.fn(),
   clearRunSnapshot: jest.fn(),
-  clearRunPoints: jest.fn(),
 }));
 
 jest.mock('@/integrations/health/device-health-provider', () => ({ getDeviceHealthProvider: jest.fn() }));
@@ -85,7 +84,22 @@ function render(ui: ReactElement) {
 }
 
 const M_PER_DEG = (6_371_000 * Math.PI) / 180;
-const DB = { name: 'db' };
+/** Which store calls ran inside `withTransactionAsync`, so the finish step's atomicity can be asserted. */
+let transactionCalls: string[] | null = null;
+const inTransactionLog: string[] = [];
+const DB = {
+  name: 'db',
+  withTransactionAsync: jest.fn(async (task: () => Promise<void>) => {
+    transactionCalls = [];
+    try {
+      await task();
+      inTransactionLog.push(...transactionCalls);
+    } finally {
+      transactionCalls = null;
+    }
+  }),
+};
+const noteInTransaction = (name: string) => transactionCalls?.push(name);
 const mockStop = jest.fn();
 let deliverFix: (fix: PreciseFix) => void = () => undefined;
 
@@ -116,11 +130,12 @@ beforeEach(() => {
     return { status: 'watching', stop: mockStop };
   });
   (openWorkoutSessionDb as jest.Mock).mockResolvedValue(DB);
-  (enqueueSessionUpload as jest.Mock).mockResolvedValue(undefined);
+  (enqueueSessionUpload as jest.Mock).mockImplementation(() => { noteInTransaction('enqueue'); return Promise.resolve(); });
+  inTransactionLog.length = 0;
   (getQueuedSessions as jest.Mock).mockResolvedValue([]);
   (getUnfinishedRunSnapshot as jest.Mock).mockResolvedValue(null);
   (saveRunSnapshot as jest.Mock).mockResolvedValue(undefined);
-  (clearRunSnapshot as jest.Mock).mockResolvedValue(undefined);
+  (clearRunSnapshot as jest.Mock).mockImplementation(() => { noteInTransaction('clearSnapshot'); return Promise.resolve(); });
   (fetchRunCalorieInputs as jest.Mock).mockResolvedValue({ weightKg: 70, bmrKcal: null, ageYears: null, sex: null });
   (syncPendingSessions as jest.Mock).mockResolvedValue(undefined);
   (readLocationConsent as jest.Mock).mockResolvedValue(false);
@@ -378,6 +393,50 @@ describe('RunScreen -- finishing', () => {
     await waitFor(() => expect(screen.getByText('Run not saved — try Finish again.')).toBeTruthy());
     expect(mockReplace).not.toHaveBeenCalled();
     expect(clearRunSnapshot).not.toHaveBeenCalled();
+  });
+
+  /**
+   * G6 (live-run-plan follow-up): queueing the run and clearing its crash-recovery snapshot are one
+   * transaction, so a crash between them can never leave a snapshot of a run that is already
+   * queued (and later uploaded) to be offered back as unfinished.
+   */
+  /**
+   * The G6 review's race: an autosave that starts while Finish is waiting (consent, weight, the
+   * watch) must not write the snapshot back -- it could land inside the finish transaction, after
+   * the clear, and restore the snapshot of a queued run.
+   */
+  it('stops saving the recovery snapshot as soon as Finish starts, before it waits on anything', async () => {
+    let releaseConsent: (value: boolean) => void = () => undefined;
+    (readHealthConsent as jest.Mock).mockReturnValue(new Promise<boolean>((resolve) => (releaseConsent = resolve)));
+    await runOneHundredMetres();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+    (saveRunSnapshot as jest.Mock).mockClear();
+    const pauseButton = screen.queryByText('Pause');
+    if (pauseButton) await fireEvent.press(pauseButton);
+    releaseConsent(false);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(saveRunSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('queues the run and clears its recovery snapshot in one transaction', async () => {
+    await runOneHundredMetres();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(inTransactionLog).toEqual(['enqueue', 'clearSnapshot']);
+  });
+
+  it('says the run is not saved, and stays on it, when clearing the snapshot fails (the queueing is rolled back)', async () => {
+    (clearRunSnapshot as jest.Mock).mockRejectedValue(new Error('disk I/O error'));
+    await runOneHundredMetres();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+
+    await waitFor(() => expect(screen.getByText('Run not saved — try Finish again.')).toBeTruthy());
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });
 

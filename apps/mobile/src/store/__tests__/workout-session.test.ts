@@ -47,7 +47,11 @@ class FakeSqliteConnection implements SqliteConnection {
     this.userVersion = userVersion;
   }
 
+  /** Every statement passed to `execAsync`, so a migration step's SQL can be asserted. */
+  executed: string[] = [];
+
   execAsync(source: string): Promise<void> {
+    this.executed.push(source);
     const versionMatch = /^\s*PRAGMA user_version\s*=\s*(\d+)/.exec(source);
     if (versionMatch) {
       this.userVersion = Number(versionMatch[1]);
@@ -540,27 +544,41 @@ describe('workout-session store', () => {
 
       // 4: this one shared list also carries run-session.ts's RUN_SESSION_MIGRATION step (ADR-049)
       // at 3 -- one database, one PRAGMA user_version, one list, whichever caller runs first -- and
-      // v4 stamps the queue and snapshots with the account that created them (review 8.5 S1).
-      expect(versionOneDb.userVersion).toBe(4);
+      // v4 stamps the queue and snapshots with the account that created them (review 8.5 S1), and
+      // v5 drops the never-used run_points table (G6).
+      expect(versionOneDb.userVersion).toBe(5);
       const events = await getSessionEvents(versionOneDb, 'session-1');
       expect(events).toHaveLength(1);
       expect(events[0]?.type).toBe('workout_finished');
     });
 
     it('is a no-op on a database already at the latest version', async () => {
-      const upToDateDb = new FakeSqliteConnection(4);
+      const upToDateDb = new FakeSqliteConnection(5);
 
       await expect(ensureWorkoutSessionSchema(upToDateDb)).resolves.toBeUndefined();
 
-      expect(upToDateDb.userVersion).toBe(4);
+      expect(upToDateDb.userVersion).toBe(5);
+      expect(upToDateDb.executed.filter((sql) => sql.includes('DROP'))).toEqual([]);
     });
 
-    it('migrates a version-3 database (before accounts were recorded) to version 4', async () => {
+    it('migrates a version-3 database (before accounts were recorded) to the latest version', async () => {
       const versionThreeDb = new FakeSqliteConnection(3);
 
       await ensureWorkoutSessionSchema(versionThreeDb);
 
-      expect(versionThreeDb.userVersion).toBe(4);
+      expect(versionThreeDb.userVersion).toBe(5);
+    });
+
+    it('drops the unused run_points table and its index at version 5, leaving the run snapshot', async () => {
+      const versionFourDb = new FakeSqliteConnection(4);
+
+      await ensureWorkoutSessionSchema(versionFourDb);
+
+      expect(versionFourDb.userVersion).toBe(5);
+      const drops = versionFourDb.executed.filter((sql) => sql.includes('DROP'));
+      expect(drops.join('\n')).toMatch(/DROP INDEX IF EXISTS idx_run_points_session_id/);
+      expect(drops.join('\n')).toMatch(/DROP TABLE IF EXISTS run_points/);
+      expect(drops.join('\n')).not.toMatch(/run_snapshot/);
     });
   });
 

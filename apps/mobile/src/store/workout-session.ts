@@ -121,6 +121,16 @@ const MIGRATIONS: SqliteMigration[] = [
       await db.execAsync('ALTER TABLE run_snapshot ADD COLUMN account_id TEXT;');
     },
   },
+  {
+    // G6 (docs/product/engineering-gaps-plan.md): step 3 created `run_points` for a route log that
+    // was never written -- the run snapshot carries the fixes -- so it is dropped. Step 3 itself
+    // stays as shipped; a step is never edited after release.
+    version: 5,
+    async up(db) {
+      await db.execAsync('DROP INDEX IF EXISTS idx_run_points_session_id;');
+      await db.execAsync('DROP TABLE IF EXISTS run_points;');
+    },
+  },
 ];
 
 /** Idempotent, run before every use -- see `exercise-catalogue.ts`'s own note on why (cheap, no init step for a caller to forget). Applies every migration a given database is missing; see `MIGRATIONS` above and `sqlite-migrations.ts` for the mechanism. */
