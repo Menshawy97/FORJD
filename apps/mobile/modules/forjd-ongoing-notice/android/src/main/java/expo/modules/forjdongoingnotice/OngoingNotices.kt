@@ -183,7 +183,8 @@ internal object OngoingNotices {
     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     if (actionId != null) intent.putExtra(EXTRA_NOTICE_ID, noticeId).putExtra(EXTRA_ACTION_ID, actionId)
-    return PendingIntent.getActivity(context, requestCode("open/$noticeId/${actionId.orEmpty()}"), intent, flags())
+    val key = "open/$noticeId/${actionId.orEmpty()}"
+    return PendingIntent.getActivity(context, requestCode(key), identified(intent, key), flags())
   }
 
   private fun deleteIntent(context: Context, notice: Notice): PendingIntent {
@@ -217,7 +218,18 @@ internal object OngoingNotices {
   }
 
   private fun broadcast(context: Context, intent: Intent, key: String): PendingIntent =
-    PendingIntent.getBroadcast(context, requestCode(key), intent, flags())
+    PendingIntent.getBroadcast(context, requestCode(key), identified(intent, key), flags())
+
+  /**
+   * A PendingIntent is matched by its request code and `Intent.filterEquals`, which ignores extras, so a
+   * hash collision between two keys would let one notice's button carry another's ids. From Android 10
+   * the key itself is the intent's identifier, which `filterEquals` compares; unlike a data URI it is not
+   * a deep link, so the app's router never sees it.
+   */
+  private fun identified(intent: Intent, key: String): Intent {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) intent.setIdentifier(key)
+    return intent
+  }
 
   private fun requestCode(key: String): Int = key.hashCode()
 
@@ -320,7 +332,9 @@ internal object PendingActions {
   private fun write(context: Context, actions: List<Pair<String, String>>) {
     val array = JSONArray()
     actions.forEach { (noticeId, actionId) -> array.put(JSONObject().put("noticeId", noticeId).put("actionId", actionId)) }
-    preferences(context).edit().putString(KEY, array.toString()).commit()
+    // apply, not commit: this runs on the main thread (the receiver) and the JS thread
+    // (takePendingActions); the in-memory copy updates at once, only the disk write is deferred.
+    preferences(context).edit().putString(KEY, array.toString()).apply()
   }
 
   private fun preferences(context: Context) = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)

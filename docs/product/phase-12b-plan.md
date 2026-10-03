@@ -57,6 +57,14 @@
 - Seam `src/integrations/notifications/ongoing-notice.ts` + 31 Jest tests; conformance rule + two fixture
   cases. `gradlew :forjd-ongoing-notice:compileDebugKotlin` passes locally (a throwaway prebuild).
 
+**Review fixes (2026-10-03):** pending taps saved with `apply()` (the receiver runs on the main thread);
+each PendingIntent carries its key as the intent identifier (Android 10+), so two notices' buttons can
+never share one; a count-up that starts in the future is refused by the seam. Android lint could not run
+locally (the app's native libraries fail on this machine's NDK); the module itself compiles.
+
+**Also check on the device walk:** a rest that ends with the phone locked turns into the next set and
+does not come back after being swiped away mid-rest; the small icon is the FORJD symbol, not a blank square.
+
 **Device walk for 12B-1 (the owner, before merge):** needs 12B-2's wiring to see it in the app, so 12B-1 and
 12B-2 are walked together on one dev-client build; 12B-1's PR waits for that walk.
 

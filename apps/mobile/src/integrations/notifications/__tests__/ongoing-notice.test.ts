@@ -108,6 +108,8 @@ describe('toNativeOptions', () => {
     ['an action without a title', { actions: [{ id: 'a', title: '' }] }],
     ['a countdown that is not a finite time', { chronometer: { countDownToMs: Number.NaN } }],
     ['a count-up that is not a finite time', { chronometer: { countUpFromMs: Number.POSITIVE_INFINITY } }],
+    ['a count-up that starts in the future', { then: undefined, chronometer: { countUpFromMs: NOW + 60_000 } }],
+    ['a follow-up whose count-up starts in the future', { then: { title: 'x', text: 'y', chronometer: { countUpFromMs: NOW + 60_000 } } }],
     ['a follow-up without a countdown', { chronometer: { countUpFromMs: NOW } }],
     ['a follow-up that counts down itself', { then: { title: 'x', text: 'y', chronometer: { countDownToMs: NOW + 5 } } }],
     ['a follow-up with an empty title', { then: { title: '', text: 'y' } }],

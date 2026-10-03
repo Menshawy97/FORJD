@@ -84,7 +84,7 @@ function toNativeActions(actions: NoticeAction[] | undefined): NativeNoticeActio
   return list.map((action) => ({ id: action.id, title: action.title, opensApp: action.opensApp === true }));
 }
 
-function toNativeContent(content: NoticeContent): NativeNoticeContent | null {
+function toNativeContent(content: NoticeContent, nowMs: number): NativeNoticeContent | null {
   if (!filled(content.title)) return null;
   const actions = toNativeActions(content.actions);
   if (!actions) return null;
@@ -92,7 +92,8 @@ function toNativeContent(content: NoticeContent): NativeNoticeContent | null {
   const countDownToMs = chronometer && 'countDownToMs' in chronometer ? chronometer.countDownToMs : null;
   const countUpFromMs = chronometer && 'countUpFromMs' in chronometer ? chronometer.countUpFromMs : null;
   if (countDownToMs !== null && !isTime(countDownToMs)) return null;
-  if (countUpFromMs !== null && !isTime(countUpFromMs)) return null;
+  // A count-up from the future would show a negative elapsed time: a caller's sign error, refused here.
+  if (countUpFromMs !== null && (!isTime(countUpFromMs) || countUpFromMs > nowMs)) return null;
   return { title: content.title, text: content.text, subText: content.subText ?? null, countDownToMs, countUpFromMs, actions };
 }
 
@@ -104,13 +105,13 @@ export function toNativeOptions(options: OngoingNoticeOptions, nowMs: number): N
   if (!filled(options.id) || !filled(options.channel.id) || !filled(options.channel.name)) return null;
   if (!HEX_COLOR.test(options.color)) return null;
 
-  const content = toNativeContent(options);
+  const content = toNativeContent(options, nowMs);
   if (!content) return null;
 
   let then: NativeNoticeContent | null = null;
   if (options.then) {
     if (content.countDownToMs === null) return null;
-    then = toNativeContent(options.then);
+    then = toNativeContent(options.then, nowMs);
     if (!then || then.countDownToMs !== null) return null;
   }
 
