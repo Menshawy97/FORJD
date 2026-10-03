@@ -83,6 +83,7 @@ import type {
   WhoopStatusResponse,
 } from '@forjd/contracts';
 
+import { MAX_FOOD_IDS_PER_REQUEST } from '@forjd/contracts';
 import type { CatalogueFetchResult } from '@/store/exercise-catalogue';
 
 import { requireDateOfBirth } from './date-of-birth-gate';
@@ -363,6 +364,25 @@ export async function searchFoods(q: string, category?: string): Promise<FoodLis
 export async function getFood(id: string): Promise<FoodResponse> {
   const response = await apiClient.get<FoodResponse>(`/nutrition/foods/${id}`);
   return response.data;
+}
+
+/**
+ * Every food a screen references, in one request per `MAX_FOOD_IDS_PER_REQUEST` ids instead of one
+ * each (G5). **All or nothing**, as `Promise.all(ids.map(getFood))` was: if any food is missing it
+ * throws, so a screen shows its error rather than a list with a hole in it.
+ */
+export async function getFoods(ids: readonly string[]): Promise<FoodResponse[]> {
+  const unique = [...new Set(ids)];
+  const chunks: string[][] = [];
+  for (let start = 0; start < unique.length; start += MAX_FOOD_IDS_PER_REQUEST) {
+    chunks.push(unique.slice(start, start + MAX_FOOD_IDS_PER_REQUEST));
+  }
+  const pages = await Promise.all(
+    chunks.map((chunk) => apiClient.get<FoodListResponse>('/nutrition/foods', { params: { ids: chunk.join(',') } })),
+  );
+  const foods = pages.flatMap((page) => page.data.items);
+  if (foods.length !== unique.length) throw new Error('Food not found');
+  return foods;
 }
 
 export async function createCustomFood(body: CreateCustomFoodRequest): Promise<FoodResponse> {

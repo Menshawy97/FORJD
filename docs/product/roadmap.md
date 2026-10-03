@@ -67,8 +67,8 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
   Unconfirmed (8.5E): the date-of-birth `getMe` in `AuthenticatedGate` could, if the gate stays
   mounted across a quick account switch, redirect the new account on the old one's profile.
 - **Speed (8.5E, low):** ~~the board cache never drops past months' keys~~ fixed (G3);
-  a first Nutrition visit still reads each food separately (no batch
-  `GET /nutrition/foods?ids=`; revisits are cached). ~~The two R28 timing tests~~ removed (G4).
+  ~~a first Nutrition visit still reads each food separately~~ fixed (G5,
+  `GET /nutrition/foods?ids=`). ~~The two R28 timing tests~~ removed (G4).
 - ~~**CI (8.5E, unconfirmed):** `ci.yml` had no top-level `permissions:` block~~ added (G2); it touches no
   credentials, so this rests on the repository's default token permission.
 - **Rule 10:** watch calories are summed across every Health Connect data origin (possible

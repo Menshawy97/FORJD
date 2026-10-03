@@ -84,6 +84,7 @@ function fakeRepository(): jest.Mocked<NutritionRepository> {
     searchFoods: jest.fn(),
     findFoodById: jest.fn(),
     findFoodByIdForDisplay: jest.fn(),
+    findFoodsByIdsForDisplay: jest.fn(),
     createCustomFood: jest.fn(),
     softDeleteCustomFood: jest.fn(),
     getMacroGoals: jest.fn(),
@@ -156,6 +157,39 @@ describe("NutritionService", () => {
       repository.findFoodByIdForDisplay.mockResolvedValue(null);
 
       await expect(service.getFoodById(viewer, "does-not-exist")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("searchFoods with ids (G5: one request for every food a screen references)", () => {
+    const banana = catalogueFood();
+    const mine = customFood(viewer.id);
+    const theirs = customFood(stranger.id, { id: "66666666-6666-4666-8666-666666666666" });
+    const query = (ids: string[]) => ({ ids, limit: 30 });
+
+    it("returns the foods in the order asked for, by id, not a search", async () => {
+      repository.findFoodsByIdsForDisplay.mockResolvedValue([banana, mine]);
+
+      const result = await service.searchFoods(viewer, query([mine.id, banana.id]));
+
+      expect(result.items.map((food) => food.id)).toEqual([mine.id, banana.id]);
+      expect(repository.findFoodsByIdsForDisplay).toHaveBeenCalledWith([mine.id, banana.id]);
+      expect(repository.searchFoods).not.toHaveBeenCalled();
+    });
+
+    it("leaves out another user's custom food, the same as getFoodById's 404", async () => {
+      repository.findFoodsByIdsForDisplay.mockResolvedValue([banana, theirs]);
+
+      const result = await service.searchFoods(viewer, query([banana.id, theirs.id]));
+
+      expect(result.items.map((food) => food.id)).toEqual([banana.id]);
+    });
+
+    it("leaves out an id that resolves to nothing, rather than failing the whole list", async () => {
+      repository.findFoodsByIdsForDisplay.mockResolvedValue([banana]);
+
+      const result = await service.searchFoods(viewer, query(["77777777-7777-4777-8777-777777777777", banana.id]));
+
+      expect(result.items.map((food) => food.id)).toEqual([banana.id]);
     });
   });
 

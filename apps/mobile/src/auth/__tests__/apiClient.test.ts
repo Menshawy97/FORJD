@@ -476,6 +476,52 @@ describe('apiClient - profile reads and writes', () => {
     });
   });
 
+  describe('getFoods (G5: one request for many foods)', () => {
+    const food = (id: string) => ({ id, name: id, category: 'fruits', isCustom: false, macrosPer100g: { kcal: 1, protein: 0, carbs: 0, fat: 0 }, servings: [] });
+
+    it('asks GET /nutrition/foods?ids= once for every distinct id', async () => {
+      const { getFoods } = loadApiClient();
+      const instance = apiClientInstance();
+      instance.get.mockResolvedValue({ data: { items: [food('a'), food('b')] } });
+
+      await expect(getFoods(['a', 'b', 'a'])).resolves.toEqual([food('a'), food('b')]);
+
+      expect(instance.get).toHaveBeenCalledTimes(1);
+      expect(instance.get).toHaveBeenCalledWith('/nutrition/foods', { params: { ids: 'a,b' } });
+    });
+
+    it('splits more than 100 ids across requests', async () => {
+      const { getFoods } = loadApiClient();
+      const instance = apiClientInstance();
+      const ids = Array.from({ length: 150 }, (_, n) => `id-${n}`);
+      instance.get.mockImplementation((_url: string, config: { params: { ids: string } }) =>
+        Promise.resolve({ data: { items: config.params.ids.split(',').map(food) } }),
+      );
+
+      await expect(getFoods(ids)).resolves.toHaveLength(150);
+
+      expect(instance.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('makes no request for no ids', async () => {
+      const { getFoods } = loadApiClient();
+      const instance = apiClientInstance();
+
+      await expect(getFoods([])).resolves.toEqual([]);
+
+      expect(instance.get).not.toHaveBeenCalled();
+    });
+
+    /** All or nothing, as `Promise.all(getFood)` was: a screen shows its error rather than half a list. */
+    it('fails when any asked-for food is missing, as one 404 used to', async () => {
+      const { getFoods } = loadApiClient();
+      const instance = apiClientInstance();
+      instance.get.mockResolvedValue({ data: { items: [food('a')] } });
+
+      await expect(getFoods(['a', 'b'])).rejects.toThrow('Food not found');
+    });
+  });
+
   describe('getExerciseCatalogue (R20 conditional GET)', () => {
     it('sends no If-None-Match and returns the full body when there is no stored version yet', async () => {
       const { getExerciseCatalogue } = loadApiClient();

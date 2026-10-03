@@ -560,6 +560,39 @@ describe("NutritionRepository", () => {
    * forced `enable_seqscan = off` -- prefers an index scan once the index exists. `ANALYZE` runs
    * after each bulk insert so the planner's row-count estimates reflect the seeded data.
    */
+  describe("findFoodsByIdsForDisplay (G5)", () => {
+    it("reads every asked-for food with its servings in two queries, however many are asked for", async () => {
+      const created = await Promise.all(
+        Array.from({ length: 8 }, (_, index) => repository.createCatalogueFood(catalogueInput(`g5-batch-${randomUUID()}-${index}`))),
+      );
+      createdFoodIds.push(...created.map((food: Food) => food.id));
+
+      const querySpy = jest.spyOn(pool, "query");
+      const found = await repository.findFoodsByIdsForDisplay(created.map((food: Food) => food.id));
+      const callCount = querySpy.mock.calls.length;
+      querySpy.mockRestore();
+
+      expect(found.map((food) => food.id).sort()).toEqual(created.map((food: Food) => food.id).sort());
+      expect(found.every((food) => food.servings.length === 2)).toBe(true);
+      expect(callCount).toBeLessThanOrEqual(2);
+    });
+
+    it("leaves out a soft-deleted custom food, and returns nothing for an empty list", async () => {
+      const userId = await makeUser("g5-deleted");
+      const food = await repository.createCustomFood(userId, {
+        name: `G5 Gone ${randomUUID()}`,
+        category: "snacks",
+        macrosPer100g: { kcal: 100, protein: 1, carbs: 1, fat: 1 },
+        servings: [{ label: "1 bar", grams: 40 }],
+      });
+      createdFoodIds.push(food.id);
+      await repository.softDeleteCustomFood(food.id, userId);
+
+      await expect(repository.findFoodsByIdsForDisplay([food.id])).resolves.toEqual([]);
+      await expect(repository.findFoodsByIdsForDisplay([])).resolves.toEqual([]);
+    });
+  });
+
   describe("R28: FK indexes and N+1 batching", () => {
     /** Bulk-inserts minimal catalogue foods directly (bypassing createCatalogueFood's per-row servings round trip) purely as FK targets for the seeded rows below. */
     const seedBulkFoods = async (count: number, label: string): Promise<string[]> => {

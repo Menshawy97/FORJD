@@ -18,7 +18,7 @@ import {
   createSavedMeal,
   deleteLogEntry,
   deleteLogGroup,
-  getFood,
+  getFoods,
   getMacroGoalSuggestion,
   getMacroGoals,
   listNutritionLog,
@@ -129,7 +129,7 @@ export default function NutritionScreen() {
   const loadFoods = useCallback(async (foodIds: string[], existing: Record<string, FoodResponse>) => {
     const missing = [...new Set(foodIds)].filter((id) => !existing[id]);
     if (missing.length === 0) return existing;
-    const fetched = await Promise.all(missing.map((id) => getFood(id)));
+    const fetched = await getFoods(missing);
     const next = { ...existing };
     fetched.forEach((food) => {
       next[food.id] = food;
