@@ -204,6 +204,14 @@ ask for. iPhone widgets (12I) are in scope; other iOS parts follow Phase 11 (ADR
 
 ### Decisions to settle first (each an ADR, docs-only PR)
 
+**Drafted 2026-10-03, all Proposed and awaiting the owner:**
+[ADR-059 background run](../decisions/ADR-059-background-run-tracking.md) (spike done: the foreground
+service adds only `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION`; background location stays
+removed), [ADR-060 push transport](../decisions/ADR-060-push-notification-transport.md) (one open
+question), [ADR-061 what a notification may say](../decisions/ADR-061-what-a-notification-may-say.md),
+[ADR-062 widgets](../decisions/ADR-062-home-screen-widgets.md) (`expo-widgets` 57 draws iPhone widgets
+from JSX, so no hand-written Swift). 12A starts once ADR-059 is accepted.
+
 1. **Background run tracking** (supersedes ADR-049 point 2). Recommended: an Android foreground
    service of type `location`, started from the visible run screen, with an ongoing notification
    (time, distance, pace, Pause/Finish). Android treats that as foreground access, so the aim is

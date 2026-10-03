@@ -1,6 +1,7 @@
 # Engineering gaps that need nobody (2026-10-01)
 
-**Status:** planned 2026-10-01. Each slice is its own PR, test-first, reviewed, merged with `main` green.
+**Status:** complete 2026-10-03. G1 #312, G2+G4 #311, G3 #313, G6 #314, G5 #315, each test-first, reviewed
+and merged with `main` green; G7 drafted ADR-059 to ADR-062 as **Proposed**, for the owner.
 
 **Why now:** the Android beta waits on the owner (device tests, Play Console) and on Phase 12A-12C.
 Everything here can be finished without a device, an account or a product decision, and the
