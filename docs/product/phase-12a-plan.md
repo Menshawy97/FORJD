@@ -10,6 +10,19 @@
 2. **Live numbers and buttons** in the notification, on **both** platforms. Android now; iPhone as a Live
    Activity with Phase 11 (Apple Developer account, ADR-007).
 3. **The screen is no longer kept awake** during a run.
+4. **Finish in the notification opens the app and finishes there**, showing the run summary, the same as
+   Finish on the run screen.
+5. **The design (replica v2) is approved**, modelled on the owner's Strava and Hevy lock-screen
+   examples: the FORJD symbol in ember (`#E9712F`), the numbers in the run screen's own formats.
+   - Android live notice: header `FORJD · Run` (`Run paused` when paused); title `24:31 · 4.82 km`;
+     text `Avg pace 5:05 /km`; actions Pause (Resume when paused) and Finish.
+   - Android fixed service notice: title `Location`, text `Tracking your run. Tap to return.`, grey,
+     collapsed under the live one.
+   - iPhone Live Activity (Phase 11): a black card, symbol and `Run` with a `LIVE`/`PAUSED` tag, three
+     columns Time / Avg pace (/km) / Distance (km), Pause (Resume) and an ember Finish.
+6. **The same idea for strength workouts** (owner, 2026-10-03): slice 12B, a lock-screen card with the
+   current exercise, the set and the rest countdown and a done button, after the owner's Hevy example.
+   Its own replica comes before it is built, straight after 12A.
 
 ## What exists today (read before changing it)
 
@@ -44,8 +57,9 @@ notification actions (Pause / Resume / Finish) ──► runTracker commands
   deleted).
 - `integrations/location/run-location-task.ts`: `defineRunLocationTask(onFixes)` (module scope,
   TaskManager), `startRunLocationUpdates()` (`Accuracy.BestForNavigation`, `timeInterval: 1000`,
-  `distanceInterval: 0`, `foregroundService: { notificationTitle: 'Run in progress', notificationBody:
-  'FORJD is tracking your run. Tap to return.', killServiceOnDestroy: true }`),
+  `distanceInterval: 0`, `foregroundService: { notificationTitle: 'Location', notificationBody:
+  'Tracking your run. Tap to return.', killServiceOnDestroy: true }`), and the FORJD symbol as
+  `androidForegroundServiceIcon`,
   `stopRunLocationUpdates()`. The same lazy-require, never-throw rules as `location-provider.ts`.
 - **Tests first:** mocked SDK: start passes exactly these options; stop is idempotent; fixes are
   validated (bad coordinates dropped) before reaching `onFixes`; a missing native module is reported
@@ -66,9 +80,9 @@ notification actions (Pause / Resume / Finish) ──► runTracker commands
   snapshot; going to the background no longer pauses; Pause/Resume/Finish behave as today; existing
   `run.test.tsx` cases kept green.
 
-### Gate — replica approval (before 12A-3)
+### Gate — replica approval (before 12A-3) — **approved 2026-10-03 (replica v2)**
 The Android run notification (running and paused), what Finish from the notification does, and the run
-screen without the lock-pause line, shown as a replica and approved by the owner.
+screen without the lock-pause line. See owner decisions 4 and 5.
 
 ### 12A-3 — The live run notification (Android)
 - `integrations/notifications/run-notification.ts`: a low-importance channel (no sound or vibration),

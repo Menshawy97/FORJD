@@ -25,10 +25,12 @@ describe('app config: location', () => {
     expect(text).toContain('never uploaded');
   });
 
-  it('turns background location and the foreground service off', () => {
+  it('runs a location foreground service for runs, but never background location (ADR-059)', () => {
     const options = locationPlugin()?.[1];
     expect(options?.isAndroidBackgroundLocationEnabled).toBe(false);
-    expect(options?.isAndroidForegroundServiceEnabled).toBe(false);
+    expect(options?.isAndroidForegroundServiceEnabled).toBe(true);
+    expect(options?.isIosBackgroundLocationEnabled).toBe(true);
+    expect(options?.androidForegroundServiceIcon).toBe('./assets/images/android-icon-monochrome.png');
   });
 
   it('still blocks background location on Android', () => {
