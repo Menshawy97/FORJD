@@ -22,7 +22,11 @@
      columns Time / Avg pace (/km) / Distance (km), Pause (Resume) and an ember Finish.
 6. **The same idea for strength workouts** (owner, 2026-10-03): slice 12B, a lock-screen card with the
    current exercise, the set and the rest countdown and a done button, after the owner's Hevy example.
-   Its own replica comes before it is built, straight after 12A.
+   **Its replica was approved on 2026-10-03:** header = symbol, workout name and elapsed time; a set
+   card with the exercise, `Set 3 of 4`, `82.5 kg × 6` and an ember tick (Android: a Done action);
+   a rest card with `REST`, the countdown, a progress bar, `Next · Bench Press · 82.5 kg × 6` and
+   Skip (Android: Skip rest, the countdown drawn by Android's own chronometer so it stays exact with
+   the screen off). Built in 12B after 12A; the iPhone Live Activity with Phase 11.
 
 ## What exists today (read before changing it)
 
@@ -68,17 +72,18 @@ notification actions (Pause / Resume / Finish) ──► runTracker commands
 - `killServiceOnDestroy: true`: swiping the app away stops tracking; reopening offers the run back
   (crash recovery). That matches today and avoids a headless writer.
 
-### 12A-2 — The run tracker owns the run (no UI change yet)
-- `features/run/run-tracker.ts`: a module-level store holding the current `RunState` with
-  `start/pause/resume/addFixes/finishRequested/subscribe/getState`. It persists the snapshot itself
-  (every 10 s and on pause/resume, the existing G6 rules: closed before Finish waits).
-- `useRunSession` reads from and commands the tracker instead of holding the state; the location source
-  becomes `startRunLocationUpdates` instead of the foreground watch.
-- **Removed:** the auto-pause on background, and `useKeepAwake` in `app/run.tsx` (owner decision 3).
-  The "Paused when the phone locked" line goes (a visible change: covered by the replica gate below).
-- **Tests first:** a fix arriving while no screen is subscribed still lands in the state and the
-  snapshot; going to the background no longer pauses; Pause/Resume/Finish behave as today; existing
-  `run.test.tsx` cases kept green.
+### 12A-2 — The run screen tracks with the screen off — **as built**
+- **Simpler than first planned: no separate tracker module.** With `killServiceOnDestroy`, the service
+  stops when the app is swiped away, so whenever readings arrive the app's JavaScript and the run screen
+  are alive. `useRunSession` keeps owning the run; `startTracking` replaces the foreground watch with
+  `startRunLocationUpdates` + `setRunFixListener` (same start and recheck paths, same shape).
+- `app/_layout.tsx` imports `run-location-task` so the task is defined at every bundle start (12A-1
+  review: after a process restart only module-scope code runs).
+- **Removed:** the auto-pause on background (and its `healthPromptOpenRef` guard), the "Paused when the
+  phone locked" line, and `useKeepAwake` (owner decision 3).
+- **Tests first:** locking keeps the run live with no message; readings that arrive while locked still
+  count; keep-awake is not used; every existing run screen test moved from the watch to the service.
+- The notification actions (12A-3) reach the hook through a small command channel, added there.
 
 ### Gate — replica approval (before 12A-3) — **approved 2026-10-03 (replica v2)**
 The Android run notification (running and paused), what Finish from the notification does, and the run

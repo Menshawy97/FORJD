@@ -26,6 +26,9 @@ import { syncTimeZone } from '@/features/forge/time-zone-sync';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
+// ADR-059: loading this module defines the run's location task, which TaskManager needs at every
+// start of the bundle, so a run whose process Android restarted still receives its readings.
+import '@/integrations/location/run-location-task';
 
 SplashScreen.preventAutoHideAsync();
 

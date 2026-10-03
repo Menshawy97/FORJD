@@ -8,9 +8,9 @@ import { useToast } from '@/components/toast';
 import {
   getPrecisePermission,
   requestPrecisePermission,
-  watchPrecisePosition,
   type PreciseFix,
 } from '@/integrations/location/location-provider';
+import { setRunFixListener, startRunLocationUpdates, stopRunLocationUpdates } from '@/integrations/location/run-location-task';
 import type { SqliteConnection } from '@/store/exercise-catalogue';
 import { getDeviceHealthProvider } from '@/integrations/health/device-health-provider';
 import { readHealthConsent } from '@/store/health-consent-local';
@@ -56,6 +56,17 @@ import { toRunSummary } from './run-summary';
  */
 export type RunPermission = 'checking' | 'granted' | 'denied' | 'coarse_only' | 'unavailable';
 
+/**
+ * Which start of the location service is current. The service and its listener are one per app, so a
+ * run screen that was left while its start was pending must not, when that start lands, stop the
+ * tracking a newer run screen owns (12A-2 review). Only the latest start may clear or stop.
+ */
+let currentTracking = 0;
+
+type TrackingStart =
+  | { status: 'watching'; stop: () => void }
+  | { status: 'denied' | 'coarse_only' | 'unavailable' | 'cancelled' };
+
 const TICK_MS = 1000;
 /** How often a running run is written to the recovery snapshot, besides on pause and finish. */
 const AUTOSAVE_MS = 10_000;
@@ -73,7 +84,6 @@ export interface RunSession {
   status: RunState['status'];
   permission: RunPermission;
   quality: GpsQuality;
-  autoPaused: boolean;
   isFinishing: boolean;
   stats: ReturnType<typeof runStats> | null;
   splits: RunSplitView[];
@@ -91,7 +101,6 @@ export function useRunSession(): RunSession {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [permission, setPermission] = useState<RunPermission>('checking');
   const [lastAccuracy, setLastAccuracy] = useState<{ meters: number | null } | null>(null);
-  const [autoPaused, setAutoPaused] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const toast = useToast();
   // `toast` is a new object each render; only its `show` is stable, so that is what callbacks depend on.
@@ -103,7 +112,6 @@ export function useRunSession(): RunSession {
   const closedRef = useRef(false);
   const saveWarnedRef = useRef(false);
   const healthRef = useRef<RunHealthReader | null>(null);
-  const healthPromptOpenRef = useRef(false);
 
   const getDb = useCallback((): Promise<SqliteConnection> => {
     if (!dbRef.current) {
@@ -169,21 +177,48 @@ export function useRunSession(): RunSession {
     [commit],
   );
 
+  /**
+   * Follows the position through the location foreground service (ADR-059), so readings keep coming
+   * with the screen off. The listener is set before the service starts, so no early reading is lost;
+   * it is the same shape the foreground watch had, so the start and recheck paths are unchanged.
+   */
+  const startTracking = useCallback(
+    async (isCancelled: () => boolean): Promise<TrackingStart> => {
+      currentTracking += 1;
+      const mine = currentTracking;
+      const isCurrent = () => currentTracking === mine;
+      setRunFixListener((fixes) => fixes.forEach(onFix));
+      const started = await startRunLocationUpdates();
+      if (started !== 'started') {
+        if (isCurrent()) setRunFixListener(null);
+        return { status: started };
+      }
+      const stop = () => {
+        if (!isCurrent()) return;
+        currentTracking += 1;
+        setRunFixListener(null);
+        void stopRunLocationUpdates();
+      };
+      if (isCancelled()) {
+        stop();
+        return { status: 'cancelled' };
+      }
+      return { status: 'watching', stop };
+    },
+    [onFix],
+  );
+
   /** Back from Settings: if location is now allowed and nothing is being followed, follow it. */
   const recheckPermission = useCallback(async () => {
     if (closedRef.current || stopWatchRef.current || permissionRef.current === 'checking') return;
     if (permissionRef.current === 'granted') return;
     if ((await getPrecisePermission()) !== 'granted') return;
     const isCancelled = () => unmountedRef.current || closedRef.current;
-    const watch = await watchPrecisePosition(onFix, { isCancelled });
+    const watch = await startTracking(isCancelled);
     if (watch.status !== 'watching') return;
-    if (isCancelled()) {
-      watch.stop();
-      return;
-    }
     stopWatchRef.current = watch.stop;
     updatePermission('granted');
-  }, [onFix, updatePermission]);
+  }, [startTracking, updatePermission]);
 
   // Recover an unfinished run or start a new one, then ask for location and follow the position.
   useEffect(() => {
@@ -230,7 +265,7 @@ export function useRunSession(): RunSession {
           return;
         }
 
-        const watch = await watchPrecisePosition(onFix, { isCancelled: () => cancelled });
+        const watch = await startTracking(() => cancelled);
         if (cancelled) {
           if (watch.status === 'watching') watch.stop();
           return;
@@ -252,7 +287,7 @@ export function useRunSession(): RunSession {
       unmountedRef.current = true;
       stopWatching();
     };
-  }, [commit, getDb, onFix, persist, showToast, stopWatching, updatePermission]);
+  }, [commit, getDb, persist, showToast, startTracking, stopWatching, updatePermission]);
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), TICK_MS);
@@ -293,18 +328,10 @@ export function useRunSession(): RunSession {
         if ((await readHealthConsent()) !== true) return;
         const provider = getDeviceHealthProvider();
         if (!provider) return;
-        // Health Connect's own screen sends the app to the background while it is open; that is not
-        // the phone locking, so the run must not pause itself for it.
-        healthPromptOpenRef.current = true;
-        let reader: RunHealthReader | null;
-        try {
-          reader = await prepareRunHealth(provider, {
-            alreadyAsked: await hasAskedRunHealthAccess(),
-            markAsked: markRunHealthAccessAsked,
-          });
-        } finally {
-          healthPromptOpenRef.current = false;
-        }
+        const reader = await prepareRunHealth(provider, {
+          alreadyAsked: await hasAskedRunHealthAccess(),
+          markAsked: markRunHealthAccessAsked,
+        });
         if (!reader || cancelled) return;
         healthRef.current = reader;
         await poll(reader);
@@ -331,30 +358,19 @@ export function useRunSession(): RunSession {
   const resume = useCallback(() => {
     const current = runRef.current;
     if (!current) return;
-    setAutoPaused(false);
     const next = resumeRun(current, Date.now());
     commit(next);
     void persist(next);
   }, [commit, persist]);
 
-  // Foreground location stops when the phone locks (ADR-049 #2), so the run pauses with it and says why.
+  // ADR-059 (12A): locking the phone no longer pauses the run; the location foreground service keeps
+  // the readings coming. Coming back to the app still picks up a permission fixed in Settings.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      // Back from Settings: pick up a permission the person has just fixed.
-      if (state === 'active') {
-        void recheckPermission();
-        return;
-      }
-      if (state !== 'background' || healthPromptOpenRef.current) return;
-      const current = runRef.current;
-      if (current?.status !== 'running') return;
-      setAutoPaused(true);
-      const next = pauseRun(current, Date.now());
-      commit(next);
-      void persist(next);
+      if (state === 'active') void recheckPermission();
     });
     return () => subscription.remove();
-  }, [commit, persist, recheckPermission]);
+  }, [recheckPermission]);
 
   const discard = useCallback(async () => {
     // A run already being saved cannot also be thrown away: the save would still queue it.
@@ -499,7 +515,6 @@ export function useRunSession(): RunSession {
     status: run?.status ?? 'running',
     permission,
     quality: gpsQuality(lastAccuracy?.meters ?? null, lastAccuracy !== null),
-    autoPaused,
     isFinishing,
     stats,
     splits,
