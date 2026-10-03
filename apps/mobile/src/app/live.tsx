@@ -346,6 +346,9 @@ export default function LiveScreen() {
       }
       void persist(change.session.id, change.events);
       setSession(change.session);
+      // The controller learns it now, not at the next sync effect: a Done tapped in between must not
+      // find the set it just ticked still open.
+      workoutNotice.adopt(change.session);
       if (change.restStartedSeconds !== null) {
         // The controller owns the rest from here: its end time, the "Rest complete" alert and the
         // lock-screen countdown. The rest screen only reads it (12B-2).

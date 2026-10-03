@@ -68,6 +68,11 @@ export interface WorkoutNotice {
   detach: () => void;
   /** The session as it is now; call after every change. Reposts the card only if it differs. */
   sync: (input: WorkoutNoticeInput) => void;
+  /**
+   * The live screen has just adopted this session itself. Closes the window before its next `sync`
+   * in which a Done for the set it just ticked would still look current.
+   */
+  adopt: (session: WorkoutNoticeInput['session']) => void;
   /** A set was completed and a rest began. `session` is null when the rest screen opens on its own. */
   beginRest: (session: WorkoutNoticeInput['session'] | null, seconds: number) => void;
   getRest: () => ActiveRest | null;
@@ -94,6 +99,7 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
   let rest: RestState | null = null;
   let permission: Promise<boolean> | null = null;
   let lastSignature: string | null = null;
+  let tornDown = false;
   /** Bumped by every teardown, so a card that was still posting can tell it lost the race. */
   let generation = 0;
   /** Taps that arrived before the session was restored: replayed, and checked, once it is. */
@@ -130,11 +136,18 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
     const input = latest;
     if (!input) return;
     if (input.session.status === 'completed') {
-      teardownNotice();
+      // Once, however many syncs follow: each teardown bumps the generation and dismisses again.
+      if (!tornDown) teardownNotice();
+      tornDown = true;
       return;
     }
+    tornDown = false;
     const mine = generation;
     if (!(await isPermitted()) || mine !== generation || !latest) return;
+
+    // A rest that ran out while nothing was watching (the phone locked, the rest screen not open) must
+    // not come back as a REST card counting from the past: the set card, and its Done, replace it.
+    if (rest && rest.endsAt <= now()) dropRest();
 
     const options = workoutNoticeContent({ ...latest, rest });
     if (!options) return;
@@ -144,8 +157,9 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
     try {
       const shown = await deps.notice.show(options);
       if (!shown && lastSignature === signature) lastSignature = null;
-      // Ended while this was posting: the card landed after the dismiss, so take it down again.
-      if (mine !== generation) void deps.notice.dismiss(WORKOUT_NOTICE_ID);
+      // Ended while this was posting: the card landed after the dismiss, so take it down again. Not if a
+      // newer card has been posted since (a remount): the id is shared, and that dismiss would remove it.
+      if (mine !== generation && lastSignature === null) void deps.notice.dismiss(WORKOUT_NOTICE_ID);
     } catch {
       if (lastSignature === signature) lastSignature = null;
     }
@@ -185,9 +199,17 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
     }
     const input = latest;
     if (!host || target.sessionId !== input.session.id) return;
+    // Finish was pressed: a button still on the lock screen must not tick a set after workout_finished.
+    if (input.session.status === 'completed') return;
 
     if (target.kind === 'skip') {
-      if (!rest || rest.endsAt !== target.endsAt) return;
+      if (!rest) {
+        // A rest this process does not know (it was restarted mid-rest): the card still says REST, so
+        // put the set card back. Its alert cannot be cancelled, the id was lost with the process.
+        void post();
+        return;
+      }
+      if (rest.endsAt !== target.endsAt) return;
       if (now() >= rest.endsAt) dropRest();
       else endRest();
       return;
@@ -228,6 +250,9 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
         taps.forEach(handleAction);
       }
       void post();
+    },
+    adopt: (session) => {
+      if (latest) latest = { ...latest, session };
     },
     beginRest: (session, seconds) => {
       if (session) latest = { pausedMs: 0, units: {}, ...latest, session };

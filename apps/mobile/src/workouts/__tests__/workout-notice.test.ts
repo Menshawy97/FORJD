@@ -575,6 +575,85 @@ describe('the workout notice controller: every exit', () => {
     expect(h.notice.dismiss.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('a card that was posting before a re-attach does not take down the newer card', async () => {
+    const h = harness();
+    let finishOld: (shown: boolean) => void = () => undefined;
+    h.notice.show.mockReturnValueOnce(new Promise<boolean>((done) => (finishOld = done)));
+    h.controller.sync(input(makeSession()));
+    await settle();
+
+    h.controller.detach();
+    h.controller.attach(h.host);
+    h.notice.dismiss.mockClear();
+    await sync(h, withBenchDone(makeSession(), 1));
+    finishOld(true);
+    await settle();
+
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+  });
+
+  it('dismisses once when the workout finishes, however many syncs follow', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.notice.dismiss.mockClear();
+
+    await sync(h, makeSession({ status: 'completed' }));
+    await sync(h, makeSession({ status: 'completed' }));
+
+    expect(h.notice.dismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('an expired rest is dropped on the next sync, so the set card and its Done come back', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.beginRest(withBenchDone(makeSession(), 1), 90);
+    await settle();
+    h.clock.now = NOW + 120_000;
+
+    await sync(h, withBenchDone(makeSession(), 1));
+
+    expect(h.controller.getRest()).toBeNull();
+    expect(h.lastShown().title).toBe('Bench Press');
+  });
+
+  it('drops a Done that arrives after Finish, so no set is logged after workout_finished', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    const doneId = h.lastShown().actions![0]!.id;
+    h.controller.adopt(makeSession({ status: 'completed' }));
+
+    h.tap(doneId);
+
+    expect(h.host.apply).not.toHaveBeenCalled();
+  });
+
+  it('a Skip for a rest this process does not know leaves the set card showing, not the dead REST card', async () => {
+    const h = harness();
+    const skipId = workoutNoticeContent({
+      ...input(withBenchDone(makeSession(), 1)),
+      rest: { endsAt: NOW + 60_000 },
+    })!.actions![0]!.id;
+
+    // The process was restarted mid-rest: the tap arrives before the session, and no rest exists.
+    h.tap(skipId);
+    await sync(h, withBenchDone(makeSession(), 1));
+
+    expect(h.controller.getRest()).toBeNull();
+    expect(h.lastShown()).toMatchObject({ title: 'Bench Press', text: 'Set 2 of 4 · 82.5 kg × 6' });
+  });
+
+  it('a session the live screen has just adopted closes the window for a double Done', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    const doneForSetOne = h.lastShown().actions![0]!.id;
+
+    // The screen ticked set 1 itself and has not re-synced yet.
+    h.controller.adopt(withBenchDone(makeSession(), 1));
+    h.tap(doneForSetOne);
+
+    expect(h.host.apply).not.toHaveBeenCalled();
+  });
+
   it('finishing the workout also cancels a rest in progress', async () => {
     const h = harness();
     await sync(h, makeSession());

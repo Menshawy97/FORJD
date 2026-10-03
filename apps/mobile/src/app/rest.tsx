@@ -102,9 +102,13 @@ export default function RestScreen() {
    */
   useEffect(() => {
     if (!workoutNotice.getRest()) workoutNotice.beginRest(null, initialSeconds);
+    // The rest this screen is following: leaving must end that one, never a newer rest that began while
+    // the screen was still sliding away (a Done tapped on the lock screen).
+    let followedEndsAt: number | null = null;
     const follow = () => {
       const next = workoutNotice.getRest();
       if (next) {
+        followedEndsAt = next.endsAt;
         setRest(next);
         return;
       }
@@ -117,7 +121,7 @@ export default function RestScreen() {
     const unsubscribe = workoutNotice.subscribeRest(follow);
     return () => {
       unsubscribe();
-      workoutNotice.skipRest();
+      if (workoutNotice.getRest()?.endsAt === followedEndsAt) workoutNotice.skipRest();
     };
   }, [initialSeconds]);
 
