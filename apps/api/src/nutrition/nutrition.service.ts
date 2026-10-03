@@ -42,6 +42,7 @@ export class NutritionService {
    * the user before reversing, same as ADR-019 reversed the earlier "no handle" decision.
    */
   async searchFoods(viewer: User, query: FoodSearchQuery): Promise<FoodListResponse> {
+    if (query.ids) return this.getFoodsByIds(viewer, query.ids);
     const results = await this.nutritionRepository.searchFoods(viewer.id, query.q ?? '', query.limit, query.category);
     return { items: results.map((food) => this.toFoodResponse(food)) };
   }
@@ -54,6 +55,22 @@ export class NutritionService {
       throw this.refuseFood();
     }
     return this.toFoodResponse(food);
+  }
+
+  /**
+   * `?ids=` (G5): what `getFoodById` returns for each id, in the order asked, in one request. An id
+   * that is missing or is another user's custom food is left out rather than failing the list --
+   * the per-id 404 says nothing more than an absence does, and one stale reference should not
+   * blank a history screen.
+   */
+  private async getFoodsByIds(viewer: User, ids: readonly string[]): Promise<FoodListResponse> {
+    const found = await this.nutritionRepository.findFoodsByIdsForDisplay(ids);
+    const byId = new Map(found.filter((food) => !this.isHiddenFrom(food, viewer)).map((food) => [food.id, food]));
+    const items = ids.flatMap((id) => {
+      const food = byId.get(id);
+      return food ? [this.toFoodResponse(food)] : [];
+    });
+    return { items };
   }
 
   async createCustomFood(owner: User, body: CreateCustomFoodRequest): Promise<FoodResponse> {

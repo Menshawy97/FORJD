@@ -373,6 +373,21 @@ export class NutritionRepository {
     return this.toFood(row, servings);
   }
 
+  /**
+   * `findFoodByIdForDisplay` for many ids at once (G5): the same visibility (a pruned catalogue food
+   * still resolves, a soft-deleted custom food does not), in one query for the foods and one for all
+   * their servings. Missing ids are simply absent; ownership is the caller's check, as for one id.
+   */
+  async findFoodsByIdsForDisplay(ids: readonly string[]): Promise<Food[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(foods)
+      .where(and(inArray(foods.id, [...ids]), or(isNull(foods.deletedAt), isNull(foods.ownerUserId))));
+    const servingsByFoodId = await this.listServingsForFoods(rows.map((row) => row.id));
+    return rows.map((row) => this.toFood(row, servingsByFoodId.get(row.id) ?? []));
+  }
+
   async findFoodById(id: string): Promise<Food | null> {
     const [row] = await this.db
       .select()
