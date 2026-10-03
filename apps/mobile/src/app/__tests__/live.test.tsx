@@ -91,6 +91,7 @@ import {
   setCompletedTimedSet,
   setPendingLiveSession,
 } from '@/workouts/live-handoff';
+import { workoutNotice } from '@/workouts/workout-notice';
 
 import LiveScreen, { formatElapsed } from '../live';
 
@@ -494,6 +495,19 @@ describe('logging a set', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/rest');
     expect(getRestContext()).toMatchObject({ seconds: 90, upNextName: 'Bench Press' });
+  });
+
+  // 12B-2: the controller, not the rest screen, owns the rest, so it exists the moment the set is ticked
+  // and is gone when the live screen is.
+  it('hands the rest to the workout-notice controller, and ends it when the screen unmounts', async () => {
+    stageSession();
+    const { findByLabelText, unmount } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Complete set 1 of Bench Press'));
+    expect(workoutNotice.getRest()).toMatchObject({ totalSeconds: 90 });
+
+    await unmount();
+    expect(workoutNotice.getRest()).toBeNull();
   });
 
   it('opens the set timer for a timed set instead of ticking it', async () => {

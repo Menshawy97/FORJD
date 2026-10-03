@@ -68,6 +68,7 @@ import {
   type LiveSessionChange,
   type PendingEvent,
 } from '@/workouts/live-session';
+import { workoutNotice } from '@/workouts/workout-notice';
 import { GOAL_GUIDE } from '@/workouts/goal-guide';
 import { LiveExerciseCard } from '@/workouts/live-exercise-card';
 import { LiveSessionHeader } from '@/workouts/live-session-header';
@@ -346,6 +347,9 @@ export default function LiveScreen() {
       void persist(change.session.id, change.events);
       setSession(change.session);
       if (change.restStartedSeconds !== null) {
+        // The controller owns the rest from here: its end time, the "Rest complete" alert and the
+        // lock-screen countdown. The rest screen only reads it (12B-2).
+        workoutNotice.beginRest(change.session, change.restStartedSeconds);
         const upNext = nextOpenSet(change.session);
         setRestContext({
           seconds: change.restStartedSeconds,
@@ -367,6 +371,24 @@ export default function LiveScreen() {
     },
     [persist, toast],
   );
+
+  /**
+   * The workout's lock-screen notice (12B-2, ADR-063). The controller outlives renders, so it reaches
+   * `apply` through a ref: a Done tapped on the lock screen ticks the open set through this very
+   * function, which logs it first and adopts it second, exactly as the tick on this screen does.
+   * Detaching on unmount dismisses the notice and ends any rest, so nothing outlives the workout screen.
+   */
+  const applyRef = useRef(apply);
+  useEffect(() => {
+    applyRef.current = apply;
+  }, [apply]);
+  useEffect(() => workoutNotice.attach({ apply: (change) => applyRef.current(change) }), []);
+
+  // Keeps the notice current: the set changes, a weight is edited, the unit flips, the clock pauses.
+  // Declared after the pause effect so the paused total it reads is already updated on a resume.
+  useEffect(() => {
+    if (session) workoutNotice.sync({ session, pausedMs: pausedMsRef.current, units: unitByExercise });
+  }, [session, unitByExercise]);
 
   /**
    * The timed-set screen's return channel. It cannot tick the set itself -- it runs on its own
