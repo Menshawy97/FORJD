@@ -56,6 +56,13 @@ import { toRunSummary } from './run-summary';
  */
 export type RunPermission = 'checking' | 'granted' | 'denied' | 'coarse_only' | 'unavailable';
 
+/**
+ * Which start of the location service is current. The service and its listener are one per app, so a
+ * run screen that was left while its start was pending must not, when that start lands, stop the
+ * tracking a newer run screen owns (12A-2 review). Only the latest start may clear or stop.
+ */
+let currentTracking = 0;
+
 type TrackingStart =
   | { status: 'watching'; stop: () => void }
   | { status: 'denied' | 'coarse_only' | 'unavailable' | 'cancelled' };
@@ -177,13 +184,18 @@ export function useRunSession(): RunSession {
    */
   const startTracking = useCallback(
     async (isCancelled: () => boolean): Promise<TrackingStart> => {
+      currentTracking += 1;
+      const mine = currentTracking;
+      const isCurrent = () => currentTracking === mine;
       setRunFixListener((fixes) => fixes.forEach(onFix));
       const started = await startRunLocationUpdates();
       if (started !== 'started') {
-        setRunFixListener(null);
+        if (isCurrent()) setRunFixListener(null);
         return { status: started };
       }
       const stop = () => {
+        if (!isCurrent()) return;
+        currentTracking += 1;
         setRunFixListener(null);
         void stopRunLocationUpdates();
       };

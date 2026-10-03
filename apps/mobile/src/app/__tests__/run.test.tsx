@@ -735,6 +735,35 @@ describe('RunScreen -- review fixes', () => {
   });
 });
 
+describe('RunScreen -- reopened quickly (12A-2 review)', () => {
+  /**
+   * The location task and its listener are one per app. A screen that is left while its start is
+   * still pending must not, when that start finally lands, stop the tracking a newer screen owns.
+   */
+  it("a late start from a screen already left does not stop the newer screen's tracking", async () => {
+    let finishFirstStart: (value: string) => void = () => undefined;
+    (startRunLocationUpdates as jest.Mock).mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finishFirstStart = resolve)),
+    );
+
+    const first = await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalledTimes(1));
+    await first.unmount();
+
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalledTimes(2));
+    (setRunFixListener as jest.Mock).mockClear();
+    (stopRunLocationUpdates as jest.Mock).mockClear();
+
+    await act(async () => {
+      finishFirstStart('started');
+    });
+
+    expect(setRunFixListener).not.toHaveBeenCalledWith(null);
+    expect(stopRunLocationUpdates).not.toHaveBeenCalled();
+  });
+});
+
 describe('RunScreen -- leaving without finishing', () => {
   it('asks before throwing a run away, and keeps it if the person says keep going', async () => {
     await render(<RunScreen />);
