@@ -31,6 +31,7 @@ jest.mock('@/auth/apiClient', () => ({
   getMacroGoals: jest.fn(),
   getMacroGoalSuggestion: jest.fn(),
   getFood: jest.fn(),
+  getFoods: jest.fn(),
   deleteLogEntry: jest.fn(),
   deleteLogGroup: jest.fn(),
   createSavedMeal: jest.fn(),
@@ -114,4 +115,11 @@ it('fetches only the new food when a different one appears on revisit', async ()
 
   await waitFor(() => expect(getFood).toHaveBeenCalledTimes(3));
   expect(getFood).toHaveBeenLastCalledWith(CHICKEN_ID);
+});
+
+// G5: the screens fetch foods with one `getFoods` call; route it through this file's per-id
+// `getFood` mock so the foods each test sets up, and its call counts, still mean what they did.
+beforeEach(() => {
+  const api = jest.requireMock('@/auth/apiClient') as { getFood: jest.Mock; getFoods: jest.Mock };
+  api.getFoods.mockImplementation((ids: string[]) => Promise.all([...new Set(ids)].map((id) => api.getFood(id))));
 });

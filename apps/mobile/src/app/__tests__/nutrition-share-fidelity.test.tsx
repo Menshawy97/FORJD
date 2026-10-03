@@ -36,6 +36,7 @@ jest.mock('@/auth/apiClient', () => ({
   listNutritionLog: jest.fn(),
   getMacroGoals: jest.fn(),
   getFood: jest.fn(),
+  getFoods: jest.fn(),
 }));
 
 // The background-photo picker (gallery + camera), mirroring edit-profile.test.tsx's own
@@ -506,4 +507,11 @@ describe('Nutrition share screen', () => {
       expect(queryByTestId('share-card-background-photo')).toBeNull();
     });
   });
+});
+
+// G5: the screens fetch foods with one `getFoods` call; route it through this file's per-id
+// `getFood` mock so the foods each test sets up, and its call counts, still mean what they did.
+beforeEach(() => {
+  const api = jest.requireMock('@/auth/apiClient') as { getFood: jest.Mock; getFoods: jest.Mock };
+  api.getFoods.mockImplementation((ids: string[]) => Promise.all([...new Set(ids)].map((id) => api.getFood(id))));
 });

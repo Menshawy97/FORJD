@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ViewShotRef } from 'react-native-view-shot';
 
-import { getFood, getMacroGoals, listNutritionLog } from '@/auth/apiClient';
+import { getFoods, getMacroGoals, listNutritionLog } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
@@ -35,7 +35,7 @@ import type { FoodResponse, MacroGoalsResponse, NutritionLogEntryResponse } from
  * **Data.** Reuses `nutrition.tsx`'s already-fetched shapes rather than adding new client
  * functions: `listNutritionLog(today)` for the log, `getMacroGoals()` for the goal (`.catch`
  * to `null`, same as `nutrition.tsx`), and the same `foodsById` client-side name-resolution
- * pattern (`getFood` per distinct `foodId`, deduplicated) -- `NutritionLogEntryResponse` still
+ * pattern (`getFoods`, one request for every distinct `foodId`) -- `NutritionLogEntryResponse` still
  * carries no food name, per that screen's own docblock.
  *
  * **Adaptation: a goals gate, not in the prototype.** The prototype's demo state always has
@@ -147,7 +147,7 @@ export default function NutritionShareScreen() {
     try {
       const [logResult, goalsResult] = await Promise.all([listNutritionLog(today), getMacroGoals().catch(() => null)]);
       const foodIds = [...new Set(logResult.items.map((entry) => entry.foodId))];
-      const foods = await Promise.all(foodIds.map((id) => getFood(id)));
+      const foods = await getFoods(foodIds);
       const nextFoodsById: Record<string, FoodResponse> = {};
       foods.forEach((food) => {
         nextFoodsById[food.id] = food;

@@ -26,6 +26,7 @@ jest.mock('expo-router', () => ({
 jest.mock('@/auth/apiClient', () => ({
   listSavedMeals: jest.fn(),
   getFood: jest.fn(),
+  getFoods: jest.fn(),
   deleteSavedMeal: jest.fn(),
   createSavedMeal: jest.fn(),
 }));
@@ -170,4 +171,11 @@ describe('Edit meal', () => {
 
     expect(await findByText(/couldn't save the new one/)).toBeTruthy();
   });
+});
+
+// G5: the screens fetch foods with one `getFoods` call; route it through this file's per-id
+// `getFood` mock so the foods each test sets up, and its call counts, still mean what they did.
+beforeEach(() => {
+  const api = jest.requireMock('@/auth/apiClient') as { getFood: jest.Mock; getFoods: jest.Mock };
+  api.getFoods.mockImplementation((ids: string[]) => Promise.all([...new Set(ids)].map((id) => api.getFood(id))));
 });

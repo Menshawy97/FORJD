@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { createSavedMeal, deleteSavedMeal, getFood, listSavedMeals } from '@/auth/apiClient';
+import { createSavedMeal, deleteSavedMeal, getFoods, listSavedMeals } from '@/auth/apiClient';
 import { classifyRequestFailure, isConflict, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
@@ -79,7 +79,7 @@ export default function EditMealScreen() {
           return;
         }
         const foodIds = [...new Set(meal.items.map((item) => item.foodId))];
-        const foods = await Promise.all(foodIds.map((foodId) => getFood(foodId)));
+        const foods = await getFoods(foodIds);
         const foodsById = new Map(foods.map((food) => [food.id, food]));
         const items: MealDraftItem[] = meal.items.map((item, index) => {
           const food = foodsById.get(item.foodId);
