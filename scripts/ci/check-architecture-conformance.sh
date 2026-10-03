@@ -243,6 +243,17 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# ADR-059 / CLAUDE.md rule 4: expo-task-manager runs the run's location foreground service. It
+# lives with the location adapter, which owns the task, its never-prompt rule and its validation,
+# so nothing else can start background work or receive positions behind its back.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' -E "(from|import|require\()[[:space:]]*\(?[[:space:]]*['\"]expo-task-manager['\"]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/integrations/location/' || true)
+  if [ -n "$hits" ]; then
+    report "expo-task-manager imported outside apps/mobile/src/integrations/location/" "$hits"
+  fi
+fi
+
 # ADR-050 / CLAUDE.md rule 4: react-native-maps is an implementation detail behind the route map in
 # apps/mobile/src/integrations/maps/. It is a native module (loaded lazily so Expo Go degrades to the
 # striped background instead of crashing), and it hands the map SDK the visible area, so one directory

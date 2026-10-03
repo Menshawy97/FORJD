@@ -85,7 +85,15 @@ const config: ExpoConfig = {
         locationWhenInUsePermission:
           'FORJD uses your approximate location once, at the start of a workout, to place you on your city leaderboard, and your precise location while a run is open, to measure distance, pace and your route. Your route stays on your phone and is never uploaded.',
         isAndroidBackgroundLocationEnabled: false,
-        isAndroidForegroundServiceEnabled: false,
+        // ADR-059: a run keeps tracking with the screen off through a location foreground service,
+        // started only from the visible run screen. It adds FOREGROUND_SERVICE and
+        // FOREGROUND_SERVICE_LOCATION and nothing else; ACCESS_BACKGROUND_LOCATION stays blocked
+        // (checked with a real prebuild, 2026-10-03). The FORJD symbol is its notification icon.
+        isAndroidForegroundServiceEnabled: true,
+        androidForegroundServiceIcon: './assets/images/android-icon-monochrome.png',
+        // The iOS equivalent: the "location" background mode with When In Use only, the blue
+        // status-bar pill, never "Always" (the Always strings below stay deleted).
+        isIosBackgroundLocationEnabled: true,
         // The plugin adds the iOS "Always" and motion purpose strings by default even with
         // background location off. `false` deletes the key, so the app does not claim a use it
         // does not have (iOS ships later, ADR-007, but the config should already be right).
