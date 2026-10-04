@@ -25,9 +25,11 @@ the quick-reference for "what phase are we in and what's next."
    config), then the 12A-4 device test in [phase-12a-plan.md](phase-12a-plan.md): a 30-minute locked-phone run.
 2. Approve the proposed FAQ wording in [faq-copy.md](faq-copy.md) ("Proposed for 12A").
 
-**12B-1 built** (the Kotlin module, its seam and conformance rule; compiles locally): its PR waits for the
-owner's device walk, done together with 12B-2. The owner kept the run notice as approved (no ticking
-time; ADR-063 decision 6).
+**12B merged to `main` on 2026-10-04, ahead of the device walk, at the owner's instruction** (#323 the Kotlin module
+and its seam, #324 the workout notice, #325 the workout outliving the screen with its in-app bar), each squash-merged
+in order with `main` green after each. The Kotlin has only been compiled, never run on a device: the walk below is
+still owed, and a failure on it is a bug to fix on `main`, not a PR to hold. The owner kept the run notice as approved
+(no ticking time; ADR-063 decision 6).
 
 **12B-2 built** (the workout notice and the session-level rest owner, stacked on 12B-1, its own PR; see
 [phase-12b-plan.md](phase-12b-plan.md) for the three differences from the approved design and the limits to
@@ -46,8 +48,8 @@ physical Android 7+ phone. The owner has no such phone now (their OPPO A37f is o
 local emulator build fails on their laptop, so these need either a cloud (EAS) build plus a phone or
 emulator, or a borrowed phone. Details in [phase-12b-plan.md](phase-12b-plan.md).
 
-**Next for a session:** once the walk is done, merge #323 then the 12B-2 PR (each with `main` green), or
-12C (background upload). 12D-12I wait for the beta.
+**Next for a session:** 12C (background upload), or fix whatever the owner's 12A and 12B device walk finds. 12D-12I wait
+for the beta.
 
 ## Current status (last updated 2026-09-25)
 

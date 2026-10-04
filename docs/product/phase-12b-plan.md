@@ -1,6 +1,6 @@
 # Phase 12B — a strength workout on the lock screen
 
-**Status:** 12B-1 and 12B-2 built 2026-10-03 (PRs #323 and the one stacked on it, both waiting for the owner's one device walk before merge); 12B-3 docs written, FAQ wording awaiting approval. Each slice is its own PR, test-first, reviewed, merged with
+**Status:** 12B-1, 12B-2 and 12B-2b built and **merged to `main` 2026-10-04** (#323, #324, #325, at the owner's instruction, before the device walk); the FAQ wording is approved and in the app. **The device walk is still owed** (see the end of the 12B-1 section). Each slice is its own PR, test-first, reviewed, merged with
 `main` green. The native slice also needs the owner's device walk before merge (ADR-063 decision 4).
 
 ## Owner decisions (2026-10-03)
@@ -66,7 +66,8 @@ locally (the app's native libraries fail on this machine's NDK); the module itse
 does not come back after being swiped away mid-rest; the small icon is the FORJD symbol, not a blank square.
 
 **Device walk for 12B-1 (the owner, before merge):** needs 12B-2's wiring to see it in the app, so 12B-1 and
-12B-2 are walked together on one dev-client build; 12B-1's PR waits for that walk.
+12B-2 are walked together on one dev-client build. (They were merged before the walk, 2026-10-04, at the owner's
+instruction: the walk is now a check of what is already on `main`.)
 
 ### 12B-2 — The workout notice
 - Pure `workoutNoticeContent(session, nowMs)`: the set card or the rest card, exactly as approved, in
