@@ -1,9 +1,11 @@
-// 12B-2 (ADR-063, ADR-061, ADR-026). The workout's lock-screen notice: what each card says, how the
-// controller moves between them, and how a tap on its buttons is routed back into the live session.
-// The native module and the rest-complete alert are injected fakes; the Kotlin is walked on a phone.
+// 12B-2 and 12B-2b (ADR-063, ADR-061, ADR-026). The workout's lock-screen notice: what each card says,
+// how the controller follows the active workout, and how a tap on its buttons is routed back into it.
+// The active workout, the native module and the rest-complete alert are injected fakes; the Kotlin is
+// walked on a phone.
 import type { NoticeActionEvent, OngoingNoticeOptions } from '@/integrations/notifications/ongoing-notice';
 
-import { startSession, type LiveSession, type LiveSessionChange } from '../live-session';
+import type { ActiveWorkoutListener, ActiveWorkoutState } from '../active-workout';
+import { completeSet, startSession, type LiveSession, type LiveSessionChange } from '../live-session';
 import { workoutNoticeContent } from '../workout-notice-content';
 import { WORKOUT_NOTICE_ID, createWorkoutNotice, type WorkoutNoticeDeps } from '../workout-notice';
 
@@ -168,27 +170,75 @@ describe('workoutNoticeContent', () => {
   });
 });
 
+interface FakeWorkout {
+  getState: () => ActiveWorkoutState;
+  subscribe: (listener: ActiveWorkoutListener) => () => void;
+  apply: jest.Mock<void, [LiveSessionChange]>;
+  /** Puts a session (and its paused total) into the active workout, as any change to it would. */
+  show: (session: LiveSession | null, pausedMs?: number) => void;
+  /** A state change that is not about the workout itself: a log flag flipping. Same session object. */
+  touch: () => void;
+}
+
+function fakeWorkout(): FakeWorkout {
+  let state: ActiveWorkoutState = {
+    session: null,
+    pausedMs: 0,
+    pausedSince: null,
+    isLogging: true,
+    logFailures: 0,
+    resumed: false,
+  };
+  const listeners = new Set<ActiveWorkoutListener>();
+  const emit = (change: LiveSessionChange | null) => listeners.forEach((listener) => listener(state, change));
+  const apply = jest.fn((change: LiveSessionChange) => {
+    state = { ...state, session: change.session };
+    emit(change);
+  });
+  return {
+    getState: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    apply,
+    show: (session, pausedMs = 0) => {
+      state = { ...state, session, pausedMs };
+      emit(null);
+    },
+    touch: () => {
+      state = { ...state, logFailures: state.logFailures + 1 };
+      emit(null);
+    },
+  };
+}
+
 interface Harness {
   controller: ReturnType<typeof createWorkoutNotice>;
   notice: jest.Mocked<WorkoutNoticeDeps['notice']>;
   alerts: jest.Mocked<WorkoutNoticeDeps['alerts']>;
-  host: { apply: jest.Mock<void, [LiveSessionChange]> };
+  workout: FakeWorkout;
   clock: { now: number };
   tap: (actionId: string, noticeId?: string) => void;
-  unsubscribe: jest.Mock;
+  unbind: () => void;
+  unsubscribeTaps: jest.Mock;
+  /** The away timer, captured: call `fire` to simulate the three hours passing. */
+  away: { fire: () => void; armed: () => boolean; delay: () => number | null };
   shown: () => OngoingNoticeOptions[];
   lastShown: () => OngoingNoticeOptions;
 }
 
 function harness(): Harness {
   let handler: ((event: NoticeActionEvent) => void) | null = null;
-  const unsubscribe = jest.fn();
+  const unsubscribeTaps = jest.fn();
   const notice = {
     show: jest.fn().mockResolvedValue(true),
     dismiss: jest.fn().mockResolvedValue(undefined),
     onAction: jest.fn((next: (event: NoticeActionEvent) => void) => {
       handler = next;
-      return unsubscribe;
+      return unsubscribeTaps;
     }),
   } as unknown as jest.Mocked<WorkoutNoticeDeps['notice']>;
   const alerts = {
@@ -197,16 +247,42 @@ function harness(): Harness {
     cancel: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<WorkoutNoticeDeps['alerts']>;
   const clock = { now: NOW };
-  const controller = createWorkoutNotice({ notice, alerts, now: () => clock.now });
-  const host = { apply: jest.fn<void, [LiveSessionChange]>() };
-  controller.attach(host);
+  const workout = fakeWorkout();
+  let armedFn: (() => void) | null = null;
+  let armedDelay: number | null = null;
+  const controller = createWorkoutNotice({
+    notice,
+    alerts,
+    workout,
+    now: () => clock.now,
+    after: (fn, ms) => {
+      armedFn = fn;
+      armedDelay = ms;
+      return () => {
+        armedFn = null;
+        armedDelay = null;
+      };
+    },
+  });
+  const unbind = controller.bind();
   return {
     controller,
     notice,
     alerts,
-    host,
+    workout,
     clock,
-    unsubscribe,
+    unbind,
+    unsubscribeTaps,
+    away: {
+      fire: () => {
+        const fn = armedFn;
+        armedFn = null;
+        armedDelay = null;
+        fn?.();
+      },
+      armed: () => armedFn !== null,
+      delay: () => armedDelay,
+    },
     tap: (actionId, noticeId = WORKOUT_NOTICE_ID) => handler?.({ noticeId, actionId }),
     shown: () => notice.show.mock.calls.map((call) => call[0]),
     lastShown: () => notice.show.mock.calls[notice.show.mock.calls.length - 1]![0],
@@ -217,7 +293,15 @@ function harness(): Harness {
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 async function sync(h: Harness, session: LiveSession, extra: { pausedMs?: number; units?: Units } = {}) {
-  h.controller.sync(input(session, extra));
+  if (extra.units) h.controller.setUnits(extra.units);
+  h.workout.show(session, extra.pausedMs ?? 0);
+  await settle();
+}
+
+/** A rest of `seconds` begins with `session` as the workout. */
+async function startRest(h: Harness, session: LiveSession, seconds: number) {
+  h.workout.show(session);
+  h.controller.beginRest(seconds);
   await settle();
 }
 
@@ -249,6 +333,15 @@ describe('the workout notice controller: showing', () => {
     expect(h.lastShown().text).toBe('Set 1 of 4 · 85 kg × 6');
   });
 
+  it('updates the card when the unit is flipped', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setUnits({ bench: 'lb' });
+    await settle();
+
+    expect(h.lastShown().text).toBe('Set 1 of 4 · 182 lb × 6');
+  });
+
   it('shows nothing when notifications are refused, and never breaks the workout', async () => {
     const h = harness();
     h.alerts.ensurePermission.mockResolvedValue(false);
@@ -257,12 +350,15 @@ describe('the workout notice controller: showing', () => {
     await expect(sync(h, makeSession())).resolves.toBeUndefined();
   });
 
-  it('dismisses the notice when the workout finishes', async () => {
+  it('shows a workout that already exists when it starts following', async () => {
     const h = harness();
-    await sync(h, makeSession());
-    await sync(h, makeSession({ status: 'completed' }));
+    h.unbind();
+    h.workout.show(makeSession());
 
-    expect(h.notice.dismiss).toHaveBeenCalledWith(WORKOUT_NOTICE_ID);
+    h.controller.bind();
+    await settle();
+
+    expect(h.lastShown().title).toBe('Bench Press');
   });
 });
 
@@ -272,17 +368,28 @@ describe('the workout notice controller: rest', () => {
   it('starts the rest: owns the end time, schedules the rest-complete alert and shows the countdown', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(afterFirstSet(), 90);
-    await settle();
+    await startRest(h, afterFirstSet(), 90);
 
     expect(h.controller.getRest()).toMatchObject({ endsAt: NOW + 90_000, totalSeconds: 90 });
     expect(h.alerts.schedule).toHaveBeenCalledWith(90);
     expect(h.lastShown()).toMatchObject({ title: 'REST', chronometer: { countDownToMs: NOW + 90_000 } });
   });
 
-  it('works with no session at all (the rest screen opened on its own)', async () => {
+  it('starts the rest when a completed set says one began, whichever screen did it', async () => {
     const h = harness();
-    h.controller.beginRest(null, 60);
+    await sync(h, makeSession());
+
+    h.workout.apply(completeSet(makeSession(), 0, 0, new Date(NOW)));
+    await settle();
+
+    expect(h.controller.getRest()).toMatchObject({ totalSeconds: 90 });
+    expect(h.alerts.schedule).toHaveBeenCalledWith(90);
+    expect(h.lastShown().title).toBe('REST');
+  });
+
+  it('works with no workout at all (the rest screen opened on its own)', async () => {
+    const h = harness();
+    h.controller.beginRest(60);
     await settle();
 
     expect(h.controller.getRest()?.endsAt).toBe(NOW + 60_000);
@@ -293,8 +400,7 @@ describe('the workout notice controller: rest', () => {
   it('skipping rest cancels the alert, shows the next set and tells the rest screen', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(afterFirstSet(), 90);
-    await settle();
+    await startRest(h, afterFirstSet(), 90);
     const listener = jest.fn();
     h.controller.subscribeRest(listener);
 
@@ -310,8 +416,7 @@ describe('the workout notice controller: rest', () => {
   it('a Skip tap on the notice does the same as the Skip button on the rest screen', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(afterFirstSet(), 90);
-    await settle();
+    await startRest(h, afterFirstSet(), 90);
     const skipId = h.lastShown().actions![0]!.id;
 
     h.tap(skipId);
@@ -324,8 +429,7 @@ describe('the workout notice controller: rest', () => {
   it('drops a Skip for a rest that has since been adjusted', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(afterFirstSet(), 90);
-    await settle();
+    await startRest(h, afterFirstSet(), 90);
     const oldSkip = h.lastShown().actions![0]!.id;
     h.clock.now = NOW + 1000;
     h.controller.adjustRest(30);
@@ -339,8 +443,7 @@ describe('the workout notice controller: rest', () => {
   it('drops a Skip that arrives after the rest is over', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(afterFirstSet(), 90);
-    await settle();
+    await startRest(h, afterFirstSet(), 90);
     const skipId = h.lastShown().actions![0]!.id;
     h.clock.now = NOW + 120_000;
     h.notice.show.mockClear();
@@ -355,8 +458,7 @@ describe('the workout notice controller: rest', () => {
   it('adjusting moves the end, re-schedules the alert and re-posts the countdown', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(afterFirstSet(), 90);
-    await settle();
+    await startRest(h, afterFirstSet(), 90);
     h.clock.now = NOW + 10_000;
     h.alerts.schedule.mockResolvedValue('alert-2');
 
@@ -371,7 +473,7 @@ describe('the workout notice controller: rest', () => {
 
   it('shortening below zero ends the countdown at now, never before', async () => {
     const h = harness();
-    h.controller.beginRest(null, 10);
+    h.controller.beginRest(10);
     await settle();
 
     h.controller.adjustRest(-15);
@@ -381,7 +483,7 @@ describe('the workout notice controller: rest', () => {
 
   it('ending a rest cancels its alert and clears it', async () => {
     const h = harness();
-    h.controller.beginRest(null, 90);
+    h.controller.beginRest(90);
     await settle();
 
     h.controller.skipRest();
@@ -395,7 +497,7 @@ describe('the workout notice controller: rest', () => {
     const h = harness();
     let resolve: (id: string | null) => void = () => undefined;
     h.alerts.schedule.mockReturnValue(new Promise<string | null>((done) => (resolve = done)));
-    h.controller.beginRest(null, 90);
+    h.controller.beginRest(90);
     await settle();
 
     h.controller.skipRest();
@@ -409,12 +511,35 @@ describe('the workout notice controller: rest', () => {
     const h = harness();
     h.alerts.schedule.mockResolvedValue(null);
     await sync(h, makeSession());
-    h.controller.beginRest(afterFirstSet(), 90);
-    await settle();
+    await startRest(h, afterFirstSet(), 90);
     h.controller.skipRest();
     await settle();
 
     expect(h.alerts.cancel).not.toHaveBeenCalled();
+  });
+
+  it('an expired rest is dropped on the next change, so the set card and its Done come back', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    await startRest(h, afterFirstSet(), 90);
+    h.clock.now = NOW + 120_000;
+
+    await sync(h, afterFirstSet());
+
+    expect(h.controller.getRest()).toBeNull();
+    expect(h.lastShown().title).toBe('Bench Press');
+  });
+
+  it('starting another workout drops the rest that belonged to the old one', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    await startRest(h, afterFirstSet(), 90);
+
+    await sync(h, makeSession({ id: 'session-2' }));
+
+    expect(h.controller.getRest()).toBeNull();
+    expect(h.alerts.cancel).toHaveBeenCalledWith('alert-1');
+    expect(h.lastShown().title).toBe('Bench Press');
   });
 });
 
@@ -426,14 +551,14 @@ describe('the workout notice controller: taps', () => {
 
     h.tap(doneId);
 
-    expect(h.host.apply).toHaveBeenCalledTimes(1);
-    const change = h.host.apply.mock.calls[0]![0];
+    expect(h.workout.apply).toHaveBeenCalledTimes(1);
+    const change = h.workout.apply.mock.calls[0]![0];
     expect(change.events.map((event) => event.type)).toEqual(['set_completed', 'rest_started']);
     expect(change.events[0]!.payload).toMatchObject({ exerciseId: 'bench', setIndex: 0, weightKg: 82.5, reps: 6 });
     expect(change.restStartedSeconds).toBe(90);
   });
 
-  it('a second tap on the same Done is dropped, even before the screen has re-rendered', async () => {
+  it('a second tap on the same Done is dropped, even before any screen has re-rendered', async () => {
     const h = harness();
     await sync(h, makeSession());
     const doneId = h.lastShown().actions![0]!.id;
@@ -441,7 +566,7 @@ describe('the workout notice controller: taps', () => {
     h.tap(doneId);
     h.tap(doneId);
 
-    expect(h.host.apply).toHaveBeenCalledTimes(1);
+    expect(h.workout.apply).toHaveBeenCalledTimes(1);
   });
 
   it('drops a Done for a set that is no longer the open one, never applying it to the next', async () => {
@@ -452,7 +577,7 @@ describe('the workout notice controller: taps', () => {
 
     h.tap(doneForSetOne);
 
-    expect(h.host.apply).not.toHaveBeenCalled();
+    expect(h.workout.apply).not.toHaveBeenCalled();
   });
 
   it('drops a tap that belongs to another workout', async () => {
@@ -463,7 +588,7 @@ describe('the workout notice controller: taps', () => {
 
     h.tap(doneId);
 
-    expect(h.host.apply).not.toHaveBeenCalled();
+    expect(h.workout.apply).not.toHaveBeenCalled();
   });
 
   it('ignores taps on other notices and unreadable ids', async () => {
@@ -475,7 +600,7 @@ describe('the workout notice controller: taps', () => {
     h.tap('garbage');
     h.tap('');
 
-    expect(h.host.apply).not.toHaveBeenCalled();
+    expect(h.workout.apply).not.toHaveBeenCalled();
   });
 
   it('the Start timer button routes through the same reducer, which opens the set timer', async () => {
@@ -485,42 +610,51 @@ describe('the workout notice controller: taps', () => {
 
     h.tap(startId);
 
-    const change = h.host.apply.mock.calls[0]![0];
+    const change = h.workout.apply.mock.calls[0]![0];
     expect(change.events).toEqual([]);
     expect(change.opensTimerFor).toMatchObject({ exerciseIndex: 1, setIndex: 0, seconds: 45 });
   });
 
-  it('a Done for the next set, arriving as the rest ends, is accepted and the rest is cleared', async () => {
+  it('a Done for the next set, arriving as the rest ends, is accepted', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(withBenchDone(makeSession(), 1), 90);
-    await settle();
+    await startRest(h, withBenchDone(makeSession(), 1), 90);
     h.clock.now = NOW + 91_000;
     const nextDone = h.shown().find((card) => card.then)!.then!.actions![0]!.id;
 
     h.tap(nextDone);
 
-    expect(h.host.apply).toHaveBeenCalledTimes(1);
-    expect(h.controller.getRest()).toBeNull();
+    expect(h.workout.apply).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps a tap made while the app was stopped until the session is restored, then checks it', async () => {
+  it('drops a Done that arrives after Finish, so no set is logged after workout_finished', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    const doneId = h.lastShown().actions![0]!.id;
+    h.workout.show(makeSession({ status: 'completed' }));
+
+    h.tap(doneId);
+
+    expect(h.workout.apply).not.toHaveBeenCalled();
+  });
+
+  it('keeps a tap made while the app was stopped until the workout is restored, then checks it', async () => {
     const h = harness();
     const done = (session: LiveSession) =>
       workoutNoticeContent({ ...input(session), rest: null })!.actions![0]!.id;
     const forSetOne = done(makeSession());
     const forSetTwo = done(withBenchDone(makeSession(), 1));
 
-    // Two Dones for set 1 and one for set 2, delivered before any session exists.
+    // Two Dones for set 1 and one for set 2, delivered before any workout exists.
     h.tap(forSetOne);
     h.tap(forSetOne);
     h.tap(forSetTwo);
-    expect(h.host.apply).not.toHaveBeenCalled();
+    expect(h.workout.apply).not.toHaveBeenCalled();
 
     await sync(h, makeSession());
 
     // Set 1 is ticked once; the repeat is dropped; set 2 then ticks because it became the open set.
-    expect(h.host.apply).toHaveBeenCalledTimes(2);
+    expect(h.workout.apply).toHaveBeenCalledTimes(2);
   });
 
   it('drops early taps that belong to a workout other than the one restored', async () => {
@@ -530,69 +664,55 @@ describe('the workout notice controller: taps', () => {
     h.tap(other);
     await sync(h, makeSession());
 
-    expect(h.host.apply).not.toHaveBeenCalled();
+    expect(h.workout.apply).not.toHaveBeenCalled();
   });
 
-  it('drops every tap when the live screen is not attached', async () => {
+  it('a Skip for a rest this process does not know leaves the set card showing, not the dead REST card', async () => {
     const h = harness();
-    await sync(h, makeSession());
-    const doneId = h.lastShown().actions![0]!.id;
-    h.controller.detach();
+    const skipId = workoutNoticeContent({
+      ...input(withBenchDone(makeSession(), 1)),
+      rest: { endsAt: NOW + 60_000 },
+    })!.actions![0]!.id;
 
-    h.tap(doneId);
+    // The process was restarted mid-rest: the tap arrives before the workout, and no rest exists.
+    h.tap(skipId);
+    await sync(h, withBenchDone(makeSession(), 1));
 
-    expect(h.host.apply).not.toHaveBeenCalled();
+    expect(h.controller.getRest()).toBeNull();
+    expect(h.lastShown()).toMatchObject({ title: 'Bench Press', text: 'Set 2 of 4 · 82.5 kg × 6' });
   });
 });
 
 describe('the workout notice controller: every exit', () => {
-  it('detaching dismisses the notice, cancels the alert, clears the rest and stops listening', async () => {
+  it('finishing the workout takes the card down and cancels a rest in progress', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(withBenchDone(makeSession(), 1), 90);
-    await settle();
+    await startRest(h, withBenchDone(makeSession(), 1), 90);
+    h.notice.dismiss.mockClear();
 
-    h.controller.detach();
+    h.workout.show(makeSession({ status: 'completed' }));
     await settle();
 
     expect(h.notice.dismiss).toHaveBeenCalledWith(WORKOUT_NOTICE_ID);
     expect(h.alerts.cancel).toHaveBeenCalledWith('alert-1');
     expect(h.controller.getRest()).toBeNull();
-    expect(h.unsubscribe).toHaveBeenCalled();
   });
 
-  it('a card still posting when the workout ends is taken down again', async () => {
+  it('discarding the workout (no workout left) does the same', async () => {
     const h = harness();
-    let finish: (shown: boolean) => void = () => undefined;
-    h.notice.show.mockReturnValue(new Promise<boolean>((done) => (finish = done)));
-    h.controller.sync(input(makeSession()));
-    await settle();
-
-    h.controller.detach();
-    finish(true);
-    await settle();
-
-    expect(h.notice.dismiss.mock.calls.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('a card that was posting before a re-attach does not take down the newer card', async () => {
-    const h = harness();
-    let finishOld: (shown: boolean) => void = () => undefined;
-    h.notice.show.mockReturnValueOnce(new Promise<boolean>((done) => (finishOld = done)));
-    h.controller.sync(input(makeSession()));
-    await settle();
-
-    h.controller.detach();
-    h.controller.attach(h.host);
+    await sync(h, makeSession());
+    await startRest(h, withBenchDone(makeSession(), 1), 90);
     h.notice.dismiss.mockClear();
-    await sync(h, withBenchDone(makeSession(), 1));
-    finishOld(true);
+
+    h.workout.show(null);
     await settle();
 
-    expect(h.notice.dismiss).not.toHaveBeenCalled();
+    expect(h.notice.dismiss).toHaveBeenCalledWith(WORKOUT_NOTICE_ID);
+    expect(h.alerts.cancel).toHaveBeenCalledWith('alert-1');
+    expect(h.controller.getRest()).toBeNull();
   });
 
-  it('dismisses once when the workout finishes, however many syncs follow', async () => {
+  it('dismisses once when the workout finishes, however many changes follow', async () => {
     const h = harness();
     await sync(h, makeSession());
     h.notice.dismiss.mockClear();
@@ -603,66 +723,219 @@ describe('the workout notice controller: every exit', () => {
     expect(h.notice.dismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('an expired rest is dropped on the next sync, so the set card and its Done come back', async () => {
+  it('unbinding takes everything down and stops listening', async () => {
     const h = harness();
     await sync(h, makeSession());
-    h.controller.beginRest(withBenchDone(makeSession(), 1), 90);
-    await settle();
-    h.clock.now = NOW + 120_000;
+    await startRest(h, withBenchDone(makeSession(), 1), 90);
+    h.notice.dismiss.mockClear();
 
-    await sync(h, withBenchDone(makeSession(), 1));
-
-    expect(h.controller.getRest()).toBeNull();
-    expect(h.lastShown().title).toBe('Bench Press');
-  });
-
-  it('drops a Done that arrives after Finish, so no set is logged after workout_finished', async () => {
-    const h = harness();
-    await sync(h, makeSession());
-    const doneId = h.lastShown().actions![0]!.id;
-    h.controller.adopt(makeSession({ status: 'completed' }));
-
-    h.tap(doneId);
-
-    expect(h.host.apply).not.toHaveBeenCalled();
-  });
-
-  it('a Skip for a rest this process does not know leaves the set card showing, not the dead REST card', async () => {
-    const h = harness();
-    const skipId = workoutNoticeContent({
-      ...input(withBenchDone(makeSession(), 1)),
-      rest: { endsAt: NOW + 60_000 },
-    })!.actions![0]!.id;
-
-    // The process was restarted mid-rest: the tap arrives before the session, and no rest exists.
-    h.tap(skipId);
-    await sync(h, withBenchDone(makeSession(), 1));
-
-    expect(h.controller.getRest()).toBeNull();
-    expect(h.lastShown()).toMatchObject({ title: 'Bench Press', text: 'Set 2 of 4 · 82.5 kg × 6' });
-  });
-
-  it('a session the live screen has just adopted closes the window for a double Done', async () => {
-    const h = harness();
-    await sync(h, makeSession());
-    const doneForSetOne = h.lastShown().actions![0]!.id;
-
-    // The screen ticked set 1 itself and has not re-synced yet.
-    h.controller.adopt(withBenchDone(makeSession(), 1));
-    h.tap(doneForSetOne);
-
-    expect(h.host.apply).not.toHaveBeenCalled();
-  });
-
-  it('finishing the workout also cancels a rest in progress', async () => {
-    const h = harness();
-    await sync(h, makeSession());
-    h.controller.beginRest(withBenchDone(makeSession(), 1), 90);
+    h.unbind();
     await settle();
 
-    await sync(h, makeSession({ status: 'completed' }));
+    expect(h.notice.dismiss).toHaveBeenCalledWith(WORKOUT_NOTICE_ID);
+    expect(h.alerts.cancel).toHaveBeenCalledWith('alert-1');
+    expect(h.controller.getRest()).toBeNull();
+    expect(h.unsubscribeTaps).toHaveBeenCalled();
+  });
+
+  it('a card still posting when the workout ends is taken down again', async () => {
+    const h = harness();
+    let finish: (shown: boolean) => void = () => undefined;
+    h.notice.show.mockReturnValue(new Promise<boolean>((done) => (finish = done)));
+    h.workout.show(makeSession());
+    await settle();
+
+    h.workout.show(null);
+    finish(true);
+    await settle();
+
+    expect(h.notice.dismiss.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('a card that was posting before a new workout began does not take down the newer card', async () => {
+    const h = harness();
+    let finishOld: (shown: boolean) => void = () => undefined;
+    h.notice.show.mockReturnValueOnce(new Promise<boolean>((done) => (finishOld = done)));
+    h.workout.show(makeSession());
+    await settle();
+
+    h.workout.show(null);
+    h.notice.dismiss.mockClear();
+    await sync(h, makeSession({ id: 'session-2' }));
+    finishOld(true);
+    await settle();
+
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+  });
+});
+
+describe('the workout notice controller: away from the workout screen', () => {
+  it('takes the card down after three hours away with nothing logged, but not the workout', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(true);
+    h.controller.setViewing(false);
+    expect(h.away.delay()).toBe(3 * 60 * 60 * 1000);
+    h.notice.dismiss.mockClear();
+
+    h.away.fire();
+    await settle();
+
+    expect(h.notice.dismiss).toHaveBeenCalledWith(WORKOUT_NOTICE_ID);
+    expect(h.workout.getState().session).not.toBeNull();
+  });
+
+  it('cancels a rest and its alert when the card is taken down', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    await startRest(h, withBenchDone(makeSession(), 1), 90);
+
+    h.controller.setViewing(false);
+    h.away.fire();
+    await settle();
 
     expect(h.alerts.cancel).toHaveBeenCalledWith('alert-1');
     expect(h.controller.getRest()).toBeNull();
+  });
+
+  it('restarts the three hours when the workout changes while away', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    expect(h.away.armed()).toBe(true);
+    const doneId = h.lastShown().actions![0]!.id;
+
+    h.tap(doneId);
+    await settle();
+
+    expect(h.away.armed()).toBe(true);
+  });
+
+  it('opening the workout screen cancels the timer, and brings a removed card back', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.away.fire();
+    await settle();
+    h.notice.show.mockClear();
+
+    h.controller.setViewing(true);
+    await settle();
+
+    expect(h.away.armed()).toBe(false);
+    expect(h.lastShown().title).toBe('Bench Press');
+  });
+
+  it('does not run the timer for a finished workout', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    await sync(h, makeSession({ status: 'completed' }));
+
+    h.controller.setViewing(false);
+
+    expect(h.away.armed()).toBe(false);
+  });
+
+  it('a Done tapped on the lock screen while away is logged without any screen', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    const doneId = h.lastShown().actions![0]!.id;
+
+    h.tap(doneId);
+    await settle();
+
+    expect(h.workout.apply).toHaveBeenCalledTimes(1);
+    expect(h.controller.getRest()).toMatchObject({ totalSeconds: 90 });
+    expect(h.lastShown().title).toBe('REST');
+  });
+});
+
+describe('the workout notice controller: three hours away, checked by the clock', () => {
+  it('takes the card down on a check once three hours have passed, even if the timer never fired', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.notice.dismiss.mockClear();
+
+    h.clock.now = NOW + 3 * 60 * 60 * 1000 - 1000;
+    h.controller.checkAway();
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+
+    h.clock.now = NOW + 3 * 60 * 60 * 1000;
+    h.controller.checkAway();
+    await settle();
+
+    expect(h.notice.dismiss).toHaveBeenCalledWith(WORKOUT_NOTICE_ID);
+  });
+
+  it('does not take the card down while the workout screen is open', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(true);
+    h.notice.dismiss.mockClear();
+
+    h.clock.now = NOW + 5 * 60 * 60 * 1000;
+    h.controller.checkAway();
+
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+  });
+
+  it('counts the three hours from the last thing logged, not from when the screen was left', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.clock.now = NOW + 2 * 60 * 60 * 1000;
+    h.tap(h.lastShown().actions![0]!.id);
+    await settle();
+    h.notice.dismiss.mockClear();
+
+    h.clock.now = NOW + 4 * 60 * 60 * 1000;
+    h.controller.checkAway();
+
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+  });
+
+  it('removes the card once, however many checks follow', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.clock.now = NOW + 4 * 60 * 60 * 1000;
+    h.notice.dismiss.mockClear();
+
+    h.controller.checkAway();
+    h.controller.checkAway();
+    await settle();
+
+    expect(h.notice.dismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('a log flag changing does not bring a removed card back or restart the three hours', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.away.fire();
+    await settle();
+    h.notice.show.mockClear();
+
+    h.workout.touch();
+    await settle();
+
+    expect(h.notice.show).not.toHaveBeenCalled();
+    expect(h.away.armed()).toBe(false);
+  });
+
+  it('the card stays down through a units change while it is removed', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.away.fire();
+    await settle();
+    h.notice.show.mockClear();
+
+    h.controller.setUnits({ bench: 'lb' });
+    await settle();
+
+    expect(h.notice.show).not.toHaveBeenCalled();
   });
 });

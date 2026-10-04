@@ -102,6 +102,58 @@ does not come back after being swiped away mid-rest; the small icon is the FORJD
 3. **Leaving the live screen takes the notice down** (the plan said dismiss on unmount); the workout is
    offered back from Home as before.
 
+**Owner's answers (2026-10-04) to the three differences:** (1) number only, no bar: confirmed. (2) Permission
+at the start of the first workout: confirmed. (3) **Reversed: the card stays after leaving the live screen,
+until the workout is finished.** Decided with the owner: it is removed after **3 hours with nothing logged**,
+and its header time **keeps running** while away.
+
+**12B-2b: the workout survives leaving the screen, with an in-app bar (owner-approved replica, 2026-10-04).**
+The owner also asked, from the Hevy app, that pressing back from a running workout does not end it: a bar
+floats above the tab bar (workout name, running time, current set, a trash button with an "Are you sure?"
+step) and tapping it returns to the workout. Replica approved as drawn (running, resting, paused and
+all-sets-done states; hidden on the workout, rest and set-timer screens). Plan, test-first:
+1. **`workouts/active-workout.ts`: the live session moves out of `live.tsx`'s React state into a
+   module-level store** that outlives the screen (start, restore from snapshot plus log, apply a change
+   with the log written first, unlogged edits, discard, pause accounting, `isLogging`). `live.tsx` becomes
+   a view over it; its 64 existing tests guard the behaviour. A workout is therefore alive until Finish
+   or Discard, not until the screen unmounts.
+2. **The notice controller follows the store** instead of being attached by the screen: every store change
+   syncs the card; a lock-screen Done runs `completeSet` through `store.apply` (log first), with no
+   navigation, so a rest started there is the controller's alone. Finish or discard dismisses everything.
+   After **3 hours with nothing logged and the workout screen not open** the lock-screen card (not the
+   workout) is removed. The 8 away-mode tests drafted for the earlier headless design are replaced by
+   store-based ones.
+3. **The bar** (`workouts/active-workout-bar.tsx`) is mounted once in the root layout over the router,
+   above the tab bar on the tabs and above the bottom inset elsewhere; it reads the store, ticks once a
+   second from wall-clock time, and opens `/live`. The trash asks, then discards: the snapshot and events
+   are deleted, the notice and rest alert cancelled, nothing uploaded (new behaviour).
+4. **Launch restore:** an unfinished snapshot is restored into the store when the app starts, so the bar
+   (and the card) come back after Android killed the process; `/live` still restores on its own.
+Known limit: the 3-hour removal needs JavaScript alive; after the process is killed the card stays until
+the workout is reopened.
+
+**Built (2026-10-04).** `workouts/active-workout.ts` (store, 38 tests), the notice controller reworked to
+follow it (59 tests), `workouts/active-workout-bar.tsx` (26 tests), the root wiring (5 tests through the real
+route tree) and `live.tsx` as a view over the store (67 tests). Difference from the replica: the paused tile uses
+the clock, because the app's icon set has no pause mark. The discard button is the bin the replica drew: the
+prototype has no bin, so a `trash` glyph was added to the icon set at the owner's request (2026-10-04, drawn in the
+set's own stroke style, pinned by a test); the first build used the app's delete `x`. The "are you sure?" step is
+the exercise screen's own bottom sheet. Behaviour to know: a second workout cannot start
+while one is running (the screen says "Finish or discard your current workout first."); a finished timed
+set still opens no rest (as before); a lock-screen Done opens no screen; the screens underneath leave room for
+the bar while it shows (tab scenes and ordinary stack screens), so it never hides a last row or a footer button.
+
+Three independent reviews (typescript, react, code) found, and this slice fixed: a workout restored while paused
+kept counting the pause as working time; a restore still reading when the user signed out could bring the old
+account's workout back; a tick landing while a discard was deleting could leave an event behind; a throwing
+subscriber could silence the log; a failed log write of one workout flagged the next; the bar nested its discard
+button inside the card (unreachable for a screen reader) and its sheet had no labels, scrim dismiss or Android
+back handling; the bar covered content; the three-hour removal depended on a timer Android may not run in the
+background (the clock is now also checked whenever the app wakes); a log flag changing counted as activity;
+opening the workout screen reset the notice's units. A discard that cannot delete now keeps the workout instead of
+claiming it is gone. Not changed, on purpose: a tap on the screen computed from a render-time session in the
+narrow window after a lock-screen Done (the store ignores a change for another workout, but not a stale base).
+
 **Known limits, to watch on the device walk:**
 - A Skip rest tapped after Android killed the process cannot cancel the "Rest complete" alert (its id was
   lost with the process); the card goes back to the set and the alert still buzzes once.

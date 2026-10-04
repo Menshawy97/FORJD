@@ -72,6 +72,13 @@ describe('tab bar', () => {
     expect(tabsScreenOptions(34).sceneStyle).toEqual({ paddingBottom: TAB_BAR_HEIGHT + 34 });
   });
 
+  it('leaves room above the tab bar for the workout bar while one shows, and none otherwise', () => {
+    expect(tabsScreenOptions(34, 66).sceneStyle).toEqual({ paddingBottom: TAB_BAR_HEIGHT + 34 + 66 });
+    expect(tabsScreenOptions(34, 0).sceneStyle).toEqual({ paddingBottom: TAB_BAR_HEIGHT + 34 });
+    // The tab bar itself is not moved: only the scenes behind it give way.
+    expect(tabsScreenOptions(34, 66).tabBarStyle.height).toBe(TAB_BAR_HEIGHT + 34);
+  });
+
   it('renders a blur behind the bar', async () => {
     const { findByText, toJSON } = await renderApp({ initialUrl: '/' });
     await findByText('Home');

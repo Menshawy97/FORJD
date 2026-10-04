@@ -66,7 +66,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   consumeCompletedTimedSet();
   // The rest belongs to a session-level controller (12B-2); start each test with none in flight.
-  workoutNotice.detach();
+  workoutNotice.skipRest();
   jest.useFakeTimers();
   jest.setSystemTime(new Date('2026-09-03T10:00:00.000Z'));
   mockUseLocalSearchParams.mockReturnValue({});
@@ -154,7 +154,7 @@ describe('the rest screen', () => {
   // 12B-2: the rest belongs to the controller, so a rest begun elsewhere (a Done tapped on the lock
   // screen) is read, not restarted, and one that ends elsewhere sends the screen back.
   it('reads a rest the controller already started instead of starting its own', async () => {
-    workoutNotice.beginRest(null, 45);
+    workoutNotice.beginRest(45);
     mockSchedule.mockClear();
 
     const { findByText } = await render(<RestScreen />);

@@ -96,6 +96,20 @@ function setDetail({ exercise, set }: OpenSet, units: NoticeUnits): string {
   return load ?? '';
 }
 
+/** What the open set reads as, in pieces: `Bench Press`, `Set 3 of 4`, `82.5 kg × 6`. Null when nothing is left. */
+export function openSetSummary(
+  session: LiveSession,
+  units: NoticeUnits,
+): { exerciseName: string; position: string; detail: string } | null {
+  const open = findOpenSet(session);
+  if (!open) return null;
+  return {
+    exerciseName: open.exercise.name,
+    position: `Set ${open.setIndex + 1} of ${open.exercise.sets.length}`,
+    detail: setDetail(open, units),
+  };
+}
+
 function elapsedChronometer({ session, pausedMs }: WorkoutNoticeInput): NoticeContent['chronometer'] {
   // Paused: Android cannot freeze a chronometer, so the time is left off and the header says so.
   if (session.status === 'paused') return undefined;

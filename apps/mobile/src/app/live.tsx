@@ -1,5 +1,4 @@
 import { router, useFocusEffect } from 'expo-router';
-import { getAccountId } from '@/auth/secureStorage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -18,17 +17,6 @@ import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
 import {
-  appendSessionEvent,
-  clearSessionSnapshot,
-  enqueueSessionUpload,
-  ensureWorkoutSessionSchema,
-  getSessionEvents,
-  getUnfinishedSessionSnapshot,
-  openWorkoutSessionDb,
-  replaySessionState,
-  saveSessionSnapshot,
-} from '@/store/workout-session';
-import {
   consumeCompletedTimedSet,
   consumePendingLiveSession,
   consumePickedExerciseForLive,
@@ -42,8 +30,10 @@ import {
   type DisplayUnit,
   type ExerciseUnitMap,
 } from '@/store/exercise-unit-preferences';
-import { captureStartLocation } from '@/workouts/capture-start-location';
+import { activeWorkout } from '@/workouts/active-workout';
 import { toLiveExercise } from '@/workouts/start-session';
+import { formatElapsed } from '@/workouts/format-elapsed';
+import { useActiveWorkout } from '@/workouts/use-active-workout';
 import {
   addExercise,
   addSet,
@@ -54,19 +44,15 @@ import {
   pauseSession,
   removeExercise,
   removeSet,
-  restoreSession,
   resumeSession,
   sessionStats,
   setAllExerciseGoals,
   setExerciseGoal,
   setExerciseMeasure,
   setRestSeconds,
-  startSession,
   toUploadRequest,
   updateSet,
-  type LiveSession,
   type LiveSessionChange,
-  type PendingEvent,
 } from '@/workouts/live-session';
 import { workoutNotice } from '@/workouts/workout-notice';
 import { GOAL_GUIDE } from '@/workouts/goal-guide';
@@ -95,18 +81,16 @@ import { colors } from '@/theme/tokens';
  * handed to the sync queue only when it finishes, which is Phase I's job.
  */
 
-/** `0:04`, `12:30`, `1:02:11` -- the prototype's own `fmt`. */
-export function formatElapsed(totalSeconds: number): string {
-  const safe = Math.max(0, Math.floor(totalSeconds));
-  const hours = Math.floor(safe / 3600);
-  const minutes = Math.floor((safe % 3600) / 60);
-  const seconds = safe % 60;
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
-}
+export { formatElapsed };
 
 export default function LiveScreen() {
-  const [session, setSession] = useState<LiveSession | null>(null);
+  /**
+   * The workout is not this screen's: it lives in `activeWorkout`, which outlives it (12B-2b). Pressing back
+   * leaves the screen and the workout carries on, shown by the bar above the tab bar and the lock-screen
+   * notice, and opening it again lands back here with everything where it was.
+   */
+  const workout = useActiveWorkout();
+  const session = workout.session;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [guideOpen, setGuideOpen] = useState(false);
   /**
@@ -125,218 +109,93 @@ export default function LiveScreen() {
   useEffect(() => {
     let cancelled = false;
     void getExerciseUnits().then((stored) => {
-      if (!cancelled) setUnitByExercise(stored);
+      if (cancelled) return;
+      setUnitByExercise(stored);
+      // The lock-screen notice and the bar read loads in the same units. Only once they are known: telling them
+      // an empty map first would flip every exercise back to kg for a moment.
+      workoutNotice.setUnits(stored);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  /** True when this screen picked a session back up after a crash rather than starting one. */
-  const [resumed, setResumed] = useState(false);
   const toast = useToast();
-  /** Total milliseconds spent paused, so the elapsed clock can exclude them. */
-  const pausedMsRef = useRef(0);
-  /** False once a log write has failed -- surfaced in the header so it is not a silent loss. */
-  const [isLogging, setIsLogging] = useState(true);
-  /**
-   * The log handle, held as a **promise** rather than a resolved value.
-   *
-   * Opening SQLite is asynchronous, and actions can happen before it finishes -- returning from
-   * the set timer fires on the very first focus, which is well before the handle lands. A plain
-   * `useRef<Db | null>` meant `persist` saw `null` and dropped those events on the floor: the
-   * set showed as ticked but nothing reached the log, so a crash would have lost it. Awaiting a
-   * promise instead makes every write queue behind the open rather than race it.
-   */
-  const dbRef = useRef<Promise<Awaited<ReturnType<typeof openWorkoutSessionDb>> | null> | null>(null);
-  /** Set once Finish is pressed. A start position that arrives after that is dropped (ADR-048). */
-  const finishPressed = useRef(false);
+
+  // Whether this screen is open decides when the lock-screen card is taken down (three hours away).
+  useFocusEffect(
+    useCallback(() => {
+      workoutNotice.setViewing(true);
+      return () => workoutNotice.setViewing(false);
+    }, []),
+  );
 
   /**
-   * Start a handed-over session, or **resume one a crash interrupted**.
+   * Start a handed-over workout, or **pick one back up** that the app closed on.
    *
-   * The resume path is what makes the append-only log more than bookkeeping: the snapshot says
-   * what the session is, the replayed log says what happened to it, and together they rebuild
-   * the screen exactly as the athlete left it -- ticked sets, paused state and elapsed time
-   * included. Without it a force-killed app silently loses the workout and orphans its events.
+   * The resume path is what makes the append-only log more than bookkeeping: the snapshot says what the
+   * session is, the replayed log says what happened to it, and together they rebuild it exactly as the
+   * athlete left it. A workout already running is shown as it is: starting a second one would throw the
+   * first away, so the request is declined with a message instead.
    */
+  const hasStarted = useRef(false);
   useEffect(() => {
-    let cancelled = false;
+    if (hasStarted.current) return;
+    hasStarted.current = true;
     const pending = consumePendingLiveSession();
-
     if (pending) {
-      const started = startSession({
-        id: pending.id,
-        templateId: pending.templateId,
-        name: pending.name,
-        activity: pending.activity,
-        startedAt: new Date(),
-        exercises: pending.exercises,
-      });
-      setSession(started);
-      // Snapshot once, at start. The mutable part of a session is exactly what the event log
-      // already carries, so rewriting this per tick would reintroduce the mutable
-      // "current session" row the append-only design exists to avoid.
-      void (async () => {
-        try {
-          const db = await dbRef.current;
-          if (!db) return;
-          await saveSessionSnapshot(db, await getAccountId(), started.id, started as unknown as Record<string, unknown>, started.startedAt.toISOString());
-        } catch {
-          // Crash recovery for this session is degraded, not lost: the workout itself keeps
-          // running from in-memory state either way (H6) -- there is nothing for the athlete to
-          // act on here, only a risk that a force-kill before the first snapshot lands would not
-          // be recoverable. Rethrowing would surface an unhandled rejection for a session the
-          // athlete is actively, successfully running.
-        }
-      })();
-
-      // ADR-048: one coarse position for the leaderboard, read AFTER the workout has started and
-      // never awaited by it (rule 6: the network, and here the GPS, is never in the critical
-      // path). It answers null when the person has not allowed location, and never prompts. When
-      // it does arrive it joins the session and is written into the snapshot once more, so a
-      // force-kill keeps it. A resumed workout never gets here: the position it had is already in
-      // its snapshot, and a fresh read would describe where the phone is now, not where it began.
-      void (async () => {
-        const position = await captureStartLocation().catch(() => null);
-        if (!position || cancelled || finishPressed.current) return;
-        setSession((current) => (current && current.id === started.id ? { ...current, startLocation: position } : current));
-        try {
-          const db = await dbRef.current;
-          if (!db || cancelled || finishPressed.current) return;
-          await saveSessionSnapshot(db, await getAccountId(), started.id, { ...started, startLocation: position } as unknown as Record<string, unknown>, started.startedAt.toISOString());
-        } catch {
-          // Degraded, not lost: the position is still on the in-memory session and goes up with
-          // the workout; only crash recovery of it is missed.
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void (async () => {
-      const db = await dbRef.current;
-      if (!db || cancelled) return;
-      const snapshot = await getUnfinishedSessionSnapshot(db, await getAccountId());
-      if (!snapshot || cancelled) return;
-
-      const stored = snapshot.payload as unknown as LiveSession;
-      const startedAt = new Date(snapshot.startedAt);
-      const events = await getSessionEvents(db, snapshot.sessionId);
-      const replayed = replaySessionState(startedAt, events);
-
-      if (replayed.status === 'completed') {
-        // Already finished; it belongs to the sync queue, not to another workout.
-        await clearSessionSnapshot(db, snapshot.sessionId);
+      if (activeWorkout.isActive()) {
+        toast.show('Finish or discard your current workout first.');
         return;
       }
-      if (cancelled) return;
-
-      setSession(restoreSession({ ...stored, startedAt }, replayed));
-
-      /**
-       * The stretch the app was closed for counts as **paused**, not as training.
-       *
-       * `replaySessionState` gives the working duration up to the last logged event, which is
-       * the honest figure. The elapsed clock is wall-clock based (`now - startedAt - paused`),
-       * so without this the minutes or hours the app spent dead would be added to the workout.
-       * Seeding the paused total with the difference makes the clock read exactly the replayed
-       * duration on resume and tick correctly onward from there.
-       */
-      pausedMsRef.current = Math.max(0, Date.now() - startedAt.getTime() - replayed.durationSeconds * 1000);
-      setElapsedSeconds(replayed.durationSeconds);
-      setResumed(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Started during the first render rather than in an effect, so the promise exists before any
-  // focus effect can fire an action against it.
-  if (dbRef.current === null) {
-    dbRef.current = (async () => {
-      try {
-        const db = await openWorkoutSessionDb();
-        await ensureWorkoutSessionSchema(db);
-        return db;
-      } catch {
-        // A session must still be runnable when the local store cannot be opened -- losing
-        // crash recovery is bad, but blocking the workout on it would be worse. `persist`
-        // resolves to null and simply writes nothing.
-        return null;
-      }
-    })();
-  }
+      activeWorkout.start(pending);
+      return;
+    }
+    void activeWorkout.restore();
+  }, [toast]);
 
   /**
    * The elapsed clock. Stops while paused, matching the prototype's own interval guard.
    *
-   * Two details that both had to be got right:
-   *
-   * - **It depends on `session?.status`, not on `session`.** The session object is a new
-   *   reference after every reducer call, including one per keystroke in a weight field. With
-   *   the object as the dependency, the interval was torn down and rebuilt faster than it could
-   *   fire, so the header clock visibly froze while the athlete typed a weight.
-   * - **It is wall-clock based**, like the rest and set-timer countdowns: a counter incremented
-   *   once a second under-reports badly across a backgrounded app, and a workout is exactly the
-   *   situation where the phone spends long stretches locked in a pocket.
+   * - **It depends on `session?.status`, not on `session`.** The session object is a new reference after
+   *   every reducer call, including one per keystroke in a weight field; with the object as the
+   *   dependency the interval was torn down and rebuilt faster than it could fire, so the header clock
+   *   froze while the athlete typed a weight.
+   * - **It is wall-clock based**, like the rest and set-timer countdowns: a counter incremented once a
+   *   second under-reports badly across a backgrounded app. The store does the sum (start, less every
+   *   paused stretch), so this screen, the bar and the notice always agree.
    */
   const startedAtMs = session?.startedAt.getTime() ?? null;
   const sessionStatus = session?.status ?? null;
   useEffect(() => {
-    if (startedAtMs === null || sessionStatus !== 'in_progress') return;
-    const tick = () => setElapsedSeconds(Math.floor((Date.now() - startedAtMs - pausedMsRef.current) / 1000));
+    if (startedAtMs === null) return;
+    const tick = () => setElapsedSeconds(activeWorkout.elapsedSeconds(Date.now()));
     tick();
+    if (sessionStatus !== 'in_progress') return;
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [startedAtMs, sessionStatus]);
 
-  // Paused stretches are excluded from elapsed time, matching `WorkoutSession.durationSeconds`'s
-  // own contract ("excluding paused stretches ... not simply endedAt - startedAt").
-  useEffect(() => {
-    if (sessionStatus !== 'paused') return;
-    const pausedAt = Date.now();
-    return () => {
-      pausedMsRef.current += Date.now() - pausedAt;
-    };
-  }, [sessionStatus]);
-
   /**
-   * Writes events to the local log.
-   *
-   * **A failure here is surfaced, never swallowed.** This is the one write that makes crash
-   * recovery real, so a set that appears ticked while its write failed is precisely the silent
-   * corruption the event log exists to prevent. The athlete is told their workout is not being
-   * saved rather than finding out afterwards; the session itself keeps running, because
-   * stopping a workout over a storage fault would be the worse trade.
+   * A log write that failed is surfaced, never swallowed: this is the one write that makes crash recovery
+   * real, so a set that appears ticked while its write failed is precisely the silent corruption the log
+   * exists to prevent. The athlete is told their workout is not being saved rather than finding out
+   * afterwards; the session itself keeps running, because stopping a workout over a storage fault would
+   * be the worse trade.
    */
-  const persist = useCallback(
-    async (sessionId: string, events: PendingEvent[]) => {
-      if (events.length === 0) return;
-      try {
-        const db = await dbRef.current;
-        if (!db) {
-          setIsLogging(false);
-          return;
-        }
-        for (const event of events) {
-          await appendSessionEvent(db, sessionId, event.type, event.occurredAt, event.payload);
-        }
-        setIsLogging(true);
-      } catch {
-        setIsLogging(false);
-        toast.show('This workout is not being saved. Your sets still count on screen.');
-      }
-    },
-    [toast],
-  );
+  const seenLogFailures = useRef(workout.logFailures);
+  useEffect(() => {
+    if (workout.logFailures > seenLogFailures.current) {
+      toast.show('This workout is not being saved. Your sets still count on screen.');
+    }
+    seenLogFailures.current = workout.logFailures;
+  }, [workout.logFailures, toast]);
 
   /**
-   * The one place a `LiveSessionChange` is applied. Events are written before the new session
-   * is adopted, so the screen never shows a state the log does not already contain.
+   * The one place a `LiveSessionChange` from this screen is applied: the store logs its events and adopts
+   * the session, then this opens whichever screen the change calls for. The rest itself (its end time, its
+   * alert, the lock-screen countdown) starts in the notice controller, which follows the store, so a rest
+   * begun from the lock screen is the very same one.
    */
   const apply = useCallback(
     (change: LiveSessionChange) => {
@@ -344,15 +203,8 @@ export default function LiveScreen() {
         toast.show(change.refusal);
         return;
       }
-      void persist(change.session.id, change.events);
-      setSession(change.session);
-      // The controller learns it now, not at the next sync effect: a Done tapped in between must not
-      // find the set it just ticked still open.
-      workoutNotice.adopt(change.session);
+      activeWorkout.apply(change);
       if (change.restStartedSeconds !== null) {
-        // The controller owns the rest from here: its end time, the "Rest complete" alert and the
-        // lock-screen countdown. The rest screen only reads it (12B-2).
-        workoutNotice.beginRest(change.session, change.restStartedSeconds);
         const upNext = nextOpenSet(change.session);
         setRestContext({
           seconds: change.restStartedSeconds,
@@ -372,26 +224,8 @@ export default function LiveScreen() {
         router.push('/set-timer');
       }
     },
-    [persist, toast],
+    [toast],
   );
-
-  /**
-   * The workout's lock-screen notice (12B-2, ADR-063). The controller outlives renders, so it reaches
-   * `apply` through a ref: a Done tapped on the lock screen ticks the open set through this very
-   * function, which logs it first and adopts it second, exactly as the tick on this screen does.
-   * Detaching on unmount dismisses the notice and ends any rest, so nothing outlives the workout screen.
-   */
-  const applyRef = useRef(apply);
-  useEffect(() => {
-    applyRef.current = apply;
-  }, [apply]);
-  useEffect(() => workoutNotice.attach({ apply: (change) => applyRef.current(change) }), []);
-
-  // Keeps the notice current: the set changes, a weight is edited, the unit flips, the clock pauses.
-  // Declared after the pause effect so the paused total it reads is already updated on a resume.
-  useEffect(() => {
-    if (session) workoutNotice.sync({ session, pausedMs: pausedMsRef.current, units: unitByExercise });
-  }, [session, unitByExercise]);
 
   /**
    * The timed-set screen's return channel. It cannot tick the set itself -- it runs on its own
@@ -401,13 +235,11 @@ export default function LiveScreen() {
   useFocusEffect(
     useCallback(() => {
       const finished = consumeCompletedTimedSet();
-      if (finished) {
-        setSession((current) => {
-          if (!current) return current;
-          const change = completeTimedSet(current, finished.exerciseIndex, finished.setIndex, new Date());
-          void persist(change.session.id, change.events);
-          return change.session;
-        });
+      const current = activeWorkout.getState().session;
+      if (finished && current) {
+        const change = completeTimedSet(current, finished.exerciseIndex, finished.setIndex, new Date());
+        // As before, a finished hold logs its rest but does not open the rest screen or start the alert.
+        activeWorkout.apply({ ...change, restStartedSeconds: null });
       }
 
       // An exercise added mid-session from `library.tsx?pick=live`. One prescribed set, since
@@ -415,22 +247,20 @@ export default function LiveScreen() {
       // rest, and one is the smallest honest default.
       const picked = consumePickedExerciseForLive();
       if (picked) {
-        setSession((current) =>
-          current
-            ? addExercise(
-                current,
-                toLiveExercise({
-                  exerciseId: picked.exerciseId,
-                  name: picked.name,
-                  measure: picked.measure,
-                  goal: picked.goal,
-                  setCount: 1,
-                }),
-              )
-            : current,
+        activeWorkout.update((currentSession) =>
+          addExercise(
+            currentSession,
+            toLiveExercise({
+              exerciseId: picked.exerciseId,
+              name: picked.name,
+              measure: picked.measure,
+              goal: picked.goal,
+              setCount: 1,
+            }),
+          ),
         );
       }
-    }, [persist]),
+    }, []),
   );
 
   if (!session) {
@@ -490,10 +320,8 @@ export default function LiveScreen() {
     if (goalPickIndex === null) return;
     const exercise = session.exercises[goalPickIndex];
 
-    setSession(
-      goalPickAll
-        ? setAllExerciseGoals(session, goal)
-        : setExerciseGoal(session, goalPickIndex, goal),
+    activeWorkout.update((current) =>
+      goalPickAll ? setAllExerciseGoals(current, goal) : setExerciseGoal(current, goalPickIndex, goal),
     );
     toast.show(
       goalPickAll
@@ -509,7 +337,9 @@ export default function LiveScreen() {
         ? nextDistanceUnit(distanceUnitFor(exerciseId))
         : nextWeightUnit(weightUnitFor(exerciseId));
 
-    setUnitByExercise((current) => ({ ...current, [exerciseId]: next }));
+    const nextUnits = { ...unitByExercise, [exerciseId]: next };
+    setUnitByExercise(nextUnits);
+    workoutNotice.setUnits(nextUnits);
     void setExerciseUnit(exerciseId, next);
   };
 
@@ -529,7 +359,7 @@ export default function LiveScreen() {
   const handleFinish = () => {
     // From here a late start position is ignored: Finish clears the snapshot, and a position that
     // arrived afterwards must not write it back for a workout that is already in the upload queue.
-    finishPressed.current = true;
+    activeWorkout.markFinishing();
     const endedAt = new Date();
     const change = finishSession(session, endedAt);
     apply(change);
@@ -539,17 +369,9 @@ export default function LiveScreen() {
 
     void (async () => {
       try {
-        const db = await dbRef.current;
-        if (!db) {
-          throw new Error('Local database unavailable');
-        }
-        // Hand the session to the sync queue. This is the one place it happens --
-        // `appendSessionEvent` does NOT enqueue on `workout_finished`, despite what
-        // the store's module docblock used to claim.
-        await enqueueSessionUpload(db, await getAccountId(), toUploadRequest(finished, endedAt, elapsedSeconds));
-        // The snapshot exists only to recover an *unfinished* session; leaving it
-        // would offer this workout back on the next launch.
-        await clearSessionSnapshot(db, finished.id);
+        // Hand the session to the sync queue and clear the snapshot that would offer it back. The store
+        // does both behind every log write, and rejects when the workout could not be queued.
+        await activeWorkout.queueForUpload(toUploadRequest(finished, endedAt, elapsedSeconds));
 
         setCompletedSummary({
           name: finished.name,
@@ -583,6 +405,8 @@ export default function LiveScreen() {
           origin: 'live',
         });
         router.replace('/workout-done');
+        // Queued for upload: the workout is over, so the bar and the notice have nothing left to show.
+        activeWorkout.clear();
       } catch {
         // The most safety-critical message in the app: the session is finished in
         // memory but not yet durable anywhere else. Staying on this screen keeps the
@@ -600,8 +424,8 @@ export default function LiveScreen() {
         isPaused={isPaused}
         elapsedLabel={formatElapsed(elapsedSeconds)}
         stats={stats}
-        isLogging={isLogging}
-        resumed={resumed}
+        isLogging={workout.isLogging}
+        resumed={workout.resumed}
         onCancel={() => router.back()}
         onPauseResume={handlePauseResume}
         onFinish={handleFinish}
@@ -634,8 +458,8 @@ export default function LiveScreen() {
 
         <RestTimerCard
           restSeconds={session.restSeconds}
-          onDecrease={() => setSession(setRestSeconds(session, session.restSeconds - 15))}
-          onIncrease={() => setSession(setRestSeconds(session, session.restSeconds + 15))}
+          onDecrease={() => activeWorkout.update((current) => setRestSeconds(current, current.restSeconds - 15))}
+          onIncrease={() => activeWorkout.update((current) => setRestSeconds(current, current.restSeconds + 15))}
         />
 
         {session.exercises.map((exercise, exerciseIndex) => (
@@ -649,21 +473,19 @@ export default function LiveScreen() {
               setGoalPickIndex(exerciseIndex);
             }}
             onToggleMeasure={() =>
-              setSession(
-                setExerciseMeasure(
-                  session,
-                  exerciseIndex,
-                  exercise.measure === 'distance' ? 'time' : 'distance',
-                ),
+              activeWorkout.update((current) =>
+                setExerciseMeasure(current, exerciseIndex, exercise.measure === 'distance' ? 'time' : 'distance'),
               )
             }
             onToggleUnit={() => toggleUnit(exercise.exerciseId, exercise.measure)}
             onOpenHistory={() => router.push(`/exercise/${exercise.exerciseId}`)}
-            onRemoveExercise={() => setSession(removeExercise(session, exerciseIndex))}
-            onUpdateSet={(setIndex, patch) => setSession(updateSet(session, exerciseIndex, setIndex, patch))}
+            onRemoveExercise={() => activeWorkout.update((current) => removeExercise(current, exerciseIndex))}
+            onUpdateSet={(setIndex, patch) =>
+              activeWorkout.update((current) => updateSet(current, exerciseIndex, setIndex, patch))
+            }
             onCompleteSet={(setIndex) => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
-            onRemoveSet={(setIndex) => setSession(removeSet(session, exerciseIndex, setIndex))}
-            onAddSet={() => setSession(addSet(session, exerciseIndex))}
+            onRemoveSet={(setIndex) => activeWorkout.update((current) => removeSet(current, exerciseIndex, setIndex))}
+            onAddSet={() => activeWorkout.update((current) => addSet(current, exerciseIndex))}
           />
         ))}
 

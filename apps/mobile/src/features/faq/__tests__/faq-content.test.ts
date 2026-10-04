@@ -9,20 +9,21 @@ const textOf = (blocks: readonly FaqBlock[]): string =>
 const allEntries = FAQ_SECTIONS.flatMap((s) => s.entries);
 
 describe('FAQ content', () => {
-  it('has the six approved sections in order, Weekly Forge after the rank (X5)', () => {
+  it('has the seven approved sections in order, Weekly Forge after the rank (X5), Workouts after Runs (12B)', () => {
     expect(FAQ_SECTIONS.map((s) => s.title)).toEqual([
       'Your rank and the leaderboard',
       'Weekly Forge',
       'Your training numbers',
       'Recovery and health data',
       'Runs',
+      'Workouts',
       'Your account and data',
     ]);
   });
 
-  it('has the approved 33 questions, seven, nine, six, four, four and three per section', () => {
-    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 9, 6, 4, 4, 3]);
-    expect(allEntries).toHaveLength(33);
+  it('has the approved 37 questions, seven, nine, six, four, five, three and three per section', () => {
+    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 9, 6, 4, 5, 3, 3]);
+    expect(allEntries).toHaveLength(37);
   });
 
   it('ties only the Weekly Forge section to a feature flag', () => {
@@ -63,6 +64,32 @@ describe('FAQ content', () => {
   it('keeps the run route on the phone, in words', () => {
     const route = allEntries.find((e) => e.id === 'run-route');
     expect(textOf(route?.answer ?? [])).toMatch(/Your route stays on your phone\./);
+  });
+
+  it('says a run is measured with the screen locked too, and explains the run notification (12A)', () => {
+    const measure = allEntries.find((e) => e.id === 'run-measure');
+    expect(textOf(measure?.answer ?? [])).toMatch(/^From your phone's GPS while a run is open, including with the screen locked./);
+    const notification = allEntries.find((e) => e.id === 'run-notification');
+    expect(notification?.question).toBe('Why is there a notification while I run?');
+    expect(textOf(notification?.answer ?? [])).toMatch(/Pause ands+Finish buttons|Pause and Finish buttons/);
+    expect(textOf(notification?.answer ?? [])).toMatch(/your route stays on your phone/);
+  });
+
+  it('explains the workout notification, its permission and the bar, and keeps it all on the phone (12B)', () => {
+    const workouts = FAQ_SECTIONS.find((section) => section.title === 'Workouts');
+    expect(workouts?.entries.map((e) => e.id)).toEqual(['workout-notification', 'workout-permission', 'workout-bar']);
+
+    const notification = allEntries.find((e) => e.id === 'workout-notification');
+    expect(notification?.question).toBe('What is the notification during my workout?');
+    expect(textOf(notification?.answer ?? [])).toMatch(/nothing in it is sent anywhere/i);
+    expect(textOf(notification?.answer ?? [])).toMatch(/three hours/);
+
+    const permission = allEntries.find((e) => e.id === 'workout-permission');
+    expect(textOf(permission?.answer ?? [])).toMatch(/at the start of your first workout/);
+
+    const bar = allEntries.find((e) => e.id === 'workout-bar');
+    expect(bar?.question).toBe('What is the bar above my tabs?');
+    expect(textOf(bar?.answer ?? [])).toMatch(/Tap the bin to throw the workout away/);
   });
 
   it('describes weeks as Saturday to Friday, the week the whole app counts (ADR-056)', () => {
