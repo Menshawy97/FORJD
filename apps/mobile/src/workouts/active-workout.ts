@@ -106,8 +106,11 @@ export interface ActiveWorkout {
    * when it could not be queued, so Finish can say so: the workout is then still here, and nothing is lost.
    */
   queueForUpload: (request: WorkoutSessionUploadRequest) => Promise<void>;
-  /** Throws the workout away: its snapshot and log are deleted and nothing is uploaded. */
-  discard: () => Promise<void>;
+  /**
+   * Throws the workout away: its snapshot and log are deleted and nothing is uploaded. False when they could not
+   * be deleted: the workout is then still here, and nothing claims otherwise.
+   */
+  discard: () => Promise<boolean>;
   /** Forgets the workout once it is queued for upload. */
   clear: () => void;
 }
@@ -126,6 +129,12 @@ export function createActiveWorkout(deps: ActiveWorkoutDeps): ActiveWorkout {
   const listeners = new Set<ActiveWorkoutListener>();
   let state: ActiveWorkoutState = EMPTY;
   let finishing = false;
+  let discarding = false;
+  /**
+   * Bumped whenever the workout is replaced or cleared. Work that began under an earlier one (a restore still
+   * reading, a log write still failing) checks it and drops itself, so it can never act on the next workout.
+   */
+  let epoch = 0;
   let restoring: Promise<boolean> | null = null;
   /** Log writes, chained so they land in the order they were applied. */
   let writes: Promise<void> = Promise.resolve();
@@ -146,29 +155,52 @@ export function createActiveWorkout(deps: ActiveWorkoutDeps): ActiveWorkout {
   };
 
   const set = (next: ActiveWorkoutState, change: LiveSessionChange | null = null) => {
-    // No workout, or a new one: the next write opens the database afresh.
-    if (next.session === null) database = null;
+    // No workout: the next one opens the database afresh and nothing in flight may act on it.
+    if (next.session === null) {
+      database = null;
+      restoring = null;
+      epoch += 1;
+    }
     state = next;
-    listeners.forEach((listener) => listener(state, change));
+    listeners.forEach((listener) => {
+      try {
+        listener(state, change);
+      } catch {
+        // A subscriber bug must not stop the workout, or the log, from carrying on.
+      }
+    });
+  };
+
+  /** Resolves once every log write queued so far, including any queued while waiting, has finished. */
+  const flush = async () => {
+    let seen: Promise<void>;
+    do {
+      seen = writes;
+      await seen;
+    } while (seen !== writes);
   };
 
   const persist = (sessionId: string, events: PendingEvent[]) => {
     if (events.length === 0) return;
-    writes = writes.then(async () => {
-      try {
-        const db = await getDb();
-        if (!db) {
-          set({ ...state, isLogging: false, logFailures: state.logFailures + 1 });
-          return;
+    const mine = epoch;
+    const failed = () => {
+      // Another workout is running by now: this failure is not its news.
+      if (mine === epoch) set({ ...state, isLogging: false, logFailures: state.logFailures + 1 });
+    };
+    writes = writes
+      .then(async () => {
+        try {
+          const db = await getDb();
+          if (!db) return failed();
+          for (const event of events) {
+            await deps.storage.appendSessionEvent(db, sessionId, event.type, event.occurredAt, event.payload);
+          }
+          if (mine === epoch && !state.isLogging) set({ ...state, isLogging: true });
+        } catch {
+          failed();
         }
-        for (const event of events) {
-          await deps.storage.appendSessionEvent(db, sessionId, event.type, event.occurredAt, event.payload);
-        }
-        if (!state.isLogging) set({ ...state, isLogging: true });
-      } catch {
-        set({ ...state, isLogging: false, logFailures: state.logFailures + 1 });
-      }
-    });
+      })
+      .catch(() => undefined);
   };
 
   const saveSnapshot = async (session: LiveSession) => {
@@ -216,7 +248,10 @@ export function createActiveWorkout(deps: ActiveWorkoutDeps): ActiveWorkout {
     },
     start: (pending) => {
       finishing = false;
+      discarding = false;
       database = null;
+      restoring = null;
+      epoch += 1;
       const started = startSession({
         id: pending.id,
         templateId: pending.templateId,
@@ -233,21 +268,24 @@ export function createActiveWorkout(deps: ActiveWorkoutDeps): ActiveWorkout {
     },
     restore: () => {
       if (state.session) return Promise.resolve(false);
+      const mine = epoch;
+      /** The workout was cleared, replaced or started while this was reading: it is no longer wanted. */
+      const isStale = () => mine !== epoch || state.session !== null;
       restoring ??= (async () => {
         try {
           const db = await getDb();
-          if (!db) return false;
+          if (!db || isStale()) return false;
           const snapshot = await deps.storage.getUnfinishedSessionSnapshot(db, await deps.getAccountId());
-          if (!snapshot || state.session) return false;
+          if (!snapshot || isStale()) return false;
           const startedAt = new Date(snapshot.startedAt);
           const events = await deps.storage.getSessionEvents(db, snapshot.sessionId);
           const replayed = deps.storage.replaySessionState(startedAt, events);
           if (replayed.status === 'completed') {
             // Already finished: it belongs to the sync queue, not to another workout.
-            await deps.storage.clearSessionSnapshot(db, snapshot.sessionId);
+            if (mine === epoch) await deps.storage.clearSessionSnapshot(db, snapshot.sessionId);
             return false;
           }
-          if (state.session) return false;
+          if (isStale()) return false;
           const stored = snapshot.payload as unknown as LiveSession;
           const session = restoreSession({ ...stored, startedAt }, replayed);
           /**
@@ -257,19 +295,24 @@ export function createActiveWorkout(deps: ActiveWorkoutDeps): ActiveWorkout {
            */
           const pausedMs = Math.max(0, now() - startedAt.getTime() - replayed.durationSeconds * 1000);
           finishing = false;
-          set({ ...EMPTY, session, pausedMs, resumed: true });
+          discarding = false;
+          // Reopened while paused, it is still paused: the clock must not run until Resume, and Resume must
+          // count the whole stretch as paused.
+          const pausedSince = session.status === 'paused' ? now() : null;
+          set({ ...EMPTY, session, pausedMs, pausedSince, resumed: true });
           return true;
         } catch {
           return false;
         } finally {
-          restoring = null;
+          if (mine === epoch) restoring = null;
         }
       })();
       return restoring;
     },
     apply: (change) => {
       const current = state.session;
-      if (change.refusal || !current) return;
+      // Not another workout's change, and not one that arrives while this one is being thrown away.
+      if (change.refusal || !current || discarding || change.session.id !== current.id) return;
       persist(change.session.id, change.events);
       let { pausedMs, pausedSince } = state;
       if (current.status === 'in_progress' && change.session.status === 'paused') {
@@ -289,7 +332,7 @@ export function createActiveWorkout(deps: ActiveWorkoutDeps): ActiveWorkout {
     },
     queueForUpload: async (request) => {
       // Behind every log write, so the upload never outruns the events it summarises.
-      await writes;
+      await flush();
       const db = await getDb();
       if (!db) throw new Error('Local database unavailable');
       // The one place a finished workout reaches the sync queue.
@@ -299,21 +342,26 @@ export function createActiveWorkout(deps: ActiveWorkoutDeps): ActiveWorkout {
     },
     discard: async () => {
       const current = state.session;
-      if (!current) return;
+      if (!current) return true;
       finishing = true;
+      // From here nothing more is logged for it: a tick landing now would outlive the delete.
+      discarding = true;
       try {
         // Behind any write still in flight, so none lands after the delete and revives the log.
-        await writes;
+        await flush();
         const db = await getDb();
-        if (db) {
-          await deps.storage.clearSessionSnapshot(db, current.id);
-          await deps.storage.clearSessionEvents(db, current.id);
-        }
+        if (!db) throw new Error('Local database unavailable');
+        await deps.storage.clearSessionSnapshot(db, current.id);
+        await deps.storage.clearSessionEvents(db, current.id);
       } catch {
-        // A leftover snapshot is offered back on the next launch; the athlete can discard it again.
-      } finally {
-        set(EMPTY);
+        // Not deleted, so not discarded: the workout stays, and the athlete can try again. Saying it was
+        // gone would be untrue, because the snapshot would be offered back on the next launch.
+        finishing = false;
+        discarding = false;
+        return false;
       }
+      set(EMPTY);
+      return true;
     },
     clear: () => {
       set(EMPTY);

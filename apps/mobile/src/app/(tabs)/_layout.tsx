@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/icon';
 import { colors } from '@/theme/tokens';
 import { TIGHT_TEXT_MAX_FONT_SCALE } from '@/theme/text-scale';
+import { WORKOUT_BAR_TABS_CLEARANCE } from '@/workouts/active-workout-bar';
+import { useHasActiveWorkout } from '@/workouts/use-active-workout';
 
 // Five tabs, always in this order — 03-navigation.md's Shell section. Geometry and colors
 // below follow the prototype's `tabbar()` helper:
@@ -57,7 +59,7 @@ const TAB_BAR_BLUR_INTENSITY = 60;
  * Setting `height` explicitly stops react-navigation adding it itself, so it is added here:
  * below the tabs as padding, never under them.
  */
-export const tabsScreenOptions = (bottomInset: number) => ({
+export const tabsScreenOptions = (bottomInset: number, extraBottom = 0) => ({
   headerShown: false,
   tabBarActiveTintColor: colors.accent,
   tabBarInactiveTintColor: colors.tabInactive,
@@ -72,7 +74,9 @@ export const tabsScreenOptions = (bottomInset: number) => ({
     paddingHorizontal: 6,
     paddingBottom: bottomInset,
   },
-  sceneStyle: { paddingBottom: TAB_BAR_HEIGHT + bottomInset },
+  // `extraBottom` is the room the workout bar takes above the tab bar while a workout shows, so the last row
+  // of a list is never under it. The tab bar itself stays where it is.
+  sceneStyle: { paddingBottom: TAB_BAR_HEIGHT + bottomInset + extraBottom },
   // The prototype's per-item column is `alignItems:center; gap:5` — react-navigation
   // stacks icon over label already, so only the gap needs expressing. Its icon box is 28 tall
   // around our 22px glyph, which silently widened that gap, so the box is sized to the glyph.
@@ -94,10 +98,12 @@ function TabBarBackground() {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  // While a workout shows, its bar floats above the tab bar: the scenes give it room.
+  const hasWorkout = useHasActiveWorkout();
   return (
     <Tabs
       screenOptions={{
-        ...tabsScreenOptions(insets.bottom),
+        ...tabsScreenOptions(insets.bottom, hasWorkout ? WORKOUT_BAR_TABS_CLEARANCE : 0),
         tabBarBackground: () => <TabBarBackground />,
       }}>
       {TABS.map((tab) => (

@@ -109,7 +109,11 @@ export default function LiveScreen() {
   useEffect(() => {
     let cancelled = false;
     void getExerciseUnits().then((stored) => {
-      if (!cancelled) setUnitByExercise(stored);
+      if (cancelled) return;
+      setUnitByExercise(stored);
+      // The lock-screen notice and the bar read loads in the same units. Only once they are known: telling them
+      // an empty map first would flip every exercise back to kg for a moment.
+      workoutNotice.setUnits(stored);
     });
     return () => {
       cancelled = true;
@@ -117,11 +121,6 @@ export default function LiveScreen() {
   }, []);
 
   const toast = useToast();
-
-  // The lock-screen notice shows loads in the unit the athlete reads them in here.
-  useEffect(() => {
-    workoutNotice.setUnits(unitByExercise);
-  }, [unitByExercise]);
 
   // Whether this screen is open decides when the lock-screen card is taken down (three hours away).
   useFocusEffect(
@@ -338,7 +337,9 @@ export default function LiveScreen() {
         ? nextDistanceUnit(distanceUnitFor(exerciseId))
         : nextWeightUnit(weightUnitFor(exerciseId));
 
-    setUnitByExercise((current) => ({ ...current, [exerciseId]: next }));
+    const nextUnits = { ...unitByExercise, [exerciseId]: next };
+    setUnitByExercise(nextUnits);
+    workoutNotice.setUnits(nextUnits);
     void setExerciseUnit(exerciseId, next);
   };
 

@@ -5,7 +5,7 @@ import {
 } from '@/integrations/notifications/ongoing-notice';
 
 import { activeWorkout, type ActiveWorkout } from './active-workout';
-import { completeSet } from './live-session';
+import { completeSet, type LiveSession } from './live-session';
 import {
   cancelRestEndNotification,
   ensureRestNotificationPermission,
@@ -69,6 +69,8 @@ export interface WorkoutNotice {
   bind: () => () => void;
   /** The unit each exercise is read in on the live screen (kg or lb, m or mi). */
   setUnits: (units: NoticeUnits) => void;
+  /** Removes the card if three hours have passed away from the workout screen. Called when the app wakes. */
+  checkAway: () => void;
   /** The units the notice is using, so the in-app bar says the same thing. */
   getUnits: () => NoticeUnits;
   /** Whether the workout screen is open. Away for three hours with nothing logged takes the card down. */
@@ -112,6 +114,12 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
   let permission: Promise<boolean> | null = null;
   let lastSignature: string | null = null;
   let tornDown = false;
+  /** The last time the workout itself changed (a set logged, a pause), or the workout screen was left. */
+  let lastActivityAt = 0;
+  /** The card was taken down for three hours away; it stays down until the workout changes or is opened. */
+  let awayHidden = false;
+  /** The session the last change was about, so a flag flipping on the store is not mistaken for activity. */
+  let seenSession: LiveSession | null = null;
   /** Bumped by every teardown, so a card that was still posting can tell it lost the race. */
   let generation = 0;
   /** Taps that arrived before the workout was restored: replayed, and checked, once it is. */
@@ -149,6 +157,8 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
   const post = async (): Promise<void> => {
     const session = sessionNow();
     if (!session || session.status === 'completed') return;
+    // Taken down for three hours away: it stays down until the workout changes or its screen is opened.
+    if (awayHidden && !viewing) return;
     const mine = generation;
     if (!(await isPermitted()) || mine !== generation) return;
 
@@ -184,11 +194,19 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
     cancelAway?.();
     cancelAway = null;
     const session = sessionNow();
-    if (viewing || !session || session.status === 'completed') return;
-    cancelAway = after(() => {
-      cancelAway = null;
-      hideCard();
-    }, AWAY_REMOVAL_MS);
+    if (viewing || awayHidden || !session || session.status === 'completed') return;
+    // The remaining time from the last activity, not a fresh three hours: the timer and the clock check agree.
+    const remaining = Math.max(0, AWAY_REMOVAL_MS - (now() - lastActivityAt));
+    cancelAway = after(removeForAway, remaining);
+  };
+
+  /** Three hours since the last activity, away from the workout screen: the card goes, once. */
+  const removeForAway = () => {
+    cancelAway = null;
+    const session = sessionNow();
+    if (viewing || awayHidden || !session || session.status === 'completed') return;
+    awayHidden = true;
+    hideCard();
   };
 
   const openRest = (endsAt: number, totalSeconds: number) => {
@@ -256,11 +274,19 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
       cancelAway?.();
       cancelAway = null;
       earlyTaps = [];
+      seenSession = null;
+      awayHidden = false;
       if (!tornDown) hideCard();
       tornDown = true;
       return;
     }
     tornDown = false;
+    // A flag on the store flipping (a log write failing, the start position arriving) is not the workout
+    // changing: it must not restart the three hours or bring a removed card back.
+    if (session === seenSession && change === null) return;
+    seenSession = session;
+    awayHidden = false;
+    lastActivityAt = now();
     // Another workout began: the old one's rest is not this one's.
     if (rest && rest.sessionId !== session.id) dropRest();
     if (earlyTaps.length > 0) {
@@ -288,6 +314,8 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
         cancelAway?.();
         cancelAway = null;
         earlyTaps = [];
+        seenSession = null;
+        awayHidden = false;
         hideCard();
         tornDown = true;
         unbind = null;
@@ -304,8 +332,16 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
     },
     setViewing: (next) => {
       viewing = next;
+      if (next) awayHidden = false;
+      // Leaving the screen is the start of the time away.
+      else lastActivityAt = now();
       rearmAway();
       if (next) void post();
+    },
+    checkAway: () => {
+      // The timer may not run while the app is in the background, so the clock is checked as well, whenever
+      // the app is looked at again.
+      if (now() - lastActivityAt >= AWAY_REMOVAL_MS) removeForAway();
     },
     beginRest: (seconds) => {
       const length = Math.max(0, seconds);

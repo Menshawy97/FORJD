@@ -206,6 +206,75 @@ describe('apply', () => {
   });
 });
 
+describe('apply: guards', () => {
+  it('ignores a change that belongs to another workout', async () => {
+    const h = harness();
+    h.workout.start(pending);
+    await settle();
+    const before = session(h);
+    const other = completeSet({ ...before, id: 'someone-else' }, 0, 0, new Date(T0));
+
+    h.workout.apply(other);
+    await settle();
+
+    expect(h.events()).toEqual([]);
+    expect(session(h)).toBe(before);
+  });
+
+  it('keeps logging after a subscriber throws, instead of silently dropping every later event', async () => {
+    const h = harness();
+    h.workout.start(pending);
+    await settle();
+    h.storage.appendSessionEvent.mockRejectedValueOnce(new Error('disk'));
+    const unsubscribe = h.workout.subscribe(() => {
+      throw new Error('a listener bug');
+    });
+    h.workout.apply(completeSet(session(h), 0, 0, new Date(T0)));
+    await settle();
+    unsubscribe();
+
+    h.workout.apply(completeSet(session(h), 0, 1, new Date(T0)));
+    await settle();
+
+    expect(h.events().filter((type) => type === 'set_completed')).toHaveLength(2);
+  });
+
+  it('does not blame the next workout for the previous one failing to log', async () => {
+    const h = harness();
+    h.workout.start(pending);
+    await settle();
+    let fail: (error: Error) => void = () => undefined;
+    h.storage.appendSessionEvent.mockReturnValueOnce(new Promise((_, reject) => (fail = reject)));
+    h.workout.apply(completeSet(session(h), 0, 0, new Date(T0)));
+    await settle();
+
+    h.workout.clear();
+    h.workout.start({ ...pending, id: 'session-2' });
+    fail(new Error('disk'));
+    await settle();
+
+    expect(h.workout.getState().isLogging).toBe(true);
+    expect(h.workout.getState().logFailures).toBe(0);
+  });
+
+  it('ignores a tick that arrives while the workout is being discarded, so no event outlives the delete', async () => {
+    const h = harness();
+    h.workout.start(pending);
+    await settle();
+    let release: () => void = () => undefined;
+    h.storage.clearSessionSnapshot.mockReturnValueOnce(new Promise<void>((resolve) => (release = resolve)));
+
+    const discarding = h.workout.discard();
+    await settle();
+    h.workout.apply(completeSet(session(h), 0, 0, new Date(T0)));
+    release();
+    await discarding;
+    await settle();
+
+    expect(h.events()).toEqual([]);
+  });
+});
+
 describe('the clock and pausing', () => {
   it('counts elapsed seconds from the start', () => {
     const h = harness();
@@ -279,6 +348,24 @@ describe('restoring after the app was closed', () => {
     expect(h.workout.elapsedSeconds(h.clock.now)).toBe(300);
   });
 
+  it('keeps counting the pause after a restore, so a workout reopened paused does not run while paused', async () => {
+    const h = harness({
+      snapshot: { ...snapshot, payload: { ...snapshot.payload, status: 'paused' } },
+      replay: { status: 'paused', durationSeconds: 300, completedSetKeys: [] },
+    });
+    h.clock.now = T0 + 3_600_000;
+    await h.workout.restore();
+
+    // Ten minutes on the paused screen: the clock must not move.
+    h.clock.now += 600_000;
+    expect(h.workout.elapsedSeconds(h.clock.now)).toBe(300);
+
+    // And resuming adds those ten minutes to the paused total, not to the working time.
+    h.workout.apply(resumeSession(session(h), new Date(h.clock.now)));
+    h.clock.now += 60_000;
+    expect(h.workout.elapsedSeconds(h.clock.now)).toBe(360);
+  });
+
   it('offers nothing when there is no unfinished workout', async () => {
     const h = harness();
 
@@ -301,6 +388,50 @@ describe('restoring after the app was closed', () => {
     expect(h.storage.getUnfinishedSessionSnapshot).not.toHaveBeenCalled();
   });
 
+  it('drops a restore that was still reading when the workout was cleared (signing out), so it cannot come back', async () => {
+    const h = harness({ snapshot });
+    let release: (value: unknown) => void = () => undefined;
+    h.storage.getUnfinishedSessionSnapshot.mockReturnValue(new Promise((resolve) => (release = resolve)));
+
+    const restoring = h.workout.restore();
+    await settle();
+    h.workout.clear();
+    release(snapshot);
+
+    expect(await restoring).toBe(false);
+    expect(h.workout.getState().session).toBeNull();
+  });
+
+  it('drops a restore that was still reading when another workout started', async () => {
+    const h = harness({ snapshot });
+    let release: (value: unknown) => void = () => undefined;
+    h.storage.getUnfinishedSessionSnapshot.mockReturnValue(new Promise((resolve) => (release = resolve)));
+
+    const restoring = h.workout.restore();
+    await settle();
+    h.workout.start({ ...pending, id: 'session-new', name: 'New one' });
+    release(snapshot);
+
+    expect(await restoring).toBe(false);
+    expect(session(h).id).toBe('session-new');
+  });
+
+  it('restores afresh after a clear, instead of handing back the restore that was cancelled', async () => {
+    const h = harness({ snapshot });
+    let release: (value: unknown) => void = () => undefined;
+    h.storage.getUnfinishedSessionSnapshot.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    const first = h.workout.restore();
+    await settle();
+    h.workout.clear();
+
+    const second = h.workout.restore();
+    release(snapshot);
+
+    expect(await first).toBe(false);
+    expect(await second).toBe(true);
+    expect(session(h).id).toBe('session-1');
+  });
+
   it('restores once when asked twice at the same time', async () => {
     const h = harness({ snapshot });
 
@@ -320,6 +451,20 @@ describe('ending', () => {
 
     expect(h.storage.clearSessionSnapshot).toHaveBeenCalledWith(expect.anything(), 'session-1');
     expect(h.storage.clearSessionEvents).toHaveBeenCalledWith(expect.anything(), 'session-1');
+    expect(h.workout.getState().session).toBeNull();
+  });
+
+  it('keeps the workout, and says so, when discarding could not delete it', async () => {
+    const h = harness();
+    h.workout.start(pending);
+    await settle();
+    h.storage.clearSessionEvents.mockRejectedValueOnce(new Error('disk'));
+
+    expect(await h.workout.discard()).toBe(false);
+
+    // Not gone, so nothing claims it was: the athlete can try again.
+    expect(h.workout.getState().session).not.toBeNull();
+    expect(await h.workout.discard()).toBe(true);
     expect(h.workout.getState().session).toBeNull();
   });
 

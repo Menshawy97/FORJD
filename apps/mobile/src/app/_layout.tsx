@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getMe } from '@/auth/apiClient';
 import {
@@ -27,7 +27,8 @@ import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
 import { getExerciseUnits } from '@/store/exercise-unit-preferences';
 import { activeWorkout } from '@/workouts/active-workout';
-import { ActiveWorkoutBar } from '@/workouts/active-workout-bar';
+import { ActiveWorkoutBar, WORKOUT_BAR_STACK_CLEARANCE } from '@/workouts/active-workout-bar';
+import { useHasActiveWorkout } from '@/workouts/use-active-workout';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { workoutNotice } from '@/workouts/workout-notice';
 
@@ -51,6 +52,26 @@ export const stackScreenOptions = {
   headerShown: false,
   contentStyle: { backgroundColor: colors.screenBg },
 } as const;
+
+/**
+ * The same options, with room left at the bottom for the workout bar while a workout shows (12B-2b). Not for the
+ * tabs (their scenes make their own room above the tab bar) nor for the workout's own screens, where the bar is
+ * hidden. Absolutely positioned content, such as a bottom sheet, is not moved by padding, so a sheet still covers
+ * the whole screen.
+ */
+const WITHOUT_BAR_ROOM = new Set(['(tabs)', 'live', 'rest', 'set-timer', 'workout-done']);
+export const stackOptionsFor = (routeName: string, clearance: number) =>
+  clearance > 0 && !WITHOUT_BAR_ROOM.has(routeName)
+    ? { ...stackScreenOptions, contentStyle: { ...stackScreenOptions.contentStyle, paddingBottom: clearance } }
+    : stackScreenOptions;
+
+/** The app's stack, read inside the safe-area provider so the bar's room can include the bottom inset. */
+function AppStack() {
+  const insets = useSafeAreaInsets();
+  const hasWorkout = useHasActiveWorkout();
+  const clearance = hasWorkout ? insets.bottom + WORKOUT_BAR_STACK_CLEARANCE : 0;
+  return <Stack screenOptions={({ route }) => stackOptionsFor(route.name, clearance)} />;
+}
 
 /**
  * Auth state feeds the redirect decision through `useSyncExternalStore` over
@@ -125,6 +146,9 @@ export default function RootLayout() {
       if (state !== 'active') return;
       void syncPendingSessions();
       void syncTimeZone();
+      // The three-hours-away removal of the workout card cannot rely on a timer the OS may not run in the
+      // background, so the clock is checked whenever the app is looked at again.
+      workoutNotice.checkAway();
     });
     return () => subscription.remove();
   }, [authChecked, authenticated]);
@@ -171,7 +195,7 @@ export default function RootLayout() {
             section -- cheap when nobody is editing a meal (`draft: null`), so there is no cost
             to it always being present here rather than scoped to a sub-tree. */}
         <MealDraftProvider>
-          <Stack screenOptions={stackScreenOptions} />
+          <AppStack />
           {!authenticated && <AuthGate />}
           {authenticated && <AuthenticatedGate />}
           {/* The bar for a workout in progress, over the router so every screen but the workout's own shows it. */}

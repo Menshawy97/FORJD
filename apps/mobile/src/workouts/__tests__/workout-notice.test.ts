@@ -176,6 +176,8 @@ interface FakeWorkout {
   apply: jest.Mock<void, [LiveSessionChange]>;
   /** Puts a session (and its paused total) into the active workout, as any change to it would. */
   show: (session: LiveSession | null, pausedMs?: number) => void;
+  /** A state change that is not about the workout itself: a log flag flipping. Same session object. */
+  touch: () => void;
 }
 
 function fakeWorkout(): FakeWorkout {
@@ -204,6 +206,10 @@ function fakeWorkout(): FakeWorkout {
     apply,
     show: (session, pausedMs = 0) => {
       state = { ...state, session, pausedMs };
+      emit(null);
+    },
+    touch: () => {
+      state = { ...state, logFailures: state.logFailures + 1 };
       emit(null);
     },
   };
@@ -842,5 +848,94 @@ describe('the workout notice controller: away from the workout screen', () => {
     expect(h.workout.apply).toHaveBeenCalledTimes(1);
     expect(h.controller.getRest()).toMatchObject({ totalSeconds: 90 });
     expect(h.lastShown().title).toBe('REST');
+  });
+});
+
+describe('the workout notice controller: three hours away, checked by the clock', () => {
+  it('takes the card down on a check once three hours have passed, even if the timer never fired', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.notice.dismiss.mockClear();
+
+    h.clock.now = NOW + 3 * 60 * 60 * 1000 - 1000;
+    h.controller.checkAway();
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+
+    h.clock.now = NOW + 3 * 60 * 60 * 1000;
+    h.controller.checkAway();
+    await settle();
+
+    expect(h.notice.dismiss).toHaveBeenCalledWith(WORKOUT_NOTICE_ID);
+  });
+
+  it('does not take the card down while the workout screen is open', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(true);
+    h.notice.dismiss.mockClear();
+
+    h.clock.now = NOW + 5 * 60 * 60 * 1000;
+    h.controller.checkAway();
+
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+  });
+
+  it('counts the three hours from the last thing logged, not from when the screen was left', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.clock.now = NOW + 2 * 60 * 60 * 1000;
+    h.tap(h.lastShown().actions![0]!.id);
+    await settle();
+    h.notice.dismiss.mockClear();
+
+    h.clock.now = NOW + 4 * 60 * 60 * 1000;
+    h.controller.checkAway();
+
+    expect(h.notice.dismiss).not.toHaveBeenCalled();
+  });
+
+  it('removes the card once, however many checks follow', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.clock.now = NOW + 4 * 60 * 60 * 1000;
+    h.notice.dismiss.mockClear();
+
+    h.controller.checkAway();
+    h.controller.checkAway();
+    await settle();
+
+    expect(h.notice.dismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('a log flag changing does not bring a removed card back or restart the three hours', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.away.fire();
+    await settle();
+    h.notice.show.mockClear();
+
+    h.workout.touch();
+    await settle();
+
+    expect(h.notice.show).not.toHaveBeenCalled();
+    expect(h.away.armed()).toBe(false);
+  });
+
+  it('the card stays down through a units change while it is removed', async () => {
+    const h = harness();
+    await sync(h, makeSession());
+    h.controller.setViewing(false);
+    h.away.fire();
+    await settle();
+    h.notice.show.mockClear();
+
+    h.controller.setUnits({ bench: 'lb' });
+    await settle();
+
+    expect(h.notice.show).not.toHaveBeenCalled();
   });
 });

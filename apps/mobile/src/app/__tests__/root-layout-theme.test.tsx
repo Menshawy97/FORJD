@@ -46,7 +46,7 @@ jest.mock('@/auth/secureStorage', () => ({
   consumeSessionExpired: jest.fn(() => false),
 }));
 
-import { stackScreenOptions } from '../_layout';
+import { stackOptionsFor, stackScreenOptions } from '../_layout';
 
 describe('root layout theming', () => {
   it('uses the dark theme even on a device set to light mode', async () => {
@@ -68,6 +68,27 @@ describe('root layout theming', () => {
     // The scene sits behind and between screens during a transition. Naming it explicitly is
     // what removes the flash; inheriting it from the theme is what caused one.
     expect(stackScreenOptions.contentStyle).toEqual({ backgroundColor: colors.screenBg });
+  });
+
+  describe('room for the workout bar', () => {
+    it('leaves it free above the bottom of every ordinary screen while a workout shows', () => {
+      expect(stackOptionsFor('library', 70).contentStyle).toEqual({ backgroundColor: colors.screenBg, paddingBottom: 70 });
+      expect(stackOptionsFor('exercise/[id]', 70).contentStyle).toEqual({
+        backgroundColor: colors.screenBg,
+        paddingBottom: 70,
+      });
+    });
+
+    it('adds nothing when no workout shows', () => {
+      expect(stackOptionsFor('library', 0)).toEqual(stackScreenOptions);
+    });
+
+    it.each([['(tabs)'], ['live'], ['rest'], ['set-timer'], ['workout-done']])(
+      'adds nothing to %s, which has its own room or is the workout itself',
+      (route) => {
+        expect(stackOptionsFor(route, 70)).toEqual(stackScreenOptions);
+      },
+    );
   });
 
   it('renders light status bar content', async () => {

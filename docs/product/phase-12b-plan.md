@@ -132,14 +132,26 @@ all-sets-done states; hidden on the workout, rest and set-timer screens). Plan, 
 Known limit: the 3-hour removal needs JavaScript alive; after the process is killed the card stays until
 the workout is reopened.
 
-**Built (2026-10-04).** `workouts/active-workout.ts` (store, 29 tests), the notice controller reworked to
-follow it (53 tests), `workouts/active-workout-bar.tsx` (21 tests), the root wiring (5 tests through the real
+**Built (2026-10-04).** `workouts/active-workout.ts` (store, 38 tests), the notice controller reworked to
+follow it (59 tests), `workouts/active-workout-bar.tsx` (26 tests), the root wiring (5 tests through the real
 route tree) and `live.tsx` as a view over the store (67 tests). Differences from the replica, both because
 the app's own design has no such glyph: the discard button is the app's own delete glyph (the `x` in the
 destructive colour, as on the exercise screen), not a bin, and the paused tile uses the clock; the "are you
 sure?" step is the exercise screen's own bottom sheet. Behaviour to know: a second workout cannot start
 while one is running (the screen says "Finish or discard your current workout first."); a finished timed
-set still opens no rest (as before); a lock-screen Done opens no screen.
+set still opens no rest (as before); a lock-screen Done opens no screen; the screens underneath leave room for
+the bar while it shows (tab scenes and ordinary stack screens), so it never hides a last row or a footer button.
+
+Three independent reviews (typescript, react, code) found, and this slice fixed: a workout restored while paused
+kept counting the pause as working time; a restore still reading when the user signed out could bring the old
+account's workout back; a tick landing while a discard was deleting could leave an event behind; a throwing
+subscriber could silence the log; a failed log write of one workout flagged the next; the bar nested its discard
+button inside the card (unreachable for a screen reader) and its sheet had no labels, scrim dismiss or Android
+back handling; the bar covered content; the three-hour removal depended on a timer Android may not run in the
+background (the clock is now also checked whenever the app wakes); a log flag changing counted as activity;
+opening the workout screen reset the notice's units. A discard that cannot delete now keeps the workout instead of
+claiming it is gone. Not changed, on purpose: a tap on the screen computed from a render-time session in the
+narrow window after a lock-screen Done (the store ignores a change for another workout, but not a stale base).
 
 **Known limits, to watch on the device walk:**
 - A Skip rest tapped after Android killed the process cannot cancel the "Rest complete" alert (its id was

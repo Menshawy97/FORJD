@@ -3,8 +3,9 @@
 // the workout; the x discards it, after an "are you sure?" sheet like the exercise screen's delete.
 //
 // NOTE: RTL v14 -- render() and every fireEvent.* return Promises and must be awaited.
-import { act, fireEvent, render as rtlRender } from '@testing-library/react-native';
+import { act, fireEvent, render as rtlRender, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { BackHandler } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { startSession, type LiveSession } from '../live-session';
@@ -268,5 +269,78 @@ describe('what the bar does', () => {
     await fireEvent.press(discard);
 
     expect(mockDiscard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('reaching the bar with a screen reader, and its sheet', () => {
+  it('keeps the discard button outside the card, so it can be focused on its own', async () => {
+    const { findByLabelText } = await render(bar());
+
+    const card = await findByLabelText('Return to workout');
+
+    expect(within(card).queryByLabelText('Discard workout')).toBeNull();
+  });
+
+  it('describes the workout on the card itself, so a screen reader hears more than "Return to workout"', async () => {
+    const { findByLabelText } = await render(bar());
+
+    const card = await findByLabelText('Return to workout');
+
+    expect(card.props.accessibilityValue?.text).toBe('Upper Body Push, 12:34. Bench Press · Set 3 of 3 · 80 kg × 8');
+  });
+
+  it('puts the sheet away if the bar hides while it is open, so it does not pop up again later', async () => {
+    const view = await render(bar());
+    await fireEvent.press(await view.findByLabelText('Discard workout'));
+    expect(await view.findByText('Discard this workout?')).toBeTruthy();
+
+    mockSegments.mockReturnValue(['live']);
+    await view.rerender(
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <ActiveWorkoutBar tabBarHeight={64} />
+      </SafeAreaProvider>,
+    );
+    mockSegments.mockReturnValue(['(tabs)', 'index']);
+    await view.rerender(
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <ActiveWorkoutBar tabBarHeight={64} />
+      </SafeAreaProvider>,
+    );
+
+    expect(view.queryByText('Discard this workout?')).toBeNull();
+  });
+
+  it('labels the sheet buttons and lets a tap on the scrim close it', async () => {
+    const { findByLabelText, queryByText } = await render(bar());
+    await fireEvent.press(await findByLabelText('Discard workout'));
+
+    expect(await findByLabelText('Cancel discarding')).toBeTruthy();
+    expect(await findByLabelText('Discard this workout')).toBeTruthy();
+
+    await fireEvent.press(await findByLabelText('Close'));
+
+    expect(queryByText('Discard this workout?')).toBeNull();
+    expect(mockDiscard).not.toHaveBeenCalled();
+  });
+
+  it('closes the sheet on the Android back button, and leaves the workout alone', async () => {
+    let onBack: (() => boolean) | null = null;
+    const remove = jest.fn();
+    const spy = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, handler) => {
+      onBack = handler as () => boolean;
+      return { remove };
+    });
+    const { findByLabelText, queryByText } = await render(bar());
+    await fireEvent.press(await findByLabelText('Discard workout'));
+
+    let handled = false;
+    await act(async () => {
+      handled = onBack?.() ?? false;
+    });
+
+    expect(handled).toBe(true);
+    expect(queryByText('Discard this workout?')).toBeNull();
+    expect(mockDiscard).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
