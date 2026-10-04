@@ -6,7 +6,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { shouldAnnounceCountdownSecond } from '@/workouts/countdown-announcements';
 import { CountdownRing } from '@/workouts/countdown-ring';
 import { getRestContext } from '@/workouts/live-handoff';
-import { cancelRestEndNotification, scheduleRestEndNotification } from '@/workouts/rest-notifications';
+import { workoutNotice, type ActiveRest } from '@/workouts/workout-notice';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -21,7 +21,12 @@ import { colors } from '@/theme/tokens';
  * backgrounded app is throttled or suspended, so counting ticks would drift and a phone locked
  * for the whole rest period would come back showing almost the full ninety seconds left. The
  * remaining time is recomputed from an end timestamp on every tick instead, which is correct
- * however long the app was away. (Slice H4 adds the notification that fires while it is away.)
+ * however long the app was away.
+ *
+ * **The end time is not owned here** (12B-2). `workoutNotice` owns the rest, its "Rest complete"
+ * alert (ADR-026) and the lock-screen countdown, so a rest also works with no screen open -- a Done
+ * tapped on the lock screen starts one. This screen reads it, adjusts it and skips it through the
+ * controller, and goes back when the rest ends from anywhere, the notice's Skip rest included.
  */
 function formatSeconds(total: number): string {
   const safe = Math.max(0, Math.ceil(total));
@@ -33,9 +38,13 @@ export default function RestScreen() {
   const context = getRestContext();
   const initialSeconds = Number(params.seconds ?? context?.seconds ?? 90) || 90;
 
-  const [totalSeconds, setTotalSeconds] = useState(initialSeconds);
-  const [endsAt, setEndsAt] = useState(() => Date.now() + initialSeconds * 1000);
-  const [remaining, setRemaining] = useState(initialSeconds);
+  // The controller's rest; before it has one (a screen opened on its own) this is only the display
+  // until the effect below starts it.
+  const [rest, setRest] = useState<ActiveRest>(
+    () => workoutNotice.getRest() ?? { endsAt: Date.now() + initialSeconds * 1000, totalSeconds: initialSeconds },
+  );
+  const { endsAt, totalSeconds } = rest;
+  const [remaining, setRemaining] = useState(() => (endsAt - Date.now()) / 1000);
   const [isFinished, setIsFinished] = useState(false);
   /**
    * One-shot guard on the return navigation.
@@ -84,36 +93,43 @@ export default function RestScreen() {
   }, [remaining, isFinished]);
 
   /**
-   * Schedules the "rest complete" notification, re-scheduling whenever `endsAt` moves (the
-   * ±15/+30 adjusters). Cancelling in the cleanup is what makes the pair symmetric: every exit
-   * -- expiry, Skip Rest, hardware back, or an adjustment that supersedes it -- cancels the
-   * outstanding one, so the phone never buzzes for a rest the athlete already finished.
+   * Follows the controller's rest, and starts one if there is none (the screen opened on its own).
+   *
+   * A rest that ends from elsewhere -- Skip rest on the lock-screen notice -- arrives here as `null`,
+   * and the screen leaves exactly as if Skip had been pressed on it. Leaving the screen by any route,
+   * the hardware back button included, ends the rest and so cancels its alert: the phone never buzzes
+   * for a rest the athlete already finished.
    */
   useEffect(() => {
-    if (isFinished) return;
-    let scheduled: string | null = null;
-    let cancelled = false;
-
-    void scheduleRestEndNotification(Math.max(0, Math.round((endsAt - Date.now()) / 1000))).then((identifier) => {
-      // The screen may already have gone by the time the schedule resolves; cancel immediately
-      // rather than leaving an orphan to fire later.
-      if (cancelled) {
-        void cancelRestEndNotification(identifier);
+    if (!workoutNotice.getRest()) workoutNotice.beginRest(null, initialSeconds);
+    // The rest this screen is following: leaving must end that one, never a newer rest that began while
+    // the screen was still sliding away (a Done tapped on the lock screen).
+    let followedEndsAt: number | null = null;
+    const follow = () => {
+      const next = workoutNotice.getRest();
+      if (next) {
+        followedEndsAt = next.endsAt;
+        setRest(next);
         return;
       }
-      scheduled = identifier;
-    });
-
-    return () => {
-      cancelled = true;
-      void cancelRestEndNotification(scheduled);
+      if (hasReturned.current) return;
+      hasReturned.current = true;
+      setIsFinished(true);
+      router.back();
     };
-  }, [endsAt, isFinished]);
+    follow();
+    const unsubscribe = workoutNotice.subscribeRest(follow);
+    return () => {
+      unsubscribe();
+      if (workoutNotice.getRest()?.endsAt === followedEndsAt) workoutNotice.skipRest();
+    };
+  }, [initialSeconds]);
 
   useEffect(() => {
     if (remaining > 0 || hasReturned.current) return;
     hasReturned.current = true;
     setIsFinished(true);
+    workoutNotice.skipRest();
     AccessibilityInfo.announceForAccessibility("Time's up");
     // Rest is over: the prototype returns straight to the live screen rather than waiting for
     // a tap, so the next set is one glance away.
@@ -124,16 +140,11 @@ export default function RestScreen() {
     if (hasReturned.current) return;
     hasReturned.current = true;
     setIsFinished(true);
+    workoutNotice.skipRest();
     router.back();
   };
 
-  const adjust = (delta: number) => {
-    const next = Math.max(0, remaining + delta);
-    setEndsAt(Date.now() + next * 1000);
-    // The ring must never overflow: growing the remaining time past the original total grows
-    // the total with it, exactly as the prototype's `restTotal` does.
-    setTotalSeconds((current) => Math.max(current, next));
-  };
+  const adjust = (delta: number) => workoutNotice.adjustRest(delta);
 
   return (
     <ScreenBackground>

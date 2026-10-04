@@ -69,6 +69,20 @@ chose the live countdown.
   `#RRGGBB`, at most three actions, finite times, a follow-up only after a countdown) before Kotlin,
   never throws, and is a no-op where the module is missing (`requireOptionalNativeModule`).
 
+## Amendment — how 12B-2 used it (2026-10-03)
+
+- **No progress bar on the rest card.** The approved replica drew one, but Android cannot move a
+  notification's progress bar without code running every few seconds, and a strength session has no
+  foreground service. A bar frozen at its start would mislead, so the card has the native ticking
+  countdown and no bar. It can be added later by refreshing from JavaScript while the app is awake.
+- **A late tap is checked before it acts.** Button ids carry the workout and the target (the set, or
+  the rest's end time). A Done for a set that is no longer the open one, a Skip for a rest that was
+  adjusted or has ended, and any tap from another workout are dropped. Taps kept while the app was
+  stopped are held until the workout is restored, then checked the same way and logged with the time
+  they are applied, not the time they were tapped.
+- **A timed set's button is "Start timer"** and opens the app (the set timer performs the set).
+- **Paused:** the header drops the ticking time and says "Paused" (Android cannot freeze a chronometer).
+
 ## Consequences
 
 - The first native code in the app outside Expo's own modules. It is kept small and owned in the repo;

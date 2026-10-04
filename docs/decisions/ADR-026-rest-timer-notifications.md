@@ -123,3 +123,15 @@ athlete watching the countdown would have seen no alert and reasonably called it
 
 The regression test now asserts the trigger's `type` explicitly rather than deep-equalling the
 whole input, so the field that actually mattered cannot be dropped again unnoticed.
+
+## Amendment — the workout notice takes over the rest (12B-2, 2026-10-03)
+
+- **The rest is owned by a session-level controller, not the rest screen.** `workouts/workout-notice.ts`
+  now holds the rest's end time, schedules and cancels this ADR's "Rest complete" alert, and posts the
+  lock-screen rest card (ADR-063). A Done tapped on the lock screen starts a rest with no rest screen
+  open. `/rest` reads the controller for its countdown and adjusts or skips through it. The
+  symmetric schedule/cancel rule above is unchanged: every exit (expiry, Skip rest on the screen or on
+  the notice, hardware back, an adjustment, finishing or leaving the workout) cancels the outstanding
+  alert, including one whose schedule resolves after its rest has ended.
+- **Permission is now asked at the start of the first workout, not at the first rest**, because the
+  workout notice is shown from the first set. A refusal changes nothing else, as before.

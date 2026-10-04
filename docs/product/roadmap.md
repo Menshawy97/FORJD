@@ -29,8 +29,18 @@ the quick-reference for "what phase are we in and what's next."
 owner's device walk, done together with 12B-2. The owner kept the run notice as approved (no ticking
 time; ADR-063 decision 6).
 
-**Next for a session:** 12B-2 (the workout notice, stacked on 12B-1's branch), then one dev-client build
-and the owner's walk of 12A and 12B together; or 12C (background upload). 12D-12I wait for the beta.
+**12B-2 built** (the workout notice and the session-level rest owner, stacked on 12B-1, its own PR; see
+[phase-12b-plan.md](phase-12b-plan.md) for the three differences from the approved design and the limits to
+watch). Owed by the owner: the one dev-client build and walk of 12A and 12B together, and approval of the
+"Proposed for 12B" FAQ wording in [faq-copy.md](faq-copy.md).
+
+**Owed phone tests (added 2026-10-03):** 12A's locked-phone run and 12B's workout-notice walk, both on a
+physical Android 7+ phone. The owner has no such phone now (their OPPO A37f is on Android 5.1.1), and a
+local emulator build fails on their laptop, so these need either a cloud (EAS) build plus a phone or
+emulator, or a borrowed phone. Details in [phase-12b-plan.md](phase-12b-plan.md).
+
+**Next for a session:** once the walk is done, merge #323 then the 12B-2 PR (each with `main` green), or
+12C (background upload). 12D-12I wait for the beta.
 
 ## Current status (last updated 2026-09-25)
 
