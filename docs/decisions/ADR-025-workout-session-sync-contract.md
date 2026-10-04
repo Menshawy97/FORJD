@@ -112,3 +112,13 @@ speculative fix now.
 - `workout-engine.md` names Drift as the local database; this ADR is also where that stale
   fact gets corrected in the doc itself, since ADR-013 and ADR-022 already superseded it in
   practice and this is the first place session storage actually lands in code.
+
+## Amendment (2026-10-04, Phase 12C): one more trigger
+
+The drain is now also triggered from a background task (`expo-background-task`, about every 15
+minutes, Android's shortest gap, behind `integrations/background/background-upload.ts`), so a
+finished workout or run reaches the server without the app being opened. Nothing else changes:
+the same `syncPendingSessions`, the same retry and backoff, the same per-account filter. Overlap
+with a foreground drain is safe (idempotent upload by session id; attempts are incremented
+atomically in SQL). A rejected row is not a failed task run. Body scans have no queue and are
+not part of this. See [phase-12c-plan.md](../product/phase-12c-plan.md).

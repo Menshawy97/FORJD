@@ -48,8 +48,13 @@ physical Android 7+ phone. The owner has no such phone now (their OPPO A37f is o
 local emulator build fails on their laptop, so these need either a cloud (EAS) build plus a phone or
 emulator, or a borrowed phone. Details in [phase-12b-plan.md](phase-12b-plan.md).
 
-**Next for a session:** 12C (background upload), or fix whatever the owner's 12A and 12B device walk finds. 12D-12I wait
-for the beta.
+**12C built (2026-10-04, its own PR):** finished workouts and runs upload by themselves about every 15 minutes while
+the app is closed (Android decides the exact timing). Workouts and runs only: body scans are read live and have no
+saved-for-later list, so they are not part of it (owner decision). Plan: [phase-12c-plan.md](phase-12c-plan.md).
+Owed on a device with the 12A/12B walk: finish a workout offline, reconnect, lock the phone, and check it reaches the
+server without opening the app.
+
+**Next for a session:** fix whatever the owner's 12A, 12B and 12C device walk finds. 12D-12I wait for the beta.
 
 ## Current status (last updated 2026-09-25)
 
@@ -296,7 +301,7 @@ from JSX, so no hand-written Swift). 12A starts once ADR-059 is accepted.
 |---|---|---|
 | 12A | **Background run.** The foreground service and ongoing notification; GPS continues with the screen off; the notification's Pause/Finish act on the run engine; crash recovery covers a killed service | ADR from decision 1. Keep-awake becomes optional. Physical-device test mandatory, including Doze and battery-saver, and OEM battery killers (Samsung, Xiaomi) |
 | 12B | **Strength session in the background.** An ongoing notification for a live session (current exercise, set, rest countdown via the wall clock), tap to return; the rest buzz folds into it | Local only, no network (rule 6). Android first; iOS Live Activities belong to Phase 11 |
-| 12C | **Background upload.** `expo-background-task` drains the offline queue (sessions, runs, InBody) without opening the app | Idempotent uploads already exist; test the retry path |
+| 12C | **Background upload.** `expo-background-task` drains the offline queue (sessions and runs; not InBody, which has no queue) about every 15 minutes without opening the app. [Plan](phase-12c-plan.md) | Idempotent uploads already exist; test the retry path. **Built 2026-10-04; device walk owed** |
 | 12D | **Notification preferences move server-side.** Contract, migration (a `notification_preferences` shape per category, quiet hours, time zone), `GET/PATCH /api/v1/users/me/notifications`; the screen reads and writes them; the device copy becomes a cache | Additive (rule 7). Quiet hours get the editor the design stubs |
 | 12E | **Local scheduled notifications:** workout reminders on program days (30 min before), the weekly summary (Sunday evening) | No server needed; rescheduled when the program or the preferences change |
 | 12F | **Push:** device-token registration (`device_push_tokens` table, deleted on sign-out and account deletion, in the export and the data inventory), `NotificationProvider` + a fake for tests, then the server-side senders: leaderboard moves (after the Monday snapshot), PR celebrations (on upload) | ADR from decisions 2-3. Contract tests for the adapter (rule 8) |
