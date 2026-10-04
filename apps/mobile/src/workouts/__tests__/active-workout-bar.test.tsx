@@ -11,6 +11,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { startSession, type LiveSession } from '../live-session';
 import type { ActiveWorkoutState } from '../active-workout';
 
+// The glyph is what the owner approved (a bin, not the app's x): a stub that names it keeps the test about that.
+jest.mock('@/components/icon', () => {
+  const { Text } = require('react-native');
+  return { Icon: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
+});
+
 const mockPush = jest.fn();
 const mockSegments = jest.fn((): string[] => ['(tabs)', 'index']);
 jest.mock('expo-router', () => ({
@@ -269,6 +275,17 @@ describe('what the bar does', () => {
     await fireEvent.press(discard);
 
     expect(mockDiscard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the discard button', () => {
+  it('shows the trash glyph, not the x', async () => {
+    const { findByLabelText } = await render(bar());
+
+    const button = await findByLabelText('Discard workout');
+
+    expect(within(button).getByText('icon:trash')).toBeTruthy();
+    expect(within(button).queryByText('icon:x')).toBeNull();
   });
 });
 

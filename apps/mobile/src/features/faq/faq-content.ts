@@ -325,7 +325,7 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
         question: `How does FORJD measure a run?`,
         answer: [
           {
-            p: `From your phone's GPS while the run screen is open. Distance is the sum of the short steps between accurate GPS points; points with poor accuracy, or that imply a jump faster than 12 m/s, are ignored. Pace is your moving time divided by distance, and paused time never counts. Each split is the time for one full kilometre. Elevation gain adds up climbs only, counting a rise once it passes 3 metres so GPS wobble isn't counted. That elevation rule is FORJD's own.`,
+            p: `From your phone's GPS while a run is open, including with the screen locked. Distance is the sum of the short steps between accurate GPS points; points with poor accuracy, or that imply a jump faster than 12 m/s, are ignored. Pace is your moving time divided by distance, and paused time never counts. Each split is the time for one full kilometre. Elevation gain adds up climbs only, counting a rise once it passes 3 metres so GPS wobble isn't counted. That elevation rule is FORJD's own.`,
           },
         ],
       },
@@ -335,6 +335,15 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
         answer: [
           {
             p: `Your route stays on your phone. Only the summary — distance, time, splits, elevation and, if you allowed health data, heart rate and calories — is saved to your account. If you joined the leaderboard and allowed location, the run also sends the same rounded start position as any workout, so FORJD can work out your city, and that position is thrown away afterwards. The map behind the route comes from Google Maps, so Google's map software receives the area you are viewing; the route itself is drawn on top by FORJD and isn't sent to Google. Without a connection the map tiles won't load, and the route is drawn on a plain background instead.`,
+          },
+        ],
+      },
+      {
+        id: 'run-notification',
+        question: `Why is there a notification while I run?`,
+        answer: [
+          {
+            p: `While a run is open, FORJD shows a notification with your time, distance and pace, and Pause and Finish buttons, so you can control the run without unlocking your phone. Android also shows a small 'Location' notice: it is how Android lets an app keep using GPS with the screen off. FORJD only uses your location while a run is open, never in the background otherwise, and your route stays on your phone. When the run is finished or discarded, both notices go. If you swipe FORJD away, tracking stops and the run is offered back the next time you open the app.`,
           },
         ],
       },
@@ -357,6 +366,38 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
         answer: [
           {
             p: `FORJD reads heart rate from a watch that shares it through Health Connect, and only if you've allowed health data. With no watch connected, or health data switched off, it shows a dash rather than a number that isn't yours.`,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: `Workouts`,
+    entries: [
+      {
+        id: 'workout-notification',
+        question: `What is the notification during my workout?`,
+        answer: [
+          {
+            p: `While a workout is open, FORJD shows a notification with your current exercise, the set you are on and its weight and reps, so you can see what is next with your phone locked. Tap Done to log the set, as if you had ticked it in the app. During rest it shows a countdown and a Skip rest button, and when rest ends it switches to the next set and FORJD buzzes as usual. Everything stays on your phone: nothing in it is sent anywhere. It stays until you finish the workout, or until three hours pass with nothing logged and the workout screen closed. On iPhone this arrives later, as a Live Activity.`,
+          },
+        ],
+      },
+      {
+        id: 'workout-permission',
+        question: `Why does FORJD ask to send notifications when I start a workout?`,
+        answer: [
+          {
+            p: `FORJD asks once, at the start of your first workout, so it can show the workout notification and buzz when a rest is over. If you say no, the workout and its on-screen rest timer work exactly the same; you just won't see the notification or get the buzz. You can change this in your phone's settings.`,
+          },
+        ],
+      },
+      {
+        id: 'workout-bar',
+        question: `What is the bar above my tabs?`,
+        answer: [
+          {
+            p: `When you press back from a workout that is still running, FORJD doesn't end it. A bar appears above the tab bar with your workout's name, the time, and the set you're on (or the rest countdown). Tap it to go back to your workout. Tap the bin to throw the workout away: FORJD asks first, then deletes the sets so far and saves nothing.`,
           },
         ],
       },

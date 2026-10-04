@@ -37,8 +37,8 @@ watch). Owed by the owner: the one dev-client build and walk of 12A and 12B toge
 **12B-2b built (2026-10-04, its own PR stacked on 12B-2):** pressing back from a running workout no longer ends
 it. The session lives in a store that outlives the screen, an in-app bar (owner-approved replica) floats above
 the tab bar to return to it or discard it, and the lock-screen card stays until the workout is finished (or three
-hours pass with nothing logged). The FAQ wording changed with it: re-approval needed in
-[faq-copy.md](faq-copy.md) ("Proposed for 12B"). Details and differences from the replica in
+hours pass with nothing logged). The FAQ wording for 12A and 12B was approved by the owner on 2026-10-04 and is in
+the app ([faq-copy.md](faq-copy.md)). Details and differences from the replica in
 [phase-12b-plan.md](phase-12b-plan.md).
 
 **Owed phone tests (added 2026-10-03):** 12A's locked-phone run and 12B's workout-notice walk, both on a

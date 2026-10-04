@@ -134,10 +134,11 @@ the workout is reopened.
 
 **Built (2026-10-04).** `workouts/active-workout.ts` (store, 38 tests), the notice controller reworked to
 follow it (59 tests), `workouts/active-workout-bar.tsx` (26 tests), the root wiring (5 tests through the real
-route tree) and `live.tsx` as a view over the store (67 tests). Differences from the replica, both because
-the app's own design has no such glyph: the discard button is the app's own delete glyph (the `x` in the
-destructive colour, as on the exercise screen), not a bin, and the paused tile uses the clock; the "are you
-sure?" step is the exercise screen's own bottom sheet. Behaviour to know: a second workout cannot start
+route tree) and `live.tsx` as a view over the store (67 tests). Difference from the replica: the paused tile uses
+the clock, because the app's icon set has no pause mark. The discard button is the bin the replica drew: the
+prototype has no bin, so a `trash` glyph was added to the icon set at the owner's request (2026-10-04, drawn in the
+set's own stroke style, pinned by a test); the first build used the app's delete `x`. The "are you sure?" step is
+the exercise screen's own bottom sheet. Behaviour to know: a second workout cannot start
 while one is running (the screen says "Finish or discard your current workout first."); a finished timed
 set still opens no rest (as before); a lock-screen Done opens no screen; the screens underneath leave room for
 the bar while it shows (tab scenes and ordinary stack screens), so it never hides a last row or a footer button.

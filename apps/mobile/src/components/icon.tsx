@@ -223,6 +223,17 @@ const GLYPHS = {
       path('M3.5 7.5l8.5 6 8.5-6'),
     ],
   },
+  // The one glyph that is not from the prototype, which has no bin. Added at the owner's request (2026-10-04) for the
+  // workout bar's discard button, drawn in this set's own style: a 24 box, round caps and joins, the shared stroke.
+  trash: {
+    viewBox: '0 0 24 24',
+    shapes: [
+      path('M5 7.2h14'),
+      path('M9.6 7.2V5.6a1 1 0 0 1 1-1h2.8a1 1 0 0 1 1 1v1.6'),
+      path('M6.8 7.2l.7 11.2a1.6 1.6 0 0 0 1.6 1.5h5.8a1.6 1.6 0 0 0 1.6-1.5l.7-11.2'),
+      path('M10.2 10.8v5.6M13.8 10.8v5.6'),
+    ],
+  },
   camera: {
     viewBox: '0 0 24 24',
     shapes: [

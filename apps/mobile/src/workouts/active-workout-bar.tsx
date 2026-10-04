@@ -21,15 +21,14 @@ import { openSetSummary } from './workout-notice-content';
  *
  * Mounted once, over the router. It stays out of the way on the screens that are the workout itself (`live`,
  * `rest`, `set-timer`) and on the one that ends it (`workout-done`). Geometry, from the replica: 58 tall, inset
- * 12 from each side, radius 16, a 34 px tile and a 34 px discard glyph, `toastBg` ground with a hairline
+ * 12 from each side, radius 16, a 34 px tile and a 34 px discard button, `toastBg` ground with a hairline
  * border; 8 above the tab bar, or 12 above the bottom inset where there is no tab bar. The screens underneath
  * leave room for it (`WORKOUT_BAR_TABS_CLEARANCE` and `WORKOUT_BAR_STACK_CLEARANCE`), so it never hides a last row
  * or a footer button.
  *
- * Two departures from the replica, both because the app's own design has no such glyph: the discard button is
- * the app's own delete glyph (the `x` in the destructive colour, as on the exercise screen) rather than a bin,
- * and the paused state's tile uses the clock rather than a pause mark. The "are you sure?" step is the
- * exercise screen's own bottom sheet.
+ * Departures from the replica, both because the app's own icon set has no pause mark: the paused state's tile uses
+ * the clock. The discard button is the bin the replica drew, a glyph added to the set at the owner's request (the
+ * prototype has none). The "are you sure?" step is the exercise screen's own bottom sheet.
  *
  * The card and the discard button are siblings, not nested: a screen reader has to be able to land on each, and
  * the card carries the workout's name, time and set as its value so it says more than "Return to workout".
@@ -213,7 +212,7 @@ export function ActiveWorkoutBar({ tabBarHeight }: ActiveWorkoutBarProps) {
           onPress={() => setIsConfirming(true)}
           className="h-[44px] w-[44px] items-center justify-center">
           <View className="h-[34px] w-[34px] items-center justify-center rounded-[10px]" style={{ backgroundColor: DISCARD_BG }}>
-            <Icon name="x" size={18} color={colors.destructive} />
+            <Icon name="trash" size={18} color={colors.destructive} />
           </View>
         </Pressable>
       </View>

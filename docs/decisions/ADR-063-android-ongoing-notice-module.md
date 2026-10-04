@@ -96,7 +96,7 @@ chose the live countdown.
 - **A lock-screen Done with no screen open** applies `completeSet` through the store, whose log write
   comes first, and navigates nowhere; a rest it starts is the controller's alone.
 - **An in-app bar** (`workouts/active-workout-bar.tsx`, owner-approved replica) floats above the tab
-  bar so the workout is found again; tapping it opens the workout, and its x discards after an
+  bar so the workout is found again; tapping it opens the workout, and its bin discards after an
   "are you sure?" sheet. Discard deletes the snapshot and log and uploads nothing.
 
 ## Consequences

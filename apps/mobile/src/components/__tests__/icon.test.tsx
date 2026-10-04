@@ -42,6 +42,19 @@ async function renderIcon(element: React.ReactElement) {
 }
 
 describe('Icon', () => {
+  // The one glyph that is not from the prototype: it has no bin. Added at the owner's request (2026-10-04) for the
+  // workout bar's discard button, drawn in the set's own stroke style (24 box, round caps and joins, 1.6 stroke).
+  it('renders the trash glyph the owner asked for: lid, handle, body and two bars', async () => {
+    const { ofType } = await renderIcon(<Icon name="trash" />);
+
+    expect(ofType('RNSVGPath').map((node) => node.props.d)).toEqual([
+      'M5 7.2h14',
+      'M9.6 7.2V5.6a1 1 0 0 1 1-1h2.8a1 1 0 0 1 1 1v1.6',
+      'M6.8 7.2l.7 11.2a1.6 1.6 0 0 0 1.6 1.5h5.8a1.6 1.6 0 0 0 1.6-1.5l.7-11.2',
+      'M10.2 10.8v5.6M13.8 10.8v5.6',
+    ]);
+  });
+
   it('renders the home glyph with the prototype path data', async () => {
     const { ofType } = await renderIcon(<Icon name="home" />);
 
