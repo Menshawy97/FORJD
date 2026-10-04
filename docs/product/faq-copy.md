@@ -325,8 +325,8 @@ in the FAQ today, so this proposes a small new one, placed after "Runs".
 its weight and reps, so you can see what is next with your phone locked. Tap Done to log the set, as if
 you had ticked it in the app. During rest it shows a countdown and a Skip rest button, and when rest
 ends it switches to the next set and FORJD buzzes as usual. Everything stays on your phone: nothing in
-it is sent anywhere. It goes away when you finish or leave the workout. On iPhone this arrives later,
-as a Live Activity."
+it is sent anywhere. It stays until you finish the workout, or until three hours pass with nothing logged
+and the workout screen closed. On iPhone this arrives later, as a Live Activity."
 
 ### Workouts → new entry: Why does FORJD ask to send notifications when I start a workout?
 
@@ -338,3 +338,10 @@ just won't see the notification or get the buzz. You can change this in your pho
 
 Not proposed as an entry. Noted for the device walk: a Done tapped while the app was fully stopped is
 applied the next time the workout is opened, if that set is still the one you were on.
+
+### Workouts → new entry: What is the bar above my tabs? (changed 2026-10-04, replaces nothing above)
+
+"When you press back from a workout that is still running, FORJD doesn't end it. A bar appears above the
+tab bar with your workout's name, the time, and the set you're on (or the rest countdown). Tap it to go
+back to your workout. Tap the x to throw the workout away: FORJD asks first, then deletes the sets so far
+and saves nothing."

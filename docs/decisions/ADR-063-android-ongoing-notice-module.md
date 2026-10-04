@@ -83,6 +83,22 @@ chose the live countdown.
 - **A timed set's button is "Start timer"** and opens the app (the set timer performs the set).
 - **Paused:** the header drops the ticking time and says "Paused" (Android cannot freeze a chronometer).
 
+## Amendment — the workout outlives the screen (12B-2b, 2026-10-04)
+
+- **The card stays after the workout screen is left.** The owner asked (from the Hevy app) that pressing
+  back does not end a running workout, and chose that the lock-screen card stays until the workout is
+  finished. The session now lives in a module-level store (`workouts/active-workout.ts`) that outlives
+  the screen; the notice controller follows that store instead of being attached by the screen.
+- **Removal:** finishing or discarding takes the card down. With the workout screen closed and nothing
+  logged for **3 hours** the card (not the workout) is removed; its header time keeps running meanwhile
+  (owner's answers). The timer needs JavaScript alive: after Android kills the process the card stays
+  until the workout is reopened.
+- **A lock-screen Done with no screen open** applies `completeSet` through the store, whose log write
+  comes first, and navigates nowhere; a rest it starts is the controller's alone.
+- **An in-app bar** (`workouts/active-workout-bar.tsx`, owner-approved replica) floats above the tab
+  bar so the workout is found again; tapping it opens the workout, and its x discards after an
+  "are you sure?" sheet. Discard deletes the snapshot and log and uploads nothing.
+
 ## Consequences
 
 - The first native code in the app outside Expo's own modules. It is kept small and owned in the repo;

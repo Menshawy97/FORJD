@@ -132,6 +132,15 @@ all-sets-done states; hidden on the workout, rest and set-timer screens). Plan, 
 Known limit: the 3-hour removal needs JavaScript alive; after the process is killed the card stays until
 the workout is reopened.
 
+**Built (2026-10-04).** `workouts/active-workout.ts` (store, 29 tests), the notice controller reworked to
+follow it (53 tests), `workouts/active-workout-bar.tsx` (21 tests), the root wiring (5 tests through the real
+route tree) and `live.tsx` as a view over the store (67 tests). Differences from the replica, both because
+the app's own design has no such glyph: the discard button is the app's own delete glyph (the `x` in the
+destructive colour, as on the exercise screen), not a bin, and the paused tile uses the clock; the "are you
+sure?" step is the exercise screen's own bottom sheet. Behaviour to know: a second workout cannot start
+while one is running (the screen says "Finish or discard your current workout first."); a finished timed
+set still opens no rest (as before); a lock-screen Done opens no screen.
+
 **Known limits, to watch on the device walk:**
 - A Skip rest tapped after Android killed the process cannot cancel the "Rest complete" alert (its id was
   lost with the process); the card goes back to the set and the alert still buzzes once.
