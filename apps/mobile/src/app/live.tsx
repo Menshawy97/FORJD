@@ -32,6 +32,7 @@ import {
 } from '@/store/exercise-unit-preferences';
 import { activeWorkout } from '@/workouts/active-workout';
 import { toLiveExercise } from '@/workouts/start-session';
+import { formatElapsed } from '@/workouts/format-elapsed';
 import { useActiveWorkout } from '@/workouts/use-active-workout';
 import {
   addExercise,
@@ -80,15 +81,7 @@ import { colors } from '@/theme/tokens';
  * handed to the sync queue only when it finishes, which is Phase I's job.
  */
 
-/** `0:04`, `12:30`, `1:02:11` -- the prototype's own `fmt`. */
-export function formatElapsed(totalSeconds: number): string {
-  const safe = Math.max(0, Math.floor(totalSeconds));
-  const hours = Math.floor(safe / 3600);
-  const minutes = Math.floor((safe % 3600) / 60);
-  const seconds = safe % 60;
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
-}
+export { formatElapsed };
 
 export default function LiveScreen() {
   /**

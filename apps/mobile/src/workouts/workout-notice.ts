@@ -69,6 +69,8 @@ export interface WorkoutNotice {
   bind: () => () => void;
   /** The unit each exercise is read in on the live screen (kg or lb, m or mi). */
   setUnits: (units: NoticeUnits) => void;
+  /** The units the notice is using, so the in-app bar says the same thing. */
+  getUnits: () => NoticeUnits;
   /** Whether the workout screen is open. Away for three hours with nothing logged takes the card down. */
   setViewing: (viewing: boolean) => void;
   /** A rest of `seconds` begins now. Normally started by a completed set; the rest screen may open one itself. */
@@ -295,6 +297,7 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
       if (sessionNow()) onWorkoutChange(deps.workout.getState(), null);
       return stop;
     },
+    getUnits: () => units,
     setUnits: (next) => {
       units = next;
       void post();

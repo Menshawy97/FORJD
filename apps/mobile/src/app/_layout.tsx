@@ -25,7 +25,13 @@ import { IntroSplash } from '@/components/brand/intro-splash';
 import { syncTimeZone } from '@/features/forge/time-zone-sync';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
+import { getExerciseUnits } from '@/store/exercise-unit-preferences';
+import { activeWorkout } from '@/workouts/active-workout';
+import { ActiveWorkoutBar } from '@/workouts/active-workout-bar';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
+import { workoutNotice } from '@/workouts/workout-notice';
+
+import { TAB_BAR_HEIGHT } from './(tabs)/_layout';
 // ADR-059: loading this module defines the run's location task, which TaskManager needs at every
 // start of the bundle, so a run whose process Android restarted still receives its readings.
 import '@/integrations/location/run-location-task';
@@ -123,6 +129,25 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [authChecked, authenticated]);
 
+  /**
+   * The workout in progress outlives any screen (12B-2b): the lock-screen notice follows it from the moment the
+   * app is signed in, and an unfinished one is picked back up here, not only when the workout screen opens,
+   * so the bar above the tab bar (and the notice) come back after Android closed the app. Signing out forgets
+   * the in-memory workout; its saved copy stays for its own account.
+   */
+  useEffect(() => {
+    if (!authChecked || !authenticated) return;
+    const unbind = workoutNotice.bind();
+    void getExerciseUnits()
+      .then((units) => workoutNotice.setUnits(units))
+      .catch(() => undefined);
+    void activeWorkout.restore();
+    return () => {
+      unbind();
+      activeWorkout.clear();
+    };
+  }, [authChecked, authenticated]);
+
   if (!fontsLoaded || !authChecked) {
     return null;
   }
@@ -149,6 +174,8 @@ export default function RootLayout() {
           <Stack screenOptions={stackScreenOptions} />
           {!authenticated && <AuthGate />}
           {authenticated && <AuthenticatedGate />}
+          {/* The bar for a workout in progress, over the router so every screen but the workout's own shows it. */}
+          {authenticated && <ActiveWorkoutBar tabBarHeight={TAB_BAR_HEIGHT} />}
           {/* ADR-052's cold-start intro (#9), drawn over the router rather than being a route
               of its own: the gates above still decide where the user lands, and that screen
               is already mounted underneath when the intro fades. */}
