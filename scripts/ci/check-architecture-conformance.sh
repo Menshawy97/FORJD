@@ -254,6 +254,18 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# ADR-063 / CLAUDE.md rule 4: the app's own Android module for ticking lock-screen notices
+# (modules/forjd-ongoing-notice) is reached only through the typed seam in
+# apps/mobile/src/integrations/notifications/, which validates every option, never throws and is a
+# no-op where the module is not built in. No feature file can post a notice behind its back.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' -E "(from|import|require\()[[:space:]]*\(?[[:space:]]*['\"][^'\"]*forjd-ongoing-notice" apps/mobile/src \
+    | grep -v '^apps/mobile/src/integrations/notifications/' || true)
+  if [ -n "$hits" ]; then
+    report "modules/forjd-ongoing-notice imported outside apps/mobile/src/integrations/notifications/" "$hits"
+  fi
+fi
+
 # ADR-050 / CLAUDE.md rule 4: react-native-maps is an implementation detail behind the route map in
 # apps/mobile/src/integrations/maps/. It is a native module (loaded lazily so Expo Go degrades to the
 # striped background instead of crashing), and it hands the map SDK the visible area, so one directory

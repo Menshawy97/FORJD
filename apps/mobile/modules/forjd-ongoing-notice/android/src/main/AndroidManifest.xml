@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- ADR-063: taps on the ongoing notice's actions, its countdown's follow-up, and swipes. Reached only
+         through explicit PendingIntents built by this module, so it is not exported. -->
+    <receiver
+      android:name="expo.modules.forjdongoingnotice.OngoingNoticeReceiver"
+      android:exported="false" />
+  </application>
+</manifest>
