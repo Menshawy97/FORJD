@@ -36,6 +36,7 @@ import { TAB_BAR_HEIGHT } from './(tabs)/_layout';
 // ADR-059: loading this module defines the run's location task, which TaskManager needs at every
 // start of the bundle, so a run whose process Android restarted still receives its readings.
 import '@/integrations/location/run-location-task';
+import { registerBackgroundUpload, unregisterBackgroundUpload } from '@/integrations/background/background-upload';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -151,6 +152,16 @@ export default function RootLayout() {
       workoutNotice.checkAway();
     });
     return () => subscription.remove();
+  }, [authChecked, authenticated]);
+
+  /**
+   * Finished workouts and runs upload by themselves about every 15 minutes while someone is signed in
+   * (12C), so one finished in a tunnel does not wait for the app to be opened. Signing out stops it; the
+   * drain only sends the signed-in account's rows either way. Fire-and-forget: the seam never throws.
+   */
+  useEffect(() => {
+    if (!authChecked) return;
+    void (authenticated ? registerBackgroundUpload() : unregisterBackgroundUpload());
   }, [authChecked, authenticated]);
 
   /**
