@@ -4,7 +4,8 @@ import {
   type OngoingNotice,
 } from '@/integrations/notifications/ongoing-notice';
 
-import { completeSet, type LiveSessionChange } from './live-session';
+import { activeWorkout, type ActiveWorkout } from './active-workout';
+import { completeSet } from './live-session';
 import {
   cancelRestEndNotification,
   ensureRestNotificationPermission,
@@ -15,35 +16,34 @@ import {
   findOpenSet,
   parseNoticeAction,
   workoutNoticeContent,
-  type WorkoutNoticeInput,
+  type NoticeUnits,
 } from './workout-notice-content';
 
 export { WORKOUT_NOTICE_ID } from './workout-notice-content';
-export type { WorkoutNoticeInput } from './workout-notice-content';
 
 /**
- * The session-level owner of the workout's lock-screen notice and of the rest period (12B-2, ADR-063,
- * ADR-026). One of these exists while the live screen does, and it is the only thing that:
+ * The owner of the workout's lock-screen notice and of the rest period (12B-2, ADR-063, ADR-026), now a
+ * follower of the active workout (12B-2b). It is bound once for the life of the app and:
  *
- * - **posts the notice**, the set card or the rest card, and keeps it current as the session changes;
+ * - **posts the notice**, the set card or the rest card, and keeps it current as the workout changes,
+ *   whichever screen is open, including none;
  * - **owns the rest's end time and its "Rest complete" alert**, so a rest works with no rest screen
  *   open -- a Done tapped on the lock screen starts one -- and the screen only reads it;
- * - **turns a tap on the notice's buttons into the same thing the live screen does** -- Done is
- *   `completeSet`, Skip is the rest screen's Skip -- after checking it still means what it said.
+ * - **turns a tap on the notice's buttons into the same thing the live screen does**: Done is
+ *   `completeSet`, applied through the active workout (its events are logged first), and Skip is the rest
+ *   screen's Skip -- after checking the tap still means what it said.
  *
  * Android ticks the countdown itself (a chronometer) and swaps the rest card for the next set when it
  * ends, so nothing here has to run while the phone is locked. Nothing here throws into the workout: a
  * missed notice is a stale lock screen, never a broken session (CLAUDE.md rule 6).
  *
- * **A late tap is checked, not trusted.** A button's id names its session and its target (see
- * `workout-notice-content.ts`); a tap kept while the app was stopped is compared with the session as
- * it is now, and dropped unless it still names the open set or the running rest.
+ * **A late tap is checked, not trusted.** A button's id names its workout and its target (see
+ * `workout-notice-content.ts`); a tap kept while the app was stopped waits for the workout to be restored,
+ * is compared with it as it is then, and is dropped unless it still names the open set or the running rest.
+ *
+ * **Away from the workout screen for three hours with nothing logged**, the card (not the workout) is
+ * taken down; opening the workout screen, or any change to the workout, puts it back.
  */
-export interface WorkoutNoticeHost {
-  /** The live screen's own `apply`: it logs the events, adopts the session and opens the next screen. */
-  apply: (change: LiveSessionChange) => void;
-}
-
 export interface ActiveRest {
   endsAt: number;
   /** The ring's full length: it grows when the rest is extended, as the prototype's `restTotal` does. */
@@ -58,23 +58,21 @@ export interface WorkoutNoticeDeps {
     schedule: (seconds: number) => Promise<string | null>;
     cancel: (identifier: string | null) => Promise<void>;
   };
+  workout: Pick<ActiveWorkout, 'getState' | 'subscribe' | 'apply'>;
   now?: () => number;
+  /** Runs `fn` after `ms`; returns the cancel. Injected so the three hours can be driven by hand. */
+  after?: (fn: () => void, ms: number) => () => void;
 }
 
 export interface WorkoutNotice {
-  /** Starts listening for taps and owning the notice. Returns the detach. */
-  attach: (host: WorkoutNoticeHost) => () => void;
-  /** Stops everything: dismisses the notice, cancels the alert, clears the rest. Safe to repeat. */
-  detach: () => void;
-  /** The session as it is now; call after every change. Reposts the card only if it differs. */
-  sync: (input: WorkoutNoticeInput) => void;
-  /**
-   * The live screen has just adopted this session itself. Closes the window before its next `sync`
-   * in which a Done for the set it just ticked would still look current.
-   */
-  adopt: (session: WorkoutNoticeInput['session']) => void;
-  /** A set was completed and a rest began. `session` is null when the rest screen opens on its own. */
-  beginRest: (session: WorkoutNoticeInput['session'] | null, seconds: number) => void;
+  /** Starts following the active workout and listening for taps. Returns the unbind. */
+  bind: () => () => void;
+  /** The unit each exercise is read in on the live screen (kg or lb, m or mi). */
+  setUnits: (units: NoticeUnits) => void;
+  /** Whether the workout screen is open. Away for three hours with nothing logged takes the card down. */
+  setViewing: (viewing: boolean) => void;
+  /** A rest of `seconds` begins now. Normally started by a completed set; the rest screen may open one itself. */
+  beginRest: (seconds: number) => void;
   getRest: () => ActiveRest | null;
   /** Shortens (negative) or extends the running rest; the alert and the card follow. */
   adjustRest: (deltaSeconds: number) => void;
@@ -86,26 +84,39 @@ export interface WorkoutNotice {
 
 interface RestState extends ActiveRest {
   alertId: string | null;
+  /** The workout it belongs to: a rest never carries over into another one. */
+  sessionId: string | null;
 }
 
-/** The most taps kept for a session that has not been restored yet; the module itself keeps 20. */
+/** The most taps kept for a workout that has not been restored yet; the module itself keeps 20. */
 const MAX_EARLY_TAPS = 20;
+export const AWAY_REMOVAL_MS = 3 * 60 * 60 * 1000;
+
+const defaultAfter = (fn: () => void, ms: number) => {
+  const id = setTimeout(fn, ms);
+  // A pending three-hour timer must never keep a process or a test run alive.
+  (id as { unref?: () => void }).unref?.();
+  return () => clearTimeout(id);
+};
 
 export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
   const now = deps.now ?? (() => Date.now());
-  let host: WorkoutNoticeHost | null = null;
-  let unsubscribeTaps: (() => void) | null = null;
-  let latest: WorkoutNoticeInput | null = null;
+  const after = deps.after ?? defaultAfter;
+  let unbind: (() => void) | null = null;
+  let units: NoticeUnits = {};
+  let viewing = false;
+  let cancelAway: (() => void) | null = null;
   let rest: RestState | null = null;
   let permission: Promise<boolean> | null = null;
   let lastSignature: string | null = null;
   let tornDown = false;
   /** Bumped by every teardown, so a card that was still posting can tell it lost the race. */
   let generation = 0;
-  /** Taps that arrived before the session was restored: replayed, and checked, once it is. */
+  /** Taps that arrived before the workout was restored: replayed, and checked, once it is. */
   let earlyTaps: NoticeActionEvent[] = [];
   const restListeners = new Set<() => void>();
 
+  const sessionNow = () => deps.workout.getState().session;
   const notifyRest = () => restListeners.forEach((listener) => listener());
 
   const cancelAlert = (state: RestState) => {
@@ -119,37 +130,38 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
     notifyRest();
   };
 
-  const teardownNotice = () => {
+  /** The card comes down and the rest with it, whatever is in flight. The workout itself is untouched. */
+  const hideCard = () => {
     generation += 1;
     lastSignature = null;
     dropRest();
     void deps.notice.dismiss(WORKOUT_NOTICE_ID);
   };
 
-  /** Asked once per workout: the notice is the reason, so the prompt is not a surprise. */
+  /** Asked once per app run: the notice is the reason, so the prompt is not a surprise. */
   const isPermitted = (): Promise<boolean> => {
     permission ??= deps.alerts.ensurePermission().catch(() => false);
     return permission;
   };
 
   const post = async (): Promise<void> => {
-    const input = latest;
-    if (!input) return;
-    if (input.session.status === 'completed') {
-      // Once, however many syncs follow: each teardown bumps the generation and dismisses again.
-      if (!tornDown) teardownNotice();
-      tornDown = true;
-      return;
-    }
-    tornDown = false;
+    const session = sessionNow();
+    if (!session || session.status === 'completed') return;
     const mine = generation;
-    if (!(await isPermitted()) || mine !== generation || !latest) return;
+    if (!(await isPermitted()) || mine !== generation) return;
 
     // A rest that ran out while nothing was watching (the phone locked, the rest screen not open) must
     // not come back as a REST card counting from the past: the set card, and its Done, replace it.
     if (rest && rest.endsAt <= now()) dropRest();
 
-    const options = workoutNoticeContent({ ...latest, rest });
+    const fresh = deps.workout.getState();
+    if (!fresh.session) return;
+    const options = workoutNoticeContent({
+      session: fresh.session,
+      pausedMs: fresh.pausedMs,
+      units,
+      rest,
+    });
     if (!options) return;
     const signature = JSON.stringify(options);
     if (signature === lastSignature) return;
@@ -158,16 +170,28 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
       const shown = await deps.notice.show(options);
       if (!shown && lastSignature === signature) lastSignature = null;
       // Ended while this was posting: the card landed after the dismiss, so take it down again. Not if a
-      // newer card has been posted since (a remount): the id is shared, and that dismiss would remove it.
+      // newer card has been posted since: the id is shared, and that dismiss would remove it.
       if (mine !== generation && lastSignature === null) void deps.notice.dismiss(WORKOUT_NOTICE_ID);
     } catch {
       if (lastSignature === signature) lastSignature = null;
     }
   };
 
+  /** Three hours away from the workout screen with nothing logged: the card goes, the workout stays. */
+  const rearmAway = () => {
+    cancelAway?.();
+    cancelAway = null;
+    const session = sessionNow();
+    if (viewing || !session || session.status === 'completed') return;
+    cancelAway = after(() => {
+      cancelAway = null;
+      hideCard();
+    }, AWAY_REMOVAL_MS);
+  };
+
   const openRest = (endsAt: number, totalSeconds: number) => {
     if (rest) cancelAlert(rest);
-    const state: RestState = { endsAt, totalSeconds, alertId: null };
+    const state: RestState = { endsAt, totalSeconds, alertId: null, sessionId: sessionNow()?.id ?? null };
     rest = state;
     void deps.alerts
       .schedule(Math.max(0, Math.round((endsAt - now()) / 1000)))
@@ -192,15 +216,15 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
     if (event.noticeId !== WORKOUT_NOTICE_ID) return;
     const target = parseNoticeAction(event.actionId);
     if (!target) return;
-    if (!latest) {
-      // The app was stopped and is still restoring the session: keep the tap until it is checkable.
+    const session = sessionNow();
+    if (!session) {
+      // The app was stopped and is still restoring the workout: keep the tap until it is checkable.
       if (earlyTaps.length < MAX_EARLY_TAPS) earlyTaps = [...earlyTaps, event];
       return;
     }
-    const input = latest;
-    if (!host || target.sessionId !== input.session.id) return;
+    if (target.sessionId !== session.id) return;
     // Finish was pressed: a button still on the lock screen must not tick a set after workout_finished.
-    if (input.session.status === 'completed') return;
+    if (session.status === 'completed') return;
 
     if (target.kind === 'skip') {
       if (!rest) {
@@ -215,47 +239,72 @@ export function createWorkoutNotice(deps: WorkoutNoticeDeps): WorkoutNotice {
       return;
     }
 
-    const open = findOpenSet(input.session);
+    const open = findOpenSet(session);
     if (!open || open.exerciseIndex !== target.exerciseIndex || open.setIndex !== target.setIndex) return;
     if (rest && now() >= rest.endsAt) dropRest();
 
-    const change = completeSet(input.session, open.exerciseIndex, open.setIndex, new Date(now()));
-    host.apply(change);
-    // Adopted here too, not only by the screen's next render: a second tap right behind this one must
-    // already see the set as done, or it would tick it again.
-    if (!change.refusal) latest = { ...input, session: change.session };
+    // Through the active workout, which logs the events first and adopts the session at once, so a second
+    // tap right behind this one already sees the set as done.
+    deps.workout.apply(completeSet(session, open.exerciseIndex, open.setIndex, new Date(now())));
   };
 
-  const detach = () => {
-    host = null;
-    unsubscribeTaps?.();
-    unsubscribeTaps = null;
-    latest = null;
-    earlyTaps = [];
-    teardownNotice();
+  const onWorkoutChange: Parameters<ActiveWorkout['subscribe']>[0] = (state, change) => {
+    const session = state.session;
+    if (!session || session.status === 'completed') {
+      cancelAway?.();
+      cancelAway = null;
+      earlyTaps = [];
+      if (!tornDown) hideCard();
+      tornDown = true;
+      return;
+    }
+    tornDown = false;
+    // Another workout began: the old one's rest is not this one's.
+    if (rest && rest.sessionId !== session.id) dropRest();
+    if (earlyTaps.length > 0) {
+      const taps = earlyTaps;
+      earlyTaps = [];
+      taps.forEach(handleAction);
+    }
+    rearmAway();
+    if (change?.restStartedSeconds != null) {
+      const length = Math.max(0, change.restStartedSeconds);
+      openRest(now() + length * 1000, length);
+      return;
+    }
+    void post();
   };
 
   return {
-    attach: (nextHost) => {
-      host = nextHost;
-      unsubscribeTaps ??= deps.notice.onAction(handleAction);
-      return detach;
-    },
-    detach,
-    sync: (input) => {
-      latest = input;
-      if (earlyTaps.length > 0) {
-        const taps = earlyTaps;
+    bind: () => {
+      if (unbind) return () => undefined;
+      const stopState = deps.workout.subscribe(onWorkoutChange);
+      const stopTaps = deps.notice.onAction(handleAction);
+      const stop = () => {
+        stopState();
+        stopTaps();
+        cancelAway?.();
+        cancelAway = null;
         earlyTaps = [];
-        taps.forEach(handleAction);
-      }
+        hideCard();
+        tornDown = true;
+        unbind = null;
+      };
+      unbind = stop;
+      // A workout that already exists when this binds (restored before it) is shown at once.
+      if (sessionNow()) onWorkoutChange(deps.workout.getState(), null);
+      return stop;
+    },
+    setUnits: (next) => {
+      units = next;
       void post();
     },
-    adopt: (session) => {
-      if (latest) latest = { ...latest, session };
+    setViewing: (next) => {
+      viewing = next;
+      rearmAway();
+      if (next) void post();
     },
-    beginRest: (session, seconds) => {
-      if (session) latest = { pausedMs: 0, units: {}, ...latest, session };
+    beginRest: (seconds) => {
       const length = Math.max(0, seconds);
       openRest(now() + length * 1000, length);
     },
@@ -284,4 +333,5 @@ export const workoutNotice = createWorkoutNotice({
     schedule: (seconds) => scheduleRestEndNotification(seconds),
     cancel: (identifier) => cancelRestEndNotification(identifier),
   },
+  workout: activeWorkout,
 });

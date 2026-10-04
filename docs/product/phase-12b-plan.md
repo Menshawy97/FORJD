@@ -102,6 +102,36 @@ does not come back after being swiped away mid-rest; the small icon is the FORJD
 3. **Leaving the live screen takes the notice down** (the plan said dismiss on unmount); the workout is
    offered back from Home as before.
 
+**Owner's answers (2026-10-04) to the three differences:** (1) number only, no bar: confirmed. (2) Permission
+at the start of the first workout: confirmed. (3) **Reversed: the card stays after leaving the live screen,
+until the workout is finished.** Decided with the owner: it is removed after **3 hours with nothing logged**,
+and its header time **keeps running** while away.
+
+**12B-2b: the workout survives leaving the screen, with an in-app bar (owner-approved replica, 2026-10-04).**
+The owner also asked, from the Hevy app, that pressing back from a running workout does not end it: a bar
+floats above the tab bar (workout name, running time, current set, a trash button with an "Are you sure?"
+step) and tapping it returns to the workout. Replica approved as drawn (running, resting, paused and
+all-sets-done states; hidden on the workout, rest and set-timer screens). Plan, test-first:
+1. **`workouts/active-workout.ts`: the live session moves out of `live.tsx`'s React state into a
+   module-level store** that outlives the screen (start, restore from snapshot plus log, apply a change
+   with the log written first, unlogged edits, discard, pause accounting, `isLogging`). `live.tsx` becomes
+   a view over it; its 64 existing tests guard the behaviour. A workout is therefore alive until Finish
+   or Discard, not until the screen unmounts.
+2. **The notice controller follows the store** instead of being attached by the screen: every store change
+   syncs the card; a lock-screen Done runs `completeSet` through `store.apply` (log first), with no
+   navigation, so a rest started there is the controller's alone. Finish or discard dismisses everything.
+   After **3 hours with nothing logged and the workout screen not open** the lock-screen card (not the
+   workout) is removed. The 8 away-mode tests drafted for the earlier headless design are replaced by
+   store-based ones.
+3. **The bar** (`workouts/active-workout-bar.tsx`) is mounted once in the root layout over the router,
+   above the tab bar on the tabs and above the bottom inset elsewhere; it reads the store, ticks once a
+   second from wall-clock time, and opens `/live`. The trash asks, then discards: the snapshot and events
+   are deleted, the notice and rest alert cancelled, nothing uploaded (new behaviour).
+4. **Launch restore:** an unfinished snapshot is restored into the store when the app starts, so the bar
+   (and the card) come back after Android killed the process; `/live` still restores on its own.
+Known limit: the 3-hour removal needs JavaScript alive; after the process is killed the card stays until
+the workout is reopened.
+
 **Known limits, to watch on the device walk:**
 - A Skip rest tapped after Android killed the process cannot cancel the "Rest complete" alert (its id was
   lost with the process); the card goes back to the set and the alert still buzzes once.
