@@ -94,6 +94,7 @@ update. Older app builds ignore the new fields (rule 7).
    nothing. It never asks for the permission: the prompt belongs to the switch rows, slice 3.)
 3. **Mock-up for the owner's approval (no code):** the four new rows and the permission-off note on the
    Notifications screen, as a replica approved first (standing rule: no new UI without an approved replica).
+   (Approved 2026-10-06: the screen, the permission-off note, the notification texts, titles and times, and the Forge 25% threshold. Because a switch that does nothing would mislead, each new row ships in the slice of the notification behind it, 5 to 8; the permission prompt and the note were built first, in `4b`.)
 4. **New switches end to end:** domain keys, migration `0033`, contracts, export, deletion check, and the four rows
    on `notifs.tsx` (after approval).
    (Built, rows excluded: the four keys in `@forjd/domain` with defaults off, migration `0033_notification-reminder-switches`,

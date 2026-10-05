@@ -25,7 +25,8 @@ const TAP_ROUTES: readonly string[] = ['/train', '/progress'];
 /** The slice of `expo-notifications` the reconciler uses. */
 export interface LocalNotificationApi {
   platform: string;
-  getPermissionsAsync: () => Promise<{ granted: boolean }>;
+  getPermissionsAsync: () => Promise<{ granted: boolean; canAskAgain: boolean }>;
+  requestPermissionsAsync: () => Promise<{ granted: boolean }>;
   setNotificationChannelAsync: (id: string, channel: Notifications.NotificationChannelInput) => Promise<unknown>;
   getAllScheduledNotificationsAsync: () => Promise<ReadonlyArray<{ identifier: string }>>;
   scheduleNotificationAsync: (input: Notifications.NotificationRequestInput) => Promise<string>;
@@ -40,7 +41,11 @@ export interface LocalNotificationApi {
 
 export const defaultLocalNotificationApi: LocalNotificationApi = {
   platform: Platform.OS,
-  getPermissionsAsync: async () => ({ granted: (await Notifications.getPermissionsAsync()).granted }),
+  getPermissionsAsync: async () => {
+    const result = await Notifications.getPermissionsAsync();
+    return { granted: result.granted, canAskAgain: result.canAskAgain };
+  },
+  requestPermissionsAsync: async () => ({ granted: (await Notifications.requestPermissionsAsync()).granted }),
   setNotificationChannelAsync: (id, channel) => Notifications.setNotificationChannelAsync(id, channel),
   getAllScheduledNotificationsAsync: () => Notifications.getAllScheduledNotificationsAsync(),
   scheduleNotificationAsync: (input) => Notifications.scheduleNotificationAsync(input),
@@ -158,6 +163,43 @@ export function cancelLocalNotifications(api: LocalNotificationApi = defaultLoca
       // Nothing to recover: a notification that could not be listed is cleared by the next reconcile.
     }
   });
+}
+
+export type NotificationPermission = 'granted' | 'undetermined' | 'denied';
+
+/**
+ * Whether the phone lets FORJD show notifications: allowed, not asked yet (so the prompt can still appear), or
+ * refused for good (only the phone's settings can change it, which is when the screen shows its note). A read
+ * that fails counts as not asked, never as an error.
+ */
+export async function readNotificationPermission(
+  api: LocalNotificationApi = defaultLocalNotificationApi,
+): Promise<NotificationPermission> {
+  try {
+    const { granted, canAskAgain } = await api.getPermissionsAsync();
+    if (granted) return 'granted';
+    return canAskAgain ? 'undetermined' : 'denied';
+  } catch {
+    return 'undetermined';
+  }
+}
+
+/**
+ * Asks for the permission only if the phone has not decided yet. Called where the person turns a reminder on, so
+ * the prompt appears at the moment its reason is obvious (the reconciler itself never asks). Answers whether
+ * notifications are now allowed. Never throws.
+ */
+export async function ensureLocalNotificationPermission(
+  api: LocalNotificationApi = defaultLocalNotificationApi,
+): Promise<boolean> {
+  try {
+    const { granted, canAskAgain } = await api.getPermissionsAsync();
+    if (granted) return true;
+    if (!canAskAgain) return false;
+    return (await api.requestPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
 }
 
 export interface TapLike {

@@ -3,6 +3,7 @@
 // There is deliberately no Save button: toggles apply and persist immediately (§5.5).
 import { fireEvent, render as rtlRender, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockReplace = jest.fn();
@@ -21,9 +22,23 @@ jest.mock('@/store/notification-preferences', () => ({
     pr: true,
     rank: false,
     weekly: true,
+    meals: false,
+    noWorkout: false,
+    forgeClosing: false,
+    weighIn: false,
   },
   loadNotificationPreferences: jest.fn(),
   saveNotificationPreferences: jest.fn(),
+}));
+
+// The phone's notification permission and the schedule behind it are proven in
+// `features/notifications/__tests__`; here only what the screen does with them.
+jest.mock('@/features/notifications/local-notifications', () => ({
+  ensureLocalNotificationPermission: jest.fn(),
+  readNotificationPermission: jest.fn(),
+}));
+jest.mock('@/features/notifications/use-local-notifications', () => ({
+  requestLocalNotificationReconcile: jest.fn(),
 }));
 
 jest.mock('@/store/notification-preferences-sync', () => ({
@@ -36,6 +51,11 @@ import {
   loadNotificationPreferences,
   saveNotificationPreferences,
 } from '@/store/notification-preferences';
+import {
+  ensureLocalNotificationPermission,
+  readNotificationPermission,
+} from '@/features/notifications/local-notifications';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
 import NotifsScreen from '../notifs';
 
@@ -57,6 +77,8 @@ describe('NotifsScreen', () => {
     (saveNotificationPreferences as jest.Mock).mockResolvedValue(undefined);
     (syncNotificationPreferences as jest.Mock).mockResolvedValue(null);
     (queueNotificationChange as jest.Mock).mockResolvedValue(undefined);
+    (readNotificationPermission as jest.Mock).mockResolvedValue('granted');
+    (ensureLocalNotificationPermission as jest.Mock).mockResolvedValue(true);
   });
 
   it('renders the header, intro copy and all five rows', async () => {
@@ -67,7 +89,7 @@ describe('NotifsScreen', () => {
       await findByText('Two rules: nothing at night, nothing you cannot act on.'),
     ).toBeTruthy();
     expect(await findByText('Workout reminders')).toBeTruthy();
-    expect(await findByText('On your program days, 30 min before')).toBeTruthy();
+    expect(await findByText('30 min before you usually train')).toBeTruthy();
     expect(await findByText('Recovery alerts')).toBeTruthy();
     expect(await findByText('When HRV or sleep drops sharply')).toBeTruthy();
     expect(await findByText('PR celebrations')).toBeTruthy();
@@ -75,7 +97,7 @@ describe('NotifsScreen', () => {
     expect(await findByText('Leaderboard moves')).toBeTruthy();
     expect(await findByText('When your city rank changes')).toBeTruthy();
     expect(await findByText('Weekly summary')).toBeTruthy();
-    expect(await findByText('Sunday evening recap')).toBeTruthy();
+    expect(await findByText('Saturday morning, when your week closes')).toBeTruthy();
   });
 
   it('renders the quiet hours block with the literal window and Change control', async () => {
@@ -218,5 +240,66 @@ describe('NotifsScreen', () => {
 
     expect(queryByText('Save')).toBeNull();
     expect(queryByText('Save Changes')).toBeNull();
+  });
+
+  // Phase 12E-4 (approved replica, 2026-10-06): the phone asks the first time a reminder is turned on, and the
+  // screen says so when the phone's own setting is off.
+  describe('the phone permission', () => {
+    it('shows the note, with a link to the phone settings, only when the phone has refused notifications', async () => {
+      (readNotificationPermission as jest.Mock).mockResolvedValue('denied');
+      const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
+
+      const { findByText } = await render(<NotifsScreen />);
+
+      expect(await findByText('Notifications are off for FORJD on this phone')).toBeTruthy();
+      expect(
+        await findByText("Your choices below are saved, but nothing will arrive until you turn them on in your phone's settings."),
+      ).toBeTruthy();
+      fireEvent.press(await findByText('Open settings'));
+      expect(openSettings).toHaveBeenCalledTimes(1);
+      openSettings.mockRestore();
+    });
+
+    it.each(['granted', 'undetermined'])('shows no note when the permission is %s', async (state) => {
+      (readNotificationPermission as jest.Mock).mockResolvedValue(state);
+
+      const { queryByText, findByText } = await render(<NotifsScreen />);
+      await findByText('Workout reminders');
+
+      await waitFor(() => expect(readNotificationPermission).toHaveBeenCalled());
+      expect(queryByText('Notifications are off for FORJD on this phone')).toBeNull();
+    });
+
+    it('asks the phone when a reminder that the phone schedules is turned on, then plans again', async () => {
+      (loadNotificationPreferences as jest.Mock).mockResolvedValue({ ...DEFAULT_NOTIFICATION_PREFERENCES, weekly: false });
+
+      const { findByText } = await render(<NotifsScreen />);
+      fireEvent.press(await findByText('Weekly summary'));
+
+      await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(requestLocalNotificationReconcile).toHaveBeenCalled());
+    });
+
+    it('does not ask when a reminder is turned off, or when a switch the server sends is turned on', async () => {
+      const { findByText } = await render(<NotifsScreen />);
+
+      fireEvent.press(await findByText('Workout reminders'));
+      fireEvent.press(await findByText('Leaderboard moves'));
+
+      await waitFor(() => expect(saveNotificationPreferences).toHaveBeenCalledTimes(2));
+      expect(ensureLocalNotificationPermission).not.toHaveBeenCalled();
+    });
+
+    it('shows the note once the person refuses the prompt, and still keeps their choice', async () => {
+      (loadNotificationPreferences as jest.Mock).mockResolvedValue({ ...DEFAULT_NOTIFICATION_PREFERENCES, weekly: false });
+      (readNotificationPermission as jest.Mock).mockResolvedValueOnce('undetermined').mockResolvedValue('denied');
+      (ensureLocalNotificationPermission as jest.Mock).mockResolvedValue(false);
+
+      const { findByText } = await render(<NotifsScreen />);
+      fireEvent.press(await findByText('Weekly summary'));
+
+      expect(await findByText('Notifications are off for FORJD on this phone')).toBeTruthy();
+      expect(saveNotificationPreferences).toHaveBeenCalledWith({ ...DEFAULT_NOTIFICATION_PREFERENCES, weekly: true });
+    });
   });
 });

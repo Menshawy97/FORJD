@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { AppState, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
@@ -14,6 +14,11 @@ import {
   saveNotificationPreferences,
   type NotificationPreferences,
 } from '@/store/notification-preferences';
+import {
+  ensureLocalNotificationPermission,
+  readNotificationPermission,
+  type NotificationPermission,
+} from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
 import { colors } from '@/theme/tokens';
@@ -33,12 +38,18 @@ const ROWS: ReadonlyArray<{
   title: string;
   subtitle: string;
 }> = [
-  { key: 'workout', title: 'Workout reminders', subtitle: 'On your program days, 30 min before' },
+  { key: 'workout', title: 'Workout reminders', subtitle: '30 min before you usually train' },
   { key: 'recovery', title: 'Recovery alerts', subtitle: 'When HRV or sleep drops sharply' },
   { key: 'pr', title: 'PR celebrations', subtitle: 'When you beat a lift or a run' },
   { key: 'rank', title: 'Leaderboard moves', subtitle: 'When your city rank changes' },
-  { key: 'weekly', title: 'Weekly summary', subtitle: 'Sunday evening recap' },
+  { key: 'weekly', title: 'Weekly summary', subtitle: 'Saturday morning, when your week closes' },
 ];
+
+/**
+ * The switches whose notifications the phone schedules itself (Phase 12E), so turning one on is the moment to ask
+ * the phone for permission. The others are sent by the server (push, 12F and later) and need no prompt yet.
+ */
+const SCHEDULED_ON_PHONE: ReadonlySet<keyof NotificationPreferences> = new Set(['workout', 'weekly']);
 
 /** §5.2, verbatim: em dash U+2014 with a space either side, not a hyphen. */
 const QUIET_HOURS = '22:00 — 07:00';
@@ -48,6 +59,9 @@ export default function NotifsScreen() {
     DEFAULT_NOTIFICATION_PREFERENCES,
   );
   const toast = useToast();
+  // Whether the phone lets FORJD show notifications. The note below only appears for a refusal, which only the
+  // phone's own settings can undo; before the first question there is nothing to say.
+  const [permission, setPermission] = useState<NotificationPermission>('undetermined');
   // Set once the person taps a switch, so a server answer that arrives later never undoes their tap.
   const touchedRef = useRef(false);
 
@@ -72,13 +86,41 @@ export default function NotifsScreen() {
     };
   }, []);
 
+  // Read on opening and again whenever the app comes back to the front, because the person may have just changed
+  // the setting in the phone's settings.
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      void readNotificationPermission().then((state) => {
+        if (!cancelled) setPermission(state);
+      });
+    };
+    refresh();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    return () => {
+      cancelled = true;
+      subscription.remove();
+    };
+  }, []);
+
   const goBack = () => router.replace('/profile');
 
   const toggle = (key: keyof NotificationPreferences) => {
     const next = { ...preferences, [key]: !preferences[key] };
     touchedRef.current = true;
     setPreferences(next);
-    void saveNotificationPreferences(next).then(requestLocalNotificationReconcile);
+    void (async () => {
+      await saveNotificationPreferences(next);
+      // The prompt appears at the moment its reason is obvious: the first time a reminder is switched on. A
+      // refusal keeps the choice; the note below then says why nothing arrives.
+      if (next[key] && SCHEDULED_ON_PHONE.has(key)) {
+        await ensureLocalNotificationPermission();
+        setPermission(await readNotificationPermission());
+      }
+      requestLocalNotificationReconcile();
+    })();
     void queueNotificationChange(preferences, next);
   };
 
@@ -90,6 +132,24 @@ export default function NotifsScreen() {
         className="flex-1 px-screen-x"
         contentContainerStyle={{ paddingBottom: 26 }}
         showsVerticalScrollIndicator={false}>
+        {permission === 'denied' && (
+          <View className="mb-[10px] rounded-card border border-borderPro bg-surface px-4 py-[13px]">
+            <Text className="font-archivo text-[14px] font-semibold text-text">
+              Notifications are off for FORJD on this phone
+            </Text>
+            <Text className="mt-[3px] font-archivo text-row-subtitle text-dimmer">
+              Your choices below are saved, but nothing will arrive until you turn them on in your phone's settings.
+            </Text>
+            <Pressable
+              accessibilityRole="link"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              className="mt-[9px] self-start"
+              onPress={() => void Linking.openSettings()}>
+              <Text className="font-archivo text-[12.5px] font-semibold text-accent">Open settings</Text>
+            </Pressable>
+          </View>
+        )}
+
         <Text className="mb-2 font-archivo text-[13px] leading-[1.5] text-dim">
           Two rules: nothing at night, nothing you cannot act on.
         </Text>
