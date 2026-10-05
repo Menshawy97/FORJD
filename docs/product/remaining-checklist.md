@@ -53,7 +53,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 ### Privacy and honesty
 - [x] L3-3: Sentry text and consent (G1, #312): reports keep only error type and stack frames; none sent when crash diagnostics is off
 - [ ] Define data retention periods (privacy policy needs them)
-- [ ] Fix the `security.md` "encrypted DB fields" claim or encrypt more (only WHOOP tokens are encrypted)
+- [x] `security.md` encryption claim corrected: only WHOOP tokens are app-level encrypted; the rest relies on the host (not verified here)
 - [ ] Revoked Health Connect permission reads as "no watch"; show an honest hint
 - [ ] Watch calories summed across all Health Connect origins (possible double count, rule 10); filter by origin
 - [ ] *(unconfirmed)* `AuthenticatedGate` date-of-birth `getMe` may misroute a new account after a quick account switch
@@ -88,7 +88,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] "Analyse" vs "Analyze" spelling consistency
 - [ ] Heart-rate zones (Tanaka) as a possible feature
 - [ ] Expo web cannot bundle (expo-sqlite worker); previews rely on HTML mirrors
-- [ ] Write `ADR-017` or fix the 10 references to it
+- [x] `ADR-017` written (canonical exercise model) and the "reserved/unwritten" notes updated
 - [x] InBody `confirm` orphaned photo on a failed save: now deleted (#329)
 - [ ] *(unconfirmed)* `live.tsx` Finish has no disabled state
 - [x] Contrast of chip and segment text measured and pinned in `tokens.test.ts`: `dim` and `metadata` pass everywhere; `segmentedInactive` passes on its track by a hair (4.501:1)
@@ -112,6 +112,6 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Dual-platform public launch
 
 ## 4. Stale doc statements to correct
-- [ ] `slice-2-plan.md` lists "Is RLS configured?" as open; ADR-038 and `security.md` resolved it
-- [ ] Roadmap's old "Manual steps only the user can do" section lists steps already done
-- [ ] `phase-3-plan.md` open questions 2-3 are probably settled
+- [x] `slice-2-plan.md` RLS question marked resolved (ADR-038)
+- [x] Roadmap old "Manual steps" list annotated with what is obsolete, done or still owed
+- [x] `phase-3-plan.md` open questions 2-4 marked settled

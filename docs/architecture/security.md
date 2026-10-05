@@ -12,9 +12,12 @@ statement.
 
 ## Baseline
 
-TLS everywhere. Encrypted DB fields where appropriate. Encrypted object
-storage. Secrets in a secret manager, never mobile source (`CLAUDE.md` rule
-5). Token encryption for `ExternalConnection` records. Access control
+TLS everywhere. At the application layer, only the OAuth tokens in `ExternalConnection`
+records are encrypted (AES-256-GCM, ADR-036); no other database field is encrypted by this code.
+Everything else, database rows and object storage alike, relies on the host's default
+encryption at rest (Supabase), which this repository does not configure and has not verified
+(`data-inventory.md` lists it as "platform default"). Secrets in a secret manager, never mobile
+source (`CLAUDE.md` rule 5). Access control
 enforced in NestJS guards — **and only there.** Row-level security is not
 enabled on any table, and `apps/api` connects to Postgres directly through
 `pg.Pool` with `DATABASE_URL`'s configured role, not through Supabase's

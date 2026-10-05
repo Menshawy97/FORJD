@@ -107,5 +107,6 @@ athletes. The prototype's own lowercasing input shows the intent is a single cas
 `docs/product/phase-2-plan.md` had reserved **ADR-019** for an on-device exercise catalogue
 decision, but never wrote the file. This ADR takes 019 because it exists; the exercise
 catalogue decision was renumbered to **ADR-022**, and that plan's "Note on numbering" records
-the move. **ADR-017** remains reserved for the canonical exercise model and is still unwritten
-— its decision currently lives in `phase-2-plan.md`'s locked-decisions table.
+the move. **ADR-017** was reserved for the canonical exercise model and is now written
+([ADR-017](ADR-017-canonical-exercise-model.md), 2026-10-05); its decision was taken from
+`phase-2-plan.md`'s locked-decisions table.

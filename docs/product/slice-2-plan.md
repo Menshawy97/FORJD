@@ -297,8 +297,7 @@ the merge commit is green.
 
 ## Still open — surface these rather than guessing
 
-1. **Is RLS actually configured on Supabase? Still genuinely open — needs a human decision,
-   not an engineering call.** Nothing in the repo creates a policy and the API connects as the
+1. **Is RLS actually configured on Supabase? Resolved by ADR-038 (R29): no, and the docs were corrected; NestJS guards are the only authorization layer.** The original question, kept for the record: this was open and needed a human decision, not an engineering call. Nothing in the repo creates a policy and the API connects as the
    owning role, so rule 12's "RLS is defense-in-depth" currently describes something that does
    not exist for any table, `privacy_settings` included. Two honest paths: build the policies
    (real work, and a decision about who else might read the DB directly — Studio, an admin
