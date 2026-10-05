@@ -41,10 +41,6 @@ jest.mock('@/features/notifications/use-local-notifications', () => ({
   requestLocalNotificationReconcile: jest.fn(),
 }));
 
-jest.mock('@/store/weigh-in-reminder-anchor', () => ({
-  clearWeighInSince: jest.fn(),
-}));
-
 jest.mock('@/store/notification-preferences-sync', () => ({
   syncNotificationPreferences: jest.fn(),
   queueNotificationChange: jest.fn(),
@@ -61,7 +57,6 @@ import {
 } from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
-import { clearWeighInSince } from '@/store/weigh-in-reminder-anchor';
 import NotifsScreen from '../notifs';
 
 const METRICS = {
@@ -433,7 +428,7 @@ describe('NotifsScreen', () => {
       await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
     });
 
-    it('asks the phone when the weigh-in reminder is turned on, and forgets its start day when it is turned off', async () => {
+    it('asks the phone when the weigh-in reminder is turned on', async () => {
       (loadNotificationPreferences as jest.Mock).mockResolvedValue({
         ...DEFAULT_NOTIFICATION_PREFERENCES,
         workout: false,
@@ -443,11 +438,6 @@ describe('NotifsScreen', () => {
       const { findByText } = await render(<NotifsScreen />);
       fireEvent.press(await findByText('Monthly weigh-in or scan'));
       await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
-      expect(clearWeighInSince).not.toHaveBeenCalled();
-
-      fireEvent.press(await findByText('Monthly weigh-in or scan'));
-
-      await waitFor(() => expect(clearWeighInSince).toHaveBeenCalledTimes(1));
     });
 
     it('shows the note once the person refuses the prompt, and still keeps their choice', async () => {

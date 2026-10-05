@@ -28,7 +28,7 @@ import { isNotFound } from '@/auth/failure';
 import { loadFeatureFlags } from '@/features/flags/feature-flags';
 import { WEEKLY_FORGE_FLAG } from '@/features/forge/use-forge-week';
 import { loadNotificationPreferences, type NotificationPreferences } from '@/store/notification-preferences';
-import { getOrSetWeighInSince } from '@/store/weigh-in-reminder-anchor';
+import { clearWeighInSince, getOrSetWeighInSince } from '@/store/weigh-in-reminder-anchor';
 
 /**
  * Gathers what the pure planner needs (Phase 12E, ADR-064) and runs it: the switches from the device copy, the
@@ -47,6 +47,8 @@ export interface PlanInputSources {
   listScans: () => Promise<BodyScanListResponse>;
   /** The day the switch was turned on, for someone with no scan to count from. */
   getWeighInSince: (today: string) => Promise<string>;
+  /** Forgets that day, so turning the switch on again starts a new month. */
+  forgetWeighInSince: () => Promise<void>;
 }
 
 export const defaultPlanInputSources: PlanInputSources = {
@@ -60,6 +62,7 @@ export const defaultPlanInputSources: PlanInputSources = {
   getForge,
   listScans: listBodyScans,
   getWeighInSince: getOrSetWeighInSince,
+  forgetWeighInSince: clearWeighInSince,
 };
 
 /** Enough to cover the planner's four-week window for anyone who trains daily. */
@@ -136,9 +139,11 @@ async function readForgeWeek(
  */
 async function readWeighInAnchor(sources: PlanInputSources, today: string): Promise<string> {
   const { scans } = await sources.listScans();
+  // A scan dated after today (a mistyped year) is ignored, or it would silence the reminder until then.
   const latest = scans.reduce<number | null>((best, scan) => {
     const at = Date.parse(scan.measuredAt);
-    return Number.isFinite(at) && (best === null || at > best) ? at : best;
+    if (!Number.isFinite(at) || localDate(new Date(at)) > today) return best;
+    return best === null || at > best ? at : best;
   }, null);
   return latest === null ? sources.getWeighInSince(today) : localDate(new Date(latest));
 }
@@ -149,6 +154,9 @@ export async function buildLocalNotificationPlan(
 ): Promise<PlannedLocalNotification[] | null> {
   try {
     const switches = await sources.loadPreferences();
+    // Whichever device or screen turned the monthly check-in off, its start day is forgotten the next time the
+    // switch is seen off, so turning it on again counts a new month.
+    if (!switches.weighIn) await sources.forgetWeighInSince();
     // Nothing wanted: no reason to touch the network, and the empty plan clears what was scheduled.
     if (!switches.workout && !switches.weekly && !switches.meals && !switches.noWorkout && !switches.forgeClosing && !switches.weighIn) {
       return [];

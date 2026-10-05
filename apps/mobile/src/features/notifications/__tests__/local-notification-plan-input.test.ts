@@ -41,6 +41,7 @@ function sources(overrides: Partial<PlanInputSources> = {}): PlanInputSources {
     getForge: jest.fn(async () => forgeWeek(0.5)),
     listScans: jest.fn(async () => ({ scans: [] })),
     getWeighInSince: jest.fn(async (today: string) => today),
+    forgetWeighInSince: jest.fn(async () => undefined),
     getStats: jest.fn(async () => ({ weekStreak: 0 }) as Awaited<ReturnType<PlanInputSources['getStats']>>),
     ...overrides,
   } as PlanInputSources;
@@ -374,12 +375,32 @@ describe('buildLocalNotificationPlan: monthly weigh-in or scan (12E-8)', () => {
     expect(plan).toBeNull();
   });
 
-  it('reads nothing when the switch is off', async () => {
+  it('reads nothing when the switch is off, and forgets the start day so turning it on again starts a new month', async () => {
     const s = sources();
 
     await buildLocalNotificationPlan(s, NOW);
 
     expect(s.listScans).not.toHaveBeenCalled();
     expect(s.getWeighInSince).not.toHaveBeenCalled();
+    expect(s.forgetWeighInSince).toHaveBeenCalled();
+  });
+
+  it('keeps the start day while the switch is on', async () => {
+    const s = withWeighIn();
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.forgetWeighInSince).not.toHaveBeenCalled();
+  });
+
+  it('ignores a scan dated in the future, so one typo does not silence the reminder', async () => {
+    // A scan on 9 Sep and a mistaken one in 2027: the real latest scan counts.
+    const typo = { id: 's2', measuredAt: new Date(2027, 8, 9, 9).toISOString(), source: 'manual', weightKg: 80, bodyFatPercent: null } as never;
+    const plan = await buildLocalNotificationPlan(
+      withWeighIn({ listScans: jest.fn(async () => ({ scans: [scanOn(9), typo] })) }),
+      NOW,
+    );
+
+    expect(weighInIds(plan)).toEqual(['forjd-local:weighIn:2026-10-09']);
   });
 });

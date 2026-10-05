@@ -21,7 +21,6 @@ import {
 } from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
-import { clearWeighInSince } from '@/store/weigh-in-reminder-anchor';
 import { colors } from '@/theme/tokens';
 
 // docs/design/slice2-screen-specs.md §5. Device-local only: there is no notifications backend
@@ -158,8 +157,6 @@ export default function NotifsScreen() {
     applyPreferences(next);
     void (async () => {
       await saveNotificationPreferences(next);
-      // Turning the monthly check-in off forgets the day it counted from, so turning it on again starts a new month.
-      if (key === 'weighIn' && !next.weighIn) await clearWeighInSince();
       // The prompt appears at the moment its reason is obvious: when a reminder is switched on. It is skipped for
       // one that was switched straight back off. A refusal keeps the choice; the note then says why nothing arrives.
       if (preferencesRef.current[key] && SCHEDULED_ON_PHONE.has(key)) {
