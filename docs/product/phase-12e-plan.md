@@ -1,6 +1,6 @@
 # Phase 12E — local scheduled notifications
 
-**Status (2026-10-05): approved by the owner. Slice 0 (this plan and ADR-064) merged (#334); slice 1 (the planner) built, in review.** Every slice is its
+**Status (2026-10-05): approved by the owner. Slice 0 (this plan and ADR-064) merged (#334); slice 1 (the planner) merged (#335); slice 2 (the reconciler, hook and kinds 1 and 2 live) built, in review.** Every slice is its
 own PR, test-first, reviewed, merged with `main` green. Decision record:
 [ADR-064](../decisions/ADR-064-local-notifications-planned-and-rescheduled.md). Builds on 12D
 ([phase-12d-plan.md](phase-12d-plan.md)), which put the five switches on the server.
@@ -87,6 +87,11 @@ update. Older app builds ignore the new fields (rule 7).
 1. **Planner (domain):** habit inference, quiet hours, the 14-day plan for kinds 1 and 2. Pure tests first. (Built: `packages/domain/src/local-notification-plan.ts`. The review added a guard that ignores malformed dates and minutes, and tests for the window and quiet-hour edges. Not done, by choice: de-duplicating two sessions on one day, which only skews the median slightly.)
 2. **Reconciler, hook, kinds 1 and 2 live:** the seam, the channel, the triggers, sign-out cancel, tap routing.
    Fake-scheduler tests and a root-layout hook test (pattern: `root-layout-background-upload.test.tsx`).
+   (Built: `apps/mobile/src/features/notifications/`. The seam is its own small interface rather than an extension of
+   `NotificationScheduler`, like the run notice's. Review fixes: the plan is read inside the one-at-a-time queue and a
+   newer ask supersedes older ones, so a slow older read can never overwrite a newer plan or re-schedule after a
+   sign-out; the new plan is scheduled before stale reminders are cancelled, so a failure never leaves the person with
+   nothing. It never asks for the permission: the prompt belongs to the switch rows, slice 3.)
 3. **Mock-up for the owner's approval (no code):** the four new rows and the permission-off note on the
    Notifications screen, as a replica approved first (standing rule: no new UI without an approved replica).
 4. **New switches end to end:** domain keys, migration `0033`, contracts, export, deletion check, and the four rows
@@ -113,6 +118,11 @@ update. Older app builds ignore the new fields (rule 7).
 
 ## Risks
 
+- **Accepted limits of slice 2.** A workout finished offline is not on the server yet, so until it uploads the plan can
+  still remind for a workout already done (the planner reads the server's sessions; a re-plan follows the upload).
+  The habit read takes the last 100 sessions of any status, so someone who logs far more than a dozen a week could lose
+  the older weeks. A tap that cold-starts the app calls the router right away, which may be too early on a slow
+  start: check it in the device walk and add a navigator-ready wait if it drops.
 - **Habit inference guesses wrong early.** Mitigated by staying quiet with too little history and by one per day.
 - **iOS's pending limit and Android battery killers.** Reminders are best effort, not guaranteed.
 - **Stale conditions** (a nudge scheduled before the person trains). Mitigated by recomputing on every foreground

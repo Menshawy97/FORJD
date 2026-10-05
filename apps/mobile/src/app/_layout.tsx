@@ -23,6 +23,10 @@ import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secu
 import { markIntroShown, shouldShowIntro } from '@/components/brand/intro-gate';
 import { IntroSplash } from '@/components/brand/intro-splash';
 import { syncTimeZone } from '@/features/forge/time-zone-sync';
+import {
+  requestLocalNotificationReconcile,
+  useLocalNotifications,
+} from '@/features/notifications/use-local-notifications';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
 import { getExerciseUnits } from '@/store/exercise-unit-preferences';
@@ -141,11 +145,18 @@ export default function RootLayout() {
    */
   useEffect(() => {
     if (!authChecked || !authenticated) return;
-    void syncPendingSessions();
+    // A workout that has just reached the server changes what the reminders should be (12E), so the schedule
+    // is planned again after an upload that sent something.
+    const uploadAndReplan = () => {
+      void syncPendingSessions().then((result) => {
+        if (result.uploaded.length > 0) requestLocalNotificationReconcile();
+      });
+    };
+    uploadAndReplan();
     void syncTimeZone();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
-      void syncPendingSessions();
+      uploadAndReplan();
       void syncTimeZone();
       // The three-hours-away removal of the workout card cannot rely on a timer the OS may not run in the
       // background, so the clock is checked whenever the app is looked at again.
@@ -163,6 +174,10 @@ export default function RootLayout() {
     if (!authChecked) return;
     void (authenticated ? registerBackgroundUpload() : unregisterBackgroundUpload());
   }, [authChecked, authenticated]);
+
+  // The reminders and the weekly recap the phone schedules for itself (12E): planned from the person's own
+  // history, reconciled at launch and on returning to the app, cleared on sign-out.
+  useLocalNotifications(authChecked, authenticated);
 
   /**
    * The workout in progress outlives any screen (12B-2b): the lock-screen notice follows it from the moment the
