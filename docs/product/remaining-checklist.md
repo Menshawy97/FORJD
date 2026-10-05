@@ -1,6 +1,7 @@
 # Remaining work checklist
 
-Compiled 2026-10-05 from a read of `docs/` (roadmap, plans, reviews, architecture, ADR statuses).
+Compiled 2026-10-05 from a read of `docs/` (roadmap, plans, reviews, architecture, ADR statuses), then
+brought up to date with `main` at `ab49fa5` (engineering gaps G1-G7 and Phase 12A-12C merged).
 `roadmap.md` stays the source of truth; tick items here as they close and update the roadmap in
 the same PR. Items marked *(unconfirmed)* were reported by a review but not reproduced.
 
@@ -9,6 +10,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 ### Device tests (most urgent first)
 - [ ] **Health Connect test on a physical Android phone** (ADR-035, R8, 8.5 S10). Grant and refuse heart rate and calories each alone; the run must keep whichever was granted.
 - [ ] Dev-client build, then walk: a real run (GPS, map, keep-awake, pause on lock)
+- [ ] 12A locked-phone 30-minute run, 12B workout-notice walk, 12C offline-finish-then-upload walk (needs an Android 7+ phone; your OPPO A37f is Android 5.1.1, so an EAS build plus a borrowed phone or an emulator)
 - [ ] Location on the Rank tab (`aapt dump permissions` shows coarse only, asked once)
 - [ ] Google sign-in
 - [ ] New icon and splash
@@ -49,7 +51,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 ## 2. Engineering still open (not scheduled)
 
 ### Privacy and honesty
-- [ ] L3-3: Sentry does not scrub health values from exception messages; `crash_diagnostics` only strips the user id
+- [x] L3-3: Sentry text and consent (G1, #312): reports keep only error type and stack frames; none sent when crash diagnostics is off
 - [ ] Define data retention periods (privacy policy needs them)
 - [ ] Fix the `security.md` "encrypted DB fields" claim or encrypt more (only WHOOP tokens are encrypted)
 - [ ] Revoked Health Connect permission reads as "no watch"; show an honest hint
@@ -63,18 +65,18 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Choose the launch-email service
 
 ### Runs
-- [ ] Leftover snapshot of an already-uploaded run can be offered for recovery
-- [ ] Route array rebuilt every second; memoise
-- [ ] Remove or use the unused `run_points` table
+- [x] Leftover snapshot of an uploaded run: finish is now atomic (G6, #314)
+- [x] Route array rebuilt every second (G6, #314)
+- [x] Unused `run_points` table removed (G6, #314)
 - [ ] Miles option
 - [ ] Run share card ("Route & Splits", currently "coming soon")
 - [ ] Discarding a run whose snapshot clear fails is silent
 
 ### Speed and CI (low)
-- [ ] Leaderboard 15 s cache never evicts old month keys
-- [ ] Batch `GET /nutrition/foods?ids=` (first Nutrition visit is one request per food)
-- [ ] Two R28 timing tests keep 2 s wall-clock bounds
-- [ ] *(unconfirmed)* `ci.yml` has no top-level `permissions:` block
+- [x] Leaderboard 15 s cache eviction (G3, #313)
+- [x] Batch `GET /nutrition/foods?ids=` (G5, #315)
+- [x] R28 wall-clock timing tests deleted (G4, #311)
+- [x] `ci.yml` least-privilege token (G2, #311)
 - [ ] Re-measure cold start in europe-west1
 - [ ] *(unconfirmed)* `pg` pool settings and pooler port on `DATABASE_URL`
 
@@ -93,10 +95,10 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Onboarding brief (including showing Weekly Forge "How it works" once); needs owner approval
 
 ## 3. Planned phases not started
-- [ ] Phase 12 decisions (4 ADRs): background tracking, push transport, notification content, widgets
-- [ ] 12A background run (Android foreground service)
-- [ ] 12B strength session in the background
-- [ ] 12C background upload
+- [ ] Phase 12 decisions: ADR-059, 060, 061 and 063 accepted; **ADR-062 (widgets) still Proposed**, needs your decision
+- [x] 12A background run built (#318-#321); **device test owed**
+- [x] 12B workout lock-screen notice built (#323-#325); **device walk owed**
+- [x] 12C background upload built (#327); **device walk owed**
 - [ ] Limited Android beta (needs 8.5 closed, 12A-C, Play Console, device tests)
 - [ ] Phase 9 post-beta iteration
 - [ ] 12D server-side notification preferences

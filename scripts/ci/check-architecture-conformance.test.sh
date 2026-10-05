@@ -238,6 +238,39 @@ setup_google_sdk_outside_adapter() {
   write "$dir/apps/mobile/src/app/login.tsx"     "import { GoogleSignin } from '@react-native-google-signin/google-signin';"
 }
 
+setup_task_manager_outside_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/mobile/src/features/run/tracker.ts" "import * as TaskManager from 'expo-task-manager';"
+}
+
+# Phase 12C: expo-background-task lives behind apps/mobile/src/integrations/background/, which is also
+# the one other place expo-task-manager may be used.
+setup_background_task_outside_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/mobile/src/features/run/tracker.ts" "import * as BackgroundTask from 'expo-background-task';"
+}
+
+setup_background_adapter_uses_sdks() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/mobile/src/integrations/background/background-upload.ts" \
+    "const a = require('expo-background-task'); const b = require('expo-task-manager');"
+}
+
+setup_ongoing_notice_outside_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/mobile/src/workouts/workout-notice.ts" "import Native from '../../modules/forjd-ongoing-notice/src/ForjdOngoingNoticeModule';"
+}
+
+setup_ongoing_notice_in_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/mobile/src/integrations/notifications/ongoing-notice.ts" "const m = require('../../../modules/forjd-ongoing-notice/src/ForjdOngoingNoticeModule');"
+}
+
 setup_apple_sdk_outside_adapter() {
   local dir="$1"
   setup_everything_clean "$dir"
@@ -259,6 +292,11 @@ run_case "missing-guarded-directory"   fail setup_missing_guarded_directory
 run_case "google-sdk-outside-adapter"   fail setup_google_sdk_outside_adapter
 run_case "apple-sdk-outside-adapter"    fail setup_apple_sdk_outside_adapter
 run_case "unpinned-workflow-action"    fail setup_unpinned_workflow_action
+run_case "task-manager-outside-adapter" fail setup_task_manager_outside_adapter
+run_case "background-task-outside-adapter" fail setup_background_task_outside_adapter
+run_case "background-adapter-uses-sdks" pass setup_background_adapter_uses_sdks
+run_case "ongoing-notice-outside-adapter" fail setup_ongoing_notice_outside_adapter
+run_case "ongoing-notice-in-adapter"   pass setup_ongoing_notice_in_adapter
 run_case "everything-clean"            pass setup_everything_clean
 
 echo ""

@@ -2,6 +2,7 @@ import { Inject, Logger, Module, OnModuleInit } from '@nestjs/common';
 
 import { AuthProviderModule } from '../auth/auth-provider.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CrashConsentRegistrar } from '../observability/crash-consent.registrar';
 import { PrivacyRepository } from '../privacy/privacy.repository';
 import { PrivacyService } from '../privacy/privacy.service';
 import { StorageModule } from '../storage/storage.module';
@@ -29,6 +30,7 @@ import { UsersService } from './users.service';
     SubscriptionService,
     AvatarUploadService,
     JwtAuthGuard,
+    CrashConsentRegistrar,
   ],
   exports: [UsersRepository, PrivacyRepository, PrivacyService, SubscriptionService],
 })

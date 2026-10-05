@@ -130,15 +130,22 @@ is absent" (a 400, a no-op, a scrubbed identifier) that a boolean-returning guar
 any better than the guard-vs-service split in `AthletesService` already does for authorization.
 Build it when a route-level gate is the actual shape a future consumer needs, not before.
 
-`crash_diagnostics` is enforced, not merely stored: Sentry's `beforeSend`
-(`apps/api/src/observability/sentry-scrub.ts`) scrubs the user identifier from every crash event
-unless the current request scope carries the exact opt-in marker, and it **fails closed** —
-absence, `'off'`, and any unrecognised tag value all scrub. Most events come from paths that
-never read this user's settings (a crash during bootstrap, an unauthenticated request), and for
-those the honest answer is "unknown," which must behave like "no." This is *not* the mechanism
-that keeps health data out of Sentry — the non-negotiable rule at the top of this document does
-that unconditionally, regardless of any toggle's position — and device-side enforcement is
-still separately necessary, because a crash can happen before any network call succeeds.
+`crash_diagnostics` is enforced, not merely stored (G1, 2026-10-01,
+`docs/product/engineering-gaps-plan.md`). `JwtAuthGuard` records the request's user id on its
+Sentry scope (`observability/crash-subject.ts`, no database read); Sentry's `beforeSend`
+(`observability/sentry-scrub.ts`) then reads that user's choice live, only when a crash happens:
+**off → the report is not sent at all**; on → sent with the user id and nothing else about them;
+the choice cannot be read (no lookup registered, or the read failed) → **not sent**, failing
+closed. A crash tied to no user (bootstrap, an unauthenticated request, a job) is sent with no
+user.
+
+Separately and unconditionally, **every server report is stripped of text**: only the error
+type, the mechanism type, each stack frame's file/function/line/column, the route template and
+the trace/runtime/os contexts survive. Exception messages, request data, breadcrumbs (never
+recorded: `beforeBreadcrumb` returns null), `extra`, tags, source lines and any unlisted field
+are dropped. That allowlist is how the non-negotiable rule at the top of this document is
+enforced in code for the crash reporter. Device-side enforcement is still separately necessary,
+because a crash can happen before any network call succeeds.
 
 `city` is public whenever the profile is public, gated only by `public_profile` — it does not
 also require `location_for_leaderboard`. The two flags answer different questions:

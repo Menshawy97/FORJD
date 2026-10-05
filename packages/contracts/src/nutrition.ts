@@ -48,18 +48,36 @@ export type FoodResponse = z.infer<typeof foodResponseSchema>;
  * contract (a positive "no more results" statement) would be meaningless here, since
  * `NutritionRepository.searchFoods` truncates at `limit` without reporting whether more exist.
  */
-export const foodSearchQuerySchema = z.object({
-  q: z
-    .string()
-    .optional()
-    .transform((value) => {
-      const trimmed = value?.trim();
-      return trimmed ? trimmed : undefined;
-    })
-    .pipe(z.string().max(80).optional()),
-  category: foodCategorySchema.optional(),
-  limit: z.coerce.number().int().min(1).max(50).default(30),
-});
+export const MAX_FOOD_IDS_PER_REQUEST = 100;
+
+/**
+ * `?ids=a,b,c` (G5): every food a screen references, in one request instead of one each. Trimmed,
+ * repeats dropped in first-seen order, each a uuid, 1 to `MAX_FOOD_IDS_PER_REQUEST`.
+ */
+const foodIdsSchema = z
+  .string()
+  .transform((value) => [...new Set(value.split(',').map((id) => id.trim()).filter(Boolean))])
+  .pipe(z.array(z.string().uuid()).min(1).max(MAX_FOOD_IDS_PER_REQUEST));
+
+export const foodSearchQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .optional()
+      .transform((value) => {
+        const trimmed = value?.trim();
+        return trimmed ? trimmed : undefined;
+      })
+      .pipe(z.string().max(80).optional()),
+    category: foodCategorySchema.optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(30),
+    ids: foodIdsSchema.optional(),
+  })
+  // A lookup by id is not a search: mixing them would leave which one wins to the server.
+  .refine((query) => query.ids === undefined || (query.q === undefined && query.category === undefined), {
+    message: 'ids cannot be combined with q or category',
+    path: ['ids'],
+  });
 export type FoodSearchQuery = z.infer<typeof foodSearchQuerySchema>;
 
 export const foodListResponseSchema = z.object({ items: z.array(foodResponseSchema) });

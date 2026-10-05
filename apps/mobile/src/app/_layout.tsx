@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getMe } from '@/auth/apiClient';
 import {
@@ -25,7 +25,18 @@ import { IntroSplash } from '@/components/brand/intro-splash';
 import { syncTimeZone } from '@/features/forge/time-zone-sync';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
+import { getExerciseUnits } from '@/store/exercise-unit-preferences';
+import { activeWorkout } from '@/workouts/active-workout';
+import { ActiveWorkoutBar, WORKOUT_BAR_STACK_CLEARANCE } from '@/workouts/active-workout-bar';
+import { useHasActiveWorkout } from '@/workouts/use-active-workout';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
+import { workoutNotice } from '@/workouts/workout-notice';
+
+import { TAB_BAR_HEIGHT } from './(tabs)/_layout';
+// ADR-059: loading this module defines the run's location task, which TaskManager needs at every
+// start of the bundle, so a run whose process Android restarted still receives its readings.
+import '@/integrations/location/run-location-task';
+import { registerBackgroundUpload, unregisterBackgroundUpload } from '@/integrations/background/background-upload';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,6 +53,26 @@ export const stackScreenOptions = {
   headerShown: false,
   contentStyle: { backgroundColor: colors.screenBg },
 } as const;
+
+/**
+ * The same options, with room left at the bottom for the workout bar while a workout shows (12B-2b). Not for the
+ * tabs (their scenes make their own room above the tab bar) nor for the workout's own screens, where the bar is
+ * hidden. Absolutely positioned content, such as a bottom sheet, is not moved by padding, so a sheet still covers
+ * the whole screen.
+ */
+const WITHOUT_BAR_ROOM = new Set(['(tabs)', 'live', 'rest', 'set-timer', 'workout-done']);
+export const stackOptionsFor = (routeName: string, clearance: number) =>
+  clearance > 0 && !WITHOUT_BAR_ROOM.has(routeName)
+    ? { ...stackScreenOptions, contentStyle: { ...stackScreenOptions.contentStyle, paddingBottom: clearance } }
+    : stackScreenOptions;
+
+/** The app's stack, read inside the safe-area provider so the bar's room can include the bottom inset. */
+function AppStack() {
+  const insets = useSafeAreaInsets();
+  const hasWorkout = useHasActiveWorkout();
+  const clearance = hasWorkout ? insets.bottom + WORKOUT_BAR_STACK_CLEARANCE : 0;
+  return <Stack screenOptions={({ route }) => stackOptionsFor(route.name, clearance)} />;
+}
 
 /**
  * Auth state feeds the redirect decision through `useSyncExternalStore` over
@@ -116,8 +147,40 @@ export default function RootLayout() {
       if (state !== 'active') return;
       void syncPendingSessions();
       void syncTimeZone();
+      // The three-hours-away removal of the workout card cannot rely on a timer the OS may not run in the
+      // background, so the clock is checked whenever the app is looked at again.
+      workoutNotice.checkAway();
     });
     return () => subscription.remove();
+  }, [authChecked, authenticated]);
+
+  /**
+   * Finished workouts and runs upload by themselves about every 15 minutes while someone is signed in
+   * (12C), so one finished in a tunnel does not wait for the app to be opened. Signing out stops it; the
+   * drain only sends the signed-in account's rows either way. Fire-and-forget: the seam never throws.
+   */
+  useEffect(() => {
+    if (!authChecked) return;
+    void (authenticated ? registerBackgroundUpload() : unregisterBackgroundUpload());
+  }, [authChecked, authenticated]);
+
+  /**
+   * The workout in progress outlives any screen (12B-2b): the lock-screen notice follows it from the moment the
+   * app is signed in, and an unfinished one is picked back up here, not only when the workout screen opens,
+   * so the bar above the tab bar (and the notice) come back after Android closed the app. Signing out forgets
+   * the in-memory workout; its saved copy stays for its own account.
+   */
+  useEffect(() => {
+    if (!authChecked || !authenticated) return;
+    const unbind = workoutNotice.bind();
+    void getExerciseUnits()
+      .then((units) => workoutNotice.setUnits(units))
+      .catch(() => undefined);
+    void activeWorkout.restore();
+    return () => {
+      unbind();
+      activeWorkout.clear();
+    };
   }, [authChecked, authenticated]);
 
   if (!fontsLoaded || !authChecked) {
@@ -143,9 +206,11 @@ export default function RootLayout() {
             section -- cheap when nobody is editing a meal (`draft: null`), so there is no cost
             to it always being present here rather than scoped to a sub-tree. */}
         <MealDraftProvider>
-          <Stack screenOptions={stackScreenOptions} />
+          <AppStack />
           {!authenticated && <AuthGate />}
           {authenticated && <AuthenticatedGate />}
+          {/* The bar for a workout in progress, over the router so every screen but the workout's own shows it. */}
+          {authenticated && <ActiveWorkoutBar tabBarHeight={TAB_BAR_HEIGHT} />}
           {/* ADR-052's cold-start intro (#9), drawn over the router rather than being a route
               of its own: the gates above still decide where the user lands, and that screen
               is already mounted underneath when the intro fades. */}

@@ -60,6 +60,22 @@ jest.mock('@/store/workout-session', () => ({
 
 // ADR-048: the start position is read after the workout has started and never awaited by it. It
 // is mocked here so each test decides when, whether and how it answers.
+// 12B-2: the lock-screen notice. The seam is replaced so a tap on its Done button can be fired by hand.
+let mockNoticeTap: ((event: { noticeId: string; actionId: string }) => void) | null = null;
+jest.mock('@/integrations/notifications/ongoing-notice', () => ({
+  ongoingNotice: {
+    isAvailable: () => true,
+    show: jest.fn().mockResolvedValue(false),
+    dismiss: jest.fn().mockResolvedValue(undefined),
+    onAction: (handler: (event: { noticeId: string; actionId: string }) => void) => {
+      mockNoticeTap = handler;
+      return () => {
+        mockNoticeTap = null;
+      };
+    },
+  },
+}));
+
 jest.mock('@/workouts/capture-start-location', () => ({
   captureStartLocation: jest.fn(),
 }));
@@ -91,6 +107,8 @@ import {
   setCompletedTimedSet,
   setPendingLiveSession,
 } from '@/workouts/live-handoff';
+import { activeWorkout } from '@/workouts/active-workout';
+import { workoutNotice } from '@/workouts/workout-notice';
 
 import LiveScreen, { formatElapsed } from '../live';
 
@@ -142,8 +160,15 @@ function stageSession() {
   });
 }
 
+let unbindNotice: (() => void) | null = null;
+
 beforeEach(() => {
   jest.clearAllMocks();
+  // The workout and the notice controller outlive any screen (12B-2b), so each test starts with none and
+  // follows the workout the way the app does from its root.
+  activeWorkout.clear();
+  workoutNotice.skipRest();
+  unbindNotice = workoutNotice.bind();
   consumePendingLiveSession();
   consumeCompletedTimedSet();
   (openWorkoutSessionDb as jest.Mock).mockResolvedValue({});
@@ -160,6 +185,12 @@ beforeEach(() => {
     completedSetKeys: [],
   });
   (captureStartLocation as jest.Mock).mockResolvedValue(null);
+});
+
+afterEach(() => {
+  unbindNotice?.();
+  unbindNotice = null;
+  activeWorkout.clear();
 });
 
 describe('formatElapsed', () => {
@@ -494,6 +525,85 @@ describe('logging a set', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/rest');
     expect(getRestContext()).toMatchObject({ seconds: 90, upNextName: 'Bench Press' });
+  });
+
+  // 12B-2b: the workout is not the screen's. Leaving it (back) carries on; opening it again lands where it was.
+  it('hands the rest to the workout-notice controller, which follows the workout', async () => {
+    stageSession();
+    const { findByLabelText } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Complete set 1 of Bench Press'));
+
+    expect(workoutNotice.getRest()).toMatchObject({ totalSeconds: 90 });
+  });
+
+  it('keeps the workout running when the screen is left, and shows it again as it was', async () => {
+    stageSession();
+    const first = await render(<LiveScreen />);
+    await fireEvent.press(await first.findByLabelText('Complete set 1 of Bench Press'));
+    expect(await first.findByText('1/4 sets')).toBeTruthy();
+
+    await first.unmount();
+
+    expect(activeWorkout.isActive()).toBe(true);
+    expect(activeWorkout.getState().session?.name).toBe('Upper Body Push');
+    const second = await render(<LiveScreen />);
+    expect(await second.findByText('1/4 sets')).toBeTruthy();
+    expect(getUnfinishedSessionSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('declines a second workout while one is running, instead of throwing the first away', async () => {
+    stageSession();
+    const first = await render(<LiveScreen />);
+    await first.findByLabelText('Complete set 1 of Bench Press');
+    await first.unmount();
+
+    stageSession();
+    const second = await render(<LiveScreen />);
+
+    expect(await second.findByText('Finish or discard your current workout first.')).toBeTruthy();
+    expect(activeWorkout.getState().session?.id).toBe('session-1');
+  });
+
+  it('leaves no workout once it is queued for upload, so the bar and the notice have nothing to show', async () => {
+    stageSession();
+    const { findByLabelText } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Finish workout'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/workout-done'));
+    expect(activeWorkout.getState().session).toBeNull();
+  });
+
+  it('a Done tapped on the lock-screen notice ticks and logs the open set exactly as the screen does', async () => {
+    stageSession();
+    const { findByText } = await render(<LiveScreen />);
+    await waitFor(() => expect(mockNoticeTap).not.toBeNull());
+
+    mockNoticeTap!({ noticeId: 'forjd-workout-live', actionId: 'done:session-1:0:0' });
+
+    expect(await findByText('1/4 sets')).toBeTruthy();
+    await waitFor(() => {
+      const types = (appendSessionEvent as jest.Mock).mock.calls.map((call) => call[2]);
+      expect(types).toEqual(['set_completed', 'rest_started']);
+    });
+    // No screen opens for a tap on the lock screen: the rest it starts is the controller's alone.
+    expect(workoutNotice.getRest()).toMatchObject({ totalSeconds: 90 });
+    expect(mockPush).not.toHaveBeenCalledWith('/rest');
+  });
+
+  it('drops a lock-screen Done for a set that is no longer the open one', async () => {
+    stageSession();
+    const { findByLabelText, findByText } = await render(<LiveScreen />);
+    await waitFor(() => expect(mockNoticeTap).not.toBeNull());
+    await fireEvent.press(await findByLabelText('Complete set 1 of Bench Press'));
+    expect(await findByText('1/4 sets')).toBeTruthy();
+    (appendSessionEvent as jest.Mock).mockClear();
+
+    mockNoticeTap!({ noticeId: 'forjd-workout-live', actionId: 'done:session-1:0:0' });
+
+    expect(await findByText('1/4 sets')).toBeTruthy();
+    expect(appendSessionEvent).not.toHaveBeenCalled();
   });
 
   it('opens the set timer for a timed set instead of ticking it', async () => {

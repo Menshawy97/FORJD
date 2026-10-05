@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { deleteSavedMeal, getFood, listSavedMeals, logSavedMeal } from '@/auth/apiClient';
+import { deleteSavedMeal, getFoods, listSavedMeals, logSavedMeal } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
@@ -75,7 +75,7 @@ export default function SavedMealsScreen() {
     try {
       const mealsResult = await listSavedMeals();
       const foodIds = [...new Set(mealsResult.items.flatMap((meal) => meal.items.map((item) => item.foodId)))];
-      const foods = await Promise.all(foodIds.map((id) => getFood(id)));
+      const foods = await getFoods(foodIds);
       const nextFoodsById: Record<string, FoodResponse> = {};
       foods.forEach((food) => {
         nextFoodsById[food.id] = food;

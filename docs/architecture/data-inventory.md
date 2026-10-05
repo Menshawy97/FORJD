@@ -13,9 +13,9 @@ feature changes what is collected, update this file in the same PR.
 | Google / Apple (sign-in) | The user's own Google or Apple account identity, only when they choose that sign-in | Added by Phase 8 slices 8F/8G. FORJD receives an ID token with email and a stable subject ID, never a password. |
 | OpenAI (`gpt-5.4-mini`, ADR-053) | The InBody scan photo | Only after the user grants AI consent (`privacy_settings.ai_features_consent`). Enforced in `BodyService.requireAiConsent`. |
 | WHOOP | OAuth exchange; FORJD reads recovery, sleep and workout data from WHOOP | Only after the user connects WHOOP. |
-| Sentry (server only) | Error reports with the user ID stripped unless crash diagnostics is on | The mobile app has no Sentry SDK. |
+| Sentry (server only) | Error type and stack frames only, no text; not sent at all for a user with crash diagnostics off; user ID kept only when it is on | The mobile app has no Sentry SDK. |
 | NVIDIA | Nothing. A provider class exists but is not wired up. | Development only. |
-| Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` is used for local rest-timer alerts only. |
+| Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` and the small local Android notice module (ADR-063) post local notices only: the rest-complete alert, the run notice and the workout notice. Nothing is sent. |
 
 Health data is never sent to analytics or advertising services (CLAUDE.md rule 15).
 
@@ -28,7 +28,7 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Name, username, date of birth (required, age 16+), sex, height, units, goals | Onboarding, edit profile | `profiles` | No | Yes | Yes (cascade) |
 | City (coarse text only, no coordinates) | Location screen | `profiles.city`, `workout_sessions.city`, `workout_sessions.city_slug` | No | Yes | Yes |
 | Approximate start position of a workout (about 110 m), only if location for leaderboards is on | Workout start (coarse, foreground) | **Not stored on the server.** Sent to our API, resolved to a city, discarded. On the device only, in the recovery snapshot and upload queue until the workout uploads | n/a | No | Cleared on device with local data |
-| Run route (precise GPS points), only while a run is open (ADR-049) | Run screen (precise, foreground only) | **Device only**, in the local SQLite database until the run is discarded or the app data is cleared. Never uploaded | n/a | No | Cleared on device with local data |
+| Run route (precise GPS points), only while a run is open (ADR-049, ADR-059) | Run screen, through a location foreground service that keeps reading with the screen off; never background location (ADR-059) | **Device only**, in the local SQLite database until the run is discarded or the app data is cleared. Never uploaded | n/a | No | Cleared on device with local data |
 | Run summary: distance, moving time, elevation gain, splits (ADR-050) | Run screen | `workout_run_summaries`, `workout_run_splits` | No | Yes (added with R2) | Yes (cascade) |
 | Run heart rate and calories, from a watch or estimated (ADR-050) | Run screen, Health Connect | Same tables, **only with health-data consent**; dropped by the server otherwise | No | Yes (added with R2) | Yes (cascade) |
 | Weekly city rank (rank, score, cohort size) | Weekly snapshot job | `leaderboard_rank_snapshots` (derived, replaced never patched) | No | No | Yes (cascade) |
@@ -64,13 +64,22 @@ Derived from the table. Confirm against the final build and the lawyer's privacy
 - **Encrypted in transit:** yes. **Deletion available:** yes, in-app (Profile, Delete account).
 - **Not collected on the server:** precise location, contacts, advertising ID, financial info. Once
   runs ship (ADR-049), the app *uses* precise location on the device while a run is open, keeps the
-  route only on the device, and the Play Data safety form must say so.
+  route only on the device, and the Play Data safety form must say so. Since 12A (ADR-059) that use
+  continues with the screen off, through a location foreground service with an ongoing notification;
+  the form's "precise location" answer must say "while a run is open, including with the screen
+  off". No background location permission is declared.
+- **On the lock screen, on the device only (12B-2, ADR-061 decision 3):** the workout notice shows the
+  current exercise, the set count and its weight and reps, and the elapsed time. They are training
+  values, built on the phone and never sent. The Android notice module also keeps, on the phone, up to
+  20 button ids (no values) tapped while the app was stopped, until the app next reads them. The
+  "hide values on the lock screen" setting (12H) will govern the visibility.
 
 ## Known mismatches, tracked as follow-ups
 
-- `privacy_settings.crash_diagnostics` is documented as controlling whether reports are sent, but
-  `sentry-scrub.ts` only strips the user field. Reports are still sent. Nothing scrubs health
-  values from exception messages or request bodies; rule 15 is policy, not code.
+- ~~`crash_diagnostics` only stripped the user field, and nothing scrubbed health values from
+  exception messages or request bodies.~~ Fixed 2026-10-01 (G1): a user's "off" means their
+  server crashes are not sent, and every server report keeps no text at all
+  (`docs/architecture/security.md`).
 - `security.md` says "encrypted DB fields where appropriate", but only WHOOP tokens are
   encrypted at the application layer.
 - No data retention periods are defined anywhere yet. The privacy policy needs one.

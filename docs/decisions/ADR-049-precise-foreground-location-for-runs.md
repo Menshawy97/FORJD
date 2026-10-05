@@ -3,6 +3,8 @@
 **Status:** Accepted
 **Date:** 2026-09-21
 **Amends:** [ADR-048](ADR-048-coarse-location-for-leaderboards.md)
+**Decision 2 superseded by:** [ADR-059](ADR-059-background-run-tracking.md) (2026-10-03): a run keeps
+tracking with the screen off through a location foreground service; background location stays blocked.
 
 ## Context
 

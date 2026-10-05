@@ -232,7 +232,8 @@ export async function requestPrecisePermission(): Promise<PrecisePermissionReque
 const finiteOrNull = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
-function toPreciseFix(reading: unknown): PreciseFix | null {
+/** A reading from expo-location as a `PreciseFix`, or null when it is not a valid coordinate. */
+export function toPreciseFix(reading: unknown): PreciseFix | null {
   const { coords, timestamp } = (reading ?? {}) as {
     coords?: { latitude?: unknown; longitude?: unknown; altitude?: unknown; accuracy?: unknown };
     timestamp?: unknown;

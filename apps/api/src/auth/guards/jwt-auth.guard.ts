@@ -10,6 +10,7 @@ import { Reflector } from '@nestjs/core';
 import { User } from '@forjd/domain';
 import { Request } from 'express';
 
+import { markCrashSubject } from '../../observability/crash-subject';
 import { UsersRepository } from '../../users/users.repository';
 import { AUTH_PROVIDER, AuthIdentity, AuthProvider } from '../providers/auth-provider.interface';
 import { ALLOW_WITHOUT_DATE_OF_BIRTH } from './allow-without-date-of-birth.decorator';
@@ -51,6 +52,8 @@ export class JwtAuthGuard implements CanActivate {
     request.user =
       this.identities.get(identity.externalId, identity.email) ??
       (await this.resolveAndCache(identity.externalId, identity.email));
+    // So a crash later in this request is checked against this person's crash-diagnostics choice.
+    markCrashSubject(request.user.id);
 
     await this.requireDateOfBirth(context, identity);
 

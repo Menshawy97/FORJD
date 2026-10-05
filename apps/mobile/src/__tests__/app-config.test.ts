@@ -11,6 +11,16 @@ const locationPlugin = (): [string, Record<string, unknown>] | undefined =>
     (plugin): plugin is [string, Record<string, unknown>] => Array.isArray(plugin) && plugin[0] === 'expo-location',
   );
 
+describe('app config: notifications (12A-3)', () => {
+  it('draws notifications with the FORJD symbol in ember, as the approved replica shows', () => {
+    const entry = (config.plugins as PluginEntry[]).find(
+      (plugin): plugin is [string, Record<string, unknown>] => Array.isArray(plugin) && plugin[0] === 'expo-notifications',
+    );
+
+    expect(entry?.[1]).toEqual({ icon: './assets/images/android-icon-monochrome.png', color: '#E9712F' });
+  });
+});
+
 describe('app config: location', () => {
   it('registers the expo-location plugin with a purpose string that says what it is for', () => {
     const options = locationPlugin()?.[1];
@@ -25,10 +35,12 @@ describe('app config: location', () => {
     expect(text).toContain('never uploaded');
   });
 
-  it('turns background location and the foreground service off', () => {
+  it('runs a location foreground service for runs, but never background location (ADR-059)', () => {
     const options = locationPlugin()?.[1];
     expect(options?.isAndroidBackgroundLocationEnabled).toBe(false);
-    expect(options?.isAndroidForegroundServiceEnabled).toBe(false);
+    expect(options?.isAndroidForegroundServiceEnabled).toBe(true);
+    expect(options?.isIosBackgroundLocationEnabled).toBe(true);
+    expect(options?.androidForegroundServiceIcon).toBe('./assets/images/android-icon-monochrome.png');
   });
 
   it('still blocks background location on Android', () => {

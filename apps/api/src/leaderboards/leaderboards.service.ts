@@ -174,10 +174,25 @@ export class LeaderboardsService {
     if (!recompute && cached && cached.expiresAt > now.getTime()) return { athletes: await cached.athletes, reused: true };
 
     const athletes = this.repository.cityAthletes(city.slug, city.timeZone, window);
+    this.evictExpiredBoards(now.getTime());
     this.cityBoards.set(key, { athletes, expiresAt: now.getTime() + CITY_BOARD_TTL_MS });
     // A failed read is not kept: the next request tries again.
-    athletes.catch(() => this.cityBoards.delete(key));
+    // Only this read's own entry: a newer board stored under the same key since then is kept.
+    athletes.catch(() => {
+      if (this.cityBoards.get(key)?.athletes === athletes) this.cityBoards.delete(key);
+    });
     return { athletes: await athletes, reused: false };
+  }
+
+  /**
+   * Drops every board past its lifetime. Run only when a board is (re)computed, so the map holds at
+   * most the boards read in the last 15 s rather than one per city and window ever asked for (each
+   * month's key would otherwise stay for the life of the process; 8.5E server-speed re-run).
+   */
+  private evictExpiredBoards(nowMs: number): void {
+    for (const [key, board] of this.cityBoards) {
+      if (board.expiresAt <= nowMs) this.cityBoards.delete(key);
+    }
   }
 
   /**

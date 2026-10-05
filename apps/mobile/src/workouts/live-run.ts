@@ -168,14 +168,31 @@ export interface RunStats {
 }
 
 /** What the screen shows and the upload carries, worked out from the readings so far. */
-export function runStats(state: RunState, nowMs: number): RunStats {
-  const track = buildTrack(state.fixes);
-  const distanceMeters = trackDistanceMeters(track);
+export function runStats(
+  state: RunState,
+  nowMs: number,
+  trackStats: RunTrackStats = runTrackStats(state.fixes),
+): RunStats {
   const movingSeconds = Math.round(movingMsAt(state, nowMs) / 1000);
   return {
-    distanceMeters,
+    ...trackStats,
     movingSeconds,
-    averagePaceSecondsPerKm: averagePaceSecondsPerKm(distanceMeters, movingSeconds),
+    averagePaceSecondsPerKm: averagePaceSecondsPerKm(trackStats.distanceMeters, movingSeconds),
+  };
+}
+
+/** The part of `RunStats` that depends only on the GPS readings, not on the clock. */
+export type RunTrackStats = Omit<RunStats, 'movingSeconds' | 'averagePaceSecondsPerKm'>;
+
+/**
+ * Walks every accepted reading once. The live screen keeps the result until a new reading arrives
+ * and hands it to `runStats` on each one-second tick, so a long run's route is not rebuilt every
+ * second (live-run-plan.md follow-up, G6).
+ */
+export function runTrackStats(fixes: RunState['fixes']): RunTrackStats {
+  const track = buildTrack(fixes);
+  return {
+    distanceMeters: trackDistanceMeters(track),
     currentSpeedMetersPerSecond: currentSpeedMetersPerSecond(track),
     splits: splitsFromTrack(track),
     elevationGainMeters: elevationGainMeters(track),

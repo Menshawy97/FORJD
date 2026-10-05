@@ -7,6 +7,9 @@ import { AuthIdentity, AuthProvider } from '../providers/auth-provider.interface
 import { AllowWithoutDateOfBirth } from './allow-without-date-of-birth.decorator';
 import { IdentityCache } from './identity-cache';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { markCrashSubject } from '../../observability/crash-subject';
+
+jest.mock('../../observability/crash-subject', () => ({ markCrashSubject: jest.fn() }));
 
 class PlainController {
   handler(): void {}
@@ -87,6 +90,25 @@ describe('JwtAuthGuard', () => {
     expect(authProvider.verifyAccessToken).toHaveBeenCalledWith('good-token');
     expect(usersRepository.upsertFromIdentity).toHaveBeenCalledWith('ext-1', 'a@example.com');
     expect(context.switchToHttp().getRequest<{ user: User }>().user).toEqual(internalUser);
+  });
+
+  it('tells the crash reporter whose request this is, so a crash honours their diagnostics choice', async () => {
+    authProvider.verifyAccessToken.mockResolvedValue({ externalId: 'ext-1', email: 'a@example.com', emailVerified: true });
+    usersRepository.upsertFromIdentity.mockResolvedValue(internalUser);
+    jest.mocked(markCrashSubject).mockClear();
+
+    await guard.canActivate(contextWith('Bearer good-token'));
+
+    expect(markCrashSubject).toHaveBeenCalledWith('user-1');
+  });
+
+  it('marks no one when the token is rejected', async () => {
+    authProvider.verifyAccessToken.mockRejectedValue(new UnauthorizedException('bad token'));
+    jest.mocked(markCrashSubject).mockClear();
+
+    await expect(guard.canActivate(contextWith('Bearer nope'))).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(markCrashSubject).not.toHaveBeenCalled();
   });
 
   it('attaches the verified identity too, so a handler can act on the login even if the local row is gone', async () => {

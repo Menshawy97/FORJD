@@ -8,9 +8,9 @@ import { useToast } from '@/components/toast';
 import {
   getPrecisePermission,
   requestPrecisePermission,
-  watchPrecisePosition,
   type PreciseFix,
 } from '@/integrations/location/location-provider';
+import { setRunFixListener, startRunLocationUpdates, stopRunLocationUpdates } from '@/integrations/location/run-location-task';
 import type { SqliteConnection } from '@/store/exercise-catalogue';
 import { getDeviceHealthProvider } from '@/integrations/health/device-health-provider';
 import { readHealthConsent } from '@/store/health-consent-local';
@@ -27,6 +27,7 @@ import {
   pauseRun,
   resumeRun,
   runStats,
+  runTrackStats,
   startRun,
   toRunUploadRequest,
   type RunState,
@@ -38,6 +39,8 @@ import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { gpsQuality, type GpsQuality } from './gps-quality';
 import { fetchRunCalorieInputs } from './latest-weight';
 import { HEART_RATE_POLL_MS, prepareRunHealth, readFinalHealth, type FinalHealth, type RunHealthReader } from './run-health';
+import { runNotifier } from './run-notification';
+import { runNotificationContent } from './run-notification-content';
 import { restoreRunSnapshot, toRunSnapshot } from './run-snapshot';
 import { toRunSummary } from './run-summary';
 
@@ -55,9 +58,22 @@ import { toRunSummary } from './run-summary';
  */
 export type RunPermission = 'checking' | 'granted' | 'denied' | 'coarse_only' | 'unavailable';
 
+/**
+ * Which start of the location service is current. The service and its listener are one per app, so a
+ * run screen that was left while its start was pending must not, when that start lands, stop the
+ * tracking a newer run screen owns (12A-2 review). Only the latest start may clear or stop.
+ */
+let currentTracking = 0;
+
+type TrackingStart =
+  | { status: 'watching'; stop: () => void }
+  | { status: 'denied' | 'coarse_only' | 'unavailable' | 'cancelled' };
+
 const TICK_MS = 1000;
 /** How often a running run is written to the recovery snapshot, besides on pause and finish. */
 const AUTOSAVE_MS = 10_000;
+/** How often the live notice (12A-3) is refreshed while running; a pause or resume refreshes it at once. */
+const NOTICE_UPDATE_MS = 5000;
 /** How many recent heart-rate samples the live sparkline draws. */
 const HEART_RATE_POINTS = 60;
 
@@ -72,7 +88,6 @@ export interface RunSession {
   status: RunState['status'];
   permission: RunPermission;
   quality: GpsQuality;
-  autoPaused: boolean;
   isFinishing: boolean;
   stats: ReturnType<typeof runStats> | null;
   splits: RunSplitView[];
@@ -90,7 +105,6 @@ export function useRunSession(): RunSession {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [permission, setPermission] = useState<RunPermission>('checking');
   const [lastAccuracy, setLastAccuracy] = useState<{ meters: number | null } | null>(null);
-  const [autoPaused, setAutoPaused] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const toast = useToast();
   // `toast` is a new object each render; only its `show` is stable, so that is what callbacks depend on.
@@ -98,11 +112,13 @@ export function useRunSession(): RunSession {
 
   const dbRef = useRef<Promise<SqliteConnection> | null>(null);
   const stopWatchRef = useRef<(() => void) | null>(null);
+  const noticeReadyRef = useRef(false);
+  const [noticeReady, setNoticeReady] = useState(false);
+  const noticeShownRef = useRef<{ atMs: number; status: RunState['status'] } | null>(null);
   const finishingRef = useRef(false);
   const closedRef = useRef(false);
   const saveWarnedRef = useRef(false);
   const healthRef = useRef<RunHealthReader | null>(null);
-  const healthPromptOpenRef = useRef(false);
 
   const getDb = useCallback((): Promise<SqliteConnection> => {
     if (!dbRef.current) {
@@ -129,7 +145,11 @@ export function useRunSession(): RunSession {
       if (closedRef.current) return;
       try {
         const db = await getDb();
-        await saveRunSnapshot(db, await getAccountId(), state.id, toRunSnapshot(state, Date.now()), new Date(state.startedAtMs).toISOString());
+        const accountId = await getAccountId();
+        // Checked again with no await before the write: Finish may have started while this waited,
+        // and a write issued now could land inside its transaction and restore the snapshot (G6).
+        if (closedRef.current) return;
+        await saveRunSnapshot(db, accountId, state.id, toRunSnapshot(state, Date.now()), new Date(state.startedAtMs).toISOString());
       } catch {
         // Recovery is best effort, but a runner who would lose the run to a crash should know.
         if (!saveWarnedRef.current) {
@@ -144,6 +164,9 @@ export function useRunSession(): RunSession {
   const stopWatching = useCallback(() => {
     stopWatchRef.current?.();
     stopWatchRef.current = null;
+    // The live notice (12A-3) belongs to tracking: it goes when tracking stops (finish, discard, leave).
+    noticeReadyRef.current = false;
+    void runNotifier.clear();
   }, []);
 
   const permissionRef = useRef<RunPermission>('checking');
@@ -164,21 +187,48 @@ export function useRunSession(): RunSession {
     [commit],
   );
 
+  /**
+   * Follows the position through the location foreground service (ADR-059), so readings keep coming
+   * with the screen off. The listener is set before the service starts, so no early reading is lost;
+   * it is the same shape the foreground watch had, so the start and recheck paths are unchanged.
+   */
+  const startTracking = useCallback(
+    async (isCancelled: () => boolean): Promise<TrackingStart> => {
+      currentTracking += 1;
+      const mine = currentTracking;
+      const isCurrent = () => currentTracking === mine;
+      setRunFixListener((fixes) => fixes.forEach(onFix));
+      const started = await startRunLocationUpdates();
+      if (started !== 'started') {
+        if (isCurrent()) setRunFixListener(null);
+        return { status: started };
+      }
+      const stop = () => {
+        if (!isCurrent()) return;
+        currentTracking += 1;
+        setRunFixListener(null);
+        void stopRunLocationUpdates();
+      };
+      if (isCancelled()) {
+        stop();
+        return { status: 'cancelled' };
+      }
+      return { status: 'watching', stop };
+    },
+    [onFix],
+  );
+
   /** Back from Settings: if location is now allowed and nothing is being followed, follow it. */
   const recheckPermission = useCallback(async () => {
     if (closedRef.current || stopWatchRef.current || permissionRef.current === 'checking') return;
     if (permissionRef.current === 'granted') return;
     if ((await getPrecisePermission()) !== 'granted') return;
     const isCancelled = () => unmountedRef.current || closedRef.current;
-    const watch = await watchPrecisePosition(onFix, { isCancelled });
+    const watch = await startTracking(isCancelled);
     if (watch.status !== 'watching') return;
-    if (isCancelled()) {
-      watch.stop();
-      return;
-    }
     stopWatchRef.current = watch.stop;
     updatePermission('granted');
-  }, [onFix, updatePermission]);
+  }, [startTracking, updatePermission]);
 
   // Recover an unfinished run or start a new one, then ask for location and follow the position.
   useEffect(() => {
@@ -225,7 +275,7 @@ export function useRunSession(): RunSession {
           return;
         }
 
-        const watch = await watchPrecisePosition(onFix, { isCancelled: () => cancelled });
+        const watch = await startTracking(() => cancelled);
         if (cancelled) {
           if (watch.status === 'watching') watch.stop();
           return;
@@ -247,7 +297,7 @@ export function useRunSession(): RunSession {
       unmountedRef.current = true;
       stopWatching();
     };
-  }, [commit, getDb, onFix, persist, showToast, stopWatching, updatePermission]);
+  }, [commit, getDb, persist, showToast, startTracking, stopWatching, updatePermission]);
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), TICK_MS);
@@ -288,18 +338,10 @@ export function useRunSession(): RunSession {
         if ((await readHealthConsent()) !== true) return;
         const provider = getDeviceHealthProvider();
         if (!provider) return;
-        // Health Connect's own screen sends the app to the background while it is open; that is not
-        // the phone locking, so the run must not pause itself for it.
-        healthPromptOpenRef.current = true;
-        let reader: RunHealthReader | null;
-        try {
-          reader = await prepareRunHealth(provider, {
-            alreadyAsked: await hasAskedRunHealthAccess(),
-            markAsked: markRunHealthAccessAsked,
-          });
-        } finally {
-          healthPromptOpenRef.current = false;
-        }
+        const reader = await prepareRunHealth(provider, {
+          alreadyAsked: await hasAskedRunHealthAccess(),
+          markAsked: markRunHealthAccessAsked,
+        });
         if (!reader || cancelled) return;
         healthRef.current = reader;
         await poll(reader);
@@ -326,30 +368,19 @@ export function useRunSession(): RunSession {
   const resume = useCallback(() => {
     const current = runRef.current;
     if (!current) return;
-    setAutoPaused(false);
     const next = resumeRun(current, Date.now());
     commit(next);
     void persist(next);
   }, [commit, persist]);
 
-  // Foreground location stops when the phone locks (ADR-049 #2), so the run pauses with it and says why.
+  // ADR-059 (12A): locking the phone no longer pauses the run; the location foreground service keeps
+  // the readings coming. Coming back to the app still picks up a permission fixed in Settings.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      // Back from Settings: pick up a permission the person has just fixed.
-      if (state === 'active') {
-        void recheckPermission();
-        return;
-      }
-      if (state !== 'background' || healthPromptOpenRef.current) return;
-      const current = runRef.current;
-      if (current?.status !== 'running') return;
-      setAutoPaused(true);
-      const next = pauseRun(current, Date.now());
-      commit(next);
-      void persist(next);
+      if (state === 'active') void recheckPermission();
     });
     return () => subscription.remove();
-  }, [commit, persist, recheckPermission]);
+  }, [recheckPermission]);
 
   const discard = useCallback(async () => {
     // A run already being saved cannot also be thrown away: the save would still queue it.
@@ -405,6 +436,9 @@ export function useRunSession(): RunSession {
     }
 
     finishingRef.current = true;
+    // Closed before the first await, so no autosave writes the snapshot while Finish waits on
+    // consent, weight or the watch, and none can land inside the finish transaction (G6 review).
+    closedRef.current = true;
     setIsFinishing(true);
     void (async () => {
       try {
@@ -430,16 +464,15 @@ export function useRunSession(): RunSession {
           healthDataAllowed: healthAllowed,
           watchCaloriesKcal: healthAllowed ? finalHealth.caloriesKcal : null,
         });
-        // Closed before the enqueue, so a late autosave cannot write the snapshot back afterwards.
-        closedRef.current = true;
-        await enqueueSessionUpload(db, await getAccountId(), request);
-        // From here the run is safely queued: nothing below may report it as "not saved".
-        try {
+        const accountId = await getAccountId();
+        // One transaction (G6): either the run is queued and its recovery snapshot gone, or neither
+        // happened and the "not saved" path below lets the person try again. A crash between two
+        // separate writes used to leave a snapshot of a queued run to be offered back later.
+        await db.withTransactionAsync(async () => {
+          await enqueueSessionUpload(db, accountId, request);
           await clearRunSnapshot(db, finished.id);
-        } catch {
-          // A leftover snapshot for a queued run could be offered back; retry once, best effort.
-          await clearRunSnapshot(db, finished.id).catch(() => undefined);
-        }
+        });
+        // From here the run is safely queued: nothing below may report it as "not saved".
         stopWatching();
         try {
           setCompletedRun(toRunSummary(request, stats.route));
@@ -458,7 +491,13 @@ export function useRunSession(): RunSession {
     })();
   }, [discard, getDb, showToast, stopWatching]);
 
-  const stats = useMemo(() => (run ? runStats(run, nowMs) : null), [run, nowMs]);
+  // The GPS-only part changes only when a reading arrives; the clock part every second.
+  const fixes = run?.fixes;
+  const trackStats = useMemo(() => (fixes ? runTrackStats(fixes) : null), [fixes]);
+  const stats = useMemo(
+    () => (run && trackStats ? runStats(run, nowMs, trackStats) : null),
+    [run, nowMs, trackStats],
+  );
 
   const splits = useMemo<RunSplitView[]>(
     () =>
@@ -468,6 +507,42 @@ export function useRunSession(): RunSession {
         avgHeartRateBpm: run ? averageHeartRate(run.heartRate, split.startTimestampMs, split.endTimestampMs) : null,
       })),
     [run, stats],
+  );
+
+  // 12A-3: the live notice. Ready (channel, buttons, permission asked only while undecided) once the
+  // run is being tracked; then the run's time, distance and pace every few seconds, and at once on a
+  // pause or resume. Android only; nothing on iPhone until its Live Activity (Phase 11).
+  useEffect(() => {
+    if (permission !== 'granted') return undefined;
+    let cancelled = false;
+    void runNotifier.ensureReady().then((ready) => {
+      if (cancelled || closedRef.current) return;
+      noticeReadyRef.current = ready;
+      setNoticeReady(ready);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [permission]);
+
+  useEffect(() => {
+    if (!run || !stats || run.status === 'finished' || closedRef.current || !noticeReadyRef.current) return;
+    const shown = noticeShownRef.current;
+    const now = Date.now();
+    if (shown && shown.status === run.status && now - shown.atMs < NOTICE_UPDATE_MS) return;
+    noticeShownRef.current = { atMs: now, status: run.status };
+    void runNotifier.show(runNotificationContent(stats, run.status));
+  }, [run, stats, noticeReady]);
+
+  // The notice's buttons: Pause and Resume act in place; Finish has opened the app and finishes here.
+  useEffect(
+    () =>
+      runNotifier.onAction((action) => {
+        if (action === 'pause') pause();
+        else if (action === 'resume') resume();
+        else finish();
+      }),
+    [pause, resume, finish],
   );
 
   const heartRate = useMemo(() => {
@@ -486,7 +561,6 @@ export function useRunSession(): RunSession {
     status: run?.status ?? 'running',
     permission,
     quality: gpsQuality(lastAccuracy?.meters ?? null, lastAccuracy !== null),
-    autoPaused,
     isFinishing,
     stats,
     splits,

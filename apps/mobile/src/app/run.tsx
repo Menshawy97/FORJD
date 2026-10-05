@@ -1,4 +1,3 @@
-import { useKeepAwake } from 'expo-keep-awake';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
@@ -77,7 +76,6 @@ const asNotice = (permission: RunPermission): NoticePermission | null =>
   permission === 'denied' || permission === 'coarse_only' || permission === 'unavailable' ? permission : null;
 
 export default function RunScreen() {
-  useKeepAwake();
   const session = useRunSession();
   const { stats } = session;
   const isPaused = session.status === 'paused';
@@ -122,11 +120,6 @@ export default function RunScreen() {
             <GpsPill quality={session.quality} />
           </View>
         )}
-        {session.autoPaused ? (
-          <Text className="mt-[10px] font-archivo text-[12px]" style={{ color: colors.dim }}>
-            Paused when the phone locked. Tap Resume to carry on.
-          </Text>
-        ) : null}
       </View>
 
       <ScrollView

@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { installForegroundNotificationHandler } from '@/features/run/run-notification';
+
 /**
  * The rest-timer notification (Phase 3H, slice H4, ADR-026).
  *
@@ -59,16 +61,9 @@ export const defaultScheduler: NotificationScheduler = {
      * in the foreground — it is delivered silently to the app instead. The athlete watching the
      * rest countdown would see no alert and reasonably call it broken, which is the same
      * complaint as a silent locked screen for a different reason. Idempotent, so setting it
-     * before each schedule is free.
+     * before each schedule is free. Shared with the run notice (12A-3), which it keeps silent.
      */
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
+    installForegroundNotificationHandler();
     if (Platform.OS !== 'android') return;
     await Notifications.setNotificationChannelAsync(REST_CHANNEL_ID, {
       name: 'Rest timer',

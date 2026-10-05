@@ -4,15 +4,14 @@ import type { SqliteConnection } from './exercise-catalogue';
 
 /**
  * Crash recovery for a run in progress (ADR-049), the run counterpart of `workout-session.ts`'s
- * `session_snapshot`. Two tables in the same on-device database the strength runner already opens
+ * `session_snapshot`. Tables in the same on-device database the strength runner already opens
  * (`openWorkoutSessionDb`), migrated forward as one step in that file's own shared migration list
  * (see `RUN_SESSION_MIGRATION` below), so a run and a strength session share one database file
  * rather than two, and one `PRAGMA user_version` counter rather than two that could disagree.
  *
- * **`run_points` holds the route, and it never leaves the phone.** It exists only so a
- * force-killed app can rebuild the map and the distance already covered; it is read only by
- * `live-run.ts`'s reducer replaying its own points on reopen, never uploaded (ADR-049 #4). It is
- * cleared with the run, exactly as `session_events` is for a strength session.
+ * **The route lives in the snapshot, never in a table of its own, and never leaves the phone**
+ * (ADR-049 #4). Step 3 below also created a `run_points` table for a per-fix route log that was
+ * never written; the shared list's step 5 drops it (G6, `docs/product/engineering-gaps-plan.md`).
  *
  * **`run_snapshot` holds the run's own start facts** -- id, started-at, and the small options
  * `toRunUploadRequest` needs (weight, consent) that do not change mid-run -- the same "write once
@@ -58,35 +57,6 @@ export const RUN_SESSION_MIGRATION: SqliteMigration = {
 export async function ensureRunSessionSchema(db: SqliteConnection): Promise<void> {
   const { ensureWorkoutSessionSchema } = require('./workout-session') as typeof import('./workout-session');
   await ensureWorkoutSessionSchema(db);
-}
-
-/** One GPS reading, in the shape `live-run.ts` records it -- opaque here, like the session log's payload. */
-export interface RunPointRecord {
-  latitude: number;
-  longitude: number;
-  movingMs: number;
-}
-
-/** Appends one reading to a run's route. */
-export async function appendRunPoint(db: SqliteConnection, sessionId: string, point: RunPointRecord): Promise<void> {
-  await db.runAsync('INSERT INTO run_points (session_id, payload) VALUES (?, ?)', [
-    sessionId,
-    JSON.stringify(point),
-  ]);
-}
-
-/** A run's route so far, oldest first. */
-export async function getRunPoints(db: SqliteConnection, sessionId: string): Promise<RunPointRecord[]> {
-  const rows = await db.getAllAsync<{ payload: string }>(
-    'SELECT payload FROM run_points WHERE session_id = ? ORDER BY id ASC',
-    [sessionId],
-  );
-  return rows.map((row) => JSON.parse(row.payload) as RunPointRecord);
-}
-
-/** Drops a run's route. Called when the run finishes or is discarded. */
-export async function clearRunPoints(db: SqliteConnection, sessionId: string): Promise<void> {
-  await db.runAsync('DELETE FROM run_points WHERE session_id = ?', [sessionId]);
 }
 
 export interface RunSnapshotRecord {

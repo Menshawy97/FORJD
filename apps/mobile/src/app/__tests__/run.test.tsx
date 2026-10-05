@@ -28,7 +28,22 @@ jest.mock('@/integrations/location/location-provider', () => ({
   ...jest.requireActual('@/integrations/location/location-provider'),
   getPrecisePermission: jest.fn(),
   requestPrecisePermission: jest.fn(),
-  watchPrecisePosition: jest.fn(),
+}));
+
+let runNoticeAction: (action: string) => void = () => undefined;
+jest.mock('@/features/run/run-notification', () => ({
+  runNotifier: {
+    ensureReady: jest.fn(),
+    show: jest.fn(),
+    clear: jest.fn(),
+    onAction: jest.fn(),
+  },
+}));
+
+jest.mock('@/integrations/location/run-location-task', () => ({
+  startRunLocationUpdates: jest.fn(),
+  stopRunLocationUpdates: jest.fn(),
+  setRunFixListener: jest.fn(),
 }));
 
 jest.mock('@/store/workout-session', () => ({
@@ -42,7 +57,6 @@ jest.mock('@/store/run-session', () => ({
   getUnfinishedRunSnapshot: jest.fn(),
   saveRunSnapshot: jest.fn(),
   clearRunSnapshot: jest.fn(),
-  clearRunPoints: jest.fn(),
 }));
 
 jest.mock('@/integrations/health/device-health-provider', () => ({ getDeviceHealthProvider: jest.fn() }));
@@ -58,9 +72,11 @@ jest.mock('@/store/leaderboard-consent', () => ({ readLocationConsent: jest.fn()
 import {
   getPrecisePermission,
   requestPrecisePermission,
-  watchPrecisePosition,
   type PreciseFix,
 } from '@/integrations/location/location-provider';
+import { setRunFixListener, startRunLocationUpdates, stopRunLocationUpdates } from '@/integrations/location/run-location-task';
+import { useKeepAwake } from 'expo-keep-awake';
+import { runNotifier } from '@/features/run/run-notification';
 import { getDeviceHealthProvider } from '@/integrations/health/device-health-provider';
 import { readHealthConsent } from '@/store/health-consent-local';
 import { hasAskedRunHealthAccess, markRunHealthAccessAsked } from '@/store/run-health-access';
@@ -85,8 +101,22 @@ function render(ui: ReactElement) {
 }
 
 const M_PER_DEG = (6_371_000 * Math.PI) / 180;
-const DB = { name: 'db' };
-const mockStop = jest.fn();
+/** Which store calls ran inside `withTransactionAsync`, so the finish step's atomicity can be asserted. */
+let transactionCalls: string[] | null = null;
+const inTransactionLog: string[] = [];
+const DB = {
+  name: 'db',
+  withTransactionAsync: jest.fn(async (task: () => Promise<void>) => {
+    transactionCalls = [];
+    try {
+      await task();
+      inTransactionLog.push(...transactionCalls);
+    } finally {
+      transactionCalls = null;
+    }
+  }),
+};
+const noteInTransaction = (name: string) => transactionCalls?.push(name);
 let deliverFix: (fix: PreciseFix) => void = () => undefined;
 
 /** A reading `meters` north of the origin, `seconds` after `base`. */
@@ -111,16 +141,25 @@ beforeEach(() => {
   clearCompletedRun();
   (getPrecisePermission as jest.Mock).mockResolvedValue('granted');
   (requestPrecisePermission as jest.Mock).mockResolvedValue('granted');
-  (watchPrecisePosition as jest.Mock).mockImplementation(async (onFix: (fix: PreciseFix) => void) => {
-    deliverFix = onFix;
-    return { status: 'watching', stop: mockStop };
+  (setRunFixListener as jest.Mock).mockImplementation((listener: ((fixes: PreciseFix[]) => void) | null) => {
+    deliverFix = listener ? (fix: PreciseFix) => listener([fix]) : () => undefined;
   });
+  (startRunLocationUpdates as jest.Mock).mockResolvedValue('started');
+  (runNotifier.ensureReady as jest.Mock).mockResolvedValue(true);
+  (runNotifier.show as jest.Mock).mockResolvedValue(undefined);
+  (runNotifier.clear as jest.Mock).mockResolvedValue(undefined);
+  (runNotifier.onAction as jest.Mock).mockImplementation((handler: (action: string) => void) => {
+    runNoticeAction = handler;
+    return () => undefined;
+  });
+  (stopRunLocationUpdates as jest.Mock).mockResolvedValue(undefined);
   (openWorkoutSessionDb as jest.Mock).mockResolvedValue(DB);
-  (enqueueSessionUpload as jest.Mock).mockResolvedValue(undefined);
+  (enqueueSessionUpload as jest.Mock).mockImplementation(() => { noteInTransaction('enqueue'); return Promise.resolve(); });
+  inTransactionLog.length = 0;
   (getQueuedSessions as jest.Mock).mockResolvedValue([]);
   (getUnfinishedRunSnapshot as jest.Mock).mockResolvedValue(null);
   (saveRunSnapshot as jest.Mock).mockResolvedValue(undefined);
-  (clearRunSnapshot as jest.Mock).mockResolvedValue(undefined);
+  (clearRunSnapshot as jest.Mock).mockImplementation(() => { noteInTransaction('clearSnapshot'); return Promise.resolve(); });
   (fetchRunCalorieInputs as jest.Mock).mockResolvedValue({ weightKg: 70, bmrKcal: null, ageYears: null, sex: null });
   (syncPendingSessions as jest.Mock).mockResolvedValue(undefined);
   (readLocationConsent as jest.Mock).mockResolvedValue(false);
@@ -165,7 +204,7 @@ describe('RunScreen -- what it shows', () => {
   it('shows distance, the strong-signal pill and the first split as readings arrive', async () => {
     const base = Date.now();
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
 
     await feed(fixAt(base, 0, 1));
     await feed(fixAt(base, 500, 151));
@@ -179,7 +218,7 @@ describe('RunScreen -- what it shows', () => {
   it('says the signal is weak when readings are poor', async () => {
     const base = Date.now();
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await feed(fixAt(base, 0, 1, 18));
     expect(screen.getByText('GPS weak')).toBeTruthy();
   });
@@ -188,7 +227,7 @@ describe('RunScreen -- what it shows', () => {
     jest.useFakeTimers();
     try {
       await render(<RunScreen />);
-      await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+      await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
       await act(async () => {
         jest.advanceTimersByTime(5000);
       });
@@ -203,13 +242,13 @@ describe('RunScreen -- permission', () => {
   it('asks for precise location when it has not been asked, and then follows the position', async () => {
     (getPrecisePermission as jest.Mock).mockResolvedValue('undetermined');
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     expect(requestPrecisePermission).toHaveBeenCalledTimes(1);
   });
 
   it('does not ask again when it is already granted', async () => {
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     expect(requestPrecisePermission).not.toHaveBeenCalled();
   });
 
@@ -218,7 +257,7 @@ describe('RunScreen -- permission', () => {
     (requestPrecisePermission as jest.Mock).mockResolvedValue('denied');
     await render(<RunScreen />);
     await waitFor(() => expect(screen.getByText('Location is off for FORJD')).toBeTruthy());
-    expect(watchPrecisePosition).not.toHaveBeenCalled();
+    expect(startRunLocationUpdates).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByText('Open Settings'));
     expect(Linking.openSettings).toHaveBeenCalled();
@@ -228,7 +267,7 @@ describe('RunScreen -- permission', () => {
     (getPrecisePermission as jest.Mock).mockResolvedValue('coarse_only');
     await render(<RunScreen />);
     await waitFor(() => expect(screen.getByText('Precise location is needed')).toBeTruthy());
-    expect(watchPrecisePosition).not.toHaveBeenCalled();
+    expect(startRunLocationUpdates).not.toHaveBeenCalled();
   });
 });
 
@@ -236,7 +275,7 @@ describe('RunScreen -- pause and resume', () => {
   it('pauses: the header and the button change, and readings stop counting', async () => {
     const base = Date.now();
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await feed(fixAt(base, 0, 1));
 
     await fireEvent.press(screen.getByText('Pause'));
@@ -253,19 +292,42 @@ describe('RunScreen -- pause and resume', () => {
 
   it('saves its progress when paused, so a crash can recover it', async () => {
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await fireEvent.press(screen.getByText('Pause'));
     await waitFor(() => expect(saveRunSnapshot).toHaveBeenCalled());
   });
 
-  it('pauses itself when the phone locks, and says why', async () => {
+  // ADR-059 (12A): the run keeps tracking through a location foreground service with the screen off.
+  it('keeps running when the phone locks, and no longer says it paused', async () => {
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await act(async () => {
       appStateHandler('background');
     });
-    expect(screen.getByText('Paused · Outdoor run')).toBeTruthy();
-    expect(screen.getByText('Paused when the phone locked. Tap Resume to carry on.')).toBeTruthy();
+    expect(screen.getByText('Live · Outdoor run')).toBeTruthy();
+    expect(screen.queryByText('Paused when the phone locked. Tap Resume to carry on.')).toBeNull();
+    expect(stopRunLocationUpdates).not.toHaveBeenCalled();
+  });
+
+  it('lets the screen turn off during a run (owner decision, 12A)', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+    expect(useKeepAwake).not.toHaveBeenCalled();
+  });
+
+  it('still records readings that arrive while the phone is locked', async () => {
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+    await act(async () => {
+      appStateHandler('background');
+    });
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 100, 31));
+    await act(async () => {
+      appStateHandler('active');
+    });
+    await waitFor(() => expect(screen.getByText('0.10')).toBeTruthy());
   });
 });
 
@@ -302,14 +364,14 @@ describe('RunScreen -- finishing', () => {
   async function runOneHundredMetres() {
     const base = Date.now();
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await feed(fixAt(base, 0, 1));
     await feed(fixAt(base, 100, 31));
   }
 
   it('offers to discard a run too short to keep, and saves nothing', async () => {
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
 
     await fireEvent.press(screen.getByText('Finish run'));
 
@@ -338,7 +400,7 @@ describe('RunScreen -- finishing', () => {
     expect(clearRunSnapshot).toHaveBeenCalled();
     expect(getCompletedRun()?.distanceMeters).toBe(request.run.distanceMeters);
     expect(syncPendingSessions).toHaveBeenCalled();
-    expect(mockStop).toHaveBeenCalled();
+    expect(stopRunLocationUpdates).toHaveBeenCalled();
   });
 
   it('keeps the route on the phone: the upload has no coordinates but the rounded start', async () => {
@@ -379,6 +441,50 @@ describe('RunScreen -- finishing', () => {
     expect(mockReplace).not.toHaveBeenCalled();
     expect(clearRunSnapshot).not.toHaveBeenCalled();
   });
+
+  /**
+   * G6 (live-run-plan follow-up): queueing the run and clearing its crash-recovery snapshot are one
+   * transaction, so a crash between them can never leave a snapshot of a run that is already
+   * queued (and later uploaded) to be offered back as unfinished.
+   */
+  /**
+   * The G6 review's race: an autosave that starts while Finish is waiting (consent, weight, the
+   * watch) must not write the snapshot back -- it could land inside the finish transaction, after
+   * the clear, and restore the snapshot of a queued run.
+   */
+  it('stops saving the recovery snapshot as soon as Finish starts, before it waits on anything', async () => {
+    let releaseConsent: (value: boolean) => void = () => undefined;
+    (readHealthConsent as jest.Mock).mockReturnValue(new Promise<boolean>((resolve) => (releaseConsent = resolve)));
+    await runOneHundredMetres();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+    (saveRunSnapshot as jest.Mock).mockClear();
+    const pauseButton = screen.queryByText('Pause');
+    if (pauseButton) await fireEvent.press(pauseButton);
+    releaseConsent(false);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(saveRunSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('queues the run and clears its recovery snapshot in one transaction', async () => {
+    await runOneHundredMetres();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(inTransactionLog).toEqual(['enqueue', 'clearSnapshot']);
+  });
+
+  it('says the run is not saved, and stays on it, when clearing the snapshot fails (the queueing is rolled back)', async () => {
+    (clearRunSnapshot as jest.Mock).mockRejectedValue(new Error('disk I/O error'));
+    await runOneHundredMetres();
+
+    await fireEvent.press(screen.getByText('Finish run'));
+
+    await waitFor(() => expect(screen.getByText('Run not saved — try Finish again.')).toBeTruthy());
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
 });
 
 describe('RunScreen -- watch heart rate and calories (R8)', () => {
@@ -416,7 +522,7 @@ describe('RunScreen -- watch heart rate and calories (R8)', () => {
     (readHealthConsent as jest.Mock).mockResolvedValue(false);
 
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
 
     expect(provider.connect).not.toHaveBeenCalled();
     expect(provider.requestPermissions).not.toHaveBeenCalled();
@@ -514,7 +620,7 @@ describe('RunScreen -- watch heart rate and calories (R8)', () => {
     (readHealthConsent as jest.Mock).mockResolvedValue(false);
     const base = Date.now();
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await feed(fixAt(base, 0, 1));
     await feed(fixAt(base, 100, 31));
 
@@ -533,7 +639,7 @@ describe('RunScreen -- watch heart rate and calories (R8)', () => {
     (readHealthConsent as jest.Mock).mockResolvedValue(true);
     const base = Date.now();
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await feed(fixAt(base, 0, 1));
     await feed(fixAt(base, 100, 31));
 
@@ -547,7 +653,7 @@ describe('RunScreen -- review fixes (second round)', () => {
   const finishedRun = async () => {
     const base = Date.now();
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await feed(fixAt(base, 0, 1));
     await feed(fixAt(base, 100, 31));
   };
@@ -566,7 +672,7 @@ describe('RunScreen -- review fixes (second round)', () => {
 
   it('a Pause really saves a paused snapshot, not just the one from opening', async () => {
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     (saveRunSnapshot as jest.Mock).mockClear();
 
     await fireEvent.press(screen.getByText('Pause'));
@@ -594,12 +700,12 @@ describe('RunScreen -- review fixes (second round)', () => {
 
   it('stops following the position when the screen is left', async () => {
     const { unmount } = await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await waitFor(() => expect(screen.getByText('GPS searching')).toBeTruthy());
 
     await unmount();
 
-    expect(mockStop).toHaveBeenCalled();
+    expect(stopRunLocationUpdates).toHaveBeenCalled();
   });
 
   it('says location is not available, with no Settings button that could not help', async () => {
@@ -607,7 +713,7 @@ describe('RunScreen -- review fixes (second round)', () => {
     await render(<RunScreen />);
     await waitFor(() => expect(screen.getByText('Location is not available')).toBeTruthy());
     expect(screen.queryByText('Open Settings')).toBeNull();
-    expect(watchPrecisePosition).not.toHaveBeenCalled();
+    expect(startRunLocationUpdates).not.toHaveBeenCalled();
   });
 });
 
@@ -619,7 +725,7 @@ describe('RunScreen -- review fixes', () => {
       return { remove: jest.fn() };
     }) as never);
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
 
     let handled = false;
     await act(async () => {
@@ -635,22 +741,117 @@ describe('RunScreen -- review fixes', () => {
     (getPrecisePermission as jest.Mock).mockResolvedValue('denied');
     await render(<RunScreen />);
     await waitFor(() => expect(screen.getByText('Location is off for FORJD')).toBeTruthy());
-    expect(watchPrecisePosition).not.toHaveBeenCalled();
+    expect(startRunLocationUpdates).not.toHaveBeenCalled();
 
     (getPrecisePermission as jest.Mock).mockResolvedValue('granted');
     await act(async () => {
       appStateHandler('active');
     });
 
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText('Location is off for FORJD')).toBeNull());
+  });
+});
+
+describe('RunScreen -- the live notice (12A-3, approved replica v2)', () => {
+  const lastShown = () => (runNotifier.show as jest.Mock).mock.calls.at(-1)?.[0];
+  const runOneHundredMetres = async () => {
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 100, 31));
+  };
+
+  it('shows the run on the notice once it is being tracked', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(runNotifier.show).toHaveBeenCalled());
+
+    expect(lastShown()).toEqual({ header: 'Run', title: expect.stringMatching(/^0:0\d · 0\.00 km$/), body: 'Avg pace — /km', category: 'run-running' });
+  });
+
+  it('says paused on the notice at once when the run is paused', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(runNotifier.show).toHaveBeenCalled());
+
+    await fireEvent.press(screen.getByText('Pause'));
+
+    await waitFor(() => expect(lastShown()).toEqual(expect.objectContaining({ header: 'Run paused', category: 'run-paused' })));
+  });
+
+  it("pauses and resumes from the notice's buttons", async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(runNotifier.onAction).toHaveBeenCalled());
+
+    await act(async () => {
+      runNoticeAction('pause');
+    });
+    expect(screen.getByText('Paused · Outdoor run')).toBeTruthy();
+
+    await act(async () => {
+      runNoticeAction('resume');
+    });
+    expect(screen.getByText('Live · Outdoor run')).toBeTruthy();
+  });
+
+  it('finishes from the notice like the Finish button, and the notice goes', async () => {
+    await runOneHundredMetres();
+
+    await act(async () => {
+      runNoticeAction('finish');
+    });
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/run-done'));
+    expect(runNotifier.clear).toHaveBeenCalled();
+  });
+
+  it('removes the notice when the run is discarded', async () => {
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+    await fireEvent.press(screen.getByLabelText('Discard run'));
+    const buttons = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+
+    await act(async () => {
+      buttons.find((b) => b.text === 'Discard')?.onPress?.();
+    });
+
+    await waitFor(() => expect(runNotifier.clear).toHaveBeenCalled());
+  });
+});
+
+describe('RunScreen -- reopened quickly (12A-2 review)', () => {
+  /**
+   * The location task and its listener are one per app. A screen that is left while its start is
+   * still pending must not, when that start finally lands, stop the tracking a newer screen owns.
+   */
+  it("a late start from a screen already left does not stop the newer screen's tracking", async () => {
+    let finishFirstStart: (value: string) => void = () => undefined;
+    (startRunLocationUpdates as jest.Mock).mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finishFirstStart = resolve)),
+    );
+
+    const first = await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalledTimes(1));
+    await first.unmount();
+
+    await render(<RunScreen />);
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalledTimes(2));
+    (setRunFixListener as jest.Mock).mockClear();
+    (stopRunLocationUpdates as jest.Mock).mockClear();
+
+    await act(async () => {
+      finishFirstStart('started');
+    });
+
+    expect(setRunFixListener).not.toHaveBeenCalledWith(null);
+    expect(stopRunLocationUpdates).not.toHaveBeenCalled();
   });
 });
 
 describe('RunScreen -- leaving without finishing', () => {
   it('asks before throwing a run away, and keeps it if the person says keep going', async () => {
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
 
     await fireEvent.press(screen.getByLabelText('Discard run'));
 
@@ -661,7 +862,7 @@ describe('RunScreen -- leaving without finishing', () => {
 
   it('discards the run and its snapshot when confirmed', async () => {
     await render(<RunScreen />);
-    await waitFor(() => expect(watchPrecisePosition).toHaveBeenCalled());
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
     await fireEvent.press(screen.getByLabelText('Discard run'));
 
     const buttons = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
@@ -671,7 +872,7 @@ describe('RunScreen -- leaving without finishing', () => {
     });
 
     await waitFor(() => expect(clearRunSnapshot).toHaveBeenCalled());
-    expect(mockStop).toHaveBeenCalled();
+    expect(stopRunLocationUpdates).toHaveBeenCalled();
     expect(mockBack).toHaveBeenCalled();
     expect(enqueueSessionUpload).not.toHaveBeenCalled();
   });

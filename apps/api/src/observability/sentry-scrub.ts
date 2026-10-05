@@ -1,60 +1,122 @@
-import type { ErrorEvent } from '@sentry/nestjs';
+import type { ErrorEvent, Exception, StackFrame } from '@sentry/nestjs';
 
 /**
- * The tag an authenticated request sets once its privacy settings have actually been read.
- * Its only recognised value is `'on'`; everything else, including absence, means no consent.
+ * What every exception message becomes. The type and the stack frames survive; the words do not.
  */
-export const CRASH_DIAGNOSTICS_TAG = 'crash_diagnostics';
-
-/** The single value that counts as consent. Compared exactly — see the fail-closed note. */
-const CONSENTED = 'on';
+export const REDACTED = '[redacted]';
 
 /**
- * Removes the user identifier from a crash report unless that user turned crash diagnostics
- * on. Gives the `crashDiagnostics` flag something that actually reads it, rather than leaving
- * it a stored boolean nobody enforces.
- *
- * **It fails closed.** Only the exact marker `'on'` keeps the identifier; absence, `'off'`,
- * and any unrecognised value all scrub. That matters because most events come from code paths
- * that never read this user's settings — a crash during bootstrap, an unauthenticated
- * request, a background job — and for those the honest answer is "we do not know", which must
- * behave like "no". Defaulting the other way would leak an identifier every time the
- * consent lookup simply had not happened.
- *
- * The error itself is still reported. The flag governs whether the report can be tied to a
- * person, not whether the crash is fixed.
- *
- * This is **not** the mechanism that keeps health data out of Sentry — CLAUDE.md rule 15
- * forbids that unconditionally, regardless of any toggle's position, and `sendDefaultPii` is
- * off besides. Device-side enforcement is separate and also necessary: a crash can happen
- * before any network call succeeds, so the server can never be the only place this holds.
+ * Top-level fields copied as they are: identifiers, the SDK's own metadata and where the code
+ * ran. `user` is here because it is decided separately, by consent (`createCrashReportFilter`).
+ * `transaction` is the route template (`GET /api/v1/nutrition/foods/:id`), never the filled-in
+ * URL. Anything not listed — message, logentry, request, breadcrumbs, extra, tags, and any field
+ * a future SDK adds — is dropped, so the list fails closed.
  */
-/** The minimum of Sentry's Scope this module needs, so it can be tested without the SDK. */
-export interface TaggableScope {
-  setTag(key: string, value: string): unknown;
+const KEPT_FIELDS = [
+  'type',
+  'event_id',
+  'timestamp',
+  'level',
+  'platform',
+  'environment',
+  'release',
+  'dist',
+  'server_name',
+  'transaction',
+  'sdk',
+  'modules',
+  'debug_meta',
+  'user',
+] as const;
+
+/** Contexts that describe the machine and the trace, never the person or the request. */
+const KEPT_CONTEXTS = ['trace', 'runtime', 'os'] as const;
+
+/** Reads a user's crash-diagnostics choice. Resolves `true` only for an explicit opt-in. */
+export type CrashConsentLookup = (userId: string) => Promise<boolean>;
+
+/**
+ * Removes every piece of free text from a server crash report, whatever anyone consented to.
+ *
+ * **Why all of it, not just the health-looking parts** (owner decision, 2026-10-01,
+ * `docs/product/engineering-gaps-plan.md`): an exception message, a request body or a
+ * breadcrumb can carry a weight, a heart rate or a meal, and a pattern that tries to spot them
+ * will one day miss one. CLAUDE.md rule 15 says health data never reaches a third-party SDK,
+ * so this is shaped like that rule: an allowlist of what is kept — the error's type, its
+ * mechanism type, and each frame's file, function, line and column — with everything else
+ * gone. Source lines are dropped too, because a line of code can embed a literal.
+ *
+ * Returns a new event; the one passed in is not changed.
+ */
+export function stripCrashReportText(event: ErrorEvent): ErrorEvent {
+  const kept = Object.fromEntries(
+    Object.entries(event).filter(([key]) => (KEPT_FIELDS as readonly string[]).includes(key)),
+  ) as ErrorEvent;
+  const { contexts, exception } = event;
+
+  return {
+    ...kept,
+    ...(exception ? { exception: { values: exception.values?.map(stripException) } } : {}),
+    ...(contexts ? { contexts: keepContexts(contexts) } : {}),
+  };
+}
+
+function stripException(exception: Exception): Exception {
+  const frames = exception.stacktrace?.frames;
+
+  return {
+    ...(exception.type !== undefined ? { type: exception.type } : {}),
+    value: REDACTED,
+    ...(exception.mechanism
+      ? { mechanism: { type: exception.mechanism.type, handled: exception.mechanism.handled } }
+      : {}),
+    ...(frames ? { stacktrace: { frames: frames.map(stripFrame) } } : {}),
+  };
+}
+
+function stripFrame({ filename, function: fn, lineno, colno, in_app }: StackFrame): StackFrame {
+  return { filename, function: fn, lineno, colno, in_app };
+}
+
+function keepContexts(contexts: NonNullable<ErrorEvent['contexts']>): NonNullable<ErrorEvent['contexts']> {
+  return Object.fromEntries(KEPT_CONTEXTS.filter((key) => contexts[key]).map((key) => [key, contexts[key]]));
 }
 
 /**
- * Records this user's crash-diagnostics choice on the current scope, so events raised later
- * in the same request carry it.
+ * Builds Sentry's `beforeSend`: strips the text, then applies the crash-diagnostics choice of
+ * the person whose request crashed.
  *
- * Called from the one place that has just read the real setting, rather than from a cache.
- * A request that never reads the setting leaves no tag, and `scrubUnlessDiagnosticsConsented`
- * treats that as no consent — which is why the absence case is safe rather than merely
- * unhandled.
+ * - **No user on the event** (server start-up, an unauthenticated request, a background job):
+ *   sent, with no user. There is no person whose choice it would override.
+ * - **A user who turned crash diagnostics off: not sent at all** (owner decision, 2026-10-01;
+ *   what `data-inventory.md` promises).
+ * - **A user who turned it on:** sent with their id and nothing else about them.
+ * - **A user whose choice cannot be read** — no lookup registered yet, or the read failed, which
+ *   is common because the database is often what broke: **not sent**. It fails closed; a choice
+ *   that cannot be read is treated as "off", never as "on".
+ *
+ * The lookup is read lazily through `currentLookup` because Sentry is initialised before Nest
+ * builds the service that can answer it (`instrument.ts` must run first).
  */
-export function applyCrashDiagnosticsConsent(scope: TaggableScope, enabled: boolean): void {
-  scope.setTag(CRASH_DIAGNOSTICS_TAG, enabled ? CONSENTED : 'off');
-}
+export function createCrashReportFilter(
+  currentLookup: () => CrashConsentLookup | null,
+): (event: ErrorEvent) => Promise<ErrorEvent | null> {
+  return async (event) => {
+    const { user, ...stripped } = stripCrashReportText(event);
+    const userId = user?.id === undefined || user.id === null ? null : String(user.id);
+    if (userId === null) {
+      return stripped;
+    }
 
-export function scrubUnlessDiagnosticsConsented(event: ErrorEvent): ErrorEvent | null {
-  if (event.tags?.[CRASH_DIAGNOSTICS_TAG] === CONSENTED) {
-    return event;
-  }
+    const lookup = currentLookup();
+    if (!lookup) {
+      return null;
+    }
 
-  // Deleting rather than blanking: an empty user object still tells Sentry there was a user,
-  // and would group events by a placeholder identity.
-  delete event.user;
-
-  return event;
+    try {
+      return (await lookup(userId)) ? { ...stripped, user: { id: userId } } : null;
+    } catch {
+      return null;
+    }
+  };
 }

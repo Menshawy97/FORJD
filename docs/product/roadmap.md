@@ -10,6 +10,55 @@ the quick-reference for "what phase are we in and what's next."
 A tickable list of every remaining point (owed user steps, open engineering gaps, unstarted
 phases) is in [remaining-checklist.md](remaining-checklist.md).
 
+## Session handoff (2026-10-03) — read this first
+
+**Shipped this session, each test-first, reviewed and merged with `main` green:**
+- Engineering gaps G1-G7 ([engineering-gaps-plan.md](engineering-gaps-plan.md)): crash reports keep no
+  text and none from users with crash diagnostics off (#312), CI least privilege and flaky tests (#311),
+  board-cache eviction (#313), run follow-ups (#314), batch food lookup (#315), Phase 12 ADR drafts (#316).
+- ADR-059/060/061 accepted (#317). **Phase 12A built** ([phase-12a-plan.md](phase-12a-plan.md)): the
+  location foreground service (#318), runs keep tracking with the screen off and the screen may sleep
+  (#319), the live run notice with Pause/Resume/Finish to the approved replica v2 (#320), docs (#321).
+- **12B planned** ([phase-12b-plan.md](phase-12b-plan.md)): the workout lock-screen card, replica
+  approved; the owner chose a live ticking countdown, so [ADR-063](../decisions/ADR-063-android-ongoing-notice-module.md)
+  (accepted) adds a small local Android module. Not started.
+
+**Owed by the owner (12A cannot close without them):**
+1. A new dev-client build (12A adds `expo-task-manager` and changes the location and notification
+   config), then the 12A-4 device test in [phase-12a-plan.md](phase-12a-plan.md): a 30-minute locked-phone run.
+2. Approve the proposed FAQ wording in [faq-copy.md](faq-copy.md) ("Proposed for 12A").
+
+**12B merged to `main` on 2026-10-04, ahead of the device walk, at the owner's instruction** (#323 the Kotlin module
+and its seam, #324 the workout notice, #325 the workout outliving the screen with its in-app bar), each squash-merged
+in order with `main` green after each. The Kotlin has only been compiled, never run on a device: the walk below is
+still owed, and a failure on it is a bug to fix on `main`, not a PR to hold. The owner kept the run notice as approved
+(no ticking time; ADR-063 decision 6).
+
+**12B-2 built** (the workout notice and the session-level rest owner, stacked on 12B-1, its own PR; see
+[phase-12b-plan.md](phase-12b-plan.md) for the three differences from the approved design and the limits to
+watch). Owed by the owner: the one dev-client build and walk of 12A and 12B together, and approval of the
+"Proposed for 12B" FAQ wording in [faq-copy.md](faq-copy.md).
+
+**12B-2b built (2026-10-04, its own PR stacked on 12B-2):** pressing back from a running workout no longer ends
+it. The session lives in a store that outlives the screen, an in-app bar (owner-approved replica) floats above
+the tab bar to return to it or discard it, and the lock-screen card stays until the workout is finished (or three
+hours pass with nothing logged). The FAQ wording for 12A and 12B was approved by the owner on 2026-10-04 and is in
+the app ([faq-copy.md](faq-copy.md)). Details and differences from the replica in
+[phase-12b-plan.md](phase-12b-plan.md).
+
+**Owed phone tests (added 2026-10-03):** 12A's locked-phone run and 12B's workout-notice walk, both on a
+physical Android 7+ phone. The owner has no such phone now (their OPPO A37f is on Android 5.1.1), and a
+local emulator build fails on their laptop, so these need either a cloud (EAS) build plus a phone or
+emulator, or a borrowed phone. Details in [phase-12b-plan.md](phase-12b-plan.md).
+
+**12C built (2026-10-04, its own PR):** finished workouts and runs upload by themselves about every 15 minutes while
+the app is closed (Android decides the exact timing). Workouts and runs only: body scans are read live and have no
+saved-for-later list, so they are not part of it (owner decision). Plan: [phase-12c-plan.md](phase-12c-plan.md).
+Owed on a device with the 12A/12B walk: finish a workout offline, reconnect, lock the phone, and check it reaches the
+server without opening the app.
+
+**Next for a session:** fix whatever the owner's 12A, 12B and 12C device walk finds. 12D-12I wait for the beta.
+
 ## Current status (last updated 2026-09-25)
 
 **Phases 1-5 and 7 are complete (Phase 0 bar Spike B), as are the audit remediation (29/29), Phase 8's engineering
@@ -58,30 +107,33 @@ owed item**: it is the only check on code users will run.
 
 ### Known engineering gaps (in plans, not yet scheduled until now)
 
+**2026-10-01:** the ones that need no device, account or product decision are planned in
+[engineering-gaps-plan.md](engineering-gaps-plan.md) (G1-G7: Sentry scrub, CI permissions,
+board-cache eviction, flaky timing tests, batch food lookup, run follow-ups, Phase 12 ADR drafts).
+
 They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed there:
 
 - **Privacy:** ~~crash-recovery snapshots and the late `getMe` consent race after sign-out~~ fixed
-  in 8.5 S1. Still open, **scheduled at 8.5 triage (L3-3):** Sentry does not scrub health values
-  from exception messages (`sentry-scrub.ts` strips only the user; `data-inventory.md`).
+  in 8.5 S1. ~~L3-3, Sentry not scrubbing health values~~ fixed 2026-10-01 (G1): reports keep
+  no text, and none is sent for a user with crash diagnostics off.
   Unconfirmed (8.5E): the date-of-birth `getMe` in `AuthenticatedGate` could, if the gate stays
   mounted across a quick account switch, redirect the new account on the old one's profile.
-- **Speed (8.5E, low):** the leaderboard's 15 s board cache never drops past months' keys
-  (`leaderboards.service.ts`); a first Nutrition visit still reads each food separately (no batch
-  `GET /nutrition/foods?ids=`; revisits are cached). The two R28 timing tests in
-  `nutrition.repository.spec.ts` keep 2 s wall-clock bounds (same flake class as L10-1).
-- **CI (8.5E, unconfirmed):** `ci.yml` has no top-level `permissions:` block; it touches no
+- **Speed (8.5E, low):** ~~the board cache never drops past months' keys~~ fixed (G3);
+  ~~a first Nutrition visit still reads each food separately~~ fixed (G5,
+  `GET /nutrition/foods?ids=`). ~~The two R28 timing tests~~ removed (G4).
+- ~~**CI (8.5E, unconfirmed):** `ci.yml` had no top-level `permissions:` block~~ added (G2); it touches no
   credentials, so this rests on the repository's default token permission.
 - **Rule 10:** watch calories are summed across every Health Connect data origin (possible
   double count); filter by origin.
 - **Honest failures:** a revoked Health Connect permission reads as "no watch".
-- **Run follow-ups:** a leftover snapshot of an already-uploaded run; the route rebuilt every
-  second; the unused `run_points` table; no miles option; the run share card ("coming soon").
+- **Run follow-ups:** ~~a leftover snapshot of an already-uploaded run; the route rebuilt every
+  second; the unused `run_points` table~~ fixed (G6); no miles option; the run share card ("coming soon").
 - **Website:** the privacy page's "Waitlist" section (W4 step 3). The production build's form now
   posts to the europe-west1 production API with the real Turnstile key (checked 2026-09-26), and
   the site sends CSP, HSTS and framing headers (8.5 S11).
 - **Readiness:** Phase 7 decision E's baseline-crossover surfacing.
 - **Tooling:** Expo web cannot bundle (expo-sqlite's web worker), so UI previews rely on HTML
-  mirrors or a device; `crash_diagnostics` strips only the user id (data inventory).
+  mirrors or a device.
 - **Product decisions still open:** Free versus Pro, subscriptions (RevenueCat, deferred with
   Phase 10, needs Play Console), terms of use, the launch email service, and Phase 11's iOS
   health library ADR.
@@ -204,6 +256,15 @@ ask for. iPhone widgets (12I) are in scope; other iOS parts follow Phase 11 (ADR
 
 ### Decisions to settle first (each an ADR, docs-only PR)
 
+**2026-10-03: ADR-059, ADR-060 and ADR-061 accepted by the owner (ADR-062 still Proposed). 12A is
+planned in [phase-12a-plan.md](phase-12a-plan.md) and under way.** The drafts:
+[ADR-059 background run](../decisions/ADR-059-background-run-tracking.md) (spike done: the foreground
+service adds only `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION`; background location stays
+removed), [ADR-060 push transport](../decisions/ADR-060-push-notification-transport.md) (one open
+question), [ADR-061 what a notification may say](../decisions/ADR-061-what-a-notification-may-say.md),
+[ADR-062 widgets](../decisions/ADR-062-home-screen-widgets.md) (`expo-widgets` 57 draws iPhone widgets
+from JSX, so no hand-written Swift). 12A starts once ADR-059 is accepted.
+
 1. **Background run tracking** (supersedes ADR-049 point 2). Recommended: an Android foreground
    service of type `location`, started from the visible run screen, with an ongoing notification
    (time, distance, pace, Pause/Finish). Android treats that as foreground access, so the aim is
@@ -243,7 +304,7 @@ ask for. iPhone widgets (12I) are in scope; other iOS parts follow Phase 11 (ADR
 |---|---|---|
 | 12A | **Background run.** The foreground service and ongoing notification; GPS continues with the screen off; the notification's Pause/Finish act on the run engine; crash recovery covers a killed service | ADR from decision 1. Keep-awake becomes optional. Physical-device test mandatory, including Doze and battery-saver, and OEM battery killers (Samsung, Xiaomi) |
 | 12B | **Strength session in the background.** An ongoing notification for a live session (current exercise, set, rest countdown via the wall clock), tap to return; the rest buzz folds into it | Local only, no network (rule 6). Android first; iOS Live Activities belong to Phase 11 |
-| 12C | **Background upload.** `expo-background-task` drains the offline queue (sessions, runs, InBody) without opening the app | Idempotent uploads already exist; test the retry path |
+| 12C | **Background upload.** `expo-background-task` drains the offline queue (sessions and runs; not InBody, which has no queue) about every 15 minutes without opening the app. [Plan](phase-12c-plan.md) | Idempotent uploads already exist; test the retry path. **Built 2026-10-04; device walk owed** |
 | 12D | **Notification preferences move server-side.** Contract, migration (a `notification_preferences` shape per category, quiet hours, time zone), `GET/PATCH /api/v1/users/me/notifications`; the screen reads and writes them; the device copy becomes a cache | Additive (rule 7). Quiet hours get the editor the design stubs |
 | 12E | **Local scheduled notifications:** workout reminders on program days (30 min before), the weekly summary (Sunday evening) | No server needed; rescheduled when the program or the preferences change |
 | 12F | **Push:** device-token registration (`device_push_tokens` table, deleted on sign-out and account deletion, in the export and the data inventory), `NotificationProvider` + a fake for tests, then the server-side senders: leaderboard moves (after the Monday snapshot), PR celebrations (on upload) | ADR from decisions 2-3. Contract tests for the adapter (rule 8) |

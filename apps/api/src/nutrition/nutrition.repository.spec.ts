@@ -560,6 +560,39 @@ describe("NutritionRepository", () => {
    * forced `enable_seqscan = off` -- prefers an index scan once the index exists. `ANALYZE` runs
    * after each bulk insert so the planner's row-count estimates reflect the seeded data.
    */
+  describe("findFoodsByIdsForDisplay (G5)", () => {
+    it("reads every asked-for food with its servings in two queries, however many are asked for", async () => {
+      const created = await Promise.all(
+        Array.from({ length: 8 }, (_, index) => repository.createCatalogueFood(catalogueInput(`g5-batch-${randomUUID()}-${index}`))),
+      );
+      createdFoodIds.push(...created.map((food: Food) => food.id));
+
+      const querySpy = jest.spyOn(pool, "query");
+      const found = await repository.findFoodsByIdsForDisplay(created.map((food: Food) => food.id));
+      const callCount = querySpy.mock.calls.length;
+      querySpy.mockRestore();
+
+      expect(found.map((food) => food.id).sort()).toEqual(created.map((food: Food) => food.id).sort());
+      expect(found.every((food) => food.servings.length === 2)).toBe(true);
+      expect(callCount).toBeLessThanOrEqual(2);
+    });
+
+    it("leaves out a soft-deleted custom food, and returns nothing for an empty list", async () => {
+      const userId = await makeUser("g5-deleted");
+      const food = await repository.createCustomFood(userId, {
+        name: `G5 Gone ${randomUUID()}`,
+        category: "snacks",
+        macrosPer100g: { kcal: 100, protein: 1, carbs: 1, fat: 1 },
+        servings: [{ label: "1 bar", grams: 40 }],
+      });
+      createdFoodIds.push(food.id);
+      await repository.softDeleteCustomFood(food.id, userId);
+
+      await expect(repository.findFoodsByIdsForDisplay([food.id])).resolves.toEqual([]);
+      await expect(repository.findFoodsByIdsForDisplay([])).resolves.toEqual([]);
+    });
+  });
+
   describe("R28: FK indexes and N+1 batching", () => {
     /** Bulk-inserts minimal catalogue foods directly (bypassing createCatalogueFood's per-row servings round trip) purely as FK targets for the seeded rows below. */
     const seedBulkFoods = async (count: number, label: string): Promise<string[]> => {
@@ -722,56 +755,11 @@ describe("NutritionRepository", () => {
 
       expect(list.length).toBeGreaterThanOrEqual(8);
       // One query for the meal rows, one batched `IN (...)` query for every meal's items --
-      // never N+1. Same generous bound rationale as the searchFoods test above.
+      // never N+1. Same generous bound rationale as the searchFoods test above. These two
+      // query-count tests are the guard for R28; wall-clock timing tests were removed because
+      // they flaked under machine load and proved nothing these do not.
       expect(callCount).toBeLessThanOrEqual(4);
     });
-
-    it("timing: listSavedMeals stays fast against a seeded set of meals -- a per-meal round trip would scale linearly with meal count", async () => {
-      const userId = await makeUser("r28-savedmeals-timing");
-      const food = await repository.createCatalogueFood(
-        catalogueInput(`r28-savedmeals-timing-${randomUUID()}`),
-      );
-      createdFoodIds.push(food.id);
-
-      const mealCount = 100;
-      for (let i = 0; i < mealCount; i += 20) {
-        const batch = await Promise.all(
-          Array.from({ length: Math.min(20, mealCount - i) }, (_, offset) =>
-            repository.createSavedMeal(userId, `R28 Timing Meal ${i + offset} ${randomUUID()}`, [
-              { foodId: food.id, servingLabel: "100 g", grams: 100 },
-            ]),
-          ),
-        );
-        createdSavedMealIds.push(...batch.map((meal) => meal.id));
-      }
-
-      const start = Date.now();
-      const list = await repository.listSavedMeals(userId);
-      const elapsedMs = Date.now() - start;
-
-      expect(list.length).toBeGreaterThanOrEqual(mealCount);
-      // Two round trips' worth of latency, not `mealCount` of them -- generous even under the
-      // shared-machine contention this repo's own test-running notes call out.
-      expect(elapsedMs).toBeLessThan(2000);
-    }, 30000);
-
-    it("timing: searchFoods stays fast against a seeded set of matching foods -- a per-result round trip would scale linearly with result count", async () => {
-      const viewer = await makeUser("r28-search-timing");
-      const unique = randomUUID().replace(/-/g, "");
-      const created = await Promise.all(
-        Array.from({ length: 50 }, (_, index) =>
-          repository.createCatalogueFood(catalogueInput(`r28-search-timing-${unique}-${index}`)),
-        ),
-      );
-      createdFoodIds.push(...created.map((food: Food) => food.id));
-
-      const start = Date.now();
-      const results = await repository.searchFoods(viewer, `Test Banana r28-search-timing-${unique}`, 50);
-      const elapsedMs = Date.now() - start;
-
-      expect(results.length).toBeGreaterThanOrEqual(50);
-      expect(elapsedMs).toBeLessThan(2000);
-    }, 30000);
   });
 
   describe("pruneCatalogueFoods", () => {
