@@ -50,20 +50,32 @@ export const defaultLocalNotificationApi: LocalNotificationApi = {
   getLastResponse: () => Notifications.getLastNotificationResponseAsync(),
 };
 
-// A reconcile is cancel-then-schedule, so two running together could cancel what the other just scheduled.
-// They run one at a time, in the order they were asked.
+// Reconciles and cancels run one at a time, in the order they were asked, and the plan is read *inside* the
+// queue: a plan read outside it finishes in whatever order its network calls do, so an older, slower read could
+// land after a newer one (a switch turned off, a sign-out) and put back what had just been cleared. Each ask
+// also supersedes the ones queued before it: a request that is no longer the latest when its turn comes is
+// skipped, because the latest one will read fresher facts anyway.
 let chain: Promise<unknown> = Promise.resolve();
+let latestAsk = 0;
 function inOrder<T>(task: () => Promise<T>): Promise<T> {
   const run = chain.then(task, task);
   chain = run.catch(() => undefined);
   return run;
 }
 
-async function cancelPlanned(api: LocalNotificationApi): Promise<void> {
+async function listPlannedIds(api: LocalNotificationApi): Promise<string[]> {
   const pending = await api.getAllScheduledNotificationsAsync();
-  for (const { identifier } of pending) {
-    if (identifier.startsWith(LOCAL_NOTIFICATION_ID_PREFIX)) {
+  return pending.map(({ identifier }) => identifier).filter((identifier) => identifier.startsWith(LOCAL_NOTIFICATION_ID_PREFIX));
+}
+
+/** Cancels FORJD's planned notifications except those in `keep`. One that fails to cancel does not stop the rest. */
+async function cancelPlanned(api: LocalNotificationApi, keep: ReadonlySet<string> = new Set()): Promise<void> {
+  for (const identifier of await listPlannedIds(api)) {
+    if (keep.has(identifier)) continue;
+    try {
       await api.cancelScheduledNotificationAsync(identifier);
+    } catch {
+      // Already fired or already gone; the next reconcile looks again.
     }
   }
 }
@@ -74,44 +86,61 @@ function whenOf(planned: PlannedLocalNotification): Date {
   return new Date(year, month - 1, day, Math.floor(planned.minute / 60), planned.minute % 60);
 }
 
+async function scheduleAll(plan: readonly PlannedLocalNotification[], api: LocalNotificationApi): Promise<number> {
+  api.installForegroundHandler();
+  if (api.platform === 'android') {
+    await api.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
+      name: 'Reminders',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  }
+  let scheduled = 0;
+  for (const planned of plan) {
+    try {
+      // The identifier is deterministic, so scheduling one that already exists replaces it in place.
+      await api.scheduleNotificationAsync({
+        identifier: planned.id,
+        content: { title: planned.title, body: planned.body, data: { route: planned.route } },
+        trigger: {
+          // Required: without a type the object is not a valid trigger and nothing is scheduled (ADR-026).
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: whenOf(planned),
+          channelId: REMINDERS_CHANNEL_ID,
+        },
+      });
+      scheduled += 1;
+    } catch {
+      // One that failed to schedule must not stop the rest; the next reconcile tries it again.
+    }
+  }
+  return scheduled;
+}
+
 /**
- * Makes the phone's scheduled notifications match `plan`. Answers how many were scheduled. With notifications
- * not allowed in the phone's settings it only clears what FORJD scheduled before: it never asks (the prompt
- * belongs where the person turns a reminder on). Never throws.
+ * Makes the phone's scheduled notifications match the plan `readPlan` answers, read when this ask's turn comes
+ * (a `null` means it could not be built, e.g. offline: the schedule is left exactly as it was). Answers how many
+ * were scheduled. The new plan is scheduled first and only then are stale ones cancelled, so a failure part-way
+ * never leaves the person with nothing. With notifications not allowed in the phone's settings it only clears
+ * what FORJD scheduled before: it never asks (the prompt belongs where the person turns a reminder on).
+ * Never throws.
  */
 export function reconcileLocalNotifications(
-  plan: readonly PlannedLocalNotification[],
+  readPlan: () => Promise<PlannedLocalNotification[] | null>,
   api: LocalNotificationApi = defaultLocalNotificationApi,
 ): Promise<{ scheduled: number }> {
+  const ask = ++latestAsk;
   return inOrder(async () => {
+    if (ask !== latestAsk) return { scheduled: 0 };
     try {
-      await cancelPlanned(api);
-      if (!(await api.getPermissionsAsync()).granted) return { scheduled: 0 };
-      api.installForegroundHandler();
-      if (api.platform === 'android') {
-        await api.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
-          name: 'Reminders',
-          importance: Notifications.AndroidImportance.DEFAULT,
-        });
+      const plan = await readPlan();
+      if (plan === null) return { scheduled: 0 };
+      if (!(await api.getPermissionsAsync()).granted) {
+        await cancelPlanned(api);
+        return { scheduled: 0 };
       }
-      let scheduled = 0;
-      for (const planned of plan) {
-        try {
-          await api.scheduleNotificationAsync({
-            identifier: planned.id,
-            content: { title: planned.title, body: planned.body, data: { route: planned.route } },
-            trigger: {
-              // Required: without a type the object is not a valid trigger and nothing is scheduled (ADR-026).
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: whenOf(planned),
-              channelId: REMINDERS_CHANNEL_ID,
-            },
-          });
-          scheduled += 1;
-        } catch {
-          // One that failed to schedule must not stop the rest; the next reconcile tries it again.
-        }
-      }
+      const scheduled = await scheduleAll(plan, api);
+      // A plan that could not be scheduled at all means the scheduler is failing, so what is already there stays.
+      if (plan.length === 0 || scheduled > 0) await cancelPlanned(api, new Set(plan.map((planned) => planned.id)));
       return { scheduled };
     } catch {
       return { scheduled: 0 };
@@ -119,13 +148,14 @@ export function reconcileLocalNotifications(
   });
 }
 
-/** Cancels everything FORJD scheduled itself (signing out). Never throws. */
+/** Cancels everything FORJD scheduled itself (signing out), and supersedes any reconcile still waiting. Never throws. */
 export function cancelLocalNotifications(api: LocalNotificationApi = defaultLocalNotificationApi): Promise<void> {
+  latestAsk += 1;
   return inOrder(async () => {
     try {
       await cancelPlanned(api);
     } catch {
-      // Nothing to recover: a notification that could not be cancelled is cleared by the next reconcile.
+      // Nothing to recover: a notification that could not be listed is cleared by the next reconcile.
     }
   });
 }

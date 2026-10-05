@@ -25,9 +25,9 @@ export function requestLocalNotificationReconcile(): void {
   requests.forEach((request) => request());
 }
 
+/** The plan is read inside the seam's queue, so what lands last is always what was asked last. */
 async function reconcileNow(): Promise<void> {
-  const plan = await buildLocalNotificationPlan();
-  if (plan) await reconcileLocalNotifications(plan);
+  await reconcileLocalNotifications(() => buildLocalNotificationPlan());
 }
 
 /** Opens the screen a tapped FORJD notification names; every other notification is not ours to route. */

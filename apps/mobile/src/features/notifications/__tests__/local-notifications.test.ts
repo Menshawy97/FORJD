@@ -45,6 +45,16 @@ function fakeApi(overrides: Partial<LocalNotificationApi> = {}, initial: Pending
   return { api, pending, channels };
 }
 
+const planOf = (plan: PlannedLocalNotification[] | null) => async () => plan;
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 const workout: PlannedLocalNotification = {
   id: 'forjd-local:workout:2026-10-07',
   kind: 'workout',
@@ -68,7 +78,7 @@ describe('reconcileLocalNotifications', () => {
   it('schedules each planned notification at its local date and time, on the Reminders channel', async () => {
     const { api, pending, channels } = fakeApi();
 
-    const result = await reconcileLocalNotifications([workout, weekly], api);
+    const result = await reconcileLocalNotifications(planOf([workout, weekly]), api);
 
     expect(result).toEqual({ scheduled: 2 });
     expect(channels).toEqual(['reminders']);
@@ -93,7 +103,7 @@ describe('reconcileLocalNotifications', () => {
     const rest: Pending = { identifier: 'some-rest-timer-id', content: {}, trigger: {} };
     const { api, pending } = fakeApi({}, [stale, runNotice, rest]);
 
-    await reconcileLocalNotifications([workout], api);
+    await reconcileLocalNotifications(planOf([workout]), api);
 
     expect([...pending.keys()].sort()).toEqual([workout.id, 'forjd-run-live', 'some-rest-timer-id'].sort());
   });
@@ -101,8 +111,8 @@ describe('reconcileLocalNotifications', () => {
   it('is idempotent: running it twice leaves the same notifications scheduled', async () => {
     const { api, pending } = fakeApi();
 
-    await reconcileLocalNotifications([workout, weekly], api);
-    await reconcileLocalNotifications([workout, weekly], api);
+    await reconcileLocalNotifications(planOf([workout, weekly]), api);
+    await reconcileLocalNotifications(planOf([workout, weekly]), api);
 
     expect([...pending.keys()].sort()).toEqual([weekly.id, workout.id].sort());
   });
@@ -111,7 +121,7 @@ describe('reconcileLocalNotifications', () => {
     const stale: Pending = { identifier: `${LOCAL_NOTIFICATION_ID_PREFIX}workout:2026-10-06`, content: {}, trigger: {} };
     const { api, pending } = fakeApi({ getPermissionsAsync: jest.fn(async () => ({ granted: false })) }, [stale]);
 
-    const result = await reconcileLocalNotifications([workout], api);
+    const result = await reconcileLocalNotifications(planOf([workout]), api);
 
     expect(result).toEqual({ scheduled: 0 });
     expect(pending.size).toBe(0);
@@ -124,7 +134,7 @@ describe('reconcileLocalNotifications', () => {
       throw new Error('boom');
     });
 
-    const result = await reconcileLocalNotifications([workout, weekly], api);
+    const result = await reconcileLocalNotifications(planOf([workout, weekly]), api);
 
     expect(result).toEqual({ scheduled: 1 });
     expect([...pending.keys()]).toEqual([weekly.id]);
@@ -137,15 +147,15 @@ describe('reconcileLocalNotifications', () => {
       }),
     });
 
-    await expect(reconcileLocalNotifications([workout], api)).resolves.toEqual({ scheduled: 0 });
+    await expect(reconcileLocalNotifications(planOf([workout]), api)).resolves.toEqual({ scheduled: 0 });
   });
 
   it('runs concurrent reconciles one after the other, so a later one never cancels the earlier one half-way', async () => {
     const { api, pending } = fakeApi();
 
     await Promise.all([
-      reconcileLocalNotifications([workout], api),
-      reconcileLocalNotifications([workout, weekly], api),
+      reconcileLocalNotifications(planOf([workout]), api),
+      reconcileLocalNotifications(planOf([workout, weekly]), api),
     ]);
 
     expect([...pending.keys()].sort()).toEqual([weekly.id, workout.id].sort());
@@ -154,9 +164,117 @@ describe('reconcileLocalNotifications', () => {
   it('does not set the Android channel on iOS', async () => {
     const { api, channels } = fakeApi({ platform: 'ios' });
 
-    await reconcileLocalNotifications([workout], api);
+    await reconcileLocalNotifications(planOf([workout]), api);
 
     expect(channels).toEqual([]);
+  });
+});
+
+describe('reconcile ordering and safety', () => {
+  const letItRun = () => new Promise((resolve) => setImmediate(resolve));
+
+  it('applies plans in the order they were asked, so a slow older read cannot overwrite a newer plan', async () => {
+    const { api, pending } = fakeApi();
+    const slow = deferred<PlannedLocalNotification[] | null>();
+
+    const older = reconcileLocalNotifications(() => slow.promise, api);
+    await letItRun();
+    const newer = reconcileLocalNotifications(planOf([weekly]), api);
+    slow.resolve([workout]);
+    await Promise.all([older, newer]);
+
+    // The newer request was asked last, so what it planned is what the phone ends up with.
+    expect([...pending.keys()]).toEqual([weekly.id]);
+  });
+
+  it('does not even build a plan that a newer request has already superseded', async () => {
+    const { api } = fakeApi();
+    const blocker = deferred<PlannedLocalNotification[] | null>();
+    const skipped = jest.fn(async () => [workout]);
+
+    const first = reconcileLocalNotifications(() => blocker.promise, api);
+    await letItRun();
+    const second = reconcileLocalNotifications(skipped, api);
+    const third = reconcileLocalNotifications(planOf([weekly]), api);
+    blocker.resolve([]);
+    await Promise.all([first, second, third]);
+
+    expect(skipped).not.toHaveBeenCalled();
+  });
+
+  it('never schedules after a cancel that was asked later (signing out while a plan is being read)', async () => {
+    const { api, pending } = fakeApi();
+    const slow = deferred<PlannedLocalNotification[] | null>();
+
+    const reconcile = reconcileLocalNotifications(() => slow.promise, api);
+    await letItRun();
+    const cancel = cancelLocalNotifications(api);
+    slow.resolve([workout, weekly]);
+    await Promise.all([reconcile, cancel]);
+
+    expect(pending.size).toBe(0);
+  });
+
+  it('skips a reconcile queued before a cancel, so it cannot re-schedule after sign-out', async () => {
+    const { api, pending } = fakeApi();
+    const blocker = deferred<PlannedLocalNotification[] | null>();
+    const queued = jest.fn(async () => [workout]);
+
+    const first = reconcileLocalNotifications(() => blocker.promise, api);
+    await letItRun();
+    const second = reconcileLocalNotifications(queued, api);
+    const cancel = cancelLocalNotifications(api);
+    blocker.resolve(null);
+    await Promise.all([first, second, cancel]);
+
+    expect(queued).not.toHaveBeenCalled();
+    expect(pending.size).toBe(0);
+  });
+
+  it('leaves the schedule exactly as it was when the plan could not be built (null)', async () => {
+    const old: Pending = { identifier: `${LOCAL_NOTIFICATION_ID_PREFIX}workout:2026-10-06`, content: {}, trigger: {} };
+    const { api, pending } = fakeApi({}, [old]);
+
+    const result = await reconcileLocalNotifications(planOf(null), api);
+
+    expect(result).toEqual({ scheduled: 0 });
+    expect([...pending.keys()]).toEqual([old.identifier]);
+  });
+
+  it('schedules the new plan before cancelling stale ones, so a failure part-way never leaves it with nothing', async () => {
+    const stale: Pending = { identifier: `${LOCAL_NOTIFICATION_ID_PREFIX}workout:2026-10-06`, content: {}, trigger: {} };
+    const { api, pending } = fakeApi({}, [stale]);
+    (api.scheduleNotificationAsync as jest.Mock).mockImplementation(async () => {
+      throw new Error('scheduler down');
+    });
+
+    await reconcileLocalNotifications(planOf([workout]), api);
+
+    // Nothing could be scheduled, so the earlier reminder stays rather than being wiped.
+    expect(pending.has(stale.identifier)).toBe(true);
+  });
+
+  it('keeps an already-scheduled reminder that is still in the plan, and drops one that is not', async () => {
+    const stillWanted: Pending = { identifier: workout.id, content: {}, trigger: {} };
+    const noLonger: Pending = { identifier: `${LOCAL_NOTIFICATION_ID_PREFIX}workout:2026-10-06`, content: {}, trigger: {} };
+    const { api, pending } = fakeApi({}, [stillWanted, noLonger]);
+
+    await reconcileLocalNotifications(planOf([workout]), api);
+
+    expect([...pending.keys()]).toEqual([workout.id]);
+  });
+
+  it('keeps cancelling when one cancel fails', async () => {
+    const a: Pending = { identifier: `${LOCAL_NOTIFICATION_ID_PREFIX}workout:2026-10-06`, content: {}, trigger: {} };
+    const b: Pending = { identifier: `${LOCAL_NOTIFICATION_ID_PREFIX}workout:2026-10-08`, content: {}, trigger: {} };
+    const { api, pending } = fakeApi({}, [a, b]);
+    (api.cancelScheduledNotificationAsync as jest.Mock).mockImplementationOnce(async () => {
+      throw new Error('already gone');
+    });
+
+    await cancelLocalNotifications(api);
+
+    expect([...pending.keys()]).toEqual([a.identifier]);
   });
 });
 

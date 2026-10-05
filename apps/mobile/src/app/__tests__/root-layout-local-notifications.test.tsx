@@ -65,7 +65,11 @@ async function waitForCalls(mock: jest.Mock, times: number): Promise<void> {
 describe('root layout local notifications', () => {
   beforeEach(() => {
     mockBuildPlan.mockReset().mockResolvedValue(planned);
-    mockReconcile.mockReset().mockResolvedValue({ scheduled: 1 });
+    // Like the real seam, run the reader it is handed and report what came back.
+    mockReconcile.mockReset().mockImplementation(async (readPlan: () => Promise<unknown>) => {
+      await readPlan();
+      return { scheduled: 1 };
+    });
     mockCancel.mockReset().mockResolvedValue(undefined);
     mockAddResponseListener.mockReset().mockReturnValue({ remove: jest.fn() });
     mockGetLastResponse.mockReset().mockResolvedValue(null);
@@ -79,19 +83,8 @@ describe('root layout local notifications', () => {
     await findByText('Home', {}, { timeout: 8000 });
 
     await waitForCalls(mockReconcile, 1);
-    expect(mockReconcile).toHaveBeenCalledWith(planned);
+    expect(mockBuildPlan).toHaveBeenCalled();
     expect(mockCancel).not.toHaveBeenCalled();
-  });
-
-  it('leaves the schedule alone when the plan could not be built (offline)', async () => {
-    signedIn(true);
-    mockBuildPlan.mockResolvedValue(null);
-
-    const { findByText } = await renderApp({ initialUrl: '/' });
-    await findByText('Home', {}, { timeout: 8000 });
-
-    await waitForCalls(mockBuildPlan, 1);
-    expect(mockReconcile).not.toHaveBeenCalled();
   });
 
   it('clears the planned notifications when no one is signed in, and plans nothing', async () => {
