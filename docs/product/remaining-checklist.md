@@ -93,6 +93,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] *(unconfirmed)* `live.tsx` Finish has no disabled state
 - [x] Contrast of chip and segment text measured and pinned in `tokens.test.ts`: `dim` and `metadata` pass everywhere; `segmentedInactive` passes on its track by a hair (4.501:1)
 - [ ] Onboarding brief (including showing Weekly Forge "How it works" once); needs owner approval
+- [ ] Quiet-hours editor (12D follow-up): needs an approved mock-up first, then an additive migration for the hours
 
 ## 3. Planned phases not started
 - [ ] Phase 12 decisions: ADR-059, 060, 061 and 063 accepted; **ADR-062 (widgets) still Proposed**, needs your decision
@@ -101,7 +102,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] 12C background upload built (#327); **device walk owed**
 - [ ] Limited Android beta (needs 8.5 closed, 12A-C, Play Console, device tests)
 - [ ] Phase 9 post-beta iteration
-- [ ] 12D server-side notification preferences
+- [x] 12D the five notification switches on the server (#332); the quiet-hours editor is split out below
 - [ ] 12E local scheduled notifications
 - [ ] 12F push
 - [ ] 12G recovery alerts
