@@ -107,6 +107,10 @@ update. Older app builds ignore the new fields (rule 7).
    (Slice 6, no workout this week, built: Thursday 18:00 in this week and the next, left out for a Saturday-to-Friday week that already has a
    completed session; this week's nudge names the server's `weekStreak`, later weeks' say "Fit one in before the week closes." because their
    streak is not known yet (that wording is mine, for the owner to confirm). Reads sessions and the stats; a failed stats read only drops the streak.)
+   (Slice 7, Weekly Forge closing, built: Friday 18:00 on the Friday the current Forge week closes, only when the `weekly_forge` flag is on and some
+   ladder is at least 75% of the way to its target without reaching it (`isAnyLadderCloseToTarget`, the owner's 25%); a 404 from the server counts
+   as the feature being off, any other failed read leaves the schedule alone. Only the current week is planned, because the next week's
+   progress is not known yet; the plan is recomputed on every launch, foreground and finished workout. A tap opens Home.)
 9. **Docs close:** data inventory, FAQ (approved wording), roadmap, this plan's status.
 
 ## Verification
@@ -135,6 +139,13 @@ update. Older app builds ignore the new fields (rule 7).
 - **Not addressed by 12E, noted by review.** The API client sets no request timeout, so a hung read in the reconcile holds the
   queue (later reconciles and the sign-out cancel wait behind it); `nutrition.tsx` computes today's date once when the screen
   mounts, so a screen left open past midnight logs a saved meal to the old date. Both predate 12E.
+- **Accepted limits of slice 7 (Weekly Forge closing).** `GET /forge` enrols and evaluates on first read, as it already does every
+  time Home is focused, so the reconcile adds no new side effect beyond more reads, for someone with the switch and the flag on. A
+  failing `/forge` (not a 404) leaves the whole schedule as it was, so while it fails a food-log change does not cancel tonight's meals
+  nudge; the alternative, planning without it, would wipe the Friday reminder whenever the phone is offline. The Friday date is
+  `weekStart + 6` in the phone's calendar, so for the first reconcile after changing time zone, before the zone sync lands, it can be a
+  day off. "Close" is decided at plan time, so a ladder finished on another device still gets its "closes tonight" (the wording is
+  neutral). The row shows while the `weekly_forge` flag is off, like the others; hide it behind the flag if the feature is ever dark.
 - **The permission prompt, and a change from the approved design.** The switches start on, so on a new phone reminders are
   on before anything was asked. Asking only "the first time a reminder is switched on" would therefore never ask, and the
   reminders would silently never arrive. The Notifications screen also asks once, when it opens, if a reminder the phone

@@ -1,4 +1,5 @@
 import {
+  isAnyLadderCloseToTarget,
   limitPlannedNotifications,
   MAX_PENDING_LOCAL_NOTIFICATIONS,
   planLocalNotifications,
@@ -597,5 +598,79 @@ describe("planLocalNotifications: no workout yet this week (12E-6)", () => {
     expect(dates(before)).toEqual(["2026-10-08", "2026-10-15"]);
     expect(dates(after)).toEqual(["2026-10-15"]);
     expect(dates(trained)).toEqual(["2026-10-15"]);
+  });
+});
+
+describe("isAnyLadderCloseToTarget (12E-7)", () => {
+  it("is true when a ladder is at least 75% of the way and has not reached its target", () => {
+    expect(isAnyLadderCloseToTarget([{ target: 100, total: 75 }])).toBe(true);
+    expect(isAnyLadderCloseToTarget([{ target: 4, total: 3 }])).toBe(true);
+    expect(isAnyLadderCloseToTarget([{ target: 100, total: 99 }])).toBe(true);
+  });
+
+  it("is false below 75%, so a far-off week is not nagged", () => {
+    expect(isAnyLadderCloseToTarget([{ target: 100, total: 74 }])).toBe(false);
+    expect(isAnyLadderCloseToTarget([{ target: 100, total: 0 }])).toBe(false);
+  });
+
+  it("is false for a ladder that has already reached its target", () => {
+    expect(isAnyLadderCloseToTarget([{ target: 100, total: 100 }])).toBe(false);
+    expect(isAnyLadderCloseToTarget([{ target: 100, total: 140 }])).toBe(false);
+  });
+
+  it("looks at every ladder, and ignores one with no target", () => {
+    expect(isAnyLadderCloseToTarget([{ target: 100, total: 10 }, { target: 5, total: 4 }])).toBe(true);
+    expect(isAnyLadderCloseToTarget([{ target: 0, total: 0 }])).toBe(false);
+    expect(isAnyLadderCloseToTarget([])).toBe(false);
+  });
+});
+
+describe("planLocalNotifications: Weekly Forge closing (12E-7)", () => {
+  // The Forge week that starts Saturday 2026-10-03 closes Friday 2026-10-09.
+  const withForge = (over: Partial<LocalNotificationPlanInput> = {}) =>
+    base({
+      switches: { workout: false, weekly: false, forgeClosing: true },
+      forgeWeek: { weekStart: "2026-10-03", closeToTarget: true },
+      ...over,
+    });
+
+  it("is off unless the switch is on", () => {
+    const plan = planLocalNotifications(base({ forgeWeek: { weekStart: "2026-10-03", closeToTarget: true } }));
+
+    expect(ofKind(plan, "forgeClosing")).toEqual([]);
+  });
+
+  it("reminds on the Friday the week closes, at 18:00, when a ladder is close", () => {
+    expect(ofKind(planLocalNotifications(withForge()), "forgeClosing")).toEqual([
+      {
+        id: "forjd-local:forgeClosing:2026-10-09",
+        kind: "forgeClosing",
+        date: "2026-10-09",
+        minute: at(18),
+        title: "Weekly Forge closes tonight",
+        body: "Check how close you are.",
+        route: "/",
+      },
+    ]);
+  });
+
+  it("stays quiet when no ladder is close, or when there is no Forge week (the feature is off)", () => {
+    expect(ofKind(planLocalNotifications(withForge({ forgeWeek: { weekStart: "2026-10-03", closeToTarget: false } })), "forgeClosing")).toEqual([]);
+    expect(ofKind(planLocalNotifications(withForge({ forgeWeek: undefined })), "forgeClosing")).toEqual([]);
+  });
+
+  it("keeps it on the Friday itself before 18:00 and drops it after", () => {
+    const friday = "2026-10-09";
+    const before = planLocalNotifications(withForge({ now: { date: friday, minute: at(12) } }));
+    const after = planLocalNotifications(withForge({ now: { date: friday, minute: at(18, 30) } }));
+
+    expect(ofKind(before, "forgeClosing")).toHaveLength(1);
+    expect(ofKind(after, "forgeClosing")).toEqual([]);
+  });
+
+  it("does not plan for a Friday beyond the fortnight", () => {
+    const plan = planLocalNotifications(withForge({ forgeWeek: { weekStart: "2026-10-24", closeToTarget: true } }));
+
+    expect(ofKind(plan, "forgeClosing")).toEqual([]);
   });
 });

@@ -20,7 +20,7 @@ export const LOCAL_NOTIFICATION_ID_PREFIX = 'forjd-local:';
 /** A low-key channel for reminders, not the rest timer's high-importance one. */
 const REMINDERS_CHANNEL_ID = 'reminders';
 /** The only screens a tap on a planned notification may open. Anything else is ignored. */
-const TAP_ROUTES: readonly string[] = ['/train', '/progress', '/nutrition'];
+const TAP_ROUTES: readonly string[] = ['/train', '/progress', '/nutrition', '/'];
 
 /** The slice of `expo-notifications` the reconciler uses. */
 export interface LocalNotificationApi {

@@ -1,10 +1,12 @@
 import {
+  isAnyLadderCloseToTarget,
   planLocalNotifications,
   type PlannedLocalNotification,
   type ProgramWeekdayWorkout,
   type TrainingSessionStart,
 } from '@forjd/domain';
 import type {
+  ForgeResponse,
   NutritionLogListResponse,
   ProgramEnrollmentResponse,
   ProgramResponse,
@@ -13,12 +15,16 @@ import type {
 } from '@forjd/contracts';
 
 import {
+  getForge,
   getProgram,
   getProgramEnrollment,
   getWorkoutStats,
   listNutritionLog,
   listWorkoutSessions,
 } from '@/auth/apiClient';
+import { isNotFound } from '@/auth/failure';
+import { loadFeatureFlags } from '@/features/flags/feature-flags';
+import { WEEKLY_FORGE_FLAG } from '@/features/forge/use-forge-week';
 import { loadNotificationPreferences, type NotificationPreferences } from '@/store/notification-preferences';
 
 /**
@@ -33,6 +39,8 @@ export interface PlanInputSources {
   getProgram: (id: string) => Promise<ProgramResponse>;
   listNutritionLog: (date: string) => Promise<NutritionLogListResponse>;
   getStats: () => Promise<WorkoutStatsResponse>;
+  loadFlags: () => Promise<readonly string[]>;
+  getForge: () => Promise<ForgeResponse>;
 }
 
 export const defaultPlanInputSources: PlanInputSources = {
@@ -42,6 +50,8 @@ export const defaultPlanInputSources: PlanInputSources = {
   getProgram,
   listNutritionLog,
   getStats: getWorkoutStats,
+  loadFlags: loadFeatureFlags,
+  getForge,
 };
 
 /** Enough to cover the planner's four-week window for anyone who trains daily. */
@@ -95,6 +105,23 @@ async function readWeekStreak(sources: PlanInputSources): Promise<number> {
   }
 }
 
+/**
+ * This Weekly Forge week and whether a ladder is close, or `undefined` when the feature is off (its flag, or a 404
+ * from the server): then there is nothing to remind about. Any other failure throws, so the schedule is left alone.
+ */
+async function readForgeWeek(
+  sources: PlanInputSources,
+): Promise<{ weekStart: string; closeToTarget: boolean } | undefined> {
+  if (!(await sources.loadFlags()).includes(WEEKLY_FORGE_FLAG)) return undefined;
+  try {
+    const forge = await sources.getForge();
+    return { weekStart: forge.weekStart, closeToTarget: isAnyLadderCloseToTarget(forge.ladders) };
+  } catch (error) {
+    if (isNotFound(error)) return undefined;
+    throw error;
+  }
+}
+
 export async function buildLocalNotificationPlan(
   sources: PlanInputSources = defaultPlanInputSources,
   now: Date = new Date(),
@@ -102,13 +129,16 @@ export async function buildLocalNotificationPlan(
   try {
     const switches = await sources.loadPreferences();
     // Nothing wanted: no reason to touch the network, and the empty plan clears what was scheduled.
-    if (!switches.workout && !switches.weekly && !switches.meals && !switches.noWorkout) return [];
+    if (!switches.workout && !switches.weekly && !switches.meals && !switches.noWorkout && !switches.forgeClosing) {
+      return [];
+    }
     const today = localDate(now);
-    const [recentSessions, programWorkouts, mealLoggedToday, weekStreak] = await Promise.all([
+    const [recentSessions, programWorkouts, mealLoggedToday, weekStreak, forgeWeek] = await Promise.all([
       switches.workout || switches.noWorkout ? readSessionStarts(sources) : [],
       switches.workout ? readProgramWorkouts(sources) : [],
       switches.meals ? readMealLoggedToday(sources, today) : false,
       switches.noWorkout ? readWeekStreak(sources) : 0,
+      switches.forgeClosing ? readForgeWeek(sources) : undefined,
     ]);
     return planLocalNotifications({
       now: { date: today, minute: localMinute(now) },
@@ -117,11 +147,13 @@ export async function buildLocalNotificationPlan(
         weekly: switches.weekly,
         meals: switches.meals,
         noWorkout: switches.noWorkout,
+        forgeClosing: switches.forgeClosing,
       },
       recentSessions,
       programWorkouts,
       mealLoggedToday,
       weekStreak,
+      forgeWeek,
     });
   } catch {
     return null;

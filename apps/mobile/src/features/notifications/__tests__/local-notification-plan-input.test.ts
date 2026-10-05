@@ -1,4 +1,4 @@
-import type { ProgramResponse, WorkoutSessionSummary } from '@forjd/contracts';
+import type { ForgeResponse, ProgramResponse, WorkoutSessionSummary } from '@forjd/contracts';
 import { DEFAULT_NOTIFICATION_PREFERENCES, type PlannedLocalNotification } from '@forjd/domain';
 
 import { buildLocalNotificationPlan, type PlanInputSources } from '../local-notification-plan-input';
@@ -14,6 +14,16 @@ function session(daysAgo: number, hour: number, minute = 0, status: WorkoutSessi
   return { id: `s-${daysAgo}`, name: 'Push', activity: 'strength', status, startedAt, endedAt: null, durationSeconds: 3600, perceivedEffort: null };
 }
 
+// The Forge week that starts Saturday 3 Oct 2026 and closes Friday 9 Oct, with one ladder `progress` of the way.
+function forgeWeek(progress: number): ForgeResponse {
+  return {
+    weekStart: '2026-10-03',
+    daysLeft: 5,
+    timeZone: 'UTC',
+    ladders: [{ ladder: 'consistency', target: 100, total: progress * 100 }],
+  } as ForgeResponse;
+}
+
 const allOn = { ...DEFAULT_NOTIFICATION_PREFERENCES };
 const allOff = { ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false, weekly: false };
 const enrollment = {
@@ -27,6 +37,8 @@ function sources(overrides: Partial<PlanInputSources> = {}): PlanInputSources {
     getEnrollment: jest.fn(async () => ({ enrollment: null })),
     getProgram: jest.fn(),
     listNutritionLog: jest.fn(async () => ({ items: [] })),
+    loadFlags: jest.fn(async () => ['weekly_forge'] as readonly string[]),
+    getForge: jest.fn(async () => forgeWeek(0.5)),
     getStats: jest.fn(async () => ({ weekStreak: 0 }) as Awaited<ReturnType<PlanInputSources['getStats']>>),
     ...overrides,
   } as PlanInputSources;
@@ -248,5 +260,67 @@ describe('buildLocalNotificationPlan: no workout yet this week (12E-6)', () => {
 
     expect(s.getStats).not.toHaveBeenCalled();
     expect(s.listSessions).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildLocalNotificationPlan: Weekly Forge closing (12E-7)', () => {
+  const forgeOn = { ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false, weekly: false, forgeClosing: true };
+  const forgeIds = (plan: PlannedLocalNotification[] | null) => ids(plan).filter((id) => id.includes(':forgeClosing:'));
+  const withForge = (over: Partial<PlanInputSources> = {}) => sources({ loadPreferences: jest.fn(async () => forgeOn), ...over });
+
+  it('plans the Friday nudge when the feature is on and a ladder is close', async () => {
+    const plan = await buildLocalNotificationPlan(withForge({ getForge: jest.fn(async () => forgeWeek(0.8)) }), NOW);
+
+    expect(forgeIds(plan)).toEqual(['forjd-local:forgeClosing:2026-10-09']);
+  });
+
+  it('stays quiet when no ladder is close', async () => {
+    const plan = await buildLocalNotificationPlan(withForge({ getForge: jest.fn(async () => forgeWeek(0.3)) }), NOW);
+
+    expect(forgeIds(plan)).toEqual([]);
+  });
+
+  it('does not read the Forge at all while its feature flag is off', async () => {
+    const s = withForge({ loadFlags: jest.fn(async () => []) });
+
+    const plan = await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.getForge).not.toHaveBeenCalled();
+    expect(forgeIds(plan)).toEqual([]);
+  });
+
+  it('treats a 404 from the server (the feature is switched off) as nothing to remind about', async () => {
+    const plan = await buildLocalNotificationPlan(
+      withForge({
+        getForge: jest.fn(async () => {
+          throw { response: { status: 404 } };
+        }),
+      }),
+      NOW,
+    );
+
+    expect(plan).toEqual([]);
+  });
+
+  it('answers null, leaving the schedule alone, when the Forge cannot be read for another reason', async () => {
+    const plan = await buildLocalNotificationPlan(
+      withForge({
+        getForge: jest.fn(async () => {
+          throw new Error('offline');
+        }),
+      }),
+      NOW,
+    );
+
+    expect(plan).toBeNull();
+  });
+
+  it('reads neither the flags nor the Forge when the switch is off', async () => {
+    const s = sources();
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.loadFlags).not.toHaveBeenCalled();
+    expect(s.getForge).not.toHaveBeenCalled();
   });
 });

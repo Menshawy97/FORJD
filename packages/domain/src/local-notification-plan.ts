@@ -12,7 +12,7 @@ import { WEEK_START_DOW } from "./calendar-week";
  */
 
 /** The notification kinds planned so far. Later 12E slices add more. */
-export type LocalNotificationKind = "workout" | "weekly" | "meals" | "noWorkout";
+export type LocalNotificationKind = "workout" | "weekly" | "meals" | "noWorkout" | "forgeClosing";
 
 export interface LocalDateTime {
   /** `YYYY-MM-DD`, in the person's local calendar. */
@@ -36,7 +36,7 @@ export interface ProgramWeekdayWorkout {
 export interface LocalNotificationPlanInput {
   now: LocalDateTime;
   /** A kind that is absent is off. Later 12E slices add the other switches here. */
-  switches: { workout: boolean; weekly: boolean; meals?: boolean; noWorkout?: boolean };
+  switches: { workout: boolean; weekly: boolean; meals?: boolean; noWorkout?: boolean; forgeClosing?: boolean };
   /** Completed sessions, any order; only the last four weeks are used. */
   recentSessions: readonly TrainingSessionStart[];
   /** Empty for a preset program or no program: those prescribe no weekdays (`program_workouts.day_of_week`). */
@@ -45,6 +45,11 @@ export interface LocalNotificationPlanInput {
   mealLoggedToday?: boolean;
   /** Consecutive weeks trained, as the server counts them; named only in this week's "no workout yet" nudge. */
   weekStreak?: number;
+  /**
+   * The Weekly Forge week in progress, from the server, or absent when the feature is off. `weekStart` is its
+   * Saturday (`YYYY-MM-DD`); `closeToTarget` is `isAnyLadderCloseToTarget` over its ladders.
+   */
+  forgeWeek?: { weekStart: string; closeToTarget: boolean };
 }
 
 export interface PlannedLocalNotification {
@@ -73,6 +78,11 @@ export const WEEKLY_RECAP_MINUTE = 9 * 60;
 export const MEALS_REMINDER_MINUTE = 19 * 60 + 30;
 /** Thursday evening, 18:00: the week has two days left. */
 export const NO_WORKOUT_REMINDER_MINUTE = 18 * 60;
+/** Friday evening, 18:00, with the Weekly Forge week closing at midnight. */
+export const FORGE_CLOSING_REMINDER_MINUTE = 18 * 60;
+/** A ladder counts as close once it is this far to its target (within 25%, approved 2026-10-06). */
+export const FORGE_CLOSE_FRACTION = 0.75;
+const FORGE_WEEK_LAST_DAY_OFFSET = 6;
 const THURSDAY = 4;
 const DAYS_PER_WEEK = 7;
 
@@ -174,6 +184,16 @@ const reminderFor = (
   return { startMinute: start, body: workout ? `${workout.workoutName} is next.` : `You usually start around ${clock(start)}.` };
 };
 
+/**
+ * Whether any Weekly Forge ladder is at least 75% of the way to its target without having reached it, so the
+ * Friday nudge goes only to someone with something to lose or gain. A ladder with no target is ignored.
+ */
+export function isAnyLadderCloseToTarget(ladders: readonly { target: number; total: number }[]): boolean {
+  return ladders.some(
+    (ladder) => ladder.target > 0 && ladder.total < ladder.target && ladder.total / ladder.target >= FORGE_CLOSE_FRACTION,
+  );
+}
+
 /** Keeps the earliest `max` notifications and drops the furthest, so the phone never nears its pending limit. */
 export function limitPlannedNotifications(
   plan: readonly PlannedLocalNotification[],
@@ -197,6 +217,8 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
   const programWeekdays = new Set(
     input.programWorkouts.map((entry) => entry.dayOfWeek).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
   );
+  const forgeWeek = input.forgeWeek && isValidLocalDate(input.forgeWeek.weekStart) ? input.forgeWeek : null;
+  const forgeFriday = forgeWeek ? dayNumber(forgeWeek.weekStart) + FORGE_WEEK_LAST_DAY_OFFSET : null;
   const sessionDays = new Set(sessions.map((session) => dayNumber(session.date)));
   const thisWeekStart = weekStartOf(today);
   const plan: PlannedLocalNotification[] = [];
@@ -254,6 +276,23 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
           route: "/train",
         });
       }
+    }
+
+    if (
+      input.switches.forgeClosing &&
+      forgeWeek?.closeToTarget &&
+      day === forgeFriday &&
+      stillAhead(FORGE_CLOSING_REMINDER_MINUTE)
+    ) {
+      plan.push({
+        id: `forjd-local:forgeClosing:${date}`,
+        kind: "forgeClosing",
+        date,
+        minute: FORGE_CLOSING_REMINDER_MINUTE,
+        title: "Weekly Forge closes tonight",
+        body: "Check how close you are.",
+        route: "/",
+      });
     }
 
     if (input.switches.weekly && weekday === WEEK_START_DOW && stillAhead(WEEKLY_RECAP_MINUTE)) {
