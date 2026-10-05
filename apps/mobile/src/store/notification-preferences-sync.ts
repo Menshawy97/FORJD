@@ -24,6 +24,16 @@ export { NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY };
 
 type PendingChanges = Partial<NotificationPreferences>;
 
+// The screen fires a change without waiting, so two quick taps (or a tap during a send or a sync) would run
+// together and the later read-modify-write could overwrite the earlier. Everything that reads or writes the
+// pending changes or the device copy runs one at a time, in the order it was asked.
+let chain: Promise<unknown> = Promise.resolve();
+function inOrder<T>(task: () => Promise<T>): Promise<T> {
+  const run = chain.then(task, task);
+  chain = run.catch(() => undefined);
+  return run;
+}
+
 async function readPending(): Promise<PendingChanges> {
   try {
     const raw = await AsyncStorage.getItem(PENDING_KEY);
@@ -75,11 +85,18 @@ async function flushPending(): Promise<boolean> {
 }
 
 /** Records what changed between two states of the switches, then tries to send it. Never throws. */
-export async function queueNotificationChange(
+export function queueNotificationChange(
   previous: NotificationPreferences,
   next: NotificationPreferences,
 ): Promise<void> {
+  return inOrder(() => queueInOrder(previous, next));
+}
+
+async function queueInOrder(previous: NotificationPreferences, next: NotificationPreferences): Promise<void> {
   try {
+    // Saved here as well as by the screen, so a server answer that was already on its way cannot leave
+    // the device copy older than the tap (the sync runs before this, in order, then this wins).
+    await saveNotificationPreferences(next);
     const changed: PendingChanges = {};
     for (const key of NOTIFICATION_PREFERENCE_KEYS) {
       if (previous[key] !== next[key]) changed[key] = next[key];
@@ -97,7 +114,11 @@ export async function queueNotificationChange(
  * Answers the switches, or `null` when it could not (offline, a send that failed, an answer that is
  * not the contract), in which case the device copy is left exactly as it was.
  */
-export async function syncNotificationPreferences(): Promise<NotificationPreferences | null> {
+export function syncNotificationPreferences(): Promise<NotificationPreferences | null> {
+  return inOrder(syncInOrder);
+}
+
+async function syncInOrder(): Promise<NotificationPreferences | null> {
   try {
     if (!(await flushPending())) return null;
     const parsed = notificationPreferencesResponseSchema.safeParse(await getNotificationPreferences());
