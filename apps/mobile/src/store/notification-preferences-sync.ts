@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notificationPreferencesResponseSchema } from '@forjd/contracts';
-import { NOTIFICATION_PREFERENCE_KEYS, type NotificationPreferences } from '@forjd/domain';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_PREFERENCE_KEYS,
+  type NotificationPreferences,
+} from '@forjd/domain';
 
 import { getNotificationPreferences, patchNotificationPreferences } from '@/auth/apiClient';
 import { NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY, saveNotificationPreferences } from './notification-preferences';
@@ -123,13 +127,8 @@ async function syncInOrder(): Promise<NotificationPreferences | null> {
     if (!(await flushPending())) return null;
     const parsed = notificationPreferencesResponseSchema.safeParse(await getNotificationPreferences());
     if (!parsed.success) return null;
-    const preferences = {
-      workout: parsed.data.workout,
-      recovery: parsed.data.recovery,
-      pr: parsed.data.pr,
-      rank: parsed.data.rank,
-      weekly: parsed.data.weekly,
-    };
+    const preferences = { ...DEFAULT_NOTIFICATION_PREFERENCES };
+    for (const key of NOTIFICATION_PREFERENCE_KEYS) preferences[key] = parsed.data[key];
     await saveNotificationPreferences(preferences);
     return preferences;
   } catch {

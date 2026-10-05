@@ -4,9 +4,19 @@ import {
   NOTIFICATION_PREFERENCE_DISPLAY_NAMES,
 } from "./notification-vocabulary";
 
-describe("notification vocabulary (Phase 12D)", () => {
-  it("names the five switches the Notifications screen shows, in screen order", () => {
-    expect([...NOTIFICATION_PREFERENCE_KEYS]).toEqual(["workout", "recovery", "pr", "rank", "weekly"]);
+describe("notification vocabulary (Phase 12D, 12E)", () => {
+  it("names the switches the Notifications screen shows, in screen order, with the 12E reminders after the original five", () => {
+    expect([...NOTIFICATION_PREFERENCE_KEYS]).toEqual([
+      "workout",
+      "recovery",
+      "pr",
+      "rank",
+      "weekly",
+      "meals",
+      "noWorkout",
+      "forgeClosing",
+      "weighIn",
+    ]);
   });
 
   it("has a default boolean for every key and no extra keys", () => {
@@ -16,13 +26,17 @@ describe("notification vocabulary (Phase 12D)", () => {
     }
   });
 
-  it("starts every switch on except Leaderboard moves (slice2-screen-specs.md §5.4)", () => {
+  it("starts every original switch on except Leaderboard moves (slice2-screen-specs.md §5.4), and every 12E reminder off", () => {
     expect(DEFAULT_NOTIFICATION_PREFERENCES).toEqual({
       workout: true,
       recovery: true,
       pr: true,
       rank: false,
       weekly: true,
+      meals: false,
+      noWorkout: false,
+      forgeClosing: false,
+      weighIn: false,
     });
   });
 

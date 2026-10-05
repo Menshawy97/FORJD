@@ -5,7 +5,17 @@ import { NotificationPreferencesService } from './notification-preferences.servi
 
 describe('NotificationPreferencesService (Phase 12D)', () => {
   const user = { id: 'user-1', email: 'athlete@example.com' } as User;
-  const switches = { workout: true, recovery: true, pr: true, rank: false, weekly: true };
+  const switches = {
+    workout: true,
+    recovery: true,
+    pr: true,
+    rank: false,
+    weekly: true,
+    meals: false,
+    noWorkout: false,
+    forgeClosing: false,
+    weighIn: false,
+  };
 
   function build() {
     const repository: jest.Mocked<Pick<NotificationPreferencesRepository, 'get' | 'upsert'>> = {

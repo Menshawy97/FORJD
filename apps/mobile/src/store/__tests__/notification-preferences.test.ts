@@ -24,13 +24,17 @@ describe('notification preferences store', () => {
     jest.clearAllMocks();
   });
 
-  it('has the spec defaults, with Leaderboard moves off', () => {
+  it('has the spec defaults, with Leaderboard moves and the 12E reminders off', () => {
     expect(DEFAULT_NOTIFICATION_PREFERENCES).toEqual({
       workout: true,
       recovery: true,
       pr: true,
       rank: false,
       weekly: true,
+      meals: false,
+      noWorkout: false,
+      forgeClosing: false,
+      weighIn: false,
     });
   });
 
@@ -43,10 +47,33 @@ describe('notification preferences store', () => {
   });
 
   it('returns the stored value when one exists', async () => {
-    const stored = { workout: false, recovery: false, pr: false, rank: true, weekly: false };
+    const stored = {
+      workout: false,
+      recovery: false,
+      pr: false,
+      rank: true,
+      weekly: false,
+      meals: true,
+      noWorkout: true,
+      forgeClosing: false,
+      weighIn: true,
+    };
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(stored));
 
     await expect(loadNotificationPreferences()).resolves.toEqual(stored);
+  });
+
+  it('keeps the choices an older build saved, and starts the 12E reminders at their defaults', async () => {
+    const older = { workout: false, recovery: true, pr: false, rank: true, weekly: false };
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(older));
+
+    await expect(loadNotificationPreferences()).resolves.toEqual({
+      ...older,
+      meals: false,
+      noWorkout: false,
+      forgeClosing: false,
+      weighIn: false,
+    });
   });
 
   it('returns the defaults on a corrupt stored value rather than throwing', async () => {
@@ -66,7 +93,17 @@ describe('notification preferences store', () => {
   });
 
   it('persists under a single key', async () => {
-    const next = { workout: false, recovery: true, pr: true, rank: true, weekly: false };
+    const next = {
+      workout: false,
+      recovery: true,
+      pr: true,
+      rank: true,
+      weekly: false,
+      meals: true,
+      noWorkout: false,
+      forgeClosing: false,
+      weighIn: false,
+    };
 
     await expect(saveNotificationPreferences(next)).resolves.toBe(true);
 

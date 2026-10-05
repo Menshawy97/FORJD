@@ -232,6 +232,13 @@
       "when": 1791206644103,
       "tag": "0032_notification-preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791231461023,
+      "tag": "0033_notification-reminder-switches",
+      "breakpoints": true
     }
   ]
 }

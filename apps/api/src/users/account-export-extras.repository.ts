@@ -142,6 +142,10 @@ export class AccountExportExtrasRepository {
             pr: notificationRow.pr,
             rank: notificationRow.rank,
             weekly: notificationRow.weekly,
+            meals: notificationRow.meals,
+            noWorkout: notificationRow.noWorkout,
+            forgeClosing: notificationRow.forgeClosing,
+            weighIn: notificationRow.weighIn,
             updatedAt: notificationRow.updatedAt.toISOString(),
           }
         : null,

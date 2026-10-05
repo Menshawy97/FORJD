@@ -72,8 +72,22 @@ describe('NotificationPreferencesRepository (Phase 12D)', () => {
       pr: true,
       rank: true,
       weekly: false,
+      meals: false,
+      noWorkout: false,
+      forgeClosing: false,
+      weighIn: false,
     });
     expect((await repository.get(user.id)).preferences).toEqual(result.preferences);
+  });
+
+  it('starts the 12E reminders off, and saves each one on its own', async () => {
+    const user = await newUser('reminders');
+
+    const first = await repository.upsert(user.id, { meals: true });
+    const second = await repository.upsert(user.id, { weighIn: true });
+
+    expect(first.preferences).toMatchObject({ meals: true, noWorkout: false, forgeClosing: false, weighIn: false });
+    expect(second.preferences).toMatchObject({ meals: true, noWorkout: false, forgeClosing: false, weighIn: true });
   });
 
   it('moves the timestamp forward on every change', async () => {
@@ -88,7 +102,17 @@ describe('NotificationPreferencesRepository (Phase 12D)', () => {
 
   it('accepts all five at once', async () => {
     const user = await newUser('all');
-    const all = { workout: false, recovery: false, pr: false, rank: true, weekly: false };
+    const all = {
+      workout: false,
+      recovery: false,
+      pr: false,
+      rank: true,
+      weekly: false,
+      meals: true,
+      noWorkout: true,
+      forgeClosing: true,
+      weighIn: true,
+    };
 
     expect((await repository.upsert(user.id, all)).preferences).toEqual(all);
   });

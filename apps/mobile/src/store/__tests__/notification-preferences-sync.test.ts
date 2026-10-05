@@ -13,6 +13,7 @@ jest.mock('@/auth/apiClient', () => ({
 }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '@forjd/domain';
 
 import { getNotificationPreferences, patchNotificationPreferences } from '@/auth/apiClient';
 import {
@@ -22,7 +23,7 @@ import {
 } from '../notification-preferences-sync';
 import { NOTIFICATION_PREFERENCES_STORAGE_KEY } from '../notification-preferences';
 
-const defaults = { workout: true, recovery: true, pr: true, rank: false, weekly: true };
+const defaults = { ...DEFAULT_NOTIFICATION_PREFERENCES };
 const serverRow = (over: Partial<typeof defaults> = {}) => ({
   ...defaults,
   ...over,
@@ -108,7 +109,17 @@ describe('syncNotificationPreferences', () => {
 
     const result = await syncNotificationPreferences();
 
-    expect(result).toEqual({ workout: false, recovery: true, pr: true, rank: true, weekly: true });
+    expect(result).toEqual({ ...defaults, workout: false, rank: true });
+    expect(JSON.parse(data.get(NOTIFICATION_PREFERENCES_STORAGE_KEY) ?? 'null')).toEqual(result);
+  });
+
+  it('adopts the 12E reminder switches the server sends', async () => {
+    const data = useFakeStorage();
+    (getNotificationPreferences as jest.Mock).mockResolvedValue(serverRow({ meals: true, weighIn: true }));
+
+    const result = await syncNotificationPreferences();
+
+    expect(result).toMatchObject({ meals: true, noWorkout: false, forgeClosing: false, weighIn: true });
     expect(JSON.parse(data.get(NOTIFICATION_PREFERENCES_STORAGE_KEY) ?? 'null')).toEqual(result);
   });
 
@@ -119,7 +130,7 @@ describe('syncNotificationPreferences', () => {
     await syncNotificationPreferences();
 
     expect(Object.keys(JSON.parse(data.get(NOTIFICATION_PREFERENCES_STORAGE_KEY) ?? '{}')).sort()).toEqual(
-      ['pr', 'rank', 'recovery', 'weekly', 'workout'],
+      ['forgeClosing', 'meals', 'noWorkout', 'pr', 'rank', 'recovery', 'weekly', 'weighIn', 'workout'],
     );
   });
 
