@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import {
@@ -22,7 +22,11 @@ import type {
   ExtractBodyScanResponse,
 } from "@forjd/contracts";
 
-import { STORAGE_PROVIDER, StorageProvider } from "../storage/providers/storage-provider.interface";
+import {
+  STORAGE_PROVIDER,
+  StorageObjectRef,
+  StorageProvider,
+} from "../storage/providers/storage-provider.interface";
 import { VISION_PROVIDER, VisionProvider } from "../ai/providers/vision-provider.interface";
 import { PrivacyService } from "../privacy/privacy.service";
 import {
@@ -147,6 +151,8 @@ export function toBodyScanResponse(scan: ScanWithMeasurementsRow): BodyScanRespo
 
 @Injectable()
 export class BodyService {
+  private readonly logger = new Logger(BodyService.name);
+
   constructor(
     @Inject(VISION_PROVIDER) private readonly visionProvider: VisionProvider,
     @Inject(STORAGE_PROVIDER) private readonly storageProvider: StorageProvider,
@@ -199,14 +205,22 @@ export class BodyService {
     await this.storageProvider.upload({ ...ref, body: webp, contentType: "image/webp" });
 
     const measuredAt = new Date(request.measuredAt);
-    const scanId = await this.bodyRepository.createScan(
-      user.id,
-      measuredAt,
-      "inbody",
-      ref.key,
-      withCalculatedValues(request.measurements, request.heightCm),
-      scanProfileOf(request),
-    );
+    let scanId: string;
+    try {
+      scanId = await this.bodyRepository.createScan(
+        user.id,
+        measuredAt,
+        "inbody",
+        ref.key,
+        withCalculatedValues(request.measurements, request.heightCm),
+        scanProfileOf(request),
+      );
+    } catch (error) {
+      // The photo is already in private storage but no scan row points at it. Remove it so a
+      // failed save leaves no orphaned health image behind; the save error is what the caller sees.
+      await this.removeOrphanedPhoto(ref);
+      throw error;
+    }
 
     const scan = await this.bodyRepository.getScanById(user.id, scanId);
     if (!scan) throw new NotFoundException("Scan not found immediately after creating it");
@@ -292,6 +306,15 @@ export class BodyService {
         ];
       });
     return { metric: FFMI, unit: BODY_METRIC_UNITS[FFMI], points };
+  }
+
+  /** Best effort: a failure to clean up must never replace the save error the caller needs. */
+  private async removeOrphanedPhoto(ref: StorageObjectRef): Promise<void> {
+    try {
+      await this.storageProvider.delete(ref);
+    } catch (error) {
+      this.logger.warn(`Could not remove an orphaned InBody photo (${error instanceof Error ? error.name : "unknown"})`);
+    }
   }
 
   private async requireAiConsent(user: User): Promise<void> {

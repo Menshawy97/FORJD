@@ -35,8 +35,9 @@ describe("BodyService -- AI consent gate (C2)", () => {
         imageQualityNotes: "",
       }),
     };
-    const storageProvider: Pick<StorageProvider, "upload"> = {
+    const storageProvider: Pick<StorageProvider, "upload" | "delete"> = {
       upload: jest.fn().mockResolvedValue({ bucket: "inbody", key: "user-1/scan.webp" }),
+      delete: jest.fn().mockResolvedValue(undefined),
     };
     const bodyRepository: Pick<BodyRepository, "createScan" | "getScanById"> = {
       createScan: jest.fn().mockResolvedValue("scan-1"),
@@ -103,6 +104,44 @@ describe("BodyService -- AI consent gate (C2)", () => {
       const { service } = build(true);
 
       await expect(service.confirm(user, file, request)).resolves.toBeDefined();
+    });
+
+    it("deletes the uploaded photo when saving the scan fails, and rethrows the save error", async () => {
+      const { service, storageProvider, bodyRepository } = build(true);
+      const saveError = new Error("transaction rolled back");
+      (bodyRepository.createScan as jest.Mock).mockRejectedValue(saveError);
+
+      await expect(service.confirm(user, file, request)).rejects.toBe(saveError);
+
+      const uploaded = (storageProvider.upload as jest.Mock).mock.calls[0]?.[0];
+      expect(storageProvider.delete).toHaveBeenCalledTimes(1);
+      expect(storageProvider.delete).toHaveBeenCalledWith({ bucket: uploaded.bucket, key: uploaded.key });
+    });
+
+    it("still rethrows the save error when deleting the orphaned photo also fails", async () => {
+      const { service, storageProvider, bodyRepository } = build(true);
+      const saveError = new Error("transaction rolled back");
+      (bodyRepository.createScan as jest.Mock).mockRejectedValue(saveError);
+      (storageProvider.delete as jest.Mock).mockRejectedValue(new Error("storage down"));
+
+      await expect(service.confirm(user, file, request)).rejects.toBe(saveError);
+    });
+
+    it("keeps the photo when the scan saved but could not be read back, because the row exists", async () => {
+      const { service, storageProvider, bodyRepository } = build(true);
+      (bodyRepository.getScanById as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.confirm(user, file, request)).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(storageProvider.delete).not.toHaveBeenCalled();
+    });
+
+    it("keeps the photo when the scan saved, because the row points at it", async () => {
+      const { service, storageProvider } = build(true);
+
+      await service.confirm(user, file, request);
+
+      expect(storageProvider.delete).not.toHaveBeenCalled();
     });
   });
 });
