@@ -39,6 +39,10 @@ jest.mock('@/auth/apiClient', () => ({
   setMacroGoals: jest.fn(),
 }));
 
+jest.mock('@/features/notifications/use-local-notifications', () => ({
+  requestLocalNotificationReconcile: jest.fn(),
+}));
+
 import {
   createSavedMeal,
   deleteLogEntry,
@@ -51,6 +55,7 @@ import {
   setMacroGoals,
 } from '@/auth/apiClient';
 
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { todayLocalDate } from '@/nutrition/date';
 
 import NutritionScreen from '../nutrition';
@@ -154,6 +159,8 @@ describe('Nutrition dashboard', () => {
 
     await waitFor(() => expect(queryByText('Banana, raw')).toBeNull());
     expect(deleteLogEntry).toHaveBeenCalledWith('entry-1');
+    // Removing the day's last food brings the evening reminder back (12E).
+    await waitFor(() => expect(requestLocalNotificationReconcile).toHaveBeenCalled());
   });
 
   it('opens the Save as meal sheet prefilled with "<Slot> — usual" and saves it', async () => {

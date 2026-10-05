@@ -94,6 +94,7 @@ update. Older app builds ignore the new fields (rule 7).
    nothing. It never asks for the permission: the prompt belongs to the switch rows, slice 3.)
 3. **Mock-up for the owner's approval (no code):** the four new rows and the permission-off note on the
    Notifications screen, as a replica approved first (standing rule: no new UI without an approved replica).
+   (Approved 2026-10-06: the screen, the permission-off note, the notification texts, titles and times, and the Forge 25% threshold. Because a switch that does nothing would mislead, each new row ships in the slice of the notification behind it, 5 to 8; the permission prompt and the note were built first, in `4b`.)
 4. **New switches end to end:** domain keys, migration `0033`, contracts, export, deletion check, and the four rows
    on `notifs.tsx` (after approval).
    (Built, rows excluded: the four keys in `@forjd/domain` with defaults off, migration `0033_notification-reminder-switches`,
@@ -101,6 +102,8 @@ update. Older app builds ignore the new fields (rule 7).
    the new keys from the defaults. The four rows wait for the approved mock-up.)
 5. to 8. **One slice per extra kind:** meals, no workout this week, Forge closing, monthly weigh-in. Each adds its
    planner rules and its input.
+   (Slice 5, meals, built: the planner's `meals` kind at 19:30 "Food log", skipped for today once food is logged; the phone reads
+   today's food log; the row on the Notifications screen; a re-plan after food is logged or removed, and the tap opens Nutrition.)
 9. **Docs close:** data inventory, FAQ (approved wording), roadmap, this plan's status.
 
 ## Verification
@@ -126,6 +129,15 @@ update. Older app builds ignore the new fields (rule 7).
   The habit read takes the last 100 sessions of any status, so someone who logs far more than a dozen a week could lose
   the older weeks. A tap that cold-starts the app calls the router right away, which may be too early on a slow
   start: check it in the device walk and add a navigator-ready wait if it drops.
+- **Not addressed by 12E, noted by review.** The API client sets no request timeout, so a hung read in the reconcile holds the
+  queue (later reconciles and the sign-out cancel wait behind it); `nutrition.tsx` computes today's date once when the screen
+  mounts, so a screen left open past midnight logs a saved meal to the old date. Both predate 12E.
+- **The permission prompt, and a change from the approved design.** The switches start on, so on a new phone reminders are
+  on before anything was asked. Asking only "the first time a reminder is switched on" would therefore never ask, and the
+  reminders would silently never arrive. The Notifications screen also asks once, when it opens, if a reminder the phone
+  schedules is on and the phone has not been asked. Android 13 and later need the Reminders channel to exist before the
+  dialog can appear, so the ask creates it first. Android reports a first refusal as "can ask again", so a refusal seen
+  on the screen shows the note straight away. Check all three in the device walk, on an Android 13+ phone as well.
 - **Deploy order for the four new switches.** The phone's check of the server's answer requires all nine switches, and an
   old server's strict PATCH refuses a new key. So the API with migration `0033` must be live before a phone build that
   shows the four rows ships; an old server would otherwise stop the phone adopting the server's choices and hold a

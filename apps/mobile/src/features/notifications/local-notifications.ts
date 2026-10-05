@@ -20,12 +20,13 @@ export const LOCAL_NOTIFICATION_ID_PREFIX = 'forjd-local:';
 /** A low-key channel for reminders, not the rest timer's high-importance one. */
 const REMINDERS_CHANNEL_ID = 'reminders';
 /** The only screens a tap on a planned notification may open. Anything else is ignored. */
-const TAP_ROUTES: readonly string[] = ['/train', '/progress'];
+const TAP_ROUTES: readonly string[] = ['/train', '/progress', '/nutrition'];
 
 /** The slice of `expo-notifications` the reconciler uses. */
 export interface LocalNotificationApi {
   platform: string;
-  getPermissionsAsync: () => Promise<{ granted: boolean }>;
+  getPermissionsAsync: () => Promise<{ granted: boolean; canAskAgain: boolean }>;
+  requestPermissionsAsync: () => Promise<{ granted: boolean }>;
   setNotificationChannelAsync: (id: string, channel: Notifications.NotificationChannelInput) => Promise<unknown>;
   getAllScheduledNotificationsAsync: () => Promise<ReadonlyArray<{ identifier: string }>>;
   scheduleNotificationAsync: (input: Notifications.NotificationRequestInput) => Promise<string>;
@@ -40,7 +41,11 @@ export interface LocalNotificationApi {
 
 export const defaultLocalNotificationApi: LocalNotificationApi = {
   platform: Platform.OS,
-  getPermissionsAsync: async () => ({ granted: (await Notifications.getPermissionsAsync()).granted }),
+  getPermissionsAsync: async () => {
+    const result = await Notifications.getPermissionsAsync();
+    return { granted: result.granted, canAskAgain: result.canAskAgain };
+  },
+  requestPermissionsAsync: async () => ({ granted: (await Notifications.requestPermissionsAsync()).granted }),
   setNotificationChannelAsync: (id, channel) => Notifications.setNotificationChannelAsync(id, channel),
   getAllScheduledNotificationsAsync: () => Notifications.getAllScheduledNotificationsAsync(),
   scheduleNotificationAsync: (input) => Notifications.scheduleNotificationAsync(input),
@@ -86,14 +91,18 @@ function whenOf(planned: PlannedLocalNotification): Date {
   return new Date(year, month - 1, day, Math.floor(planned.minute / 60), planned.minute % 60);
 }
 
+/** Android only. A notification needs its channel to exist, and Android 13 and later need one before the permission dialog. */
+async function ensureChannel(api: LocalNotificationApi): Promise<void> {
+  if (api.platform !== 'android') return;
+  await api.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
+    name: 'Reminders',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
 async function scheduleAll(plan: readonly PlannedLocalNotification[], api: LocalNotificationApi): Promise<number> {
   api.installForegroundHandler();
-  if (api.platform === 'android') {
-    await api.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
-      name: 'Reminders',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
+  await ensureChannel(api);
   let scheduled = 0;
   for (const planned of plan) {
     try {
@@ -158,6 +167,49 @@ export function cancelLocalNotifications(api: LocalNotificationApi = defaultLoca
       // Nothing to recover: a notification that could not be listed is cleared by the next reconcile.
     }
   });
+}
+
+export type NotificationPermission = 'granted' | 'undetermined' | 'denied';
+
+/**
+ * Whether the phone lets FORJD show notifications: allowed, not asked yet (so the prompt can still appear), or
+ * refused for good (only the phone's settings can change it, which is when the screen shows its note). Android 13
+ * and later report "can ask again" after a first refusal, so the screen also treats a refusal it has just seen as
+ * one. A read that fails counts as not asked, never as an error.
+ */
+export async function readNotificationPermission(
+  api: LocalNotificationApi = defaultLocalNotificationApi,
+): Promise<NotificationPermission> {
+  try {
+    const { granted, canAskAgain } = await api.getPermissionsAsync();
+    if (granted) return 'granted';
+    return canAskAgain ? 'undetermined' : 'denied';
+  } catch {
+    return 'undetermined';
+  }
+}
+
+/**
+ * Asks for the permission only if the phone has not decided yet. Called where the person turns a reminder on, so
+ * the prompt appears at the moment its reason is obvious (the reconciler itself never asks). Answers whether
+ * notifications are now allowed. Never throws.
+ */
+export async function ensureLocalNotificationPermission(
+  api: LocalNotificationApi = defaultLocalNotificationApi,
+): Promise<boolean> {
+  try {
+    const { granted, canAskAgain } = await api.getPermissionsAsync();
+    if (granted) return true;
+    if (!canAskAgain) return false;
+    try {
+      await ensureChannel(api);
+    } catch {
+      // Ask anyway: on a phone that does not need the channel first the dialog still appears.
+    }
+    return (await api.requestPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
 }
 
 export interface TapLike {

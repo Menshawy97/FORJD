@@ -26,6 +26,7 @@ function sources(overrides: Partial<PlanInputSources> = {}): PlanInputSources {
     listSessions: jest.fn(async () => ({ items: [], nextCursor: null })),
     getEnrollment: jest.fn(async () => ({ enrollment: null })),
     getProgram: jest.fn(),
+    listNutritionLog: jest.fn(async () => ({ items: [] })),
     ...overrides,
   } as PlanInputSources;
 }
@@ -122,6 +123,62 @@ describe('buildLocalNotificationPlan', () => {
 
   it('does not touch the network when both switches are off', async () => {
     const s = sources({ loadPreferences: jest.fn(async () => allOff) });
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.listSessions).not.toHaveBeenCalled();
+    expect(s.getEnrollment).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildLocalNotificationPlan: log your meals (12E-5)', () => {
+  const mealsOn = { ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false, weekly: false, meals: true };
+  const entry = { id: 'e1' } as unknown as Awaited<ReturnType<PlanInputSources['listNutritionLog']>>['items'][number];
+
+  it('plans the evening reminder when the switch is on and nothing is logged today', async () => {
+    const plan = await buildLocalNotificationPlan(sources({ loadPreferences: jest.fn(async () => mealsOn) }), NOW);
+
+    expect(ids(plan)[0]).toBe('forjd-local:meals:2026-10-05');
+    expect(plan).toHaveLength(14);
+  });
+
+  it('asks for today in the phone local calendar, and drops only today when food is already logged', async () => {
+    const listNutritionLog = jest.fn(async () => ({ items: [entry] }));
+
+    const plan = await buildLocalNotificationPlan(sources({ loadPreferences: jest.fn(async () => mealsOn), listNutritionLog }), NOW);
+
+    expect(listNutritionLog).toHaveBeenCalledWith('2026-10-05');
+    expect(plan).toHaveLength(13);
+    expect(ids(plan)[0]).toBe('forjd-local:meals:2026-10-06');
+  });
+
+  it('does not read the food log when the meals switch is off', async () => {
+    const s = sources();
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.listNutritionLog).not.toHaveBeenCalled();
+  });
+
+  it('drops only today when the food log cannot be read, and still plans the other kinds', async () => {
+    const plan = await buildLocalNotificationPlan(
+      sources({
+        loadPreferences: jest.fn(async () => ({ ...mealsOn, weekly: true })),
+        listNutritionLog: jest.fn(async () => {
+          throw new Error('offline');
+        }),
+      }),
+      NOW,
+    );
+
+    // Unknown is treated as logged, so a reminder is never sent for food that may already be in; later days stay.
+    expect(ids(plan)).toContain('forjd-local:weekly:2026-10-10');
+    expect(ids(plan)).not.toContain('forjd-local:meals:2026-10-05');
+    expect(ids(plan)).toContain('forjd-local:meals:2026-10-06');
+  });
+
+  it('still reads nothing from the network when only meals is on and the other switches are off', async () => {
+    const s = sources({ loadPreferences: jest.fn(async () => mealsOn) });
 
     await buildLocalNotificationPlan(s, NOW);
 

@@ -17,6 +17,7 @@ import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
 import { useSingleFlight } from '@/components/use-single-flight';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { generateDraftItemId, useMealDraft } from '@/features/nutrition/meal-draft-context';
 import { todayLocalDate } from '@/nutrition/date';
 import { colors } from '@/theme/tokens';
@@ -268,10 +269,14 @@ export default function FoodDetailScreen() {
         servingLabel,
         grams,
       });
+      // Today has food in it, so the evening reminder is planned again (12E).
+      requestLocalNotificationReconcile();
       toast.show(`${editing ? 'Updated' : 'Logged'} ${food.name} — ${MEAL_SLOT_DISPLAY_NAMES[logAsSlot]}`);
       router.replace('/nutrition');
     } catch (error) {
       if (deleted) {
+        // The old entry is gone and the new one did not save, so the day may now have no food.
+        requestLocalNotificationReconcile();
         toast.show(`Removed the old entry, but couldn't save the new one. ${food.name} is no longer logged — try again.`);
       } else {
         toast.show(errorMessage(error));
@@ -283,6 +288,7 @@ export default function FoodDetailScreen() {
     if (!entryId) return;
     try {
       await deleteLogEntry(entryId);
+      requestLocalNotificationReconcile();
       router.replace('/nutrition');
     } catch (error) {
       toast.show(errorMessage(error));

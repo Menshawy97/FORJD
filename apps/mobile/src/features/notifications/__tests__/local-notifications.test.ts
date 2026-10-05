@@ -2,7 +2,9 @@ import type { PlannedLocalNotification } from '@forjd/domain';
 
 import {
   cancelLocalNotifications,
+  ensureLocalNotificationPermission,
   LOCAL_NOTIFICATION_ID_PREFIX,
+  readNotificationPermission,
   reconcileLocalNotifications,
   routeForLocalNotificationTap,
   type LocalNotificationApi,
@@ -24,7 +26,8 @@ function fakeApi(overrides: Partial<LocalNotificationApi> = {}, initial: Pending
   const channels: string[] = [];
   const api: LocalNotificationApi = {
     platform: 'android',
-    getPermissionsAsync: jest.fn(async () => ({ granted: true })),
+    getPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+    requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
     setNotificationChannelAsync: jest.fn(async (id: string) => {
       channels.push(id);
     }),
@@ -119,7 +122,7 @@ describe('reconcileLocalNotifications', () => {
 
   it('schedules nothing, and does not ask, when the phone has not allowed notifications, but still clears its own', async () => {
     const stale: Pending = { identifier: `${LOCAL_NOTIFICATION_ID_PREFIX}workout:2026-10-06`, content: {}, trigger: {} };
-    const { api, pending } = fakeApi({ getPermissionsAsync: jest.fn(async () => ({ granted: false })) }, [stale]);
+    const { api, pending } = fakeApi({ getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: false })) }, [stale]);
 
     const result = await reconcileLocalNotifications(planOf([workout]), api);
 
@@ -308,6 +311,7 @@ describe('routeForLocalNotificationTap', () => {
   it('opens the screen a FORJD reminder names', () => {
     expect(routeForLocalNotificationTap(tap(workout.id, '/train'))).toBe('/train');
     expect(routeForLocalNotificationTap(tap(weekly.id, '/progress'))).toBe('/progress');
+    expect(routeForLocalNotificationTap(tap('forjd-local:meals:2026-10-07', '/nutrition'))).toBe('/nutrition');
   });
 
   it('ignores a notification that is not one of the planned FORJD ones', () => {
@@ -317,5 +321,106 @@ describe('routeForLocalNotificationTap', () => {
   it('ignores a route that is not on the list, so a notification can never send the app somewhere new', () => {
     expect(routeForLocalNotificationTap(tap(workout.id, '/delete-account'))).toBeNull();
     expect(routeForLocalNotificationTap(tap(workout.id, undefined))).toBeNull();
+  });
+});
+
+describe('notification permission (12E-4)', () => {
+  const answering = (granted: boolean, canAskAgain: boolean) =>
+    fakeApi({ getPermissionsAsync: jest.fn(async () => ({ granted, canAskAgain })) }).api;
+
+  it('reads allowed, not yet asked, and refused apart, so the screen can show its note only for a refusal', async () => {
+    await expect(readNotificationPermission(answering(true, true))).resolves.toBe('granted');
+    await expect(readNotificationPermission(answering(false, true))).resolves.toBe('undetermined');
+    await expect(readNotificationPermission(answering(false, false))).resolves.toBe('denied');
+  });
+
+  it('treats a permission read that fails as not asked, never as an error', async () => {
+    const api = fakeApi({
+      getPermissionsAsync: jest.fn(async () => {
+        throw new Error('native module missing');
+      }),
+    }).api;
+
+    await expect(readNotificationPermission(api)).resolves.toBe('undetermined');
+  });
+
+  it('does not ask again when the phone already allows notifications', async () => {
+    const api = answering(true, true);
+
+    await expect(ensureLocalNotificationPermission(api)).resolves.toBe(true);
+
+    expect(api.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('asks once while it is still undecided, and answers what the person chose', async () => {
+    const api = fakeApi({
+      getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+      requestPermissionsAsync: jest.fn(async () => ({ granted: false })),
+    }).api;
+
+    await expect(ensureLocalNotificationPermission(api)).resolves.toBe(false);
+
+    expect(api.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not ask after a refusal the phone will not let it repeat', async () => {
+    const api = answering(false, false);
+
+    await expect(ensureLocalNotificationPermission(api)).resolves.toBe(false);
+
+    expect(api.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('never throws', async () => {
+    const api = fakeApi({
+      getPermissionsAsync: jest.fn(async () => {
+        throw new Error('boom');
+      }),
+    }).api;
+
+    await expect(ensureLocalNotificationPermission(api)).resolves.toBe(false);
+  });
+
+  // Android 13 and later show the permission dialog only once a notification channel exists, so the channel is
+  // made before the first ask. Without it the dialog never appears and the person looks like a refusal.
+  it('creates the Reminders channel before asking on Android', async () => {
+    const order: string[] = [];
+    const { api } = fakeApi({
+      getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+      setNotificationChannelAsync: jest.fn(async () => {
+        order.push('channel');
+      }),
+      requestPermissionsAsync: jest.fn(async () => {
+        order.push('request');
+        return { granted: true };
+      }),
+    });
+
+    await ensureLocalNotificationPermission(api);
+
+    expect(order).toEqual(['channel', 'request']);
+  });
+
+  it('does not touch channels on iOS', async () => {
+    const { api } = fakeApi({
+      platform: 'ios',
+      getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+    });
+
+    await ensureLocalNotificationPermission(api);
+
+    expect(api.setNotificationChannelAsync).not.toHaveBeenCalled();
+    expect(api.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('still asks when the channel cannot be created', async () => {
+    const { api } = fakeApi({
+      getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+      setNotificationChannelAsync: jest.fn(async () => {
+        throw new Error('no channel');
+      }),
+    });
+
+    await expect(ensureLocalNotificationPermission(api)).resolves.toBe(true);
   });
 });
