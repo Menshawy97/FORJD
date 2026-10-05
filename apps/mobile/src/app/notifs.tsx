@@ -14,6 +14,7 @@ import {
   saveNotificationPreferences,
   type NotificationPreferences,
 } from '@/store/notification-preferences';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
 import { colors } from '@/theme/tokens';
 
@@ -63,6 +64,8 @@ export default function NotifsScreen() {
       if (!cancelled && fromServer !== null && !touchedRef.current) {
         setPreferences(fromServer);
       }
+      // The server's answer may differ from the device copy, so the schedule follows it.
+      if (fromServer !== null) requestLocalNotificationReconcile();
     });
     return () => {
       cancelled = true;
@@ -75,7 +78,7 @@ export default function NotifsScreen() {
     const next = { ...preferences, [key]: !preferences[key] };
     touchedRef.current = true;
     setPreferences(next);
-    void saveNotificationPreferences(next);
+    void saveNotificationPreferences(next).then(requestLocalNotificationReconcile);
     void queueNotificationChange(preferences, next);
   };
 

@@ -25,7 +25,7 @@ jest.mock('@/store/workout-session', () => ({
   clearSessionEvents: jest.fn().mockResolvedValue(undefined),
   enqueueSessionUpload: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('@/workouts/sync-sessions', () => ({ syncPendingSessions: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('@/workouts/sync-sessions', () => ({ syncPendingSessions: jest.fn().mockResolvedValue({ uploaded: [], failed: [] }) }));
 jest.mock('@/workouts/capture-start-location', () => ({ captureStartLocation: jest.fn().mockResolvedValue(null) }));
 
 import { getCachedHasSession, hasSession } from '@/auth/secureStorage';

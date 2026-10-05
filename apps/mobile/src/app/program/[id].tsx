@@ -16,6 +16,7 @@ import { Header } from '@/components/header';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { colors } from '@/theme/tokens';
 
 import { formatProgramMeta } from '../programs';
@@ -107,6 +108,8 @@ export default function ProgramOverviewScreen() {
     setBusy(true);
     try {
       await enrolInProgram(program.id);
+      // A custom program's weekdays decide the workout reminder days (12E).
+      requestLocalNotificationReconcile();
       setIsFollowing(true);
       toast.show(`Following ${program.name}`);
       // Reload so "Recommended next" appears against a real enrolment rather than a guess.
@@ -123,6 +126,7 @@ export default function ProgramOverviewScreen() {
     setBusy(true);
     try {
       await stopFollowingProgram();
+      requestLocalNotificationReconcile();
       setIsFollowing(false);
       setCompletedNames(new Set());
     } catch (cause) {
