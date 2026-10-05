@@ -167,6 +167,10 @@ describe('AccountExportExtrasRepository', () => {
       pr: true,
       rank: true,
       weekly: true,
+      meals: false,
+      noWorkout: false,
+      forgeClosing: false,
+      weighIn: false,
     });
     expect(extras.notificationPreferences?.updatedAt).toEqual(expect.any(String));
     expect(extras.healthConnections).toEqual([

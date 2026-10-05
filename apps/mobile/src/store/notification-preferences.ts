@@ -31,16 +31,27 @@ export const NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY = 'forjd.notificationP
 
 const KEYS = NOTIFICATION_PREFERENCE_KEYS;
 
-function isNotificationPreferences(value: unknown): value is NotificationPreferences {
+/**
+ * Each switch is taken from what is stored when it is a boolean and from the defaults when it is not, so a copy
+ * saved by an older build (five switches, before the 12E reminders) keeps every choice it made and gets the
+ * newer ones at their defaults. A stored value that is not an object at all is not trusted.
+ */
+function readStoredPreferences(value: unknown): NotificationPreferences {
   if (typeof value !== 'object' || value === null) {
-    return false;
+    return DEFAULT_NOTIFICATION_PREFERENCES;
   }
-  return KEYS.every((key) => typeof (value as Record<string, unknown>)[key] === 'boolean');
+  const stored = value as Record<string, unknown>;
+  const preferences = { ...DEFAULT_NOTIFICATION_PREFERENCES };
+  for (const key of KEYS) {
+    const entry = stored[key];
+    if (typeof entry === 'boolean') preferences[key] = entry;
+  }
+  return preferences;
 }
 
 /**
  * Falls back to the documented defaults both when nothing is stored and when what is stored
- * cannot be trusted — the screen has no error UI for a malformed preferences blob, and
+ * cannot be trusted (a switch that is not a boolean is read as its default) — the screen has no error UI for a malformed preferences blob, and
  * degrading to the defaults is strictly better than throwing into it.
  */
 export async function loadNotificationPreferences(): Promise<NotificationPreferences> {
@@ -49,8 +60,7 @@ export async function loadNotificationPreferences(): Promise<NotificationPrefere
     if (raw === null) {
       return DEFAULT_NOTIFICATION_PREFERENCES;
     }
-    const parsed: unknown = JSON.parse(raw);
-    return isNotificationPreferences(parsed) ? parsed : DEFAULT_NOTIFICATION_PREFERENCES;
+    return readStoredPreferences(JSON.parse(raw));
   } catch {
     return DEFAULT_NOTIFICATION_PREFERENCES;
   }

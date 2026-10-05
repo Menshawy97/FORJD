@@ -1,5 +1,5 @@
 import type { ProgramResponse, WorkoutSessionSummary } from '@forjd/contracts';
-import type { PlannedLocalNotification } from '@forjd/domain';
+import { DEFAULT_NOTIFICATION_PREFERENCES, type PlannedLocalNotification } from '@forjd/domain';
 
 import { buildLocalNotificationPlan, type PlanInputSources } from '../local-notification-plan-input';
 
@@ -14,8 +14,8 @@ function session(daysAgo: number, hour: number, minute = 0, status: WorkoutSessi
   return { id: `s-${daysAgo}`, name: 'Push', activity: 'strength', status, startedAt, endedAt: null, durationSeconds: 3600, perceivedEffort: null };
 }
 
-const allOn = { workout: true, recovery: true, pr: true, rank: false, weekly: true };
-const allOff = { workout: false, recovery: true, pr: true, rank: false, weekly: false };
+const allOn = { ...DEFAULT_NOTIFICATION_PREFERENCES };
+const allOff = { ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false, weekly: false };
 const enrollment = {
   enrollment: { id: 'e', programId: 'p', programSlug: 'mine', programName: 'Mine', programVersion: 1, startedAt: NOW.toISOString() },
 };

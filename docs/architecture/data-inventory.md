@@ -15,7 +15,7 @@ feature changes what is collected, update this file in the same PR.
 | WHOOP | OAuth exchange; FORJD reads recovery, sleep and workout data from WHOOP | Only after the user connects WHOOP. |
 | Sentry (server only) | Error type and stack frames only, no text; not sent at all for a user with crash diagnostics off; user ID kept only when it is on | The mobile app has no Sentry SDK. |
 | NVIDIA | Nothing. A provider class exists but is not wired up. | Development only. |
-| Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` and the small local Android notice module (ADR-063) post local notices only: the rest-complete alert, the run notice and the workout notice. Nothing is sent. |
+| Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` and the small local Android notice module (ADR-063) post local notices only: the rest-complete alert, the run notice, the workout notice and, from 12E, the workout reminders and weekly recap the phone schedules for itself (planned on the phone from its own history, cleared on sign-out). Nothing is sent. |
 
 Health data is never sent to analytics or advertising services (CLAUDE.md rule 15).
 
@@ -46,7 +46,7 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Custom exercises, favourites | Library | `exercises`, `exercise_favourites` | No | Added in 8C | Yes |
 | Programs and enrollments | Programs | `programs`, `program_enrollments` | No | Owned programs and active enrollment; past enrollments added in 8C | Yes |
 | Goals, preferences | Settings | `goals`, `preferences` | No | Added in 8C | Yes |
-| Notification switches (workout reminders, recovery alerts, PR celebrations, leaderboard moves, weekly summary), Phase 12D | Notifications screen | `notification_preferences` (one row per user; no row means never saved), plus a device copy and any unsent change in AsyncStorage `forjd.notificationPreferences.*` | No | Yes (`notificationPreferences`) | Yes (cascade); the device copy is cleared on sign-out |
+| Notification switches (workout reminders, recovery alerts, PR celebrations, leaderboard moves, weekly summary, and from 12E log your meals, no workout this week, Weekly Forge closing, monthly weigh-in or scan; the last four start off), Phases 12D and 12E | Notifications screen | `notification_preferences` (one row per user; no row means never saved), plus a device copy and any unsent change in AsyncStorage `forjd.notificationPreferences.*` | No | Yes (`notificationPreferences`) | Yes (cascade); the device copy is cleared on sign-out |
 | Device time zone (IANA name, e.g. `Africa/Cairo`), sent by the phone for Weekly Forge week closes (ADR-057) | App launch, `PUT /users/me/timezone` | `preferences.timezone` | No | Yes (`preferences.timezone`) | Yes (cascade) |
 | Consent flags | Privacy screen | `privacy_settings` | No | Yes | Yes |
 | Audit trail | Auth and consent events | `audit_logs` | No | No | Rows kept with the user ID nulled; reset-request rows holding an email are scrubbed from 8B onward |

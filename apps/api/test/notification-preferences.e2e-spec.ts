@@ -101,6 +101,15 @@ describe('Notification preferences (e2e)', () => {
     expect(body).toMatchObject({ workout: false, weekly: false, rank: true });
   });
 
+  it('saves the 12E reminder switches, off until turned on', async () => {
+    const before = (await get(tokenA).expect(200)).body;
+    expect(before).toMatchObject({ meals: false, noWorkout: false, forgeClosing: false, weighIn: false });
+
+    await patch(tokenA, { meals: true }).expect(200);
+
+    expect((await get(tokenA).expect(200)).body).toMatchObject({ meals: true, noWorkout: false });
+  });
+
   it("never shows or changes another account's switches", async () => {
     // A's saved changes above must not appear for B, and B's change must not reach A.
     expect((await get(tokenB).expect(200)).body).toMatchObject({ ...DEFAULT_NOTIFICATION_PREFERENCES, updatedAt: null });

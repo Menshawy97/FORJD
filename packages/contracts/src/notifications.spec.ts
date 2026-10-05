@@ -7,8 +7,24 @@ describe("updateNotificationPreferencesRequestSchema (Phase 12D)", () => {
     expect(updateNotificationPreferencesRequestSchema.safeParse({ weekly: false }).success).toBe(true);
   });
 
-  it("accepts all five at once", () => {
-    const all = { workout: true, recovery: false, pr: true, rank: false, weekly: true };
+  it("accepts the 12E reminder switches the same way", () => {
+    for (const key of ["meals", "noWorkout", "forgeClosing", "weighIn"]) {
+      expect(updateNotificationPreferencesRequestSchema.safeParse({ [key]: true }).success).toBe(true);
+    }
+  });
+
+  it("accepts every switch at once", () => {
+    const all = {
+      workout: true,
+      recovery: false,
+      pr: true,
+      rank: false,
+      weekly: true,
+      meals: true,
+      noWorkout: false,
+      forgeClosing: true,
+      weighIn: false,
+    };
     expect(updateNotificationPreferencesRequestSchema.parse(all)).toEqual(all);
   });
 
@@ -27,7 +43,17 @@ describe("updateNotificationPreferencesRequestSchema (Phase 12D)", () => {
 });
 
 describe("notificationPreferencesResponseSchema (Phase 12D)", () => {
-  const base = { workout: true, recovery: true, pr: true, rank: false, weekly: true };
+  const base = {
+    workout: true,
+    recovery: true,
+    pr: true,
+    rank: false,
+    weekly: true,
+    meals: false,
+    noWorkout: false,
+    forgeClosing: false,
+    weighIn: false,
+  };
 
   it("accepts a saved row with its timestamp", () => {
     expect(notificationPreferencesResponseSchema.safeParse({ ...base, updatedAt: "2026-10-05T12:00:00.000Z" }).success).toBe(true);
@@ -38,8 +64,12 @@ describe("notificationPreferencesResponseSchema (Phase 12D)", () => {
   });
 
   it("requires every switch", () => {
-    const missingRank = { workout: true, recovery: true, pr: true, weekly: true, updatedAt: null };
+    const missingRank = { ...base, updatedAt: null } as Partial<typeof base> & { updatedAt: null };
+    delete missingRank.rank;
     expect(notificationPreferencesResponseSchema.safeParse(missingRank).success).toBe(false);
+    const missingMeals = { ...base, updatedAt: null } as Partial<typeof base> & { updatedAt: null };
+    delete missingMeals.meals;
+    expect(notificationPreferencesResponseSchema.safeParse(missingMeals).success).toBe(false);
   });
 
   it("has a pinned fixture that validates", () => {

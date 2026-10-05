@@ -25,6 +25,10 @@ const toPreferences = (row: NotificationPreferencesRow): NotificationPreferences
   pr: row.pr,
   rank: row.rank,
   weekly: row.weekly,
+  meals: row.meals,
+  noWorkout: row.noWorkout,
+  forgeClosing: row.forgeClosing,
+  weighIn: row.weighIn,
 });
 
 /**

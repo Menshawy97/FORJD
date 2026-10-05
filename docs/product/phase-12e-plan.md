@@ -96,6 +96,9 @@ update. Older app builds ignore the new fields (rule 7).
    Notifications screen, as a replica approved first (standing rule: no new UI without an approved replica).
 4. **New switches end to end:** domain keys, migration `0033`, contracts, export, deletion check, and the four rows
    on `notifs.tsx` (after approval).
+   (Built, rows excluded: the four keys in `@forjd/domain` with defaults off, migration `0033_notification-reminder-switches`,
+   contracts and fixtures, export, and the phone's store, whose loader now keeps an older build's five choices and fills
+   the new keys from the defaults. The four rows wait for the approved mock-up.)
 5. to 8. **One slice per extra kind:** meals, no workout this week, Forge closing, monthly weigh-in. Each adds its
    planner rules and its input.
 9. **Docs close:** data inventory, FAQ (approved wording), roadmap, this plan's status.
@@ -123,6 +126,11 @@ update. Older app builds ignore the new fields (rule 7).
   The habit read takes the last 100 sessions of any status, so someone who logs far more than a dozen a week could lose
   the older weeks. A tap that cold-starts the app calls the router right away, which may be too early on a slow
   start: check it in the device walk and add a navigator-ready wait if it drops.
+- **Deploy order for the four new switches.** The phone's check of the server's answer requires all nine switches, and an
+  old server's strict PATCH refuses a new key. So the API with migration `0033` must be live before a phone build that
+  shows the four rows ships; an old server would otherwise stop the phone adopting the server's choices and hold a
+  pending change for a new switch forever. The API deploys on merge to `main`, ahead of any app build, so this holds
+  in the normal order; it is a release-checklist item, not code.
 - **Habit inference guesses wrong early.** Mitigated by staying quiet with too little history and by one per day.
 - **iOS's pending limit and Android battery killers.** Reminders are best effort, not guaranteed.
 - **Stale conditions** (a nudge scheduled before the person trains). Mitigated by recomputing on every foreground
