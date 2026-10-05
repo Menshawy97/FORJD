@@ -2238,6 +2238,12 @@ matters when the hosted database is first migrated in slice 13.
 
 ### Manual steps only the user can do (genuine hard stops — need a UAC click, physical hardware, a credential, or human judgement)
 
+> **Updated 2026-10-05.** This list is from the Phase 0 era and is kept as written. Since then: step 2
+> (`ANTHROPIC_API_KEY` for Spike B) is obsolete, because ADR-006 was superseded and the vision vendor is OpenAI
+> (ADR-014, ADR-033, ADR-053); steps 3 and 4 are done; steps 1, 5 and 6 are still owed and are tracked in
+> [remaining-checklist.md](remaining-checklist.md). Phase 1 is complete, so the Flutter commands in step 1
+> are stale: the app is Expo (ADR-013).
+
 Steps 1-4 of the original list (elevated setup script, reboot, Docker first-run,
 git identity + initial commit) are **done**. What remains:
 

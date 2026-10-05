@@ -80,8 +80,9 @@ Derived from the table. Confirm against the final build and the lawyer's privacy
   exception messages or request bodies.~~ Fixed 2026-10-01 (G1): a user's "off" means their
   server crashes are not sent, and every server report keeps no text at all
   (`docs/architecture/security.md`).
-- `security.md` says "encrypted DB fields where appropriate", but only WHOOP tokens are
-  encrypted at the application layer.
+- ~~`security.md` said "encrypted DB fields where appropriate"~~ Corrected 2026-10-05: it now says
+  only WHOOP tokens are encrypted at the application layer, and the rest relies on the host's
+  default encryption at rest.
 - No data retention periods are defined anywhere yet. The privacy policy needs one.
 - Health-data collection is gated by the separate health-data consent (ADR-043); Health Connect's
   on-device connect flow, when built, must use the same check.

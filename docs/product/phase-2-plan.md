@@ -102,7 +102,7 @@ stopgap a re-run of one script rather than a migration and a contract break.
 Three of these overturn or extend what `docs/architecture/domain-model.md` currently names, so
 each is written down rather than absorbed silently:
 
-- **ADR-017 — canonical exercise model** *(number reserved; the file has not been written — the decision itself is recorded in this plan's locked-decisions table above, which is authoritative until it is)*. Arrays over join tables; custom exercises in the same
+- **ADR-017 — canonical exercise model** *(number reserved here; the file was written later, on 2026-10-05: [ADR-017](../decisions/ADR-017-canonical-exercise-model.md). The locked-decisions table above is where it was decided)*. Arrays over join tables; custom exercises in the same
   table; `force`/`level`/`mechanic` kept as nullable canonical columns rather than adapter
   metadata; `goal` and `measure` **derived** by the adapter because free-exercise-db has
   neither; `exercise_variants` deliberately deferred.
@@ -880,7 +880,7 @@ this alongside Phase J's still-open items (running variant, favouriting, delete 
 New, in the order they appear:
 
 - `docs/product/phase-2-plan.md`, `docs/design/phase2-screen-specs.md`
-- `docs/decisions/ADR-017-canonical-exercise-model.md` *(reserved, not yet written)*,
+- `docs/decisions/ADR-017-canonical-exercise-model.md` *(written 2026-10-05)*,
   `ADR-018-exercise-media-hosting.md` *(written)*,
   `ADR-022-on-device-exercise-catalogue.md` *(reserved — **renumbered from 019**, which the
   2026-08-30 design revision took for username/avatar; see "Note on numbering" below)*
@@ -980,12 +980,12 @@ This plan reserved **ADR-017** (canonical exercise model) and **ADR-019** (on-de
 catalogue) before either was written. ADR-018 was written. ADR-019's own number was
 independently claimed by username/avatar before Phase H reached implementation, so the
 on-device catalogue sync design ended up as **ADR-022** instead — see that ADR's own opening
-note for the discrepancy. ADR-017 remains unwritten.
+note for the discrepancy. ADR-017 was written later, on 2026-10-05.
 
 The 2026-08-30 design revision then wrote **ADR-019 (username and avatar)**, **ADR-020**
 (nutrition in MVP) and **ADR-021** (subscription UI without billing) as real files. A written
 ADR outranks a reservation, so:
 
-- **ADR-017 stays reserved** for the canonical exercise model. Nothing else may take it.
+- **ADR-017 was reserved** for the canonical exercise model, nothing else took it, and it was written on 2026-10-05.
 - **The on-device catalogue ADR moves to ADR-022.** Its old number is taken.
 - The next free number after this plan and the design revision together is **ADR-023**.

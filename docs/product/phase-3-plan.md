@@ -197,12 +197,12 @@ confirm exactly one session syncs.
    flow, iOS/Android scheduling differences, a cancel path when the user skips rest early,
    and — because Jest cannot exercise notification scheduling — **a physical-device check is
    mandatory before merge, not optional**. Write this up as an ADR when the phase starts.
-2. **What happens to a queued session whose exercise was deleted server-side?** Soft delete
+2. ~~**What happens to a queued session whose exercise was deleted server-side?**~~ **Settled in ADR-025** (it fails permanently, by design). Soft delete
    means the row still exists, so the reference resolves — confirm that is enough, or define
    the fallback. Settle in ADR-025 (Phase F).
-3. **Are curated templates seeded in this phase or left empty?** The owner-nullable column
+3. ~~**Are curated templates seeded in this phase or left empty?**~~ **Settled in 3K**: the nine programs the design specifies were seeded (PRs #99, #100). The owner-nullable column
    supports them either way; seeding is a separate ingest job like `exercises:load`.
-4. **Does "City Rank" (Home) come from this phase or from the Rank tab's own work?** It is the
+4. ~~**Does "City Rank" (Home) come from this phase or from the Rank tab's own work?**~~ **Settled**: Phase 10, the tile reads the caller's rank (PR #216). It is the
    one Home counter this phase does not obviously supply.
 
 ## Related
@@ -214,6 +214,5 @@ confirm exactly one session syncs.
 - [`../decisions/ADR-022-exercise-catalogue-sync.md`](../decisions/ADR-022-exercise-catalogue-sync.md)
   — the offline precedent this phase extends.
 - [`nutrition-plan.md`](nutrition-plan.md) — the plan whose structure this one copies.
-- **Housekeeping**: `ADR-017` is referenced by name in `exercises.schema.ts`,
-  `exercise-vocabulary.ts` and `nutrition-plan.md`, but **no `ADR-017-*.md` file exists**.
-  Either write it or correct the references while working in these files.
+- **Housekeeping (done 2026-10-05)**: `ADR-017` was cited by name from code and docs but had no file;
+  it is now written: [ADR-017](../decisions/ADR-017-canonical-exercise-model.md).
