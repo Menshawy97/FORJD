@@ -357,3 +357,86 @@ describe("limitPlannedNotifications", () => {
     expect(MAX_PENDING_LOCAL_NOTIFICATIONS).toBe(60);
   });
 });
+
+// Review of 12E-1: the types promise "YYYY-MM-DD" and "0 to 1439", but rows come from the server and the
+// phone's clock, so the planner must not trust them. A bad "now" plans nothing; a bad session is ignored.
+describe("planLocalNotifications: input it does not trust", () => {
+  it("plans nothing, and does not throw, when the current date is malformed or does not exist", () => {
+    for (const date of ["", "tomorrow", "2026-13-01", "2026-02-31", "2026-10-7"]) {
+      expect(planLocalNotifications(base({ now: { date, minute: at(8) } }))).toEqual([]);
+    }
+  });
+
+  it("plans nothing when the current minute is not a whole minute of the day", () => {
+    for (const minute of [Number.NaN, -1, 1440, 8.5]) {
+      expect(planLocalNotifications(base({ now: { date: WEDNESDAY, minute } }))).toEqual([]);
+    }
+  });
+
+  it("ignores sessions with a malformed date or an impossible start, as if they were not there", () => {
+    const junk = [
+      { date: "not a date", startMinute: at(18) },
+      { date: "2026-02-31", startMinute: at(18) },
+      { date: "2026-09-30", startMinute: Number.NaN },
+      { date: "2026-09-30", startMinute: -5 },
+      { date: "2026-09-30", startMinute: 2000 },
+      { date: "2026-09-30", startMinute: 1080.5 },
+    ];
+
+    const withJunk = planLocalNotifications(base({ recentSessions: [...wednesdayHabit, ...junk] }));
+    const without = planLocalNotifications(base({ recentSessions: wednesdayHabit }));
+
+    expect(withJunk).toEqual(without);
+    expect(withJunk.every((entry) => Number.isInteger(entry.minute))).toBe(true);
+  });
+});
+
+// Review of 12E-1: pin the edges, so an off-by-one in the four-week window or the quiet window is caught.
+describe("planLocalNotifications: the edges", () => {
+  it("counts a session exactly 27 days ago, the oldest day of the four-week window", () => {
+    // 2026-09-10 is 27 days before 10-07; both are Thursdays, in different seven-day blocks.
+    const sessions = [
+      { date: "2026-09-10", startMinute: at(18) },
+      { date: "2026-09-17", startMinute: at(18) },
+    ];
+
+    const plan = ofKind(planLocalNotifications(base({ recentSessions: sessions })), "workout");
+
+    expect(plan.map((entry) => entry.date)).toEqual(["2026-10-08", "2026-10-15"]);
+  });
+
+  it("does not count a session 28 days ago, the first day outside the window", () => {
+    // 2026-09-09 is 28 days before 10-07, so only one Wednesday session is left inside the window.
+    const sessions = [
+      { date: "2026-09-09", startMinute: at(18) },
+      { date: "2026-09-16", startMinute: at(18) },
+    ];
+
+    expect(ofKind(planLocalNotifications(base({ recentSessions: sessions })), "workout")).toEqual([]);
+  });
+
+  it("drops a reminder at exactly 22:00 and keeps one at 21:55", () => {
+    const startingAt = (minute: number) => [
+      { date: "2026-09-30", startMinute: minute },
+      { date: "2026-09-23", startMinute: minute },
+    ];
+
+    expect(ofKind(planLocalNotifications(base({ recentSessions: startingAt(at(22, 30)) })), "workout")).toEqual([]);
+    expect(ofKind(planLocalNotifications(base({ recentSessions: startingAt(at(22, 25)) })), "workout")[0]?.minute).toBe(at(21, 55));
+  });
+
+  it("stays quiet for a program weekday when the person has history only on other weekdays, using their overall usual start", () => {
+    const planned = ofKind(
+      planLocalNotifications(
+        base({
+          recentSessions: [{ date: "2026-10-05", startMinute: at(19) }],
+          programWorkouts: [{ dayOfWeek: 4, workoutName: "Pull" }],
+        }),
+      ),
+      "workout",
+    );
+
+    expect(planned.map((entry) => entry.date)).toEqual(["2026-10-08", "2026-10-15"]);
+    expect(planned[0]).toEqual(expect.objectContaining({ minute: at(18, 30), body: "Pull is next." }));
+  });
+});

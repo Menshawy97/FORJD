@@ -71,6 +71,8 @@ const HABIT_BLOCK_DAYS = 7;
 const HABIT_MIN_WEEKS = 2;
 const MS_PER_DAY = 86_400_000;
 const START_ROUNDING_MINUTES = 5;
+const LAST_MINUTE_OF_DAY = 24 * 60 - 1;
+const LOCAL_DATE_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 const WEEKDAY_OF_EPOCH_DAY_ZERO = 4; // 1970-01-01 was a Thursday.
 
 const dayNumber = (date: string): number => {
@@ -81,6 +83,13 @@ const dayNumber = (date: string): number => {
 const dateOfDayNumber = (days: number): string => new Date(days * MS_PER_DAY).toISOString().slice(0, 10);
 
 const weekdayOfDayNumber = (days: number): number => (((days + WEEKDAY_OF_EPOCH_DAY_ZERO) % 7) + 7) % 7;
+
+// The types promise 'YYYY-MM-DD' and 0 to 1439, but the values come from the server and the phone's clock, so
+// they are checked rather than trusted: a bad date or minute is ignored, never turned into NaN or a throw.
+const isValidLocalDate = (date: string): boolean =>
+  LOCAL_DATE_PATTERN.test(date) && dateOfDayNumber(dayNumber(date)) === date;
+
+const isValidMinuteOfDay = (minute: number): boolean => Number.isInteger(minute) && minute >= 0 && minute <= LAST_MINUTE_OF_DAY;
 
 const median = (values: readonly number[]): number => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -163,9 +172,13 @@ export function limitPlannedNotifications(
  * phone reconciles (ADR-064): nothing here remembers a previous plan.
  */
 export function planLocalNotifications(input: LocalNotificationPlanInput): PlannedLocalNotification[] {
+  if (!isValidLocalDate(input.now.date) || !isValidMinuteOfDay(input.now.minute)) return [];
+  const sessions = input.recentSessions.filter(
+    (session) => isValidLocalDate(session.date) && isValidMinuteOfDay(session.startMinute),
+  );
   const today = dayNumber(input.now.date);
-  const habit = readHabit(input.recentSessions, today);
-  const trainedToday = input.recentSessions.some((session) => session.date === input.now.date);
+  const habit = readHabit(sessions, today);
+  const trainedToday = sessions.some((session) => session.date === input.now.date);
   const programWeekdays = new Set(
     input.programWorkouts.map((entry) => entry.dayOfWeek).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
   );
