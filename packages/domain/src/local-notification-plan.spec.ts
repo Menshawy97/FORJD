@@ -502,3 +502,70 @@ describe("planLocalNotifications: log your meals (12E-5)", () => {
     expect(keys).toEqual([...keys].sort());
   });
 });
+
+describe("planLocalNotifications: no workout yet this week (12E-6)", () => {
+  // Now is Wednesday 2026-10-07. This week runs Saturday 10-03 to Friday 10-09, so its Thursday is 10-08 and the
+  // next week's is 10-15.
+  const withNoWorkout = (over: Partial<LocalNotificationPlanInput> = {}) =>
+    base({ switches: { workout: false, weekly: false, noWorkout: true }, ...over });
+  const dates = (plan: PlannedLocalNotification[]) => ofKind(plan, "noWorkout").map((entry) => entry.date);
+
+  it("is off unless the switch is on", () => {
+    expect(ofKind(planLocalNotifications(base()), "noWorkout")).toEqual([]);
+  });
+
+  it("reminds on Thursday at 18:00 in this week and the next, when nothing has been trained", () => {
+    const plan = ofKind(planLocalNotifications(withNoWorkout()), "noWorkout");
+
+    expect(plan.map((entry) => entry.date)).toEqual(["2026-10-08", "2026-10-15"]);
+    expect(plan[0]).toEqual({
+      id: "forjd-local:noWorkout:2026-10-08",
+      kind: "noWorkout",
+      date: "2026-10-08",
+      minute: at(18),
+      title: "No workout yet this week",
+      body: "Fit one in before the week closes.",
+      route: "/train",
+    });
+  });
+
+  it("names the streak for this week's Thursday only, because later weeks' streak is not known yet", () => {
+    const plan = ofKind(planLocalNotifications(withNoWorkout({ weekStreak: 6 })), "noWorkout");
+
+    expect(plan[0]?.body).toBe("Keep your 6-week streak.");
+    expect(plan[1]?.body).toBe("Fit one in before the week closes.");
+  });
+
+  it("does not mention a streak of zero", () => {
+    expect(ofKind(planLocalNotifications(withNoWorkout({ weekStreak: 0 })), "noWorkout")[0]?.body).toBe(
+      "Fit one in before the week closes.",
+    );
+  });
+
+  it("is dropped for a week with a completed session, and kept for the next", () => {
+    const plan = planLocalNotifications(withNoWorkout({ recentSessions: [{ date: "2026-10-05", startMinute: at(7) }] }));
+
+    expect(dates(plan)).toEqual(["2026-10-15"]);
+  });
+
+  it("counts a session on the Saturday the week starts, but not one from the Friday before", () => {
+    const onSaturday = planLocalNotifications(withNoWorkout({ recentSessions: [{ date: "2026-10-03", startMinute: at(9) }] }));
+    const onFriday = planLocalNotifications(withNoWorkout({ recentSessions: [{ date: "2026-10-02", startMinute: at(9) }] }));
+
+    expect(dates(onSaturday)).toEqual(["2026-10-15"]);
+    expect(dates(onFriday)).toEqual(["2026-10-08", "2026-10-15"]);
+  });
+
+  it("on a Thursday, keeps today's reminder before 18:00 and drops it after, or once trained today", () => {
+    const thursday = "2026-10-08";
+    const before = planLocalNotifications(withNoWorkout({ now: { date: thursday, minute: at(12) } }));
+    const after = planLocalNotifications(withNoWorkout({ now: { date: thursday, minute: at(19) } }));
+    const trained = planLocalNotifications(
+      withNoWorkout({ now: { date: thursday, minute: at(12) }, recentSessions: [{ date: thursday, startMinute: at(8) }] }),
+    );
+
+    expect(dates(before)).toEqual(["2026-10-08", "2026-10-15"]);
+    expect(dates(after)).toEqual(["2026-10-15"]);
+    expect(dates(trained)).toEqual(["2026-10-15"]);
+  });
+});

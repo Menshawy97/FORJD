@@ -12,7 +12,7 @@ import { WEEK_START_DOW } from "./calendar-week";
  */
 
 /** The notification kinds planned so far. Later 12E slices add more. */
-export type LocalNotificationKind = "workout" | "weekly" | "meals";
+export type LocalNotificationKind = "workout" | "weekly" | "meals" | "noWorkout";
 
 export interface LocalDateTime {
   /** `YYYY-MM-DD`, in the person's local calendar. */
@@ -36,13 +36,15 @@ export interface ProgramWeekdayWorkout {
 export interface LocalNotificationPlanInput {
   now: LocalDateTime;
   /** A kind that is absent is off. Later 12E slices add the other switches here. */
-  switches: { workout: boolean; weekly: boolean; meals?: boolean };
+  switches: { workout: boolean; weekly: boolean; meals?: boolean; noWorkout?: boolean };
   /** Completed sessions, any order; only the last four weeks are used. */
   recentSessions: readonly TrainingSessionStart[];
   /** Empty for a preset program or no program: those prescribe no weekdays (`program_workouts.day_of_week`). */
   programWorkouts: readonly ProgramWeekdayWorkout[];
   /** Whether any food has been logged today, so today's meals reminder is not sent. */
   mealLoggedToday?: boolean;
+  /** Consecutive weeks trained, as the server counts them; named only in this week's "no workout yet" nudge. */
+  weekStreak?: number;
 }
 
 export interface PlannedLocalNotification {
@@ -69,6 +71,10 @@ export const QUIET_HOURS_END_MINUTE = 7 * 60;
 export const WEEKLY_RECAP_MINUTE = 9 * 60;
 /** The evening nudge to log food, about 19:30 (approved 2026-10-06). */
 export const MEALS_REMINDER_MINUTE = 19 * 60 + 30;
+/** Thursday evening, 18:00: the week has two days left. */
+export const NO_WORKOUT_REMINDER_MINUTE = 18 * 60;
+const THURSDAY = 4;
+const DAYS_PER_WEEK = 7;
 
 const HABIT_WINDOW_DAYS = 28;
 const HABIT_BLOCK_DAYS = 7;
@@ -79,6 +85,10 @@ const START_ROUNDING_MINUTES = 5;
 const LAST_MINUTE_OF_DAY = 24 * 60 - 1;
 const LOCAL_DATE_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 const WEEKDAY_OF_EPOCH_DAY_ZERO = 4; // 1970-01-01 was a Thursday.
+
+/** The Saturday that starts the Saturday-to-Friday week containing `days` (ADR-056). */
+const weekStartOf = (days: number): number =>
+  days - ((((weekdayOfDayNumber(days) - WEEK_START_DOW) % DAYS_PER_WEEK) + DAYS_PER_WEEK) % DAYS_PER_WEEK);
 
 const dayNumber = (date: string): number => {
   const [year, month, day] = date.split("-").map(Number) as [number, number, number];
@@ -187,6 +197,8 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
   const programWeekdays = new Set(
     input.programWorkouts.map((entry) => entry.dayOfWeek).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
   );
+  const sessionDays = new Set(sessions.map((session) => dayNumber(session.date)));
+  const thisWeekStart = weekStartOf(today);
   const plan: PlannedLocalNotification[] = [];
 
   for (let offset = 0; offset < LOCAL_NOTIFICATION_HORIZON_DAYS; offset += 1) {
@@ -223,6 +235,25 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
         body: "Haven't logged food today? Add a meal.",
         route: "/nutrition",
       });
+    }
+
+    if (input.switches.noWorkout && weekday === THURSDAY && stillAhead(NO_WORKOUT_REMINDER_MINUTE)) {
+      const weekStart = weekStartOf(day);
+      let trainedThisWeek = false;
+      for (let back = weekStart; back <= day; back += 1) trainedThisWeek = trainedThisWeek || sessionDays.has(back);
+      if (!trainedThisWeek) {
+        // The streak is only known for the week we are in; a later week's nudge does not guess at it.
+        const streak = weekStart === thisWeekStart ? (input.weekStreak ?? 0) : 0;
+        plan.push({
+          id: `forjd-local:noWorkout:${date}`,
+          kind: "noWorkout",
+          date,
+          minute: NO_WORKOUT_REMINDER_MINUTE,
+          title: "No workout yet this week",
+          body: streak > 0 ? `Keep your ${streak}-week streak.` : "Fit one in before the week closes.",
+          route: "/train",
+        });
+      }
     }
 
     if (input.switches.weekly && weekday === WEEK_START_DOW && stillAhead(WEEKLY_RECAP_MINUTE)) {
