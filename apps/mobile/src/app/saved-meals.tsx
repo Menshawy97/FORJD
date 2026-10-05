@@ -11,6 +11,7 @@ import { Icon } from '@/components/icon';
 import { MealSlotChip } from '@/components/meal-slot-chip';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { todayLocalDate } from '@/nutrition/date';
 import { colors } from '@/theme/tokens';
 
@@ -120,6 +121,8 @@ export default function SavedMealsScreen() {
     setLoggingMeal(true);
     try {
       await logSavedMeal({ savedMealId: logMealSheet.id, slot: logMealSlot, loggedDate: todayLocalDate() });
+      // Food is logged, so today's evening reminder is planned again (12E).
+      requestLocalNotificationReconcile();
       const mealName = logMealSheet.name;
       setLogMealSheet(null);
       toast.show(`Logged "${mealName}" to ${MEAL_SLOT_DISPLAY_NAMES[logMealSlot]}`);

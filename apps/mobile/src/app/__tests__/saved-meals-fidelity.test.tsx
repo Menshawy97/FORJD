@@ -26,7 +26,12 @@ jest.mock('@/auth/apiClient', () => ({
   logSavedMeal: jest.fn(),
 }));
 
+jest.mock('@/features/notifications/use-local-notifications', () => ({
+  requestLocalNotificationReconcile: jest.fn(),
+}));
+
 import { deleteSavedMeal, getFood, listSavedMeals, logSavedMeal } from '@/auth/apiClient';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 
 import SavedMealsScreen from '../saved-meals';
 
@@ -149,6 +154,8 @@ describe('Saved meals list', () => {
         loggedDate: expect.any(String),
       }),
     );
+    // Food is logged, so today's evening reminder is planned again (12E).
+    await waitFor(() => expect(requestLocalNotificationReconcile).toHaveBeenCalled());
   });
 });
 

@@ -275,6 +275,8 @@ export default function FoodDetailScreen() {
       router.replace('/nutrition');
     } catch (error) {
       if (deleted) {
+        // The old entry is gone and the new one did not save, so the day may now have no food.
+        requestLocalNotificationReconcile();
         toast.show(`Removed the old entry, but couldn't save the new one. ${food.name} is no longer logged — try again.`);
       } else {
         toast.show(errorMessage(error));

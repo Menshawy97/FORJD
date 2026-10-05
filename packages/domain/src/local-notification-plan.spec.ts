@@ -473,6 +473,12 @@ describe("planLocalNotifications: log your meals (12E-5)", () => {
     expect(plan[0]?.date).toBe("2026-10-08");
   });
 
+  it("does not remind at 19:30 itself, only before it", () => {
+    const plan = ofKind(planLocalNotifications(withMeals({ now: { date: WEDNESDAY, minute: at(19, 30) } })), "meals");
+
+    expect(plan[0]?.date).toBe("2026-10-08");
+  });
+
   it("drops only today's reminder once a meal is logged today", () => {
     const plan = ofKind(planLocalNotifications(withMeals({ mealLoggedToday: true })), "meals");
 

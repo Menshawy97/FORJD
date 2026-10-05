@@ -160,10 +160,10 @@ describe('buildLocalNotificationPlan: log your meals (12E-5)', () => {
     expect(s.listNutritionLog).not.toHaveBeenCalled();
   });
 
-  it('answers null, leaving the schedule alone, when the food log cannot be read', async () => {
+  it('drops only today when the food log cannot be read, and still plans the other kinds', async () => {
     const plan = await buildLocalNotificationPlan(
       sources({
-        loadPreferences: jest.fn(async () => mealsOn),
+        loadPreferences: jest.fn(async () => ({ ...mealsOn, weekly: true })),
         listNutritionLog: jest.fn(async () => {
           throw new Error('offline');
         }),
@@ -171,7 +171,10 @@ describe('buildLocalNotificationPlan: log your meals (12E-5)', () => {
       NOW,
     );
 
-    expect(plan).toBeNull();
+    // Unknown is treated as logged, so a reminder is never sent for food that may already be in; later days stay.
+    expect(ids(plan)).toContain('forjd-local:weekly:2026-10-10');
+    expect(ids(plan)).not.toContain('forjd-local:meals:2026-10-05');
+    expect(ids(plan)).toContain('forjd-local:meals:2026-10-06');
   });
 
   it('still reads nothing from the network when only meals is on and the other switches are off', async () => {

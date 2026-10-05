@@ -63,10 +63,18 @@ async function readProgramWorkouts(sources: PlanInputSources): Promise<ProgramWe
   );
 }
 
-/** Any food logged today, so today's evening reminder is not sent after the person already logged. */
+/**
+ * Any food logged today, so today's evening reminder is not sent after the person already logged. A read that
+ * fails counts as logged: a reminder is never sent for food that may already be in, and the failure does not hold
+ * back the other reminders (later days keep theirs).
+ */
 async function readMealLoggedToday(sources: PlanInputSources, today: string): Promise<boolean> {
-  const { items } = await sources.listNutritionLog(today);
-  return items.length > 0;
+  try {
+    const { items } = await sources.listNutritionLog(today);
+    return items.length > 0;
+  } catch {
+    return true;
+  }
 }
 
 export async function buildLocalNotificationPlan(

@@ -129,6 +129,9 @@ update. Older app builds ignore the new fields (rule 7).
   The habit read takes the last 100 sessions of any status, so someone who logs far more than a dozen a week could lose
   the older weeks. A tap that cold-starts the app calls the router right away, which may be too early on a slow
   start: check it in the device walk and add a navigator-ready wait if it drops.
+- **Not addressed by 12E, noted by review.** The API client sets no request timeout, so a hung read in the reconcile holds the
+  queue (later reconciles and the sign-out cancel wait behind it); `nutrition.tsx` computes today's date once when the screen
+  mounts, so a screen left open past midnight logs a saved meal to the old date. Both predate 12E.
 - **The permission prompt, and a change from the approved design.** The switches start on, so on a new phone reminders are
   on before anything was asked. Asking only "the first time a reminder is switched on" would therefore never ask, and the
   reminders would silently never arrive. The Notifications screen also asks once, when it opens, if a reminder the phone
