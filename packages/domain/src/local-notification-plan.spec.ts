@@ -556,6 +556,36 @@ describe("planLocalNotifications: no workout yet this week (12E-6)", () => {
     expect(dates(onFriday)).toEqual(["2026-10-08", "2026-10-15"]);
   });
 
+  it("planned on a Friday, has no Thursday left in this week and uses the generic wording for the next", () => {
+    const plan = ofKind(
+      planLocalNotifications(withNoWorkout({ now: { date: "2026-10-09", minute: at(12) }, weekStreak: 5 })),
+      "noWorkout",
+    );
+
+    // The fortnight from Friday 10-09 holds the next two Thursdays; neither is in the week being planned from.
+    expect(plan.map((entry) => entry.date)).toEqual(["2026-10-15", "2026-10-22"]);
+    expect(plan.map((entry) => entry.body)).toEqual(["Fit one in before the week closes.", "Fit one in before the week closes."]);
+  });
+
+  it("planned on a Saturday, names the streak for the Thursday five days ahead", () => {
+    const plan = ofKind(
+      planLocalNotifications(withNoWorkout({ now: { date: "2026-10-10", minute: at(12) }, weekStreak: 5 })),
+      "noWorkout",
+    );
+
+    expect(plan[0]?.date).toBe("2026-10-15");
+    expect(plan[0]?.body).toBe("Keep your 5-week streak.");
+  });
+
+  it("counts a session from late on the Friday before as belonging to the week that Friday closes", () => {
+    const plan = planLocalNotifications(
+      withNoWorkout({ now: { date: "2026-10-09", minute: at(12) }, recentSessions: [{ date: "2026-10-09", startMinute: at(23, 50) }] }),
+    );
+
+    // The Friday session is in the week that already had its Thursday, so it does not drop the Thursdays that follow.
+    expect(dates(plan)).toEqual(["2026-10-15", "2026-10-22"]);
+  });
+
   it("on a Thursday, keeps today's reminder before 18:00 and drops it after, or once trained today", () => {
     const thursday = "2026-10-08";
     const before = planLocalNotifications(withNoWorkout({ now: { date: thursday, minute: at(12) } }));
