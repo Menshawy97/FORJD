@@ -107,6 +107,10 @@ update. Older app builds ignore the new fields (rule 7).
    (Slice 6, no workout this week, built: Thursday 18:00 in this week and the next, left out for a Saturday-to-Friday week that already has a
    completed session; this week's nudge names the server's `weekStreak`, later weeks' say "Fit one in before the week closes." because their
    streak is not known yet (that wording is mine, for the owner to confirm). Reads sessions and the stats; a failed stats read only drops the streak.)
+   (Slice 7, Weekly Forge closing, built: Friday 18:00 on the Friday the current Forge week closes, only when the `weekly_forge` flag is on and some
+   ladder is at least 75% of the way to its target without reaching it (`isAnyLadderCloseToTarget`, the owner's 25%); a 404 from the server counts
+   as the feature being off, any other failed read leaves the schedule alone. Only the current week is planned, because the next week's
+   progress is not known yet; the plan is recomputed on every launch, foreground and finished workout. A tap opens Home.)
 9. **Docs close:** data inventory, FAQ (approved wording), roadmap, this plan's status.
 
 ## Verification

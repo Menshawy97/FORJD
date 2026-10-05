@@ -312,6 +312,7 @@ describe('routeForLocalNotificationTap', () => {
     expect(routeForLocalNotificationTap(tap(workout.id, '/train'))).toBe('/train');
     expect(routeForLocalNotificationTap(tap(weekly.id, '/progress'))).toBe('/progress');
     expect(routeForLocalNotificationTap(tap('forjd-local:meals:2026-10-07', '/nutrition'))).toBe('/nutrition');
+    expect(routeForLocalNotificationTap(tap('forjd-local:forgeClosing:2026-10-09', '/'))).toBe('/');
   });
 
   it('ignores a notification that is not one of the planned FORJD ones', () => {
