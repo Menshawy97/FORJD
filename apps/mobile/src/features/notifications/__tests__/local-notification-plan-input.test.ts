@@ -39,6 +39,9 @@ function sources(overrides: Partial<PlanInputSources> = {}): PlanInputSources {
     listNutritionLog: jest.fn(async () => ({ items: [] })),
     loadFlags: jest.fn(async () => ['weekly_forge'] as readonly string[]),
     getForge: jest.fn(async () => forgeWeek(0.5)),
+    listScans: jest.fn(async () => ({ scans: [] })),
+    getWeighInSince: jest.fn(async (today: string) => today),
+    forgetWeighInSince: jest.fn(async () => undefined),
     getStats: jest.fn(async () => ({ weekStreak: 0 }) as Awaited<ReturnType<PlanInputSources['getStats']>>),
     ...overrides,
   } as PlanInputSources;
@@ -322,5 +325,82 @@ describe('buildLocalNotificationPlan: Weekly Forge closing (12E-7)', () => {
 
     expect(s.loadFlags).not.toHaveBeenCalled();
     expect(s.getForge).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildLocalNotificationPlan: monthly weigh-in or scan (12E-8)', () => {
+  const weighInOn = { ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false, weekly: false, weighIn: true };
+  const weighInIds = (plan: PlannedLocalNotification[] | null) => ids(plan).filter((id) => id.includes(':weighIn:'));
+  const scanOn = (day: number, month = 8) =>
+    ({ id: 's', measuredAt: new Date(2026, month, day, 9).toISOString(), source: 'inbody', weightKg: 80, bodyFatPercent: 15 }) as never;
+  const withWeighIn = (over: Partial<PlanInputSources> = {}) => sources({ loadPreferences: jest.fn(async () => weighInOn), ...over });
+
+  it('counts 30 days from the latest scan, in the phone local calendar', async () => {
+    // Scans on 1 Sep and 9 Sep: the latest is 9 Sep, so the reminder is 9 Oct.
+    const plan = await buildLocalNotificationPlan(
+      withWeighIn({ listScans: jest.fn(async () => ({ scans: [scanOn(1), scanOn(9)] })) }),
+      NOW,
+    );
+
+    expect(weighInIds(plan)).toEqual(['forjd-local:weighIn:2026-10-09']);
+  });
+
+  it('with no scan, counts from the day the switch was turned on', async () => {
+    const getWeighInSince = jest.fn(async () => '2026-09-09');
+
+    const plan = await buildLocalNotificationPlan(withWeighIn({ getWeighInSince }), NOW);
+
+    expect(getWeighInSince).toHaveBeenCalledWith('2026-10-05');
+    expect(weighInIds(plan)).toEqual(['forjd-local:weighIn:2026-10-09']);
+  });
+
+  it('does not read the stored day when there is a scan to count from', async () => {
+    const s = withWeighIn({ listScans: jest.fn(async () => ({ scans: [scanOn(9)] })) });
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.getWeighInSince).not.toHaveBeenCalled();
+  });
+
+  it('answers null, leaving the schedule alone, when the scans cannot be read', async () => {
+    const plan = await buildLocalNotificationPlan(
+      withWeighIn({
+        listScans: jest.fn(async () => {
+          throw new Error('offline');
+        }),
+      }),
+      NOW,
+    );
+
+    expect(plan).toBeNull();
+  });
+
+  it('reads nothing when the switch is off, and forgets the start day so turning it on again starts a new month', async () => {
+    const s = sources();
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.listScans).not.toHaveBeenCalled();
+    expect(s.getWeighInSince).not.toHaveBeenCalled();
+    expect(s.forgetWeighInSince).toHaveBeenCalled();
+  });
+
+  it('keeps the start day while the switch is on', async () => {
+    const s = withWeighIn();
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.forgetWeighInSince).not.toHaveBeenCalled();
+  });
+
+  it('ignores a scan dated in the future, so one typo does not silence the reminder', async () => {
+    // A scan on 9 Sep and a mistaken one in 2027: the real latest scan counts.
+    const typo = { id: 's2', measuredAt: new Date(2027, 8, 9, 9).toISOString(), source: 'manual', weightKg: 80, bodyFatPercent: null } as never;
+    const plan = await buildLocalNotificationPlan(
+      withWeighIn({ listScans: jest.fn(async () => ({ scans: [scanOn(9), typo] })) }),
+      NOW,
+    );
+
+    expect(weighInIds(plan)).toEqual(['forjd-local:weighIn:2026-10-09']);
   });
 });

@@ -13,7 +13,12 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/auth/apiClient', () => ({ createManualBodyScan: jest.fn(), getMe: jest.fn() }));
 
+jest.mock('@/features/notifications/use-local-notifications', () => ({
+  requestLocalNotificationReconcile: jest.fn(),
+}));
+
 import { createManualBodyScan, getMe } from '@/auth/apiClient';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 
 import InBodyManualScreen from '../inbody-manual';
 
@@ -62,6 +67,8 @@ describe('manual InBody entry', () => {
       measurements: [{ metric: 'weight_kg', value: 82.4, unit: 'kg' }],
     });
     expect(queryByText('Enter your body fat %')).toBeNull();
+    // A new scan moves the monthly check-in's start, so the schedule is planned again (12E).
+    expect(requestLocalNotificationReconcile).toHaveBeenCalled();
   });
 
   it('asks only for weight when nothing is entered, and sends nothing', async () => {

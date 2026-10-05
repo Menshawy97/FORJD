@@ -111,6 +111,9 @@ update. Older app builds ignore the new fields (rule 7).
    ladder is at least 75% of the way to its target without reaching it (`isAnyLadderCloseToTarget`, the owner's 25%); a 404 from the server counts
    as the feature being off, any other failed read leaves the schedule alone. Only the current week is planned, because the next week's
    progress is not known yet; the plan is recomputed on every launch, foreground and finished workout. A tap opens Home.)
+   (Slice 8, monthly weigh-in or scan, built: 10:00 on every 30th day after the latest body scan (its local date) or, with no scan, after the day the switch was
+   turned on (kept on the phone, forgotten when it is turned off and on sign-out); a due date that has passed is not repeated, so a missed one is not a daily nag;
+   saving a scan plans again; a tap opens InBody. Health Connect weight readings are not counted as a weigh-in, only body scans and manual entries.)
 9. **Docs close:** data inventory, FAQ (approved wording), roadmap, this plan's status.
 
 ## Verification

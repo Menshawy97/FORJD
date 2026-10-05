@@ -81,7 +81,7 @@ describe('NotifsScreen', () => {
     (ensureLocalNotificationPermission as jest.Mock).mockResolvedValue(true);
   });
 
-  it('renders the header, intro copy and all eight rows', async () => {
+  it('renders the header, intro copy and all nine rows', async () => {
     const { findByText } = await render(<NotifsScreen />);
 
     expect(await findByText('Notifications')).toBeTruthy();
@@ -104,6 +104,8 @@ describe('NotifsScreen', () => {
     expect(await findByText("Thursday evening, if you haven't trained")).toBeTruthy();
     expect(await findByText('Weekly Forge closing')).toBeTruthy();
     expect(await findByText("Friday evening, when you're close to a goal")).toBeTruthy();
+    expect(await findByText('Monthly weigh-in or scan')).toBeTruthy();
+    expect(await findByText('30 days after your last one')).toBeTruthy();
   });
 
   it('renders the quiet hours block with the literal window and Change control', async () => {
@@ -121,8 +123,8 @@ describe('NotifsScreen', () => {
     const rows = await findAllByRole('switch');
     const states = rows.map((row) => row.props.accessibilityState.checked);
 
-    // Order: workout, recovery, pr, rank, weekly, meals, noWorkout, forgeClosing.
-    expect(states).toEqual([true, true, true, false, true, false, false, false]);
+    // Order: workout, recovery, pr, rank, weekly, meals, noWorkout, forgeClosing, weighIn.
+    expect(states).toEqual([true, true, true, false, true, false, false, false, false]);
   });
 
   it('persists through the store when a row is toggled', async () => {
@@ -148,6 +150,7 @@ describe('NotifsScreen', () => {
       meals: true,
       noWorkout: false,
       forgeClosing: false,
+      weighIn: false,
     });
 
     const { findAllByRole } = await render(<NotifsScreen />);
@@ -160,6 +163,7 @@ describe('NotifsScreen', () => {
       true,
       false,
       true,
+      false,
       false,
       false,
     ]);
@@ -204,6 +208,7 @@ describe('NotifsScreen', () => {
         false,
         false,
         false,
+        false,
       ]);
     });
   });
@@ -215,7 +220,7 @@ describe('NotifsScreen', () => {
     const { findAllByRole } = await render(<NotifsScreen />);
 
     const rows = await findAllByRole('switch');
-    expect(rows.map((row) => row.props.accessibilityState.checked)).toEqual([true, true, false, false, true, false, false, false]);
+    expect(rows.map((row) => row.props.accessibilityState.checked)).toEqual([true, true, false, false, true, false, false, false, false]);
   });
 
   it('queues only what changed for the server when a row is toggled', async () => {
@@ -246,6 +251,7 @@ describe('NotifsScreen', () => {
         true,
         true,
         true,
+        false,
         false,
         false,
         false,
@@ -419,6 +425,18 @@ describe('NotifsScreen', () => {
       const { findByText } = await render(<NotifsScreen />);
       fireEvent.press(await findByText('Weekly Forge closing'));
 
+      await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
+    });
+
+    it('asks the phone when the weigh-in reminder is turned on', async () => {
+      (loadNotificationPreferences as jest.Mock).mockResolvedValue({
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        workout: false,
+        weekly: false,
+      });
+
+      const { findByText } = await render(<NotifsScreen />);
+      fireEvent.press(await findByText('Monthly weigh-in or scan'));
       await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
     });
 

@@ -7,6 +7,7 @@ import {
 } from './notification-preferences';
 import { RECENT_EXERCISES_STORAGE_KEY } from './recent-exercises';
 import { TIME_ZONE_SENT_STORAGE_KEY, forgetTimeZoneSent } from './time-zone-sent';
+import { WEIGH_IN_SINCE_STORAGE_KEY } from './weigh-in-reminder-anchor';
 
 /**
  * The device preferences that belong to one signed-in person, not to the phone (whole-app review
@@ -24,6 +25,7 @@ const ACCOUNT_PREFERENCE_KEYS = [
   NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY,
   EXERCISE_UNITS_STORAGE_KEY,
   TIME_ZONE_SENT_STORAGE_KEY,
+  WEIGH_IN_SINCE_STORAGE_KEY,
 ] as const;
 
 /** Never throws: a preference that fails to clear must not stop a sign-out. */

@@ -16,6 +16,7 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { rangeError } from '@/features/body/range-error';
 import { combineDateAndTime, ScanDateTimeFields } from '@/features/body/scan-date-time';
 import type { ScanProfileField } from '@/features/body/scan-profile';
@@ -111,6 +112,8 @@ export default function InBodyManualScreen() {
         ageYears: Number(scanProfile.age.text),
         measurements,
       });
+      // A new scan moves the monthly check-in's start, so the schedule is planned again (12E).
+      requestLocalNotificationReconcile();
       router.replace({ pathname: '/inbody', params: { saved: 'manual', ...scanProfile.heightPromptParams(heightCm) } });
     } catch {
       toast.show('Could not save these values. Check your connection and try again.');

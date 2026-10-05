@@ -18,6 +18,7 @@ import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast, useToast } from '@/components/toast';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { rangeError } from '@/features/body/range-error';
 import type { ScanProfileField } from '@/features/body/scan-profile';
 import { ScanProfileRows, useScanProfile } from '@/features/body/scan-profile-rows';
@@ -174,6 +175,8 @@ export default function InBodyConfirmScreen() {
         ageYears: Number(scanProfile.age.text),
         measurements,
       });
+      // A new scan moves the monthly check-in's start, so the schedule is planned again (12E).
+      requestLocalNotificationReconcile();
       const prompt = scanProfile.heightPromptParams(heightCm);
       if (prompt) router.replace({ pathname: '/inbody', params: prompt });
       else router.replace('/inbody');
