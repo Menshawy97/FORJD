@@ -126,6 +126,11 @@ update. Older app builds ignore the new fields (rule 7).
   The habit read takes the last 100 sessions of any status, so someone who logs far more than a dozen a week could lose
   the older weeks. A tap that cold-starts the app calls the router right away, which may be too early on a slow
   start: check it in the device walk and add a navigator-ready wait if it drops.
+- **Deploy order for the four new switches.** The phone's check of the server's answer requires all nine switches, and an
+  old server's strict PATCH refuses a new key. So the API with migration `0033` must be live before a phone build that
+  shows the four rows ships; an old server would otherwise stop the phone adopting the server's choices and hold a
+  pending change for a new switch forever. The API deploys on merge to `main`, ahead of any app build, so this holds
+  in the normal order; it is a release-checklist item, not code.
 - **Habit inference guesses wrong early.** Mitigated by staying quiet with too little history and by one per day.
 - **iOS's pending limit and Android battery killers.** Reminders are best effort, not guaranteed.
 - **Stale conditions** (a nudge scheduled before the person trains). Mitigated by recomputing on every foreground
