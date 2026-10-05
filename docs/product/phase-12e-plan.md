@@ -127,6 +127,12 @@ update. Older app builds ignore the new fields (rule 7).
   The habit read takes the last 100 sessions of any status, so someone who logs far more than a dozen a week could lose
   the older weeks. A tap that cold-starts the app calls the router right away, which may be too early on a slow
   start: check it in the device walk and add a navigator-ready wait if it drops.
+- **The permission prompt, and a change from the approved design.** The switches start on, so on a new phone reminders are
+  on before anything was asked. Asking only "the first time a reminder is switched on" would therefore never ask, and the
+  reminders would silently never arrive. The Notifications screen also asks once, when it opens, if a reminder the phone
+  schedules is on and the phone has not been asked. Android 13 and later need the Reminders channel to exist before the
+  dialog can appear, so the ask creates it first. Android reports a first refusal as "can ask again", so a refusal seen
+  on the screen shows the note straight away. Check all three in the device walk, on an Android 13+ phone as well.
 - **Deploy order for the four new switches.** The phone's check of the server's answer requires all nine switches, and an
   old server's strict PATCH refuses a new key. So the API with migration `0033` must be live before a phone build that
   shows the four rows ships; an old server would otherwise stop the phone adopting the server's choices and hold a

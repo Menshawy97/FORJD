@@ -91,14 +91,18 @@ function whenOf(planned: PlannedLocalNotification): Date {
   return new Date(year, month - 1, day, Math.floor(planned.minute / 60), planned.minute % 60);
 }
 
+/** Android only. A notification needs its channel to exist, and Android 13 and later need one before the permission dialog. */
+async function ensureChannel(api: LocalNotificationApi): Promise<void> {
+  if (api.platform !== 'android') return;
+  await api.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
+    name: 'Reminders',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
 async function scheduleAll(plan: readonly PlannedLocalNotification[], api: LocalNotificationApi): Promise<number> {
   api.installForegroundHandler();
-  if (api.platform === 'android') {
-    await api.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
-      name: 'Reminders',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
+  await ensureChannel(api);
   let scheduled = 0;
   for (const planned of plan) {
     try {
@@ -169,8 +173,9 @@ export type NotificationPermission = 'granted' | 'undetermined' | 'denied';
 
 /**
  * Whether the phone lets FORJD show notifications: allowed, not asked yet (so the prompt can still appear), or
- * refused for good (only the phone's settings can change it, which is when the screen shows its note). A read
- * that fails counts as not asked, never as an error.
+ * refused for good (only the phone's settings can change it, which is when the screen shows its note). Android 13
+ * and later report "can ask again" after a first refusal, so the screen also treats a refusal it has just seen as
+ * one. A read that fails counts as not asked, never as an error.
  */
 export async function readNotificationPermission(
   api: LocalNotificationApi = defaultLocalNotificationApi,
@@ -196,6 +201,11 @@ export async function ensureLocalNotificationPermission(
     const { granted, canAskAgain } = await api.getPermissionsAsync();
     if (granted) return true;
     if (!canAskAgain) return false;
+    try {
+      await ensureChannel(api);
+    } catch {
+      // Ask anyway: on a phone that does not need the channel first the dialog still appears.
+    }
     return (await api.requestPermissionsAsync()).granted;
   } catch {
     return false;

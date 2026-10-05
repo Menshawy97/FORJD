@@ -379,4 +379,47 @@ describe('notification permission (12E-4)', () => {
 
     await expect(ensureLocalNotificationPermission(api)).resolves.toBe(false);
   });
+
+  // Android 13 and later show the permission dialog only once a notification channel exists, so the channel is
+  // made before the first ask. Without it the dialog never appears and the person looks like a refusal.
+  it('creates the Reminders channel before asking on Android', async () => {
+    const order: string[] = [];
+    const { api } = fakeApi({
+      getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+      setNotificationChannelAsync: jest.fn(async () => {
+        order.push('channel');
+      }),
+      requestPermissionsAsync: jest.fn(async () => {
+        order.push('request');
+        return { granted: true };
+      }),
+    });
+
+    await ensureLocalNotificationPermission(api);
+
+    expect(order).toEqual(['channel', 'request']);
+  });
+
+  it('does not touch channels on iOS', async () => {
+    const { api } = fakeApi({
+      platform: 'ios',
+      getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+    });
+
+    await ensureLocalNotificationPermission(api);
+
+    expect(api.setNotificationChannelAsync).not.toHaveBeenCalled();
+    expect(api.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('still asks when the channel cannot be created', async () => {
+    const { api } = fakeApi({
+      getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+      setNotificationChannelAsync: jest.fn(async () => {
+        throw new Error('no channel');
+      }),
+    });
+
+    await expect(ensureLocalNotificationPermission(api)).resolves.toBe(true);
+  });
 });

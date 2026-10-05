@@ -290,6 +290,75 @@ describe('NotifsScreen', () => {
       expect(ensureLocalNotificationPermission).not.toHaveBeenCalled();
     });
 
+    // The switches are on by default, so a new phone has reminders on and nothing asked yet: opening the screen is
+    // when the phone is asked, or the reminders would silently never arrive.
+    it('asks the phone when the screen opens with a reminder on and the phone not yet asked', async () => {
+      (readNotificationPermission as jest.Mock).mockResolvedValue('undetermined');
+
+      const { findByText } = await render(<NotifsScreen />);
+      await findByText('Workout reminders');
+
+      await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(requestLocalNotificationReconcile).toHaveBeenCalled());
+    });
+
+    it('does not ask on opening when no reminder the phone schedules is on', async () => {
+      (readNotificationPermission as jest.Mock).mockResolvedValue('undetermined');
+      (loadNotificationPreferences as jest.Mock).mockResolvedValue({
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        workout: false,
+        weekly: false,
+      });
+
+      const { findByText } = await render(<NotifsScreen />);
+      await findByText('Workout reminders');
+
+      await waitFor(() => expect(readNotificationPermission).toHaveBeenCalled());
+      expect(ensureLocalNotificationPermission).not.toHaveBeenCalled();
+    });
+
+    it.each(['granted', 'denied'])('does not ask on opening once the phone has decided (%s)', async (state) => {
+      (readNotificationPermission as jest.Mock).mockResolvedValue(state);
+
+      const { findByText } = await render(<NotifsScreen />);
+      await findByText('Workout reminders');
+
+      await waitFor(() => expect(readNotificationPermission).toHaveBeenCalled());
+      expect(ensureLocalNotificationPermission).not.toHaveBeenCalled();
+    });
+
+    it('shows the note after a refusal it has just seen, though Android still says it can ask again', async () => {
+      (readNotificationPermission as jest.Mock).mockResolvedValue('undetermined');
+      (ensureLocalNotificationPermission as jest.Mock).mockResolvedValue(false);
+
+      const { findByText } = await render(<NotifsScreen />);
+
+      expect(await findByText('Notifications are off for FORJD on this phone')).toBeTruthy();
+    });
+
+    it('announces the note to screen readers when it appears', async () => {
+      (readNotificationPermission as jest.Mock).mockResolvedValue('denied');
+
+      const { findByTestId } = await render(<NotifsScreen />);
+
+      expect((await findByTestId('notifications-off-note')).props.accessibilityLiveRegion).toBe('polite');
+    });
+
+    it('does not ask for a reminder that was turned back off before the prompt', async () => {
+      (loadNotificationPreferences as jest.Mock).mockResolvedValue({ ...DEFAULT_NOTIFICATION_PREFERENCES, weekly: false });
+
+      const { findByText } = await render(<NotifsScreen />);
+      // The second tap lands while the first one's save is still going.
+      let finishSave: (value: undefined) => void = () => undefined;
+      (saveNotificationPreferences as jest.Mock).mockReturnValue(new Promise((resolve) => (finishSave = resolve)));
+      fireEvent.press(await findByText('Weekly summary'));
+      fireEvent.press(await findByText('Weekly summary'));
+      finishSave(undefined);
+
+      await waitFor(() => expect(requestLocalNotificationReconcile).toHaveBeenCalled());
+      expect(ensureLocalNotificationPermission).not.toHaveBeenCalled();
+    });
+
     it('shows the note once the person refuses the prompt, and still keeps their choice', async () => {
       (loadNotificationPreferences as jest.Mock).mockResolvedValue({ ...DEFAULT_NOTIFICATION_PREFERENCES, weekly: false });
       (readNotificationPermission as jest.Mock).mockResolvedValueOnce('undetermined').mockResolvedValue('denied');
