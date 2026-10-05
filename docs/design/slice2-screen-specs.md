@@ -509,6 +509,7 @@ gates onboarding: shipping it read-only is not an option.
 | `Log your meals` / `Evening, if you haven't logged food yet` (new with Phase 12E, off by default, approved 2026-10-06) |
 | `No workout yet this week` / `Thursday evening, if you haven't trained` (new with Phase 12E, off by default, approved 2026-10-06) |
 | `Weekly Forge closing` / `Friday evening, when you're close to a goal` (new with Phase 12E, off by default, approved 2026-10-06) |
+| `Monthly weigh-in or scan` / `30 days after your last one` (new with Phase 12E, off by default, approved 2026-10-06) |
 | `Quiet hours` |
 | `22:00 — 07:00` (**em dash U+2014, spaces either side**) |
 | `Change` |

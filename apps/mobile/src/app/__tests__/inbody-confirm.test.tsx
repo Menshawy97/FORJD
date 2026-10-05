@@ -20,7 +20,12 @@ jest.mock('expo-router', () => {
 
 jest.mock('@/auth/apiClient', () => ({ confirmBodyScan: jest.fn(), getMe: jest.fn() }));
 
+jest.mock('@/features/notifications/use-local-notifications', () => ({
+  requestLocalNotificationReconcile: jest.fn(),
+}));
+
 import { confirmBodyScan, getMe } from '@/auth/apiClient';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { setPendingScan, takePendingScan } from '@/store/pending-scan';
 
 import InBodyConfirmScreen from '../inbody-confirm';
@@ -95,6 +100,8 @@ describe('Confirm scan -- value limits', () => {
     expect(confirmBodyScan).toHaveBeenCalledTimes(1);
     const body = (confirmBodyScan as jest.Mock).mock.calls[0][1];
     expect(body.measurements).toContainEqual(expect.objectContaining({ metric: 'trunk', value: 30.5 }));
+    // A new scan moves the monthly check-in's start, so the schedule is planned again (12E).
+    expect(requestLocalNotificationReconcile).toHaveBeenCalled();
   });
 
   it('names an out-of-range value on its own row and sends nothing', async () => {

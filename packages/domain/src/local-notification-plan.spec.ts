@@ -674,3 +674,66 @@ describe("planLocalNotifications: Weekly Forge closing (12E-7)", () => {
     expect(ofKind(plan, "forgeClosing")).toEqual([]);
   });
 });
+
+describe("planLocalNotifications: monthly weigh-in or scan (12E-8)", () => {
+  // Now is Wednesday 2026-10-07 08:00, so the fortnight runs to 2026-10-20.
+  const withWeighIn = (anchor: string | undefined, over: Partial<LocalNotificationPlanInput> = {}) =>
+    base({ switches: { workout: false, weekly: false, weighIn: true }, weighInAnchor: anchor, ...over });
+  const dates = (plan: PlannedLocalNotification[]) => ofKind(plan, "weighIn").map((entry) => entry.date);
+
+  it("is off unless the switch is on, and needs an anchor date", () => {
+    expect(ofKind(planLocalNotifications(base({ weighInAnchor: "2026-09-09" })), "weighIn")).toEqual([]);
+    expect(dates(planLocalNotifications(withWeighIn(undefined)))).toEqual([]);
+  });
+
+  it("reminds 30 days after the latest scan or weigh-in, at 10:00", () => {
+    const plan = ofKind(planLocalNotifications(withWeighIn("2026-09-09")), "weighIn");
+
+    expect(plan).toEqual([
+      {
+        id: "forjd-local:weighIn:2026-10-09",
+        kind: "weighIn",
+        date: "2026-10-09",
+        minute: at(10),
+        title: "Monthly check-in",
+        body: "Time for a weigh-in or InBody scan.",
+        route: "/inbody",
+      },
+    ]);
+  });
+
+  it("does not remind again for a due date that has passed, so a missed one does not become a daily nag", () => {
+    // 2026-09-01 + 30 days is 10-01, already past; the next is 10-31, beyond the fortnight.
+    expect(dates(planLocalNotifications(withWeighIn("2026-09-01")))).toEqual([]);
+  });
+
+  it("repeats every 30 days from the anchor", () => {
+    const plan = planLocalNotifications(
+      withWeighIn("2026-09-09", { now: { date: "2026-11-01", minute: at(8) } }),
+    );
+
+    // 09-09 + 60 days is 11-08.
+    expect(dates(plan)).toEqual(["2026-11-08"]);
+  });
+
+  it("keeps a reminder due today before 10:00 and drops it after", () => {
+    const due = "2026-10-07";
+    const before = planLocalNotifications(withWeighIn("2026-09-07", { now: { date: due, minute: at(8) } }));
+    const after = planLocalNotifications(withWeighIn("2026-09-07", { now: { date: due, minute: at(11) } }));
+
+    expect(dates(before)).toEqual(["2026-10-07"]);
+    expect(dates(after)).toEqual([]);
+  });
+
+  it("ignores an anchor that is malformed or in the future", () => {
+    expect(dates(planLocalNotifications(withWeighIn("not-a-date")))).toEqual([]);
+    expect(dates(planLocalNotifications(withWeighIn("2026-11-01")))).toEqual([]);
+  });
+
+  it("never falls inside quiet hours", () => {
+    for (const entry of ofKind(planLocalNotifications(withWeighIn("2026-09-09")), "weighIn")) {
+      expect(entry.minute).toBeGreaterThanOrEqual(at(7));
+      expect(entry.minute).toBeLessThan(at(22));
+    }
+  });
+});

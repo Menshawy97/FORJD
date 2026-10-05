@@ -6,6 +6,7 @@ import {
   type TrainingSessionStart,
 } from '@forjd/domain';
 import type {
+  BodyScanListResponse,
   ForgeResponse,
   NutritionLogListResponse,
   ProgramEnrollmentResponse,
@@ -19,6 +20,7 @@ import {
   getProgram,
   getProgramEnrollment,
   getWorkoutStats,
+  listBodyScans,
   listNutritionLog,
   listWorkoutSessions,
 } from '@/auth/apiClient';
@@ -26,6 +28,7 @@ import { isNotFound } from '@/auth/failure';
 import { loadFeatureFlags } from '@/features/flags/feature-flags';
 import { WEEKLY_FORGE_FLAG } from '@/features/forge/use-forge-week';
 import { loadNotificationPreferences, type NotificationPreferences } from '@/store/notification-preferences';
+import { getOrSetWeighInSince } from '@/store/weigh-in-reminder-anchor';
 
 /**
  * Gathers what the pure planner needs (Phase 12E, ADR-064) and runs it: the switches from the device copy, the
@@ -41,6 +44,9 @@ export interface PlanInputSources {
   getStats: () => Promise<WorkoutStatsResponse>;
   loadFlags: () => Promise<readonly string[]>;
   getForge: () => Promise<ForgeResponse>;
+  listScans: () => Promise<BodyScanListResponse>;
+  /** The day the switch was turned on, for someone with no scan to count from. */
+  getWeighInSince: (today: string) => Promise<string>;
 }
 
 export const defaultPlanInputSources: PlanInputSources = {
@@ -52,6 +58,8 @@ export const defaultPlanInputSources: PlanInputSources = {
   getStats: getWorkoutStats,
   loadFlags: loadFeatureFlags,
   getForge,
+  listScans: listBodyScans,
+  getWeighInSince: getOrSetWeighInSince,
 };
 
 /** Enough to cover the planner's four-week window for anyone who trains daily. */
@@ -122,6 +130,19 @@ async function readForgeWeek(
   }
 }
 
+/**
+ * The day the monthly check-in counts from: the latest body scan or weigh-in (its local date), or with none the day
+ * the switch was turned on. A scan list that cannot be read throws, so the schedule is left alone.
+ */
+async function readWeighInAnchor(sources: PlanInputSources, today: string): Promise<string> {
+  const { scans } = await sources.listScans();
+  const latest = scans.reduce<number | null>((best, scan) => {
+    const at = Date.parse(scan.measuredAt);
+    return Number.isFinite(at) && (best === null || at > best) ? at : best;
+  }, null);
+  return latest === null ? sources.getWeighInSince(today) : localDate(new Date(latest));
+}
+
 export async function buildLocalNotificationPlan(
   sources: PlanInputSources = defaultPlanInputSources,
   now: Date = new Date(),
@@ -129,16 +150,17 @@ export async function buildLocalNotificationPlan(
   try {
     const switches = await sources.loadPreferences();
     // Nothing wanted: no reason to touch the network, and the empty plan clears what was scheduled.
-    if (!switches.workout && !switches.weekly && !switches.meals && !switches.noWorkout && !switches.forgeClosing) {
+    if (!switches.workout && !switches.weekly && !switches.meals && !switches.noWorkout && !switches.forgeClosing && !switches.weighIn) {
       return [];
     }
     const today = localDate(now);
-    const [recentSessions, programWorkouts, mealLoggedToday, weekStreak, forgeWeek] = await Promise.all([
+    const [recentSessions, programWorkouts, mealLoggedToday, weekStreak, forgeWeek, weighInAnchor] = await Promise.all([
       switches.workout || switches.noWorkout ? readSessionStarts(sources) : [],
       switches.workout ? readProgramWorkouts(sources) : [],
       switches.meals ? readMealLoggedToday(sources, today) : false,
       switches.noWorkout ? readWeekStreak(sources) : 0,
       switches.forgeClosing ? readForgeWeek(sources) : undefined,
+      switches.weighIn ? readWeighInAnchor(sources, today) : undefined,
     ]);
     return planLocalNotifications({
       now: { date: today, minute: localMinute(now) },
@@ -148,12 +170,14 @@ export async function buildLocalNotificationPlan(
         meals: switches.meals,
         noWorkout: switches.noWorkout,
         forgeClosing: switches.forgeClosing,
+        weighIn: switches.weighIn,
       },
       recentSessions,
       programWorkouts,
       mealLoggedToday,
       weekStreak,
       forgeWeek,
+      weighInAnchor,
     });
   } catch {
     return null;

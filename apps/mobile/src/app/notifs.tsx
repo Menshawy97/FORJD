@@ -21,6 +21,7 @@ import {
 } from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
+import { clearWeighInSince } from '@/store/weigh-in-reminder-anchor';
 import { colors } from '@/theme/tokens';
 
 // docs/design/slice2-screen-specs.md §5. Device-local only: there is no notifications backend
@@ -46,13 +47,21 @@ const ROWS: ReadonlyArray<{
   { key: 'meals', title: 'Log your meals', subtitle: "Evening, if you haven't logged food yet" },
   { key: 'noWorkout', title: 'No workout yet this week', subtitle: "Thursday evening, if you haven't trained" },
   { key: 'forgeClosing', title: 'Weekly Forge closing', subtitle: "Friday evening, when you're close to a goal" },
+  { key: 'weighIn', title: 'Monthly weigh-in or scan', subtitle: '30 days after your last one' },
 ];
 
 /**
  * The switches whose notifications the phone schedules itself (Phase 12E), so turning one on is the moment to ask
  * the phone for permission. The others are sent by the server (push, 12F and later) and need no prompt yet.
  */
-const SCHEDULED_ON_PHONE: ReadonlySet<keyof NotificationPreferences> = new Set(['workout', 'weekly', 'meals', 'noWorkout', 'forgeClosing']);
+const SCHEDULED_ON_PHONE: ReadonlySet<keyof NotificationPreferences> = new Set([
+  'workout',
+  'weekly',
+  'meals',
+  'noWorkout',
+  'forgeClosing',
+  'weighIn',
+]);
 
 /** §5.2, verbatim: em dash U+2014 with a space either side, not a hyphen. */
 const QUIET_HOURS = '22:00 — 07:00';
@@ -149,6 +158,8 @@ export default function NotifsScreen() {
     applyPreferences(next);
     void (async () => {
       await saveNotificationPreferences(next);
+      // Turning the monthly check-in off forgets the day it counted from, so turning it on again starts a new month.
+      if (key === 'weighIn' && !next.weighIn) await clearWeighInSince();
       // The prompt appears at the moment its reason is obvious: when a reminder is switched on. It is skipped for
       // one that was switched straight back off. A refusal keeps the choice; the note then says why nothing arrives.
       if (preferencesRef.current[key] && SCHEDULED_ON_PHONE.has(key)) {

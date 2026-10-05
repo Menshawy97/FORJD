@@ -12,7 +12,7 @@ import { WEEK_START_DOW } from "./calendar-week";
  */
 
 /** The notification kinds planned so far. Later 12E slices add more. */
-export type LocalNotificationKind = "workout" | "weekly" | "meals" | "noWorkout" | "forgeClosing";
+export type LocalNotificationKind = "workout" | "weekly" | "meals" | "noWorkout" | "forgeClosing" | "weighIn";
 
 export interface LocalDateTime {
   /** `YYYY-MM-DD`, in the person's local calendar. */
@@ -36,7 +36,7 @@ export interface ProgramWeekdayWorkout {
 export interface LocalNotificationPlanInput {
   now: LocalDateTime;
   /** A kind that is absent is off. Later 12E slices add the other switches here. */
-  switches: { workout: boolean; weekly: boolean; meals?: boolean; noWorkout?: boolean; forgeClosing?: boolean };
+  switches: { workout: boolean; weekly: boolean; meals?: boolean; noWorkout?: boolean; forgeClosing?: boolean; weighIn?: boolean };
   /** Completed sessions, any order; only the last four weeks are used. */
   recentSessions: readonly TrainingSessionStart[];
   /** Empty for a preset program or no program: those prescribe no weekdays (`program_workouts.day_of_week`). */
@@ -50,6 +50,11 @@ export interface LocalNotificationPlanInput {
    * Saturday (`YYYY-MM-DD`); `closeToTarget` is `isAnyLadderCloseToTarget` over its ladders.
    */
   forgeWeek?: { weekStart: string; closeToTarget: boolean };
+  /**
+   * The local date (`YYYY-MM-DD`) the monthly check-in counts from: the latest body scan or weigh-in, or when the
+   * switch was turned on if there is none. Absent means nothing to count from.
+   */
+  weighInAnchor?: string;
 }
 
 export interface PlannedLocalNotification {
@@ -83,6 +88,9 @@ export const FORGE_CLOSING_REMINDER_MINUTE = 18 * 60;
 /** A ladder counts as close once it is this far to its target (within 25%, approved 2026-10-06). */
 export const FORGE_CLOSE_FRACTION = 0.75;
 const FORGE_WEEK_LAST_DAY_OFFSET = 6;
+/** Mid-morning, 10:00, for the monthly weigh-in or scan nudge (approved 2026-10-06). */
+export const WEIGH_IN_REMINDER_MINUTE = 10 * 60;
+export const WEIGH_IN_INTERVAL_DAYS = 30;
 const THURSDAY = 4;
 const DAYS_PER_WEEK = 7;
 
@@ -219,6 +227,8 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
   );
   const forgeWeek = input.forgeWeek && isValidLocalDate(input.forgeWeek.weekStart) ? input.forgeWeek : null;
   const forgeFriday = forgeWeek ? dayNumber(forgeWeek.weekStart) + FORGE_WEEK_LAST_DAY_OFFSET : null;
+  const weighInAnchor =
+    input.weighInAnchor !== undefined && isValidLocalDate(input.weighInAnchor) ? dayNumber(input.weighInAnchor) : null;
   const sessionDays = new Set(sessions.map((session) => dayNumber(session.date)));
   const thisWeekStart = weekStartOf(today);
   const plan: PlannedLocalNotification[] = [];
@@ -292,6 +302,26 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
         title: "Weekly Forge closes tonight",
         body: "Check how close you are.",
         route: "/",
+      });
+    }
+
+    // Every 30 days after the anchor, never on the anchor day itself. A due date that has passed is not repeated, so
+    // a missed one is not a daily nag; the next comes 30 days on, or sooner if a new scan moves the anchor.
+    if (
+      input.switches.weighIn &&
+      weighInAnchor !== null &&
+      day > weighInAnchor &&
+      (day - weighInAnchor) % WEIGH_IN_INTERVAL_DAYS === 0 &&
+      stillAhead(WEIGH_IN_REMINDER_MINUTE)
+    ) {
+      plan.push({
+        id: `forjd-local:weighIn:${date}`,
+        kind: "weighIn",
+        date,
+        minute: WEIGH_IN_REMINDER_MINUTE,
+        title: "Monthly check-in",
+        body: "Time for a weigh-in or InBody scan.",
+        route: "/inbody",
       });
     }
 
