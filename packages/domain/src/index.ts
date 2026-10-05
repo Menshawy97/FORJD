@@ -207,3 +207,5 @@ export * from "./leaderboard-scoring";
 
 export * from "./run-calculations";
 export * from "./nutrition-targets";
+
+export * from "./notification-vocabulary";
