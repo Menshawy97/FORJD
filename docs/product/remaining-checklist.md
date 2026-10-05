@@ -89,9 +89,9 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Heart-rate zones (Tanaka) as a possible feature
 - [ ] Expo web cannot bundle (expo-sqlite worker); previews rely on HTML mirrors
 - [ ] Write `ADR-017` or fix the 10 references to it
-- [ ] InBody `confirm` uploads the photo before the DB transaction (orphan on failure)
+- [x] InBody `confirm` orphaned photo on a failed save: now deleted (#329)
 - [ ] *(unconfirmed)* `live.tsx` Finish has no disabled state
-- [ ] Contrast checks never computed: small chip/segment text at `dim` and `segmentedInactive`
+- [x] Contrast of chip and segment text measured and pinned in `tokens.test.ts`: `dim` and `metadata` pass everywhere; `segmentedInactive` passes on its track by a hair (4.501:1)
 - [ ] Onboarding brief (including showing Weekly Forge "How it works" once); needs owner approval
 
 ## 3. Planned phases not started
