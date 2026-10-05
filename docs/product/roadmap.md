@@ -7,6 +7,9 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
+A tickable list of every remaining point (owed user steps, open engineering gaps, unstarted
+phases) is in [remaining-checklist.md](remaining-checklist.md).
+
 ## Current status (last updated 2026-09-25)
 
 **Phases 1-5 and 7 are complete (Phase 0 bar Spike B), as are the audit remediation (29/29), Phase 8's engineering
