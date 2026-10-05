@@ -1,6 +1,6 @@
 # Phase 12E — local scheduled notifications
 
-**Status (2026-10-05): approved by the owner; slice 0 (this plan and ADR-064) in review.** Every slice is its
+**Status (2026-10-05): approved by the owner. Slice 0 (this plan and ADR-064) merged (#334); slice 1 (the planner) built, in review.** Every slice is its
 own PR, test-first, reviewed, merged with `main` green. Decision record:
 [ADR-064](../decisions/ADR-064-local-notifications-planned-and-rescheduled.md). Builds on 12D
 ([phase-12d-plan.md](phase-12d-plan.md)), which put the five switches on the server.
@@ -83,8 +83,8 @@ update. Older app builds ignore the new fields (rule 7).
 
 ## Slices
 
-0. **Docs:** this plan and ADR-064. (In review.)
-1. **Planner (domain):** habit inference, quiet hours, the 14-day plan for kinds 1 and 2. Pure tests first.
+0. **Docs:** this plan and ADR-064. (Merged, #334.)
+1. **Planner (domain):** habit inference, quiet hours, the 14-day plan for kinds 1 and 2. Pure tests first. (Built: `packages/domain/src/local-notification-plan.ts`. The review added a guard that ignores malformed dates and minutes, and tests for the window and quiet-hour edges. Not done, by choice: de-duplicating two sessions on one day, which only skews the median slightly.)
 2. **Reconciler, hook, kinds 1 and 2 live:** the seam, the channel, the triggers, sign-out cancel, tap routing.
    Fake-scheduler tests and a root-layout hook test (pattern: `root-layout-background-upload.test.tsx`).
 3. **Mock-up for the owner's approval (no code):** the four new rows and the permission-off note on the

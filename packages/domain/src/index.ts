@@ -209,3 +209,4 @@ export * from "./run-calculations";
 export * from "./nutrition-targets";
 
 export * from "./notification-vocabulary";
+export * from "./local-notification-plan";
