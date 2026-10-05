@@ -34,6 +34,7 @@ import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
 import { DaySummary } from '@/nutrition/day-summary';
 import { todayLocalDate } from '@/nutrition/date';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { NutritionEntryList } from '@/nutrition/entry-list';
 import { type EditGoalsValues, NutritionSheets } from '@/nutrition/meal-sheets';
 import { sumTotals } from '@/nutrition/totals';
@@ -221,6 +222,8 @@ export default function NutritionScreen() {
     setLog((current) => current.filter((item) => item.id !== entry.id));
     try {
       await deleteLogEntry(entry.id);
+      // The day may now have no food, which brings the evening reminder back (12E).
+      requestLocalNotificationReconcile();
       toast.show(`Removed from ${MEAL_SLOT_DISPLAY_NAMES[entry.slot]}`);
     } catch (error) {
       setLog(previous);
@@ -284,6 +287,7 @@ export default function NutritionScreen() {
     setLoggingMeal(true);
     try {
       await apiLogSavedMeal({ savedMealId: logMealSheet.id, slot: logMealSlot, loggedDate: today });
+      requestLocalNotificationReconcile();
     } catch (error) {
       toast.show(errorMessage(error));
       setLoggingMeal(false);
@@ -313,6 +317,7 @@ export default function NutritionScreen() {
     setLog((current) => current.filter((item) => item.groupId !== groupId));
     try {
       await deleteLogGroup(groupId);
+      requestLocalNotificationReconcile();
       toast.show(`Removed from ${MEAL_SLOT_DISPLAY_NAMES[slot]}`);
     } catch (error) {
       setLog(previous);

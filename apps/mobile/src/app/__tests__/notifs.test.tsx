@@ -81,7 +81,7 @@ describe('NotifsScreen', () => {
     (ensureLocalNotificationPermission as jest.Mock).mockResolvedValue(true);
   });
 
-  it('renders the header, intro copy and all five rows', async () => {
+  it('renders the header, intro copy and all six rows', async () => {
     const { findByText } = await render(<NotifsScreen />);
 
     expect(await findByText('Notifications')).toBeTruthy();
@@ -98,6 +98,8 @@ describe('NotifsScreen', () => {
     expect(await findByText('When your city rank changes')).toBeTruthy();
     expect(await findByText('Weekly summary')).toBeTruthy();
     expect(await findByText('Saturday morning, when your week closes')).toBeTruthy();
+    expect(await findByText('Log your meals')).toBeTruthy();
+    expect(await findByText("Evening, if you haven't logged food yet")).toBeTruthy();
   });
 
   it('renders the quiet hours block with the literal window and Change control', async () => {
@@ -115,8 +117,8 @@ describe('NotifsScreen', () => {
     const rows = await findAllByRole('switch');
     const states = rows.map((row) => row.props.accessibilityState.checked);
 
-    // Order: workout, recovery, pr, rank, weekly.
-    expect(states).toEqual([true, true, true, false, true]);
+    // Order: workout, recovery, pr, rank, weekly, meals.
+    expect(states).toEqual([true, true, true, false, true, false]);
   });
 
   it('persists through the store when a row is toggled', async () => {
@@ -139,6 +141,7 @@ describe('NotifsScreen', () => {
       pr: false,
       rank: true,
       weekly: false,
+      meals: true,
     });
 
     const { findAllByRole } = await render(<NotifsScreen />);
@@ -150,6 +153,7 @@ describe('NotifsScreen', () => {
       false,
       true,
       false,
+      true,
     ]);
   });
 
@@ -189,6 +193,7 @@ describe('NotifsScreen', () => {
         true,
         true,
         true,
+        false,
       ]);
     });
   });
@@ -200,7 +205,7 @@ describe('NotifsScreen', () => {
     const { findAllByRole } = await render(<NotifsScreen />);
 
     const rows = await findAllByRole('switch');
-    expect(rows.map((row) => row.props.accessibilityState.checked)).toEqual([true, true, false, false, true]);
+    expect(rows.map((row) => row.props.accessibilityState.checked)).toEqual([true, true, false, false, true, false]);
   });
 
   it('queues only what changed for the server when a row is toggled', async () => {
@@ -231,6 +236,7 @@ describe('NotifsScreen', () => {
         true,
         true,
         true,
+        false,
       ]);
     });
   });
@@ -357,6 +363,25 @@ describe('NotifsScreen', () => {
 
       await waitFor(() => expect(requestLocalNotificationReconcile).toHaveBeenCalled());
       expect(ensureLocalNotificationPermission).not.toHaveBeenCalled();
+    });
+
+    it('asks the phone when the meals reminder is turned on', async () => {
+      (loadNotificationPreferences as jest.Mock).mockResolvedValue({
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        workout: false,
+        weekly: false,
+      });
+
+      const { findByText } = await render(<NotifsScreen />);
+      fireEvent.press(await findByText('Log your meals'));
+
+      await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
+      expect(saveNotificationPreferences).toHaveBeenCalledWith({
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        workout: false,
+        weekly: false,
+        meals: true,
+      });
     });
 
     it('shows the note once the person refuses the prompt, and still keeps their choice', async () => {

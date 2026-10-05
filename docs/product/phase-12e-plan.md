@@ -102,6 +102,8 @@ update. Older app builds ignore the new fields (rule 7).
    the new keys from the defaults. The four rows wait for the approved mock-up.)
 5. to 8. **One slice per extra kind:** meals, no workout this week, Forge closing, monthly weigh-in. Each adds its
    planner rules and its input.
+   (Slice 5, meals, built: the planner's `meals` kind at 19:30 "Food log", skipped for today once food is logged; the phone reads
+   today's food log; the row on the Notifications screen; a re-plan after food is logged or removed, and the tap opens Nutrition.)
 9. **Docs close:** data inventory, FAQ (approved wording), roadmap, this plan's status.
 
 ## Verification

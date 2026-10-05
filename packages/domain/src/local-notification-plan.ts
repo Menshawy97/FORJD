@@ -12,7 +12,7 @@ import { WEEK_START_DOW } from "./calendar-week";
  */
 
 /** The notification kinds planned so far. Later 12E slices add more. */
-export type LocalNotificationKind = "workout" | "weekly";
+export type LocalNotificationKind = "workout" | "weekly" | "meals";
 
 export interface LocalDateTime {
   /** `YYYY-MM-DD`, in the person's local calendar. */
@@ -35,11 +35,14 @@ export interface ProgramWeekdayWorkout {
 
 export interface LocalNotificationPlanInput {
   now: LocalDateTime;
-  switches: { workout: boolean; weekly: boolean };
+  /** A kind that is absent is off. Later 12E slices add the other switches here. */
+  switches: { workout: boolean; weekly: boolean; meals?: boolean };
   /** Completed sessions, any order; only the last four weeks are used. */
   recentSessions: readonly TrainingSessionStart[];
   /** Empty for a preset program or no program: those prescribe no weekdays (`program_workouts.day_of_week`). */
   programWorkouts: readonly ProgramWeekdayWorkout[];
+  /** Whether any food has been logged today, so today's meals reminder is not sent. */
+  mealLoggedToday?: boolean;
 }
 
 export interface PlannedLocalNotification {
@@ -64,6 +67,8 @@ export const QUIET_HOURS_START_MINUTE = 22 * 60;
 export const QUIET_HOURS_END_MINUTE = 7 * 60;
 /** The recap arrives right after the Saturday-to-Friday week closes (ADR-056). */
 export const WEEKLY_RECAP_MINUTE = 9 * 60;
+/** The evening nudge to log food, about 19:30 (approved 2026-10-06). */
+export const MEALS_REMINDER_MINUTE = 19 * 60 + 30;
 
 const HABIT_WINDOW_DAYS = 28;
 const HABIT_BLOCK_DAYS = 7;
@@ -206,6 +211,18 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
           route: "/train",
         });
       }
+    }
+
+    if (input.switches.meals && !(isToday && input.mealLoggedToday) && stillAhead(MEALS_REMINDER_MINUTE)) {
+      plan.push({
+        id: `forjd-local:meals:${date}`,
+        kind: "meals",
+        date,
+        minute: MEALS_REMINDER_MINUTE,
+        title: "Food log",
+        body: "Haven't logged food today? Add a meal.",
+        route: "/nutrition",
+      });
     }
 
     if (input.switches.weekly && weekday === WEEK_START_DOW && stillAhead(WEEKLY_RECAP_MINUTE)) {

@@ -34,7 +34,12 @@ jest.mock('@/auth/apiClient', () => ({
   deleteLogEntry: jest.fn(),
 }));
 
+jest.mock('@/features/notifications/use-local-notifications', () => ({
+  requestLocalNotificationReconcile: jest.fn(),
+}));
+
 import { deleteLogEntry, getFood, listNutritionLog, logFood } from '@/auth/apiClient';
+import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 
 import FoodDetailScreen from '../food/[id]';
 
@@ -164,6 +169,8 @@ describe('Food detail', () => {
     expect(deleteLogEntry).not.toHaveBeenCalled();
     expect(await findByText('Logged Banana, raw — Breakfast')).toBeTruthy();
     expect(mockReplace).toHaveBeenCalledWith('/nutrition');
+    // Today now has food in it, so the evening reminder is planned again (12E).
+    expect(requestLocalNotificationReconcile).toHaveBeenCalled();
   });
 
   it('edit-mode save calls deleteLogEntry then logFood and flashes Updated <name> — <Slot>', async () => {

@@ -43,13 +43,14 @@ const ROWS: ReadonlyArray<{
   { key: 'pr', title: 'PR celebrations', subtitle: 'When you beat a lift or a run' },
   { key: 'rank', title: 'Leaderboard moves', subtitle: 'When your city rank changes' },
   { key: 'weekly', title: 'Weekly summary', subtitle: 'Saturday morning, when your week closes' },
+  { key: 'meals', title: 'Log your meals', subtitle: "Evening, if you haven't logged food yet" },
 ];
 
 /**
  * The switches whose notifications the phone schedules itself (Phase 12E), so turning one on is the moment to ask
  * the phone for permission. The others are sent by the server (push, 12F and later) and need no prompt yet.
  */
-const SCHEDULED_ON_PHONE: ReadonlySet<keyof NotificationPreferences> = new Set(['workout', 'weekly']);
+const SCHEDULED_ON_PHONE: ReadonlySet<keyof NotificationPreferences> = new Set(['workout', 'weekly', 'meals']);
 
 /** §5.2, verbatim: em dash U+2014 with a space either side, not a hyphen. */
 const QUIET_HOURS = '22:00 — 07:00';

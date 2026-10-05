@@ -440,3 +440,59 @@ describe("planLocalNotifications: the edges", () => {
     expect(planned[0]).toEqual(expect.objectContaining({ minute: at(18, 30), body: "Pull is next." }));
   });
 });
+
+describe("planLocalNotifications: log your meals (12E-5)", () => {
+  const withMeals = (over: Partial<LocalNotificationPlanInput> = {}) =>
+    base({ switches: { workout: false, weekly: false, meals: true }, ...over });
+
+  it("is off unless the meals switch is on", () => {
+    expect(ofKind(planLocalNotifications(base()), "meals")).toEqual([]);
+  });
+
+  it("reminds at 19:30 every day of the fortnight, once a day", () => {
+    const plan = ofKind(planLocalNotifications(withMeals()), "meals");
+
+    expect(plan).toHaveLength(14);
+    expect(plan[0]).toEqual({
+      id: "forjd-local:meals:2026-10-07",
+      kind: "meals",
+      date: "2026-10-07",
+      minute: at(19, 30),
+      title: "Food log",
+      body: "Haven't logged food today? Add a meal.",
+      route: "/nutrition",
+    });
+    expect(new Set(plan.map((entry) => entry.date)).size).toBe(14);
+    expect(plan.at(-1)?.date).toBe("2026-10-20");
+  });
+
+  it("skips today once 19:30 has passed, and keeps tomorrow", () => {
+    const plan = ofKind(planLocalNotifications(withMeals({ now: { date: WEDNESDAY, minute: at(20) } })), "meals");
+
+    expect(plan).toHaveLength(13);
+    expect(plan[0]?.date).toBe("2026-10-08");
+  });
+
+  it("drops only today's reminder once a meal is logged today", () => {
+    const plan = ofKind(planLocalNotifications(withMeals({ mealLoggedToday: true })), "meals");
+
+    expect(plan).toHaveLength(13);
+    expect(plan[0]?.date).toBe("2026-10-08");
+  });
+
+  it("never falls inside quiet hours", () => {
+    for (const entry of ofKind(planLocalNotifications(withMeals()), "meals")) {
+      expect(entry.minute).toBeGreaterThanOrEqual(at(7));
+      expect(entry.minute).toBeLessThan(at(22));
+    }
+  });
+
+  it("sits in time order beside the other reminders", () => {
+    const plan = planLocalNotifications(
+      base({ switches: { workout: true, weekly: true, meals: true }, recentSessions: wednesdayHabit }),
+    );
+    const keys = plan.map((entry) => `${entry.date} ${String(entry.minute).padStart(4, "0")}`);
+
+    expect(keys).toEqual([...keys].sort());
+  });
+});
