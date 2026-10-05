@@ -507,6 +507,7 @@ gates onboarding: shipping it read-only is not an option.
 | `Leaderboard moves` / `When your city rank changes` |
 | `Weekly summary` / `Saturday morning, when your week closes` (was "Sunday evening recap"; changed with Phase 12E, approved 2026-10-06) |
 | `Log your meals` / `Evening, if you haven't logged food yet` (new with Phase 12E, off by default, approved 2026-10-06) |
+| `No workout yet this week` / `Thursday evening, if you haven't trained` (new with Phase 12E, off by default, approved 2026-10-06) |
 | `Quiet hours` |
 | `22:00 — 07:00` (**em dash U+2014, spaces either side**) |
 | `Change` |

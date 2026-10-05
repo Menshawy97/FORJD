@@ -27,6 +27,7 @@ function sources(overrides: Partial<PlanInputSources> = {}): PlanInputSources {
     getEnrollment: jest.fn(async () => ({ enrollment: null })),
     getProgram: jest.fn(),
     listNutritionLog: jest.fn(async () => ({ items: [] })),
+    getStats: jest.fn(async () => ({ weekStreak: 0 }) as Awaited<ReturnType<PlanInputSources['getStats']>>),
     ...overrides,
   } as PlanInputSources;
 }
@@ -184,5 +185,68 @@ describe('buildLocalNotificationPlan: log your meals (12E-5)', () => {
 
     expect(s.listSessions).not.toHaveBeenCalled();
     expect(s.getEnrollment).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildLocalNotificationPlan: no workout yet this week (12E-6)', () => {
+  const noWorkoutOn = { ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false, weekly: false, noWorkout: true };
+  const stats = (weekStreak: number) => jest.fn(async () => ({ weekStreak }) as Awaited<ReturnType<PlanInputSources['getStats']>>);
+  // NOW is Monday 5 Oct 2026: this week is Saturday 3 Oct to Friday 9 Oct, so its Thursday is 8 Oct.
+  const noWorkoutIds = (plan: PlannedLocalNotification[] | null) => ids(plan).filter((id) => id.includes(':noWorkout:'));
+
+  it('plans Thursday, naming the streak the server counts', async () => {
+    const plan = await buildLocalNotificationPlan(
+      sources({ loadPreferences: jest.fn(async () => noWorkoutOn), getStats: stats(4) }),
+      NOW,
+    );
+
+    expect(noWorkoutIds(plan)).toEqual(['forjd-local:noWorkout:2026-10-08', 'forjd-local:noWorkout:2026-10-15']);
+    expect(plan?.[0]?.body).toBe('Keep your 4-week streak.');
+  });
+
+  it('drops this week when a completed session is already in it', async () => {
+    const plan = await buildLocalNotificationPlan(
+      sources({ loadPreferences: jest.fn(async () => noWorkoutOn), listSessions: withSessions([session(1, 18)]) }),
+      NOW,
+    );
+
+    expect(noWorkoutIds(plan)).toEqual(['forjd-local:noWorkout:2026-10-15']);
+  });
+
+  it('still plans, without a streak, when the stats cannot be read', async () => {
+    const plan = await buildLocalNotificationPlan(
+      sources({
+        loadPreferences: jest.fn(async () => noWorkoutOn),
+        getStats: jest.fn(async () => {
+          throw new Error('offline');
+        }),
+      }),
+      NOW,
+    );
+
+    expect(plan?.[0]?.body).toBe('Fit one in before the week closes.');
+  });
+
+  it('answers null, leaving the schedule alone, when the sessions cannot be read', async () => {
+    const plan = await buildLocalNotificationPlan(
+      sources({
+        loadPreferences: jest.fn(async () => noWorkoutOn),
+        listSessions: jest.fn(async () => {
+          throw new Error('offline');
+        }),
+      }),
+      NOW,
+    );
+
+    expect(plan).toBeNull();
+  });
+
+  it('reads neither sessions nor stats when the switch is off', async () => {
+    const s = sources({ loadPreferences: jest.fn(async () => ({ ...noWorkoutOn, noWorkout: false, weekly: true })) });
+
+    await buildLocalNotificationPlan(s, NOW);
+
+    expect(s.getStats).not.toHaveBeenCalled();
+    expect(s.listSessions).not.toHaveBeenCalled();
   });
 });

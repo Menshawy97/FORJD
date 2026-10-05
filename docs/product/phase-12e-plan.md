@@ -104,6 +104,9 @@ update. Older app builds ignore the new fields (rule 7).
    planner rules and its input.
    (Slice 5, meals, built: the planner's `meals` kind at 19:30 "Food log", skipped for today once food is logged; the phone reads
    today's food log; the row on the Notifications screen; a re-plan after food is logged or removed, and the tap opens Nutrition.)
+   (Slice 6, no workout this week, built: Thursday 18:00 in this week and the next, left out for a Saturday-to-Friday week that already has a
+   completed session; this week's nudge names the server's `weekStreak`, later weeks' say "Fit one in before the week closes." because their
+   streak is not known yet (that wording is mine, for the owner to confirm). Reads sessions and the stats; a failed stats read only drops the streak.)
 9. **Docs close:** data inventory, FAQ (approved wording), roadmap, this plan's status.
 
 ## Verification

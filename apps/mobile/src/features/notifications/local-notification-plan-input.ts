@@ -9,9 +9,16 @@ import type {
   ProgramEnrollmentResponse,
   ProgramResponse,
   WorkoutSessionListResponse,
+  WorkoutStatsResponse,
 } from '@forjd/contracts';
 
-import { getProgram, getProgramEnrollment, listNutritionLog, listWorkoutSessions } from '@/auth/apiClient';
+import {
+  getProgram,
+  getProgramEnrollment,
+  getWorkoutStats,
+  listNutritionLog,
+  listWorkoutSessions,
+} from '@/auth/apiClient';
 import { loadNotificationPreferences, type NotificationPreferences } from '@/store/notification-preferences';
 
 /**
@@ -25,6 +32,7 @@ export interface PlanInputSources {
   getEnrollment: () => Promise<ProgramEnrollmentResponse>;
   getProgram: (id: string) => Promise<ProgramResponse>;
   listNutritionLog: (date: string) => Promise<NutritionLogListResponse>;
+  getStats: () => Promise<WorkoutStatsResponse>;
 }
 
 export const defaultPlanInputSources: PlanInputSources = {
@@ -33,6 +41,7 @@ export const defaultPlanInputSources: PlanInputSources = {
   getEnrollment: getProgramEnrollment,
   getProgram,
   listNutritionLog,
+  getStats: getWorkoutStats,
 };
 
 /** Enough to cover the planner's four-week window for anyone who trains daily. */
@@ -77,6 +86,15 @@ async function readMealLoggedToday(sources: PlanInputSources, today: string): Pr
   }
 }
 
+/** The streak is only wording in one nudge, so a read that fails just leaves it out. */
+async function readWeekStreak(sources: PlanInputSources): Promise<number> {
+  try {
+    return (await sources.getStats()).weekStreak;
+  } catch {
+    return 0;
+  }
+}
+
 export async function buildLocalNotificationPlan(
   sources: PlanInputSources = defaultPlanInputSources,
   now: Date = new Date(),
@@ -84,19 +102,26 @@ export async function buildLocalNotificationPlan(
   try {
     const switches = await sources.loadPreferences();
     // Nothing wanted: no reason to touch the network, and the empty plan clears what was scheduled.
-    if (!switches.workout && !switches.weekly && !switches.meals) return [];
+    if (!switches.workout && !switches.weekly && !switches.meals && !switches.noWorkout) return [];
     const today = localDate(now);
-    const [recentSessions, programWorkouts, mealLoggedToday] = await Promise.all([
-      switches.workout ? readSessionStarts(sources) : [],
+    const [recentSessions, programWorkouts, mealLoggedToday, weekStreak] = await Promise.all([
+      switches.workout || switches.noWorkout ? readSessionStarts(sources) : [],
       switches.workout ? readProgramWorkouts(sources) : [],
       switches.meals ? readMealLoggedToday(sources, today) : false,
+      switches.noWorkout ? readWeekStreak(sources) : 0,
     ]);
     return planLocalNotifications({
       now: { date: today, minute: localMinute(now) },
-      switches: { workout: switches.workout, weekly: switches.weekly, meals: switches.meals },
+      switches: {
+        workout: switches.workout,
+        weekly: switches.weekly,
+        meals: switches.meals,
+        noWorkout: switches.noWorkout,
+      },
       recentSessions,
       programWorkouts,
       mealLoggedToday,
+      weekStreak,
     });
   } catch {
     return null;
