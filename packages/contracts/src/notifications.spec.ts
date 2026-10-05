@@ -38,8 +38,8 @@ describe("notificationPreferencesResponseSchema (Phase 12D)", () => {
   });
 
   it("requires every switch", () => {
-    const { rank: _rank, ...missing } = base;
-    expect(notificationPreferencesResponseSchema.safeParse({ ...missing, updatedAt: null }).success).toBe(false);
+    const missingRank = { workout: true, recovery: true, pr: true, weekly: true, updatedAt: null };
+    expect(notificationPreferencesResponseSchema.safeParse(missingRank).success).toBe(false);
   });
 
   it("has a pinned fixture that validates", () => {
