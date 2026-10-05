@@ -190,6 +190,36 @@ describe('small-text greys clear AA on every surface (8H)', () => {
   });
 });
 
+// The 2026-09-25 review (lane 8) noted the small chip and segment text greys were never measured.
+// Measured 2026-10-05: `dim` and `metadata` clear 4.5:1 on every surface and on the controls'
+// own grounds; `segmentedInactive` is painted only on the segmented control's track
+// (`trackBg`), where it clears by a hair (4.501:1), so it must not be darkened or the track
+// lightened. It does not clear on the lighter surfaces, which it is never drawn on.
+describe('chip and segment text greys clear AA where they are painted (lane 8)', () => {
+  const grounds = {
+    bg: colors.bg,
+    screenBg: colors.screenBg,
+    surface: colors.surface,
+    elevated2: colors.elevated2,
+    trackBg: colors.trackBg,
+    elevated3: colors.elevated3,
+  };
+
+  it.each(['dim', 'metadata'] as const)('%s clears 4.5:1 on every ground', (token) => {
+    for (const [name, background] of Object.entries(grounds)) {
+      expect({ token, on: name, ok: contrastRatio(colors[token], background) >= 4.5 }).toEqual({
+        token,
+        on: name,
+        ok: true,
+      });
+    }
+  });
+
+  it('segmentedInactive clears 4.5:1 on the segmented control track, the only ground it is drawn on', () => {
+    expect(contrastRatio(colors.segmentedInactive, colors.trackBg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 // The old faint greys were also typed straight into about twenty files as inline hex, so
 // changing the tokens alone would have left them behind. None of the retired values may survive
 // in shipped source.
