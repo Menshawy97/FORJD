@@ -57,7 +57,7 @@ saved-for-later list, so they are not part of it (owner decision). Plan: [phase-
 Owed on a device with the 12A/12B walk: finish a workout offline, reconnect, lock the phone, and check it reaches the
 server without opening the app.
 
-**Next for a session:** fix whatever the owner's 12A, 12B and 12C device walk finds. 12D-12I wait for the beta.
+**Next for a session:** fix whatever the owner's 12A, 12B and 12C device walk finds. **12D (the five notification switches on the server) was built 2026-10-05**, see [phase-12d-plan.md](phase-12d-plan.md); 12E-12I wait for the beta.
 
 ## Current status (last updated 2026-09-25)
 
@@ -305,7 +305,7 @@ from JSX, so no hand-written Swift). 12A starts once ADR-059 is accepted.
 | 12A | **Background run.** The foreground service and ongoing notification; GPS continues with the screen off; the notification's Pause/Finish act on the run engine; crash recovery covers a killed service | ADR from decision 1. Keep-awake becomes optional. Physical-device test mandatory, including Doze and battery-saver, and OEM battery killers (Samsung, Xiaomi) |
 | 12B | **Strength session in the background.** An ongoing notification for a live session (current exercise, set, rest countdown via the wall clock), tap to return; the rest buzz folds into it | Local only, no network (rule 6). Android first; iOS Live Activities belong to Phase 11 |
 | 12C | **Background upload.** `expo-background-task` drains the offline queue (sessions and runs; not InBody, which has no queue) about every 15 minutes without opening the app. [Plan](phase-12c-plan.md) | Idempotent uploads already exist; test the retry path. **Built 2026-10-04; device walk owed** |
-| 12D | **Notification preferences move server-side.** Contract, migration (a `notification_preferences` shape per category, quiet hours, time zone), `GET/PATCH /api/v1/users/me/notifications`; the screen reads and writes them; the device copy becomes a cache | Additive (rule 7). Quiet hours get the editor the design stubs |
+| 12D | **Notification preferences move server-side.** Contract, migration (a `notification_preferences` shape per category, quiet hours, time zone), `GET/PATCH /api/v1/users/me/notifications`; the screen reads and writes them; the device copy becomes a cache | Additive (rule 7). **Built 2026-10-05 for the five switches** ([phase-12d-plan.md](phase-12d-plan.md)); the quiet-hours editor and its columns wait for an approved design |
 | 12E | **Local scheduled notifications:** workout reminders on program days (30 min before), the weekly summary (Sunday evening) | No server needed; rescheduled when the program or the preferences change |
 | 12F | **Push:** device-token registration (`device_push_tokens` table, deleted on sign-out and account deletion, in the export and the data inventory), `NotificationProvider` + a fake for tests, then the server-side senders: leaderboard moves (after the Monday snapshot), PR celebrations (on upload) | ADR from decisions 2-3. Contract tests for the adapter (rule 8) |
 | 12G | **Recovery alerts:** Health Connect background read (`READ_HEALTH_DATA_IN_BACKGROUND`) or the next foreground sync, readiness recomputed (rule 9), an alert when HRV or sleep drops sharply | Health-data consent required; no values in push text; rule 16 device test |
@@ -2724,7 +2724,7 @@ failure).
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
 | 11 — iOS track (parallel with 10) | 40-46 | AppleHealthProvider, Codemagic, TestFlight → App Store | Not started |
-| 12 — Background, notifications, widgets | 4-6 | Background run and session, push and local notifications, Android and iPhone widgets | **Not started** — see its section near the top of this file. 12A-12C (background run, session, upload) recommended before the beta; 12D-12I after it, iPhone widgets (12I) included |
+| 12 — Background, notifications, widgets | 4-6 | Background run and session, push and local notifications, Android and iPhone widgets | **In progress** — see its section near the top of this file. 12A-12C (background run, session, upload) built, device walk owed; 12D built for the five switches (quiet hours wait for a design); 12E-12I after the beta, iPhone widgets (12I) included |
 | Dual-platform public launch | ~47 | Both stores | Not started |
 
 ## Decisions that shaped this sequencing

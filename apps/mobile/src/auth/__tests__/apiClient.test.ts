@@ -821,3 +821,38 @@ describe('apiClient - WHOOP', () => {
     expect(instance.delete).toHaveBeenCalledWith('/integrations/whoop');
   });
 });
+
+describe('apiClient - notification preferences (Phase 12D)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (axios as unknown as { __instances: unknown[] }).__instances.length = 0;
+  });
+
+  function apiClientInstance() {
+    const instances = (axios as unknown as { __instances: Array<Record<string, unknown>> }).__instances;
+    // Construction order in apiClient.ts: public, refresh, api, replay.
+    return instances[2] as unknown as { get: jest.Mock; patch: jest.Mock };
+  }
+
+  const row = { workout: true, recovery: true, pr: true, rank: false, weekly: true, updatedAt: null };
+
+  it('getNotificationPreferences sends GET /users/me/notifications and returns the body', async () => {
+    const { getNotificationPreferences } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.get.mockResolvedValue({ data: row });
+
+    await expect(getNotificationPreferences()).resolves.toEqual(row);
+
+    expect(instance.get).toHaveBeenCalledWith('/users/me/notifications');
+  });
+
+  it('patchNotificationPreferences sends PATCH /users/me/notifications with only the changed switches', async () => {
+    const { patchNotificationPreferences } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.patch.mockResolvedValue({ data: { ...row, rank: true } });
+
+    await expect(patchNotificationPreferences({ rank: true })).resolves.toEqual({ ...row, rank: true });
+
+    expect(instance.patch).toHaveBeenCalledWith('/users/me/notifications', { rank: true });
+  });
+});

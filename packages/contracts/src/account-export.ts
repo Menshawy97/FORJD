@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { bodyScanResponseSchema } from './body';
 import { healthObservationResponseSchema } from './health';
+import { notificationPreferencesResponseSchema } from './notifications';
 import { nutritionLogEntryResponseSchema } from './nutrition';
 import { programEnrollmentSchema, programSummarySchema } from './programs';
 import { privacySettingsResponseSchema, profileResponseSchema } from './users';
@@ -181,6 +182,8 @@ export const accountExportExtrasSchema = z.object({
       notificationsEnabled: z.boolean(),
     })
     .nullable(),
+  /** Added with Phase 12D (additive, so `version` stays 1). `null` when the person never saved a change. */
+  notificationPreferences: notificationPreferencesResponseSchema.nullable(),
   healthConnections: z.array(accountExportHealthConnectionSchema),
   programEnrollmentHistory: z.array(accountExportEnrollmentHistorySchema),
   /** Added with Weekly Forge (additive, so `version` stays 1). */

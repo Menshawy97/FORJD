@@ -14,6 +14,10 @@ jest.mock('@/auth/apiClient', () => ({
 
 // Mocked wholesale: the real module imports AsyncStorage, a native module with no Jest
 // binding here. `notification-preferences.test.ts` is what pins the defaults to the spec.
+jest.mock('@/store/notification-preferences-sync', () => ({
+  syncNotificationPreferences: jest.fn().mockResolvedValue(null),
+  queueNotificationChange: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('@/store/notification-preferences', () => ({
   DEFAULT_NOTIFICATION_PREFERENCES: {
     workout: true,

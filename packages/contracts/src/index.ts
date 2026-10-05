@@ -35,3 +35,4 @@ export * from './account-export';
 export * from './leaderboards';
 export * from './forge';
 export * from './waitlist';
+export * from './notifications';

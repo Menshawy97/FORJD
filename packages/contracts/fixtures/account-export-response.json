@@ -72,6 +72,14 @@
     "locale": "en",
     "notificationsEnabled": true
   },
+  "notificationPreferences": {
+    "workout": true,
+    "recovery": true,
+    "pr": true,
+    "rank": false,
+    "weekly": true,
+    "updatedAt": "2026-10-05T12:00:00.000Z"
+  },
   "healthConnections": [
     {
       "source": "health_connect",

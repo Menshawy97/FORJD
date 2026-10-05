@@ -9,6 +9,7 @@ import { goals } from '../database/schema/goals.schema';
 import { healthConnections } from '../database/schema/health-data.schema';
 import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from '../database/schema/forge.schema';
 import { foods, foodServings, macroGoals, savedMealItems, savedMeals } from '../database/schema/nutrition.schema';
+import { notificationPreferences } from '../database/schema/notification-preferences.schema';
 import { preferences } from '../database/schema/preferences.schema';
 import { programEnrollments } from '../database/schema/workouts.schema';
 
@@ -38,6 +39,7 @@ export class AccountExportExtrasRepository {
       mealRows,
       goalRows,
       [preferenceRow],
+      [notificationRow],
       connectionRows,
       enrollmentRows,
     ] = await Promise.all([
@@ -48,6 +50,7 @@ export class AccountExportExtrasRepository {
       this.db.select().from(savedMeals).where(eq(savedMeals.userId, userId)).orderBy(asc(savedMeals.name)),
       this.db.select().from(goals).where(eq(goals.userId, userId)).orderBy(asc(goals.createdAt)),
       this.db.select().from(preferences).where(eq(preferences.userId, userId)),
+      this.db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId)),
       this.db.select().from(healthConnections).where(eq(healthConnections.userId, userId)),
       this.db
         .select()
@@ -130,6 +133,16 @@ export class AccountExportExtrasRepository {
             timezone: preferenceRow.timezone,
             locale: preferenceRow.locale,
             notificationsEnabled: preferenceRow.notificationsEnabled,
+          }
+        : null,
+      notificationPreferences: notificationRow
+        ? {
+            workout: notificationRow.workout,
+            recovery: notificationRow.recovery,
+            pr: notificationRow.pr,
+            rank: notificationRow.rank,
+            weekly: notificationRow.weekly,
+            updatedAt: notificationRow.updatedAt.toISOString(),
           }
         : null,
       healthConnections: connectionRows.map((row) => ({

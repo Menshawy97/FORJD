@@ -28,6 +28,8 @@ import type {
   ExerciseHistoryResponse,
   ExerciseResponse,
   FeatureFlagsResponse,
+  NotificationPreferencesResponse,
+  UpdateNotificationPreferencesRequest,
   ForgePendingWeeksResponse,
   ForgeResponse,
   FoodListResponse,
@@ -790,6 +792,23 @@ export async function getFeatureFlags(): Promise<FeatureFlagsResponse> {
  */
 export async function putTimeZone(timeZone: string): Promise<void> {
   await apiClient.put('/users/me/timezone', { timeZone });
+}
+
+/**
+ * `GET /users/me/notifications` -- the five notification switches (Phase 12D). The server is where they
+ * live; `store/notification-preferences-sync.ts` keeps the device copy in step with it.
+ */
+export async function getNotificationPreferences(): Promise<NotificationPreferencesResponse> {
+  const response = await apiClient.get<NotificationPreferencesResponse>('/users/me/notifications');
+  return response.data;
+}
+
+/** `PATCH /users/me/notifications` -- only the switches that changed. */
+export async function patchNotificationPreferences(
+  changes: UpdateNotificationPreferencesRequest,
+): Promise<NotificationPreferencesResponse> {
+  const response = await apiClient.patch<NotificationPreferencesResponse>('/users/me/notifications', changes);
+  return response.data;
 }
 
 /**

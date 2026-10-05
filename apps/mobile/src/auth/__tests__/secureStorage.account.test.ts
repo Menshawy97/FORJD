@@ -16,7 +16,10 @@ import * as SecureStore from 'expo-secure-store';
 
 import { clearSession, getAccountId, saveSession } from '../secureStorage';
 import { EXERCISE_UNITS_STORAGE_KEY } from '@/store/exercise-unit-preferences';
-import { NOTIFICATION_PREFERENCES_STORAGE_KEY } from '@/store/notification-preferences';
+import {
+  NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY,
+  NOTIFICATION_PREFERENCES_STORAGE_KEY,
+} from '@/store/notification-preferences';
 import { RECENT_EXERCISES_STORAGE_KEY } from '@/store/recent-exercises';
 
 function base64Url(value: string): string {
@@ -88,7 +91,7 @@ describe('clearSession and the per-account preferences (L5-2)', () => {
   it.each([
     ['a manual sign-out', undefined],
     ['a forced sign-out (an expired session)', { expired: true }],
-  ])('forgets recent exercises, notification and unit preferences on %s', async (_label, options) => {
+  ])('forgets recent exercises, notification (and any unsent change) and unit preferences on %s', async (_label, options) => {
     await clearSession(options);
 
     const removed = (AsyncStorage.removeItem as jest.Mock).mock.calls.map(([key]) => key);
@@ -96,6 +99,7 @@ describe('clearSession and the per-account preferences (L5-2)', () => {
       expect.arrayContaining([
         RECENT_EXERCISES_STORAGE_KEY,
         NOTIFICATION_PREFERENCES_STORAGE_KEY,
+        NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY,
         EXERCISE_UNITS_STORAGE_KEY,
       ]),
     );

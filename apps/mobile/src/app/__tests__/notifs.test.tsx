@@ -26,11 +26,17 @@ jest.mock('@/store/notification-preferences', () => ({
   saveNotificationPreferences: jest.fn(),
 }));
 
+jest.mock('@/store/notification-preferences-sync', () => ({
+  syncNotificationPreferences: jest.fn(),
+  queueNotificationChange: jest.fn(),
+}));
+
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   loadNotificationPreferences,
   saveNotificationPreferences,
 } from '@/store/notification-preferences';
+import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
 import NotifsScreen from '../notifs';
 
 const METRICS = {
@@ -49,6 +55,8 @@ describe('NotifsScreen', () => {
       DEFAULT_NOTIFICATION_PREFERENCES,
     );
     (saveNotificationPreferences as jest.Mock).mockResolvedValue(undefined);
+    (syncNotificationPreferences as jest.Mock).mockResolvedValue(null);
+    (queueNotificationChange as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('renders the header, intro copy and all five rows', async () => {
@@ -139,6 +147,70 @@ describe('NotifsScreen', () => {
     fireEvent.press(await findByLabelText('Back'));
 
     expect(mockReplace).toHaveBeenCalledWith('/profile');
+  });
+
+  // Phase 12D: the server is the home of the switches; the phone shows its own copy at once and then
+  // adopts the server's answer (the server wins).
+  it('adopts the server answer after opening, so every device shows the same switches', async () => {
+    (syncNotificationPreferences as jest.Mock).mockResolvedValue({
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      workout: false,
+      rank: true,
+    });
+
+    const { getAllByRole } = await render(<NotifsScreen />);
+
+    await waitFor(() => {
+      expect(getAllByRole('switch').map((row) => row.props.accessibilityState.checked)).toEqual([
+        false,
+        true,
+        true,
+        true,
+        true,
+      ]);
+    });
+  });
+
+  it('keeps the device copy when the server cannot be reached', async () => {
+    (loadNotificationPreferences as jest.Mock).mockResolvedValue({ ...DEFAULT_NOTIFICATION_PREFERENCES, pr: false });
+    (syncNotificationPreferences as jest.Mock).mockResolvedValue(null);
+
+    const { findAllByRole } = await render(<NotifsScreen />);
+
+    const rows = await findAllByRole('switch');
+    expect(rows.map((row) => row.props.accessibilityState.checked)).toEqual([true, true, false, false, true]);
+  });
+
+  it('queues only what changed for the server when a row is toggled', async () => {
+    const { findByText } = await render(<NotifsScreen />);
+
+    fireEvent.press(await findByText('Leaderboard moves'));
+
+    await waitFor(() => {
+      expect(queueNotificationChange).toHaveBeenCalledWith(DEFAULT_NOTIFICATION_PREFERENCES, {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        rank: true,
+      });
+    });
+  });
+
+  it('ignores a late server answer once the person has tapped a switch, so their tap is not undone', async () => {
+    let answer: (value: unknown) => void = () => undefined;
+    (syncNotificationPreferences as jest.Mock).mockReturnValue(new Promise((resolve) => (answer = resolve)));
+
+    const { findByText, getAllByRole } = await render(<NotifsScreen />);
+    fireEvent.press(await findByText('Leaderboard moves'));
+    answer({ ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false });
+
+    await waitFor(() => {
+      expect(getAllByRole('switch').map((row) => row.props.accessibilityState.checked)).toEqual([
+        true,
+        true,
+        true,
+        true,
+        true,
+      ]);
+    });
   });
 
   it('has no Save button — toggles apply immediately', async () => {

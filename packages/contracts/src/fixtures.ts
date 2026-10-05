@@ -22,6 +22,7 @@ import {
   exerciseHistoryResponseSchema,
   workoutSessionListResponseSchema,
   workoutSessionResponseSchema,
+  notificationPreferencesResponseSchema,
   waitlistSignupResponseSchema,
   workoutStatsResponseSchema,
   workoutTemplateListResponseSchema,
@@ -1077,6 +1078,14 @@ export const responseFixtures = {
       ],
       goals: [{ type: 'weight', targetValue: 80, targetDate: '2026-12-31', status: 'active' }],
       preferences: { timezone: 'Africa/Cairo', locale: 'en', notificationsEnabled: true },
+      notificationPreferences: {
+        workout: true,
+        recovery: true,
+        pr: true,
+        rank: false,
+        weekly: true,
+        updatedAt: '2026-10-05T12:00:00.000Z',
+      },
       healthConnections: [{ source: 'health_connect', lastSuccessfulSyncAt: '2026-09-01T10:00:00.000Z' }],
       programEnrollmentHistory: [
         {
@@ -1189,6 +1198,22 @@ export const responseFixtures = {
   'waitlist-signup-response': {
     schema: waitlistSignupResponseSchema,
     sample: { status: 'accepted' },
+  },
+
+  /**
+   * The notification switches (Phase 12D). A person who has never saved a change gets the defaults
+   * with a null timestamp; this sample is one who has.
+   */
+  'notification-preferences-response': {
+    schema: notificationPreferencesResponseSchema,
+    sample: {
+      workout: true,
+      recovery: true,
+      pr: true,
+      rank: false,
+      weekly: true,
+      updatedAt: '2026-10-05T12:00:00.000Z',
+    },
   },
 } satisfies Record<string, ResponseFixture<z.ZodTypeAny>>;
 
