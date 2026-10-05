@@ -346,3 +346,42 @@ applied the next time the workout is opened, if that set is still the one you we
 tab bar with your workout's name, the time, and the set you're on (or the rest countdown). Tap it to go
 back to your workout. Tap the x to throw the workout away: FORJD asks first, then deletes the sets so far
 and saves nothing."
+
+## Proposed for 12E (waiting for the owner's approval)
+
+Not in `faq-content.ts` yet. ADR-061 says the FAQ and the privacy policy must say what notifications contain, and these
+entries do that for the notifications the phone schedules for itself. Every claim below is what the code does
+(`docs/product/phase-12e-plan.md`, ADR-064). A new "Notifications" section is proposed, after "Workouts".
+
+### Notifications → new entry: Which reminders does FORJD send?
+
+"Up to six, and you choose each one in Profile, then Notifications. Workout reminders arrive 30 minutes before you
+usually train. Your weekly summary arrives on Saturday morning, when your week closes. Three more are off until you turn
+them on: Log your meals (evening, only if you haven't logged food yet), No workout yet this week (Thursday evening, only
+if you haven't trained) and Weekly Forge closing (Friday evening, only when you're close to a goal), plus a monthly
+check-in to weigh yourself or scan with InBody. Nothing is sent between 22:00 and 07:00."
+
+### Notifications → new entry: How does FORJD know when to remind me to train?
+
+"From your own training. If you usually train on a weekday and have done it in at least two of the last four weeks,
+FORJD reminds you 30 minutes before the time you usually start. If you follow a program you built, its days are used
+instead. With too little history it stays quiet rather than guess."
+
+### Notifications → new entry: What do these notifications say, and do they leave my phone?
+
+"They are made on your phone from what FORJD already has, and they stay there: nothing in them is sent anywhere, and
+they go when you sign out. They can name your workout, your streak or the time you usually train, but never a health
+reading such as heart rate, sleep or HRV. The weekly summary is a fixed message with no numbers."
+
+### Notifications → new entry: Why didn't a reminder arrive?
+
+"FORJD schedules your reminders for the next two weeks each time you open it, so if you haven't opened it for two weeks
+they stop until you do. Some Android phones also stop apps from running in the background to save battery, which can
+delay or drop a reminder. Check that notifications are allowed for FORJD in your phone's settings; if they are off, the
+Notifications screen says so and links to them. Reminders are a nudge, not a guarantee."
+
+### Notifications → new entry: Why does FORJD ask to send notifications?
+
+"The first time you turn on a reminder, or when you open the Notifications screen with one on, FORJD asks your phone
+for permission. If you say no, nothing else changes: your choices are saved and the rest of FORJD works the same. You
+can allow it later in your phone's settings."
