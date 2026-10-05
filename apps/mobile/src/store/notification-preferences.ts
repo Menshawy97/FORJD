@@ -1,39 +1,35 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES as DOMAIN_DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_PREFERENCE_KEYS,
+  type NotificationPreferences as DomainNotificationPreferences,
+} from '@forjd/domain';
 
-// Device-local notification preferences, behind a seam.
+// The device copy of the notification switches, behind a seam.
 //
-// There is no backend for these and won't be until push (Phase 6/8) — see
-// slice2-screen-specs.md §5.7, which classes every row as (C) if FORJD Phase 1 ships without
-// push. AsyncStorage is the right store for five scalars: `expo-sqlite` is a table holding
-// nothing relational, MMKV needs a custom dev client (breaking the Expo Go workflow ADR-007
-// depends on), and `expo-secure-store` is for secrets and is the auth layer's seam.
+// Since Phase 12D the server is the home of these (`store/notification-preferences-sync.ts` sends
+// changes and adopts the server's answer); this is the cache the screen reads at once, and what it
+// shows offline. It was device-local only before that, see slice2-screen-specs.md §5.7.
 //
-// Screens call these functions rather than AsyncStorage directly, so that moving these
-// preferences server-side later is an adapter swap here, not a screen rewrite.
+// AsyncStorage is the right store for five scalars: `expo-sqlite` is a table holding nothing
+// relational, MMKV needs a custom dev client (breaking the Expo Go workflow ADR-007 depends on), and
+// `expo-secure-store` is for secrets and is the auth layer's seam.
+//
+// Screens call these functions rather than AsyncStorage directly, so the server sync could be added
+// beside them without a screen rewrite.
 const STORAGE_KEY = 'forjd.notificationPreferences.v1';
 /** Exported so sign-out can forget it (whole-app review 8.5, L5-2). */
 export const NOTIFICATION_PREFERENCES_STORAGE_KEY = STORAGE_KEY;
 
-export interface NotificationPreferences {
-  workout: boolean;
-  recovery: boolean;
-  pr: boolean;
-  rank: boolean;
-  weekly: boolean;
-}
+export type NotificationPreferences = DomainNotificationPreferences;
 
-/** slice2-screen-specs.md §5.4. `rank` (Leaderboard moves) is the one that starts off. */
-export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  workout: true,
-  recovery: true,
-  pr: true,
-  rank: false,
-  weekly: true,
-};
+/** slice2-screen-specs.md §5.4, from `@forjd/domain` so the API and the phone share one copy. `rank` is the one that starts off. */
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = DOMAIN_DEFAULT_NOTIFICATION_PREFERENCES;
 
-const KEYS = Object.keys(DEFAULT_NOTIFICATION_PREFERENCES) as Array<
-  keyof NotificationPreferences
->;
+/** Changes not yet sent to the server (Phase 12D); exported so sign-out forgets them too. */
+export const NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY = 'forjd.notificationPreferences.pending.v1';
+
+const KEYS = NOTIFICATION_PREFERENCE_KEYS;
 
 function isNotificationPreferences(value: unknown): value is NotificationPreferences {
   if (typeof value !== 'object' || value === null) {

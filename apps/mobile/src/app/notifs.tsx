@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Header } from '@/components/header';
@@ -14,6 +14,7 @@ import {
   saveNotificationPreferences,
   type NotificationPreferences,
 } from '@/store/notification-preferences';
+import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
 import { colors } from '@/theme/tokens';
 
 // docs/design/slice2-screen-specs.md §5. Device-local only: there is no notifications backend
@@ -46,12 +47,21 @@ export default function NotifsScreen() {
     DEFAULT_NOTIFICATION_PREFERENCES,
   );
   const toast = useToast();
+  // Set once the person taps a switch, so a server answer that arrives later never undoes their tap.
+  const touchedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     loadNotificationPreferences().then((stored) => {
       if (!cancelled) {
         setPreferences(stored);
+      }
+    });
+    // Phase 12D: the server is the home of the switches. Show the device copy at once (above), then
+    // adopt the server's answer. Silent when it cannot be reached: the device copy stays.
+    void syncNotificationPreferences().then((fromServer) => {
+      if (!cancelled && fromServer !== null && !touchedRef.current) {
+        setPreferences(fromServer);
       }
     });
     return () => {
@@ -63,8 +73,10 @@ export default function NotifsScreen() {
 
   const toggle = (key: keyof NotificationPreferences) => {
     const next = { ...preferences, [key]: !preferences[key] };
+    touchedRef.current = true;
     setPreferences(next);
     void saveNotificationPreferences(next);
+    void queueNotificationChange(preferences, next);
   };
 
   return (

@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { EXERCISE_UNITS_STORAGE_KEY } from './exercise-unit-preferences';
-import { NOTIFICATION_PREFERENCES_STORAGE_KEY } from './notification-preferences';
+import {
+  NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY,
+  NOTIFICATION_PREFERENCES_STORAGE_KEY,
+} from './notification-preferences';
 import { RECENT_EXERCISES_STORAGE_KEY } from './recent-exercises';
 import { TIME_ZONE_SENT_STORAGE_KEY, forgetTimeZoneSent } from './time-zone-sent';
 
@@ -18,6 +21,7 @@ import { TIME_ZONE_SENT_STORAGE_KEY, forgetTimeZoneSent } from './time-zone-sent
 const ACCOUNT_PREFERENCE_KEYS = [
   RECENT_EXERCISES_STORAGE_KEY,
   NOTIFICATION_PREFERENCES_STORAGE_KEY,
+  NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY,
   EXERCISE_UNITS_STORAGE_KEY,
   TIME_ZONE_SENT_STORAGE_KEY,
 ] as const;
