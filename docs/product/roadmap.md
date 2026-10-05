@@ -7,6 +7,9 @@ This file is a living summary kept in sync with that plan as phases
 complete or get re-planned — the plan file is the detailed source, this is
 the quick-reference for "what phase are we in and what's next."
 
+A tickable list of every remaining point (owed user steps, open engineering gaps, unstarted
+phases) is in [remaining-checklist.md](remaining-checklist.md).
+
 ## Session handoff (2026-10-03) — read this first
 
 **Shipped this session, each test-first, reviewed and merged with `main` green:**
