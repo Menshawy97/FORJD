@@ -1078,6 +1078,14 @@ export const responseFixtures = {
       ],
       goals: [{ type: 'weight', targetValue: 80, targetDate: '2026-12-31', status: 'active' }],
       preferences: { timezone: 'Africa/Cairo', locale: 'en', notificationsEnabled: true },
+      notificationPreferences: {
+        workout: true,
+        recovery: true,
+        pr: true,
+        rank: false,
+        weekly: true,
+        updatedAt: '2026-10-05T12:00:00.000Z',
+      },
       healthConnections: [{ source: 'health_connect', lastSuccessfulSyncAt: '2026-09-01T10:00:00.000Z' }],
       programEnrollmentHistory: [
         {

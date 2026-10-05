@@ -125,6 +125,12 @@
         "functions": 100,
         "lines": 100
       },
+      "./src/notifications/notification-preferences.service.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
       "./src/athletes/athletes.service.ts": {
         "statements": 100,
         "branches": 100,

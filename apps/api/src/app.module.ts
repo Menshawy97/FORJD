@@ -12,6 +12,7 @@ import { AthletesModule } from './athletes/athletes.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 import { ForgeModule } from './forge/forge.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { CitiesModule } from './cities/cities.module';
 import { HealthDataModule } from './health-data/health-data.module';
 import { LeaderboardsModule } from './leaderboards/leaderboards.module';
@@ -65,6 +66,7 @@ import { validateEnv } from './common/config/env-validation';
     StorageModule,
     WorkoutsModule,
     WaitlistModule,
+    NotificationsModule,
   ],
   // Registering ThrottlerModule alone does nothing — the guard has to be bound, or the
   // @Throttle decorators on AuthController are inert decoration.
