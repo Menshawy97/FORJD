@@ -49,6 +49,10 @@ notifications (ADR-026). A push needs a transport from the NestJS API to the pho
 Routing generic notification text through Expo's servers is acceptable, so the first adapter is the
 Expo push service. FCM direct stays the fallback behind the same interface.
 
+## Built (2026-10-06, slice 12F-2)
+
+The Expo adapter is a thin `fetch` client over Expo's two HTTP endpoints, not `expo-server-sdk`: the repo's convention for external services (Turnstile, WHOOP) is an injected `fetch` and a Zod-checked reply, there is no dependency to keep current, and the API is small. The interface is `send` and `receipts` (receipts are read about 15 minutes later, and a token the service reports dead is deleted). The optional `EXPO_ACCESS_TOKEN` stays out of the deploy workflow until "enhanced push security" is switched on. A push token is treated as a bearer-ish secret: never logged, never returned by any endpoint. **Delivery is at-least-once.** Expo send is not idempotent, so the adapter retries only a 5xx or a failed connection and never a timeout or an unreadable reply (the first attempt may have been accepted); the sender (slice 3) dedupes by key before it sends, and a rare duplicate push is accepted over a lost one. A token that is not shaped like an Expo token is refused as one bad message instead of sent, because Expo refuses a whole batch for one malformed token. A big batch stops after three unreachable chunks in a row.
+
 ## Consequences
 
 - The privacy policy names the push processor(s); the Play Data safety form lists the device push token.

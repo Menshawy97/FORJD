@@ -295,6 +295,28 @@ run_case "unpinned-workflow-action"    fail setup_unpinned_workflow_action
 run_case "task-manager-outside-adapter" fail setup_task_manager_outside_adapter
 run_case "background-task-outside-adapter" fail setup_background_task_outside_adapter
 run_case "background-adapter-uses-sdks" pass setup_background_adapter_uses_sdks
+# Phase 12F (ADR-060, CLAUDE.md rules 3-4): the push service hostname and its SDKs live only in apps/api/src/integrations/push/.
+setup_push_hostname_outside_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/api/src/notifications/sender.ts" "const URL = 'https://exp.host/--/api/v2/push/send';"
+}
+
+setup_push_sdk_outside_adapter() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/api/src/notifications/sender.ts" "import { Expo } from 'expo-server-sdk';"
+}
+
+setup_push_adapter_in_place() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/api/src/integrations/push/expo-push-provider.ts" "const URL = 'https://exp.host/--/api/v2/push/send';"
+}
+
+run_case "push-hostname-outside-adapter" fail setup_push_hostname_outside_adapter
+run_case "push-sdk-outside-adapter"     fail setup_push_sdk_outside_adapter
+run_case "push-adapter-in-place"        pass setup_push_adapter_in_place
 run_case "ongoing-notice-outside-adapter" fail setup_ongoing_notice_outside_adapter
 run_case "ongoing-notice-in-adapter"   pass setup_ongoing_notice_in_adapter
 run_case "everything-clean"            pass setup_everything_clean

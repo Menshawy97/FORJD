@@ -85,8 +85,8 @@ receipts) are deleted by the drain. The export lists the person's registered pho
    and the drain, and why not an in-process scheduler) is written with slice 3, when the decision is built.
 1. **Tokens (server), built 2026-10-06 (PR #350):** migration `device_push_tokens` (drizzle-kit), contracts, `POST` and `DELETE /api/v1/users/me/push-tokens`
    (versioned, rule 7), export, deletion check, data inventory. Real-Postgres repository spec, e2e, cascade test.
-2. **Provider:** `NotificationProvider` interface (`send`, `invalidTokens`), `ExpoPushProvider` (`expo-server-sdk`) and a fake, contract
-   tests for the adapter (rule 8), conformance rule that only `integrations/push/` may import the SDK. Secret (optional Expo access
+2. **Provider, built 2026-10-06 (PR #351):** `NotificationProvider` interface (`send`, `receipts`, and a `deadTokens` helper), `ExpoPushProvider` and a fake. **A thin `fetch` client, not `expo-server-sdk`**: it follows the Turnstile and WHOOP clients (injected `fetch`, Zod-checked replies, two attempts, no 4xx retry), has no dependency to keep current, and Expo's API is two small endpoints (send up to 100, receipts up to 1000). A shared contract suite runs against the fake and the real adapter, contract
+   tests for the adapter (rule 8) with the network stubbed, conformance rule that only `integrations/push/` may import the SDK. Secret (optional Expo access
    token) read from server config only (rule 5), validated at startup.
 3. **Policy, builders and outbox:** the pure policy function, the two message builders with the health-values tests, the
    `push_outbox` table and `PushDispatchService` (send due rows, record receipts, drop invalid tokens, bounded batch and retry),
