@@ -670,6 +670,44 @@ export class WorkoutSessionsRepository {
     };
   }
 
+  /**
+   * The heaviest completed lift of each given exercise among this person's sessions that started **before** `before`,
+   * leaving out the session being judged (Phase 12F: a push celebrates a new best, and a new best needs the old one).
+   * Same set rule as the Home PR card: completed sets with both weight and reps, in completed sessions. An exercise
+   * never lifted before is absent from the answer, which is how "the first time is not a record" is told.
+   */
+  async priorLiftBestsForUser(
+    userId: string,
+    excludeSessionId: string,
+    before: Date,
+    exerciseIds: readonly string[],
+  ): Promise<Map<string, number>> {
+    if (exerciseIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        exerciseId: workoutSessionExercises.exerciseId,
+        best: sql<string>`max(${workoutSets.weightKg})`,
+      })
+      .from(workoutSets)
+      .innerJoin(workoutSessionExercises, eq(workoutSessionExercises.id, workoutSets.sessionExerciseId))
+      .innerJoin(workoutSessions, eq(workoutSessions.id, workoutSessionExercises.sessionId))
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          sql`${workoutSessions.id} <> ${excludeSessionId}::uuid`,
+          sql`${workoutSessions.startedAt} < ${before}`,
+          isNull(workoutSessions.deletedAt),
+          eq(workoutSessions.status, "completed"),
+          eq(workoutSets.isCompleted, true),
+          sql`${workoutSets.weightKg} > 0`,
+          sql`${workoutSets.reps} is not null`,
+          inArray(workoutSessionExercises.exerciseId, [...exerciseIds]),
+        ),
+      )
+      .groupBy(workoutSessionExercises.exerciseId);
+    return new Map(rows.map((row) => [row.exerciseId, Number(row.best)]));
+  }
+
   /** Reads an existing session's exercise/set tree, in order -- shared by `findSessionByIdForUser` and `upsertSession`'s replay path. */
   private async readSessionExerciseTree(
     tx: Database,

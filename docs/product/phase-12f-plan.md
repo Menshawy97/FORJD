@@ -94,7 +94,7 @@ receipts) are deleted by the drain. The export lists the person's registered pho
    `pr` or `rank`, and opening the screen with either on, also asks), token fetch and registration after sign-in and on launch when
    permitted, token deletion before sign-out, a separate Android channel (default importance, "Updates"), tap routing from the data
    payload (validated, never trusted), seam-injected so Jest covers it. No new UI.
-5. **PR celebration sender, in two PRs.** 5a lifts: detection at upload, outbox write, immediate try, tests including the idempotent
+5. **PR celebration sender, in two PRs. 5a built 2026-10-07:** `domain/lift-records.ts` (`sessionLiftBests`, `detectLiftRecords`, biggest jump first), `WorkoutSessionsRepository.priorLiftBestsForUser` (the heaviest completed lift before the session, same set rule as the Home PR card), `PrCelebrationService` (called by the upload after the workout is stored; never throws; queues `pr:<sessionId>`, then tries the outbox without waiting), real-Postgres spec and an e2e (first lift says nothing, a heavier one queues and sends, a retried upload is one push, a workout uploaded days late is dropped). Accepted: the immediate send runs the whole due batch, not only this row (the drain workflow is the safety net); a session with several records gets one push with a count. The original wording: 5a lifts: detection at upload, outbox write, immediate try, tests including the idempotent
    retry and the offline backlog drop. 5b runs: the two run-record rules above (confirmed with the owner first), same sender.
 6. **Leaderboard move sender and the drain workflow:** the snapshot script writes outbox rows; `push-drain.yml` and its script;
    tests for the comparison and the quiet-hours hold.

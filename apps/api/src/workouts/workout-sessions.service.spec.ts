@@ -3,6 +3,7 @@ import type { WorkoutSessionUploadRequest } from "@forjd/contracts";
 import { Exercise, PrivacySettings, User, WorkoutSession } from "@forjd/domain";
 
 import type { CityResolverService, ResolvedCity } from "../cities/city-resolver.service";
+import type { PrCelebrationService } from "./pr-celebration.service";
 import type { PrivacyService } from "../privacy/privacy.service";
 import { encodeWorkoutSessionCursor } from "./workout-cursor";
 import { WorkoutSessionsService } from "./workout-sessions.service";
@@ -141,12 +142,18 @@ describe("WorkoutSessionsService", () => {
     return Object.assign(service as unknown as CityResolverService, { calls });
   };
 
+  const makeCelebration = () => {
+    const celebrate = jest.fn(async () => undefined);
+    return Object.assign({ celebrate } as unknown as PrCelebrationService, { celebrate });
+  };
+
   const makeService = (
     workoutsRepository: WorkoutsRepository,
     exercisesRepository = makeExercisesRepository(),
     privacyService: PrivacyService = makePrivacyService(),
     cityResolver: CityResolverService = makeCityResolver(),
-  ) => new WorkoutSessionsService(workoutsRepository, exercisesRepository, privacyService, cityResolver);
+    celebration: PrCelebrationService = makeCelebration(),
+  ) => new WorkoutSessionsService(workoutsRepository, exercisesRepository, privacyService, cityResolver, celebration);
 
   const ALEXANDRIA: ResolvedCity = {
     name: "Alexandria",
@@ -172,6 +179,16 @@ describe("WorkoutSessionsService", () => {
   };
 
   describe("upload", () => {
+    it("hands the stored session to the PR celebrator with the exercise names, and answers the upload as before", async () => {
+      const stored = session();
+      const celebration = makeCelebration();
+
+      const result = await makeService(makeWorkoutsRepository({ upsertResult: stored }), undefined, undefined, undefined, celebration).upload(owner, validBody);
+
+      expect(celebration.celebrate).toHaveBeenCalledWith(stored, new Map([[exerciseId, "Bench Press"]]));
+      expect(result.id).toBe(stored.id);
+    });
+
     it("uploads a session when every referenced exercise is visible, snapshotting each measure server-side", async () => {
       const repository = makeWorkoutsRepository({ upsertResult: session() });
 

@@ -4,7 +4,9 @@ import { AuthProviderModule } from "../auth/auth-provider.module";
 import { CitiesModule } from "../cities/cities.module";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ExercisesModule } from "../exercises/exercises.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { UsersModule } from "../users/users.module";
+import { PrCelebrationService } from "./pr-celebration.service";
 import { ProgressRepository } from "./progress.repository";
 import { ProgressService } from "./progress.service";
 import { WorkoutSessionsController } from "./workout-sessions.controller";
@@ -33,11 +35,12 @@ import { WorkoutsService } from "./workouts.service";
  */
 @Module({
   // UsersModule already exports PrivacyService, which the session upload reads live.
-  imports: [AuthProviderModule, UsersModule, ExercisesModule, CitiesModule],
+  imports: [AuthProviderModule, UsersModule, ExercisesModule, CitiesModule, NotificationsModule],
   controllers: [WorkoutsController, WorkoutSessionsController],
   providers: [
     WorkoutsService,
     WorkoutSessionsService,
+    PrCelebrationService,
     WorkoutsRepository,
     ProgressService,
     ProgressRepository,
