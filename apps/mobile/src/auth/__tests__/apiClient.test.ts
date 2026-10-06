@@ -841,7 +841,7 @@ describe('apiClient - push tokens (Phase 12F)', () => {
 
     await expect(registerPushToken({ token: 'ExponentPushToken[abc]', platform: 'android' })).resolves.toBeUndefined();
 
-    expect(instance.post).toHaveBeenCalledWith('/users/me/push-tokens', { token: 'ExponentPushToken[abc]', platform: 'android' });
+    expect(instance.post).toHaveBeenCalledWith('/users/me/push-tokens', { token: 'ExponentPushToken[abc]', platform: 'android' }, { timeout: 10_000 });
   });
 
   it('removePushToken sends DELETE /users/me/push-tokens with the token in the body', async () => {
@@ -851,7 +851,7 @@ describe('apiClient - push tokens (Phase 12F)', () => {
 
     await expect(removePushToken({ token: 'ExponentPushToken[abc]' })).resolves.toBeUndefined();
 
-    expect(instance.delete).toHaveBeenCalledWith('/users/me/push-tokens', { data: { token: 'ExponentPushToken[abc]' } });
+    expect(instance.delete).toHaveBeenCalledWith('/users/me/push-tokens', { data: { token: 'ExponentPushToken[abc]' }, timeout: 10_000 });
   });
 });
 
