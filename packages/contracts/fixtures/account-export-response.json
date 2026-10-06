@@ -88,6 +88,13 @@
     },
     "updatedAt": "2026-10-05T12:00:00.000Z"
   },
+  "pushTokens": [
+    {
+      "platform": "android",
+      "createdAt": "2026-10-06T12:00:00.000Z",
+      "lastSeenAt": "2026-10-07T08:00:00.000Z"
+    }
+  ],
   "healthConnections": [
     {
       "source": "health_connect",

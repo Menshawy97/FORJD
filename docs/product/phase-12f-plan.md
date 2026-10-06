@@ -1,6 +1,6 @@
 # Phase 12F — server push
 
-**Status (2026-10-06): the owner answered the four questions (see the end); ready to start at slice 1 on the owner's word. Nothing is built.**
+**Status (2026-10-06): the owner answered the four questions (see the end). Slice 0 (this plan) merged (#349); slice 1 (device tokens on the server) built; slices 2 to 7 follow.**
 Every slice is its own PR, test-first, reviewed, merged with `main` green, and **each PR also updates this plan, the roadmap and
 `remaining-checklist.md`** (standing instruction, 2026-10-06). Decisions already made:
 [ADR-060](../decisions/ADR-060-push-notification-transport.md) (Expo push service behind a `NotificationProvider`),
@@ -77,13 +77,13 @@ in the morning, local time.
 **Token lifecycle.** `device_push_tokens` (user, token unique, platform, created, last seen), `ON DELETE CASCADE`. Registration
 is idempotent and moves a token to the current account if the same phone signs in as someone else. The phone deletes its token
 **before** sign-out clears the session (the call needs auth). Tokens the platform rejects (`DeviceNotRegistered` in the Expo
-receipts) are deleted by the drain. The export lists the person's tokens; account deletion removes them by cascade (tested).
+receipts) are deleted by the drain. The export lists the person's registered phones (platform and dates, **not the token value**: a token is a bearer-ish address, so it is never logged and never returned by any endpoint); account deletion removes them by cascade (tested).
 
 ## Slices
 
 0. **Docs (this PR):** this plan, the roadmap (12F row, and "Monday" corrected to "Saturday") and the checklist. ADR-065 (the outbox
    and the drain, and why not an in-process scheduler) is written with slice 3, when the decision is built.
-1. **Tokens (server):** migration `device_push_tokens` (drizzle-kit), contracts, `POST` and `DELETE /api/v1/users/me/push-tokens`
+1. **Tokens (server), built 2026-10-06 (PR #350):** migration `device_push_tokens` (drizzle-kit), contracts, `POST` and `DELETE /api/v1/users/me/push-tokens`
    (versioned, rule 7), export, deletion check, data inventory. Real-Postgres repository spec, e2e, cascade test.
 2. **Provider:** `NotificationProvider` interface (`send`, `invalidTokens`), `ExpoPushProvider` (`expo-server-sdk`) and a fake, contract
    tests for the adapter (rule 8), conformance rule that only `integrations/push/` may import the SDK. Secret (optional Expo access

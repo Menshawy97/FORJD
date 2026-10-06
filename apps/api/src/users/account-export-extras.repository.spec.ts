@@ -8,6 +8,7 @@ import { healthConnections } from '../database/schema/health-data.schema';
 import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from '../database/schema/forge.schema';
 import { foods, foodServings, macroGoals, savedMealItems, savedMeals } from '../database/schema/nutrition.schema';
 import { preferences } from '../database/schema/preferences.schema';
+import { devicePushTokens } from '../database/schema/device-push-tokens.schema';
 import { notificationPreferences } from '../database/schema/notification-preferences.schema';
 import { users } from '../database/schema/users.schema';
 import { programEnrollments, programs } from '../database/schema/workouts.schema';
@@ -76,6 +77,7 @@ describe('AccountExportExtrasRepository', () => {
     await db.insert(goals).values({ userId, type: 'weight', targetValue: '80.00', targetDate: '2026-12-31', status: 'active' });
     await db.insert(preferences).values({ userId, timezone: 'Africa/Cairo', locale: 'en', notificationsEnabled: false });
     await db.insert(notificationPreferences).values({ userId, rank: true, workout: false, quietStartMinute: 1380, quietEndMinute: 360 });
+    await db.insert(devicePushTokens).values({ userId, token: `ExponentPushToken[extras-${label}-${suite}]`, platform: 'android' });
     await db.insert(healthConnections).values({
       userId,
       source: 'health_connect',
@@ -173,6 +175,13 @@ describe('AccountExportExtrasRepository', () => {
       weighIn: false,
       quietHours: { startMinute: 1380, endMinute: 360 },
     });
+    expect(extras.pushTokens).toEqual([
+      {
+        platform: 'android',
+        createdAt: expect.any(String),
+        lastSeenAt: expect.any(String),
+      },
+    ]);
     expect(extras.notificationPreferences?.updatedAt).toEqual(expect.any(String));
     expect(extras.healthConnections).toEqual([
       { source: 'health_connect', lastSuccessfulSyncAt: '2026-09-01T10:00:00.000Z' },
@@ -219,6 +228,7 @@ describe('AccountExportExtrasRepository', () => {
       goals: [],
       preferences: null,
       notificationPreferences: null,
+      pushTokens: [],
       healthConnections: [],
       programEnrollmentHistory: [],
       weeklyForge: { ladders: [], weeks: [], rewards: [], acknowledgedWeeks: [] },

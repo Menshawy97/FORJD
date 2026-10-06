@@ -1091,6 +1091,13 @@ export const responseFixtures = {
         quietHours: { startMinute: 1380, endMinute: 360 },
         updatedAt: '2026-10-05T12:00:00.000Z',
       },
+      pushTokens: [
+        {
+          platform: 'android',
+          createdAt: '2026-10-06T12:00:00.000Z',
+          lastSeenAt: '2026-10-07T08:00:00.000Z',
+        },
+      ],
       healthConnections: [{ source: 'health_connect', lastSuccessfulSyncAt: '2026-09-01T10:00:00.000Z' }],
       programEnrollmentHistory: [
         {
