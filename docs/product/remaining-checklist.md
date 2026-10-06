@@ -93,7 +93,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] *(unconfirmed)* `live.tsx` Finish has no disabled state
 - [x] Contrast of chip and segment text measured and pinned in `tokens.test.ts`: `dim` and `metadata` pass everywhere; `segmentedInactive` passes on its track by a hair (4.501:1)
 - [ ] Onboarding brief (including showing Weekly Forge "How it works" once); needs owner approval
-- [ ] Quiet-hours editor (12D follow-up): needs an approved mock-up first, then an additive migration for the hours
+- [ ] Quiet-hours editor (12D follow-up): mock-up approved 2026-10-06. Slice 1 planner done (#346); slice 2 server storage built (migration `0034`, `quietHours` on `GET/PATCH /users/me/notifications` and the export); slice 3 the screen is next
 
 ## 3. Planned phases not started
 - [ ] Phase 12 decisions: ADR-059, 060, 061 and 063 accepted; **ADR-062 (widgets) still Proposed**, needs your decision

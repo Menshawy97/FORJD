@@ -75,7 +75,7 @@ describe('AccountExportExtrasRepository', () => {
 
     await db.insert(goals).values({ userId, type: 'weight', targetValue: '80.00', targetDate: '2026-12-31', status: 'active' });
     await db.insert(preferences).values({ userId, timezone: 'Africa/Cairo', locale: 'en', notificationsEnabled: false });
-    await db.insert(notificationPreferences).values({ userId, rank: true, workout: false });
+    await db.insert(notificationPreferences).values({ userId, rank: true, workout: false, quietStartMinute: 1380, quietEndMinute: 360 });
     await db.insert(healthConnections).values({
       userId,
       source: 'health_connect',
@@ -171,6 +171,7 @@ describe('AccountExportExtrasRepository', () => {
       noWorkout: false,
       forgeClosing: false,
       weighIn: false,
+      quietHours: { startMinute: 1380, endMinute: 360 },
     });
     expect(extras.notificationPreferences?.updatedAt).toEqual(expect.any(String));
     expect(extras.healthConnections).toEqual([

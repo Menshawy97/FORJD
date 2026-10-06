@@ -28,6 +28,28 @@ describe("updateNotificationPreferencesRequestSchema (Phase 12D)", () => {
     expect(updateNotificationPreferencesRequestSchema.parse(all)).toEqual(all);
   });
 
+  it("accepts quiet hours alone, or together with switches", () => {
+    const quietHours = { startMinute: 23 * 60, endMinute: 6 * 60 };
+    expect(updateNotificationPreferencesRequestSchema.parse({ quietHours })).toEqual({ quietHours });
+    expect(updateNotificationPreferencesRequestSchema.parse({ rank: true, quietHours })).toEqual({ rank: true, quietHours });
+  });
+
+  it("refuses quiet hours with equal times, a time off the clock, a fraction or a missing half", () => {
+    const bad = [
+      { startMinute: 600, endMinute: 600 },
+      { startMinute: -1, endMinute: 420 },
+      { startMinute: 1320, endMinute: 1440 },
+      { startMinute: 1320.5, endMinute: 420 },
+      { startMinute: 1320 },
+      { endMinute: 420 },
+      { startMinute: "22:00", endMinute: "07:00" },
+      { startMinute: 1320, endMinute: 420, extra: 1 },
+    ];
+    for (const quietHours of bad) {
+      expect(updateNotificationPreferencesRequestSchema.safeParse({ quietHours }).success).toBe(false);
+    }
+  });
+
   it("refuses an empty body, because a PATCH that changes nothing is a client bug", () => {
     expect(updateNotificationPreferencesRequestSchema.safeParse({}).success).toBe(false);
   });
@@ -53,7 +75,17 @@ describe("notificationPreferencesResponseSchema (Phase 12D)", () => {
     noWorkout: false,
     forgeClosing: false,
     weighIn: false,
+    quietHours: { startMinute: 22 * 60, endMinute: 7 * 60 },
   };
+
+  it("requires the quiet hours, as two different valid times", () => {
+    const without: Partial<typeof base> = { ...base };
+    delete without.quietHours;
+    expect(notificationPreferencesResponseSchema.safeParse({ ...without, updatedAt: null }).success).toBe(false);
+    expect(
+      notificationPreferencesResponseSchema.safeParse({ ...base, quietHours: { startMinute: 5, endMinute: 5 }, updatedAt: null }).success,
+    ).toBe(false);
+  });
 
   it("accepts a saved row with its timestamp", () => {
     expect(notificationPreferencesResponseSchema.safeParse({ ...base, updatedAt: "2026-10-05T12:00:00.000Z" }).success).toBe(true);
