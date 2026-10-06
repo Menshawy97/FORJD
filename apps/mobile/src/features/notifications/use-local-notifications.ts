@@ -10,6 +10,7 @@ import {
   routeForLocalNotificationTap,
   type TapLike,
 } from './local-notifications';
+import { routeForPushTap } from './push-tap';
 
 /**
  * Keeps the phone's scheduled local notifications in step with the plan (Phase 12E, ADR-064), from the root
@@ -30,9 +31,9 @@ async function reconcileNow(): Promise<void> {
   await reconcileLocalNotifications(() => buildLocalNotificationPlan());
 }
 
-/** Opens the screen a tapped FORJD notification names; every other notification is not ours to route. */
+/** Opens the screen a tapped FORJD notification names (a planned local one, or a push); any other is not ours to route. */
 function openTapped(response: TapLike): void {
-  const route = routeForLocalNotificationTap(response);
+  const route = routeForLocalNotificationTap(response) ?? routeForPushTap(response);
   if (route) router.push(route as Href);
 }
 

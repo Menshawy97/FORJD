@@ -21,6 +21,7 @@ import {
   type NotificationPermission,
 } from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
+import { requestPushRegistrationSync } from '@/features/notifications/use-push-registration';
 import { formatQuietHours } from '@/features/notifications/quiet-hours-format';
 import { QuietHoursSheet } from '@/features/notifications/quiet-hours-sheet';
 import {
@@ -58,11 +59,14 @@ const ROWS: ReadonlyArray<{
 ];
 
 /**
- * The switches whose notifications the phone schedules itself (Phase 12E), so turning one on is the moment to ask
- * the phone for permission. The others are sent by the server (push, 12F and later) and need no prompt yet.
+ * The switches whose notifications reach the phone as notifications: the ones it schedules itself (Phase 12E) and the
+ * server pushes (PR celebrations and leaderboard moves, 12F). Turning one on is the moment to ask the phone for
+ * permission. Recovery alerts are not here until they are built (12G).
  */
 const SCHEDULED_ON_PHONE: ReadonlySet<keyof NotificationPreferences> = new Set([
   'workout',
+  'pr',
+  'rank',
   'weekly',
   'meals',
   'noWorkout',
@@ -117,6 +121,8 @@ export default function NotifsScreen() {
     if (!granted) setSawRefusal(true);
     await refreshPermission();
     requestLocalNotificationReconcile();
+    // The phone may just have allowed notifications: this install can now register for server pushes.
+    requestPushRegistrationSync();
   }, [refreshPermission]);
 
   const refreshQuietHours = useCallback(async () => {
@@ -197,6 +203,8 @@ export default function NotifsScreen() {
       } else {
         requestLocalNotificationReconcile();
       }
+      // A push switch changed: register this install when one is on, and take its token off the server when both are off.
+      if (key === 'pr' || key === 'rank') requestPushRegistrationSync();
     })();
     void queueNotificationChange(preferences, next);
   };
