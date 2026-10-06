@@ -256,6 +256,36 @@ describe('buildLocalNotificationPlan: no workout yet this week (12E-6)', () => {
     expect(plan).toBeNull();
   });
 
+  it('stays quiet about a week the custom program the person follows leaves without a workout on Thursday or Friday', async () => {
+    const enrollment = {
+      enrollment: { id: 'e', programId: 'p', programSlug: 'mine', programName: 'Mine', programVersion: 1, startedAt: NOW.toISOString() },
+    };
+    const program = (dayOfWeek: number): ProgramResponse => ({
+      id: 'p',
+      slug: 'mine',
+      name: 'Mine',
+      category: 'strength',
+      level: 'beginner',
+      daysPerWeek: 1,
+      durationWeeks: 4,
+      description: null,
+      isOwn: true,
+      workoutCount: 1,
+      version: 1,
+      workouts: [{ templateId: 't', name: 'Push', activity: 'strength', orderIndex: 0, dayOfWeek, exerciseNames: [] }],
+    });
+    const follow = (dayOfWeek: number) =>
+      sources({
+        loadPreferences: jest.fn(async () => noWorkoutOn),
+        getEnrollment: jest.fn(async () => enrollment),
+        getProgram: jest.fn(async () => program(dayOfWeek)),
+      });
+
+    // A Tuesday-only program has nothing left by Thursday; a Friday one still does.
+    expect(noWorkoutIds(await buildLocalNotificationPlan(follow(2), NOW))).toEqual([]);
+    expect(noWorkoutIds(await buildLocalNotificationPlan(follow(5), NOW))).toHaveLength(2);
+  });
+
   it('reads neither sessions nor stats when the switch is off', async () => {
     const s = sources({ loadPreferences: jest.fn(async () => ({ ...noWorkoutOn, noWorkout: false, weekly: true })) });
 

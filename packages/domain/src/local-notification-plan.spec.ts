@@ -587,6 +587,35 @@ describe("planLocalNotifications: no workout yet this week (12E-6)", () => {
     expect(dates(plan)).toEqual(["2026-10-15", "2026-10-22"]);
   });
 
+  // The owner's call (2026-10-06): respect a program's rest. A program you built repeats weekly with its workouts
+  // pinned to weekdays, so "nothing left this week" is a program with no workout on Thursday or Friday.
+  describe("respecting a custom program's rest (12E-6 follow-up)", () => {
+    const monday = { dayOfWeek: 1, workoutName: "Push" };
+    const thursday = { dayOfWeek: 4, workoutName: "Legs" };
+    const friday = { dayOfWeek: 5, workoutName: "Pull" };
+
+    it("stays quiet when the program has no workout left in the week (none on Thursday or Friday)", () => {
+      const plan = planLocalNotifications(withNoWorkout({ programWorkouts: [monday, { dayOfWeek: 2, workoutName: "Pull" }] }));
+
+      expect(dates(plan)).toEqual([]);
+    });
+
+    it("still reminds when the program has a workout on Thursday", () => {
+      expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [monday, thursday] })))).toEqual([
+        "2026-10-08",
+        "2026-10-15",
+      ]);
+    });
+
+    it("still reminds when the program's last workout of the week is on Friday", () => {
+      expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [friday] })))).toEqual(["2026-10-08", "2026-10-15"]);
+    });
+
+    it("is unchanged for someone with no custom program", () => {
+      expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [] })))).toEqual(["2026-10-08", "2026-10-15"]);
+    });
+  });
+
   it("on a Thursday, keeps today's reminder before 18:00 and drops it after, or once trained today", () => {
     const thursday = "2026-10-08";
     const before = planLocalNotifications(withNoWorkout({ now: { date: thursday, minute: at(12) } }));
