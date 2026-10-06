@@ -92,6 +92,7 @@ const FORGE_WEEK_LAST_DAY_OFFSET = 6;
 export const WEIGH_IN_REMINDER_MINUTE = 10 * 60;
 export const WEIGH_IN_INTERVAL_DAYS = 30;
 const THURSDAY = 4;
+const FRIDAY = 5;
 const DAYS_PER_WEEK = 7;
 
 const HABIT_WINDOW_DAYS = 28;
@@ -229,6 +230,9 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
   const forgeFriday = forgeWeek ? dayNumber(forgeWeek.weekStart) + FORGE_WEEK_LAST_DAY_OFFSET : null;
   const weighInAnchor =
     input.weighInAnchor !== undefined && isValidLocalDate(input.weighInAnchor) ? dayNumber(input.weighInAnchor) : null;
+  // A program you built repeats weekly with its workouts pinned to weekdays. With one that has nothing left on
+  // Thursday or Friday, "no workout yet this week" would nag about a rest the program planned (owner, 2026-10-06).
+  const programHasWorkLeft = programWeekdays.size === 0 || programWeekdays.has(THURSDAY) || programWeekdays.has(FRIDAY);
   const sessionDays = new Set(sessions.map((session) => dayNumber(session.date)));
   const thisWeekStart = weekStartOf(today);
   const plan: PlannedLocalNotification[] = [];
@@ -269,7 +273,7 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
       });
     }
 
-    if (input.switches.noWorkout && weekday === THURSDAY && stillAhead(NO_WORKOUT_REMINDER_MINUTE)) {
+    if (input.switches.noWorkout && programHasWorkLeft && weekday === THURSDAY && stillAhead(NO_WORKOUT_REMINDER_MINUTE)) {
       const weekStart = weekStartOf(day);
       let trainedThisWeek = false;
       for (let back = weekStart; back <= day; back += 1) trainedThisWeek = trainedThisWeek || sessionDays.has(back);

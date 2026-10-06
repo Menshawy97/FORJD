@@ -164,7 +164,8 @@ export async function buildLocalNotificationPlan(
     const today = localDate(now);
     const [recentSessions, programWorkouts, mealLoggedToday, weekStreak, forgeWeek, weighInAnchor] = await Promise.all([
       switches.workout || switches.noWorkout ? readSessionStarts(sources) : [],
-      switches.workout ? readProgramWorkouts(sources) : [],
+      // The program decides workout days, and whether "no workout yet this week" has anything left to ask for.
+      switches.workout || switches.noWorkout ? readProgramWorkouts(sources) : [],
       switches.meals ? readMealLoggedToday(sources, today) : false,
       switches.noWorkout ? readWeekStreak(sources) : 0,
       switches.forgeClosing ? readForgeWeek(sources) : undefined,
