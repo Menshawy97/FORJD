@@ -103,7 +103,9 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Limited Android beta (needs 8.5 closed, 12A-C, Play Console, device tests)
 - [ ] Phase 9 post-beta iteration
 - [x] 12D the five notification switches on the server (#332); the quiet-hours editor is split out below
-- [ ] 12E local scheduled notifications
+- [x] 12E local scheduled notifications: all six notifications, the permission ask and note, the four new switches, the FAQ section (approved 2026-10-06) and the rest-week rule are built (#335 to #344). Still owed, see the device-walk line below
+- [ ] 12E device walk (owner): an iPhone and an Android 13+ phone. The permission prompt on a fresh install, a refusal shows the note, each reminder fires at its time and is skipped once done (food logged, workout finished), the FORJD logo shows, a tap opens the right screen including from a closed app
+- [ ] CI: stop `cancel-in-progress` cancelling runs on `main` (`.github/workflows/ci.yml`): make it apply to pull requests only, so every merge gets a full run (owner decision pending)
 - [ ] 12F push
 - [ ] 12G recovery alerts
 - [ ] 12H Android widgets
