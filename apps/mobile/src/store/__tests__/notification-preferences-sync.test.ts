@@ -13,7 +13,7 @@ jest.mock('@/auth/apiClient', () => ({
 }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '@forjd/domain';
+import { DEFAULT_NOTIFICATION_PREFERENCES, DEFAULT_QUIET_HOURS } from '@forjd/domain';
 
 import { getNotificationPreferences, patchNotificationPreferences } from '@/auth/apiClient';
 import {
@@ -27,6 +27,8 @@ const defaults = { ...DEFAULT_NOTIFICATION_PREFERENCES };
 const serverRow = (over: Partial<typeof defaults> = {}) => ({
   ...defaults,
   ...over,
+  // The server always answers its quiet hours now (the contract requires them); this sync only keeps the switches.
+  quietHours: DEFAULT_QUIET_HOURS,
   updatedAt: '2026-10-05T12:00:00.000Z',
 });
 

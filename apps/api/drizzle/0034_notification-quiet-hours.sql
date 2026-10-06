@@ -1,0 +1,3 @@
+ALTER TABLE "notification_preferences" ADD COLUMN "quiet_start_minute" integer DEFAULT 1320 NOT NULL;--> statement-breakpoint
+ALTER TABLE "notification_preferences" ADD COLUMN "quiet_end_minute" integer DEFAULT 420 NOT NULL;--> statement-breakpoint
+ALTER TABLE "notification_preferences" ADD CONSTRAINT "notification_preferences_quiet_hours" CHECK ("notification_preferences"."quiet_start_minute" between 0 and 1439 and "notification_preferences"."quiet_end_minute" between 0 and 1439 and "notification_preferences"."quiet_start_minute" <> "notification_preferences"."quiet_end_minute");

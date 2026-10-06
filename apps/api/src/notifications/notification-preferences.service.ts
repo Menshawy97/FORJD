@@ -14,12 +14,12 @@ export class NotificationPreferencesService {
   constructor(private readonly repository: NotificationPreferencesRepository) {}
 
   async get(user: User): Promise<NotificationPreferencesResponse> {
-    const { preferences, updatedAt } = await this.repository.get(user.id);
-    return { ...preferences, updatedAt: updatedAt === null ? null : updatedAt.toISOString() };
+    const { preferences, quietHours, updatedAt } = await this.repository.get(user.id);
+    return { ...preferences, quietHours, updatedAt: updatedAt === null ? null : updatedAt.toISOString() };
   }
 
   async update(user: User, body: UpdateNotificationPreferencesRequest): Promise<NotificationPreferencesResponse> {
-    const { preferences, updatedAt } = await this.repository.upsert(user.id, body);
-    return { ...preferences, updatedAt: updatedAt.toISOString() };
+    const { preferences, quietHours, updatedAt } = await this.repository.upsert(user.id, body);
+    return { ...preferences, quietHours, updatedAt: updatedAt.toISOString() };
   }
 }

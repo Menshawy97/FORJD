@@ -146,6 +146,7 @@ export class AccountExportExtrasRepository {
             noWorkout: notificationRow.noWorkout,
             forgeClosing: notificationRow.forgeClosing,
             weighIn: notificationRow.weighIn,
+            quietHours: { startMinute: notificationRow.quietStartMinute, endMinute: notificationRow.quietEndMinute },
             updatedAt: notificationRow.updatedAt.toISOString(),
           }
         : null,

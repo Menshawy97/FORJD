@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { inArray } from 'drizzle-orm';
 import request from 'supertest';
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '@forjd/domain';
+import { DEFAULT_NOTIFICATION_PREFERENCES, DEFAULT_QUIET_HOURS } from '@forjd/domain';
 import { notificationPreferencesResponseSchema } from '@forjd/contracts';
 
 import { AppModule } from '../src/app.module';
@@ -80,6 +80,7 @@ describe('Notification preferences (e2e)', () => {
 
     expect(notificationPreferencesResponseSchema.parse(response.body)).toEqual({
       ...DEFAULT_NOTIFICATION_PREFERENCES,
+      quietHours: DEFAULT_QUIET_HOURS,
       updatedAt: null,
     });
   });
@@ -110,9 +111,24 @@ describe('Notification preferences (e2e)', () => {
     expect((await get(tokenA).expect(200)).body).toMatchObject({ meals: true, noWorkout: false });
   });
 
+  it('saves quiet hours, keeps them through a switch change, and answers them in the contract shape', async () => {
+    const response = await patch(tokenA, { quietHours: { startMinute: 1380, endMinute: 360 } }).expect(200);
+    expect(notificationPreferencesResponseSchema.parse(response.body).quietHours).toEqual({ startMinute: 1380, endMinute: 360 });
+
+    await patch(tokenA, { noWorkout: true }).expect(200);
+
+    const body = (await get(tokenA).expect(200)).body;
+    expect(body.quietHours).toEqual({ startMinute: 1380, endMinute: 360 });
+    expect(body.noWorkout).toBe(true);
+  });
+
   it("never shows or changes another account's switches", async () => {
     // A's saved changes above must not appear for B, and B's change must not reach A.
-    expect((await get(tokenB).expect(200)).body).toMatchObject({ ...DEFAULT_NOTIFICATION_PREFERENCES, updatedAt: null });
+    expect((await get(tokenB).expect(200)).body).toMatchObject({
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      quietHours: DEFAULT_QUIET_HOURS,
+      updatedAt: null,
+    });
 
     await patch(tokenB, { pr: false }).expect(200);
 
@@ -124,5 +140,11 @@ describe('Notification preferences (e2e)', () => {
     await patch(tokenA, {}).expect(400);
     await patch(tokenA, { quietHours: '22:00' }).expect(400);
     await patch(tokenA, { rank: 'yes' }).expect(400);
+  });
+
+  it('refuses quiet hours with equal times, a time off the clock or only one half, with 400', async () => {
+    await patch(tokenA, { quietHours: { startMinute: 600, endMinute: 600 } }).expect(400);
+    await patch(tokenA, { quietHours: { startMinute: -5, endMinute: 420 } }).expect(400);
+    await patch(tokenA, { quietHours: { startMinute: 1320 } }).expect(400);
   });
 });

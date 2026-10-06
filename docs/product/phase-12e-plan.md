@@ -21,7 +21,7 @@ that does: notifications the phone schedules for itself (no server, no push, wor
    and a monthly weigh-in / InBody scan.
 
 **Not in 12E:** push (12F), recovery alerts (12G), PR celebrations and leaderboard moves (server-side, 12F), the
-quiet-hours editor (needs an approved design). The rest timer (ADR-026) and the 12A/12B ongoing run and workout
+quiet-hours editor (a follow-up, below). The rest timer (ADR-026) and the 12A/12B ongoing run and workout
 notices already exist and are untouched.
 
 ## The notifications
@@ -169,3 +169,11 @@ update. Older app builds ignore the new fields (rule 7).
 - **Stale conditions** (a nudge scheduled before the person trains). Mitigated by recomputing on every foreground
   and after every relevant action; a notification already handed to the OS cannot be recalled while the app is
   closed.
+
+## Follow-up: the quiet-hours editor
+
+Owner-approved mock-up 2026-10-06: the Notifications screen keeps its quiet-hours row, adds one line ("No reminders arrive during this time."), and **Change** opens a small sheet with a From time and an Until time, a Save button and "Reset to 22:00 — 07:00". The choice is saved on the server like the switches, so it follows the person to a new phone and push (12F) can respect it. Three slices, each its own PR:
+
+1. **Planner (done, #346):** `planLocalNotifications` takes an optional `quietHours` and one `canSendAt` check guards all six kinds (before, only the workout reminder checked a fixed 22:00 to 07:00, because the other five sit at fixed times outside it). Overnight and same-day windows; start quiet, end not; equal or invalid times fall back to the default; a negative minute is dropped.
+2. **Server storage (built):** migration `0034` adds `quiet_start_minute` (default 1320) and `quiet_end_minute` (default 420) to `notification_preferences`, with a check that both are 0 to 1439 and different. `quietHours: { startMinute, endMinute }` is a required field of the `GET`/`PATCH /api/v1/users/me/notifications` answer, an optional field of the `PATCH` body (both times together, never one half), and in the account export. Additive (rule 7): an older phone ignores the new field and an older server is never asked for it. Deploy order is the same as 12E's: the API first.
+3. **The screen:** the sheet and the phone side (store, sync, planner input) with the phone's time picker (`@react-native-community/datetimepicker`, already installed). The phone must tolerate an answer without `quietHours` (an older server) by using 22:00 to 07:00.
