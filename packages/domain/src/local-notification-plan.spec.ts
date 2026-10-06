@@ -611,6 +611,18 @@ describe("planLocalNotifications: no workout yet this week (12E-6)", () => {
       expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [friday] })))).toEqual(["2026-10-08", "2026-10-15"]);
     });
 
+    it("stays quiet for a program pinned only to Saturday or Sunday, since nothing is left by Thursday", () => {
+      expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [{ dayOfWeek: 6, workoutName: "Long" }] })))).toEqual([]);
+      expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [{ dayOfWeek: 0, workoutName: "Long" }] })))).toEqual([]);
+    });
+
+    it("ignores a malformed weekday, so a bad program entry never silences the nudge", () => {
+      expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [{ dayOfWeek: 9, workoutName: "Odd" }] })))).toEqual([
+        "2026-10-08",
+        "2026-10-15",
+      ]);
+    });
+
     it("is unchanged for someone with no custom program", () => {
       expect(dates(planLocalNotifications(withNoWorkout({ programWorkouts: [] })))).toEqual(["2026-10-08", "2026-10-15"]);
     });

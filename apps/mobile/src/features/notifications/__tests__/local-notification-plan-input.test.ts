@@ -281,6 +281,14 @@ describe('buildLocalNotificationPlan: no workout yet this week (12E-6)', () => {
         getProgram: jest.fn(async () => program(dayOfWeek)),
       });
 
+    // A preset program (not one the person built) prescribes no weekdays, so it never silences the nudge.
+    const preset = sources({
+      loadPreferences: jest.fn(async () => noWorkoutOn),
+      getEnrollment: jest.fn(async () => enrollment),
+      getProgram: jest.fn(async () => ({ ...program(2), isOwn: false })),
+    });
+    expect(noWorkoutIds(await buildLocalNotificationPlan(preset, NOW))).toHaveLength(2);
+
     // A Tuesday-only program has nothing left by Thursday; a Friday one still does.
     expect(noWorkoutIds(await buildLocalNotificationPlan(follow(2), NOW))).toEqual([]);
     expect(noWorkoutIds(await buildLocalNotificationPlan(follow(5), NOW))).toHaveLength(2);
