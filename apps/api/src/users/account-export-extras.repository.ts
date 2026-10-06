@@ -9,6 +9,7 @@ import { goals } from '../database/schema/goals.schema';
 import { healthConnections } from '../database/schema/health-data.schema';
 import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from '../database/schema/forge.schema';
 import { foods, foodServings, macroGoals, savedMealItems, savedMeals } from '../database/schema/nutrition.schema';
+import { devicePushTokens } from '../database/schema/device-push-tokens.schema';
 import { notificationPreferences } from '../database/schema/notification-preferences.schema';
 import { preferences } from '../database/schema/preferences.schema';
 import { programEnrollments } from '../database/schema/workouts.schema';
@@ -40,6 +41,7 @@ export class AccountExportExtrasRepository {
       goalRows,
       [preferenceRow],
       [notificationRow],
+      pushTokenRows,
       connectionRows,
       enrollmentRows,
     ] = await Promise.all([
@@ -51,6 +53,7 @@ export class AccountExportExtrasRepository {
       this.db.select().from(goals).where(eq(goals.userId, userId)).orderBy(asc(goals.createdAt)),
       this.db.select().from(preferences).where(eq(preferences.userId, userId)),
       this.db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId)),
+      this.db.select().from(devicePushTokens).where(eq(devicePushTokens.userId, userId)).orderBy(asc(devicePushTokens.createdAt), asc(devicePushTokens.id)),
       this.db.select().from(healthConnections).where(eq(healthConnections.userId, userId)),
       this.db
         .select()
@@ -150,6 +153,11 @@ export class AccountExportExtrasRepository {
             updatedAt: notificationRow.updatedAt.toISOString(),
           }
         : null,
+      pushTokens: pushTokenRows.map((row) => ({
+        platform: row.platform as 'android' | 'ios',
+        createdAt: row.createdAt.toISOString(),
+        lastSeenAt: row.lastSeenAt.toISOString(),
+      })),
       healthConnections: connectionRows.map((row) => ({
         source: row.source,
         lastSuccessfulSyncAt: row.lastSuccessfulSyncAt ? row.lastSuccessfulSyncAt.toISOString() : null,

@@ -17,6 +17,7 @@ import { bodyScans, bodyMeasurements } from "../src/database/schema/body.schema"
 import { healthObservations } from "../src/database/schema/health-data.schema";
 import { externalConnections } from "../src/database/schema/external-connections.schema";
 import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from "../src/database/schema/forge.schema";
+import { devicePushTokens } from "../src/database/schema/device-push-tokens.schema";
 import { notificationPreferences } from "../src/database/schema/notification-preferences.schema";
 import { foods, nutritionLogEntries } from "../src/database/schema/nutrition.schema";
 import { workoutTemplates, workoutSessions, programs, programEnrollments } from "../src/database/schema/workouts.schema";
@@ -202,6 +203,7 @@ describe("Account deletion (e2e)", () => {
       await db.insert(forgeRewards).values({ userId, ladderKey: "volume", type: "forge_mark", level: 2, band: "ore", weekStart: "2026-09-26" });
       await db.insert(forgeWeekAcks).values({ userId, weekStart: "2026-09-26" });
       await db.insert(notificationPreferences).values({ userId, rank: true });
+      await db.insert(devicePushTokens).values({ userId, token: `ExponentPushToken[deletion-${label}-${suiteId}]`, platform: "android" });
     };
 
     await seedFor(ownerId, "owner");
@@ -235,6 +237,7 @@ describe("Account deletion (e2e)", () => {
       { name: "forge_rewards", table: forgeRewards, userColumn: forgeRewards.userId },
       { name: "forge_week_acks", table: forgeWeekAcks, userColumn: forgeWeekAcks.userId },
       { name: "notification_preferences", table: notificationPreferences, userColumn: notificationPreferences.userId },
+      { name: "device_push_tokens", table: devicePushTokens, userColumn: devicePushTokens.userId },
     ] as const;
 
     for (const { name, table, userColumn } of tablesWithUserId) {

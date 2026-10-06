@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { bodyScanResponseSchema } from './body';
 import { healthObservationResponseSchema } from './health';
 import { notificationPreferencesResponseSchema } from './notifications';
+import { PUSH_PLATFORMS } from './push-tokens';
 import { nutritionLogEntryResponseSchema } from './nutrition';
 import { programEnrollmentSchema, programSummarySchema } from './programs';
 import { privacySettingsResponseSchema, profileResponseSchema } from './users';
@@ -165,6 +166,17 @@ export const accountExportWeeklyForgeSchema = z.object({
 });
 export type AccountExportWeeklyForge = z.infer<typeof accountExportWeeklyForgeSchema>;
 
+/**
+ * One stored push token (Phase 12F): the platform and when it was added and last seen, **not the token value**. A token
+ * is a bearer-ish address for the phone, and a downloaded export is a long-lived copy, so the value is never returned by
+ * any endpoint (a person can see that a phone is registered, which is what portability needs).
+ */
+export const accountExportPushTokenSchema = z.object({
+  platform: z.enum(PUSH_PLATFORMS),
+  createdAt: z.string().datetime(),
+  lastSeenAt: z.string().datetime(),
+});
+
 /** Everything in the export that comes from `AccountExportExtrasRepository` (8C). */
 export const accountExportExtrasSchema = z.object({
   customExercises: z.array(accountExportCustomExerciseSchema),
@@ -184,6 +196,8 @@ export const accountExportExtrasSchema = z.object({
     .nullable(),
   /** Added with Phase 12D (additive, so `version` stays 1). `null` when the person never saved a change. */
   notificationPreferences: notificationPreferencesResponseSchema.nullable(),
+  /** Added with Phase 12F (additive, so `version` stays 1). One entry per registered phone, without the token value; empty when none. */
+  pushTokens: z.array(accountExportPushTokenSchema),
   healthConnections: z.array(accountExportHealthConnectionSchema),
   programEnrollmentHistory: z.array(accountExportEnrollmentHistorySchema),
   /** Added with Weekly Forge (additive, so `version` stays 1). */
