@@ -347,9 +347,9 @@ tab bar with your workout's name, the time, and the set you're on (or the rest c
 back to your workout. Tap the x to throw the workout away: FORJD asks first, then deletes the sets so far
 and saves nothing."
 
-## Proposed for 12E (waiting for the owner's approval)
+## Approved for 12E (owner, 2026-10-06), now in `faq-content.ts`
 
-Not in `faq-content.ts` yet. ADR-061 says the FAQ and the privacy policy must say what notifications contain, and these
+Approved as written below and in the app as a new "Notifications" section after "Workouts" (five entries, 42 questions in all). ADR-061 says the FAQ and the privacy policy must say what notifications contain, and these
 entries do that for the notifications the phone schedules for itself. Every claim below is what the code does
 (`docs/product/phase-12e-plan.md`, ADR-064). A new "Notifications" section is proposed, after "Workouts".
 

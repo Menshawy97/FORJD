@@ -1,6 +1,6 @@
 # Phase 12E — local scheduled notifications
 
-**Status (2026-10-05): approved by the owner. Slice 0 (this plan and ADR-064) merged (#334); slices 1 to 8 merged (#335 to #341: the planner, the reconciler, the four new switches, the permission ask and note, and the four extra reminders). Slice 9 (docs) is this change; the device walk and the owner's FAQ wording are owed.** Every slice is its
+**Status (2026-10-05): approved by the owner. Slice 0 (this plan and ADR-064) merged (#334); slices 1 to 8 merged (#335 to #341: the planner, the reconciler, the four new switches, the permission ask and note, and the four extra reminders). Slice 9 (docs and the FAQ section, approved by the owner 2026-10-06) is done; the device walk is owed.** Every slice is its
 own PR, test-first, reviewed, merged with `main` green. Decision record:
 [ADR-064](../decisions/ADR-064-local-notifications-planned-and-rescheduled.md). Builds on 12D
 ([phase-12d-plan.md](phase-12d-plan.md)), which put the five switches on the server.
