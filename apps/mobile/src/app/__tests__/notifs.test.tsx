@@ -40,6 +40,9 @@ jest.mock('@/features/notifications/local-notifications', () => ({
 jest.mock('@/features/notifications/use-local-notifications', () => ({
   requestLocalNotificationReconcile: jest.fn(),
 }));
+jest.mock('@/features/notifications/use-push-registration', () => ({
+  requestPushRegistrationSync: jest.fn(),
+}));
 
 jest.mock('@/store/notification-preferences-sync', () => ({
   syncNotificationPreferences: jest.fn(),
@@ -63,6 +66,7 @@ import {
   readNotificationPermission,
 } from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
+import { requestPushRegistrationSync } from '@/features/notifications/use-push-registration';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
 import { loadQuietHours } from '@/store/quiet-hours';
 import NotifsScreen from '../notifs';
@@ -313,14 +317,50 @@ describe('NotifsScreen', () => {
       await waitFor(() => expect(requestLocalNotificationReconcile).toHaveBeenCalled());
     });
 
-    it('does not ask when a reminder is turned off, or when a switch the server sends is turned on', async () => {
+    it('does not ask when a reminder is turned off, or when a switch with nothing built yet (recovery alerts) is turned on', async () => {
       const { findByText } = await render(<NotifsScreen />);
 
       fireEvent.press(await findByText('Workout reminders'));
-      fireEvent.press(await findByText('Leaderboard moves'));
+      fireEvent.press(await findByText('Recovery alerts'));
 
       await waitFor(() => expect(saveNotificationPreferences).toHaveBeenCalledTimes(2));
       expect(ensureLocalNotificationPermission).not.toHaveBeenCalled();
+    });
+
+    it('asks the phone when a server push (leaderboard moves) is turned on, then registers this install for push', async () => {
+      const { findByText } = await render(<NotifsScreen />);
+
+      fireEvent.press(await findByText('Leaderboard moves'));
+
+      await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(requestPushRegistrationSync).toHaveBeenCalled());
+    });
+
+    it('asks the phone when PR celebrations are turned back on', async () => {
+      (loadNotificationPreferences as jest.Mock).mockResolvedValue({ ...DEFAULT_NOTIFICATION_PREFERENCES, pr: false });
+
+      const { findByText } = await render(<NotifsScreen />);
+      fireEvent.press(await findByText('PR celebrations'));
+
+      await waitFor(() => expect(ensureLocalNotificationPermission).toHaveBeenCalled());
+      await waitFor(() => expect(requestPushRegistrationSync).toHaveBeenCalled());
+    });
+
+    it('syncs the push registration when a push switch is turned off, so the token can come off the server when both are off', async () => {
+      const { findByText } = await render(<NotifsScreen />);
+
+      fireEvent.press(await findByText('PR celebrations'));
+
+      await waitFor(() => expect(requestPushRegistrationSync).toHaveBeenCalled());
+    });
+
+    it('does not touch the push registration for a switch that is not a push', async () => {
+      const { findByText } = await render(<NotifsScreen />);
+
+      fireEvent.press(await findByText('Workout reminders'));
+      await waitFor(() => expect(saveNotificationPreferences).toHaveBeenCalled());
+
+      expect(requestPushRegistrationSync).not.toHaveBeenCalled();
     });
 
     // The switches are on by default, so a new phone has reminders on and nothing asked yet: opening the screen is
@@ -340,6 +380,8 @@ describe('NotifsScreen', () => {
       (loadNotificationPreferences as jest.Mock).mockResolvedValue({
         ...DEFAULT_NOTIFICATION_PREFERENCES,
         workout: false,
+        pr: false,
+        rank: false,
         weekly: false,
       });
 

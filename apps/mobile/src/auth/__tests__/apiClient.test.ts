@@ -822,6 +822,39 @@ describe('apiClient - WHOOP', () => {
   });
 });
 
+describe('apiClient - push tokens (Phase 12F)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (axios as unknown as { __instances: unknown[] }).__instances.length = 0;
+  });
+
+  function apiClientInstance() {
+    const instances = (axios as unknown as { __instances: Array<Record<string, unknown>> }).__instances;
+    // Construction order in apiClient.ts: public, refresh, api, replay.
+    return instances[2] as unknown as { post: jest.Mock; delete: jest.Mock };
+  }
+
+  it('registerPushToken sends POST /users/me/push-tokens with the token and platform', async () => {
+    const { registerPushToken } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.post.mockResolvedValue({ data: undefined });
+
+    await expect(registerPushToken({ token: 'ExponentPushToken[abc]', platform: 'android' })).resolves.toBeUndefined();
+
+    expect(instance.post).toHaveBeenCalledWith('/users/me/push-tokens', { token: 'ExponentPushToken[abc]', platform: 'android' });
+  });
+
+  it('removePushToken sends DELETE /users/me/push-tokens with the token in the body', async () => {
+    const { removePushToken } = loadApiClient();
+    const instance = apiClientInstance();
+    instance.delete.mockResolvedValue({ data: undefined });
+
+    await expect(removePushToken({ token: 'ExponentPushToken[abc]' })).resolves.toBeUndefined();
+
+    expect(instance.delete).toHaveBeenCalledWith('/users/me/push-tokens', { data: { token: 'ExponentPushToken[abc]' } });
+  });
+});
+
 describe('apiClient - notification preferences (Phase 12D)', () => {
   beforeEach(() => {
     jest.clearAllMocks();

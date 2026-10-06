@@ -33,10 +33,16 @@ jest.mock('@/auth/secureStorage', () => {
   return { ...actual, clearSession: jest.fn(actual.clearSession) };
 });
 jest.mock('@/auth/apiClient', () => ({ getMe: jest.fn() }));
+// Server push: the phone's token comes off the server before the session is cleared.
+jest.mock('@/features/notifications/push-registration', () => ({
+  unregisterFromPush: jest.fn().mockResolvedValue(true),
+  syncPushRegistration: jest.fn().mockResolvedValue('none'),
+}));
 
 import * as SecureStore from 'expo-secure-store';
 import { getMe } from '@/auth/apiClient';
 import { clearSession } from '@/auth/secureStorage';
+import { unregisterFromPush } from '@/features/notifications/push-registration';
 
 const PROFILE = {
   userId: 'u1',
@@ -203,6 +209,11 @@ describe('profile screen', () => {
     await findByText(/Training\./);
 
     expect(clearSession).toHaveBeenCalledTimes(1);
+    // The token comes off the server first, while the sign-in still works.
+    expect(unregisterFromPush).toHaveBeenCalledTimes(1);
+    expect((unregisterFromPush as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
+      (clearSession as jest.Mock).mock.invocationCallOrder[0]!,
+    );
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('forjd.accessToken');
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('forjd.refreshToken');
     expect(rendered.getPathname()).toBe('/welcome');

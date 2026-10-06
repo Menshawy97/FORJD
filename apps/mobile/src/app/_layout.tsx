@@ -27,6 +27,7 @@ import {
   requestLocalNotificationReconcile,
   useLocalNotifications,
 } from '@/features/notifications/use-local-notifications';
+import { usePushRegistration } from '@/features/notifications/use-push-registration';
 import { MealDraftProvider } from '@/features/nutrition/meal-draft-context';
 import { colors } from '@/theme/tokens';
 import { getExerciseUnits } from '@/store/exercise-unit-preferences';
@@ -178,6 +179,8 @@ export default function RootLayout() {
   // The reminders and the weekly recap the phone schedules for itself (12E): planned from the person's own
   // history, reconciled at launch and on returning to the app, cleared on sign-out.
   useLocalNotifications(authChecked, authenticated);
+  // Server push (12F): this install's token is registered when the person wants a push and the phone allows it.
+  usePushRegistration(authChecked, authenticated);
 
   /**
    * The workout in progress outlives any screen (12B-2b): the lock-screen notice follows it from the moment the

@@ -7,6 +7,7 @@ import { ACTIVITY_LEVEL_FACTORS, type Activity, type ActivityLevel, type Trainin
 import { getMe } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { clearSession } from '@/auth/secureStorage';
+import { unregisterFromPush } from '@/features/notifications/push-registration';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { Toast } from '@/components/toast';
@@ -303,6 +304,9 @@ export default function ProfileScreen() {
     setLogoutError(null);
     setLoggingOut(true);
     try {
+      // Server push: this phone's token comes off the server while the sign-in still works (it needs it). Never throws,
+      // and gives up after a few seconds, so it cannot hold up the log-out.
+      await unregisterFromPush();
       await clearSession();
       // Deliberately no `setLoggingOut(false)` on success and no `finally`: the successful
       // path ends with the AuthGate unmounting this screen, so re-enabling the control would

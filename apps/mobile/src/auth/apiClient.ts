@@ -29,6 +29,8 @@ import type {
   ExerciseResponse,
   FeatureFlagsResponse,
   NotificationPreferencesResponse,
+  RegisterPushTokenRequest,
+  RemovePushTokenRequest,
   UpdateNotificationPreferencesRequest,
   ForgePendingWeeksResponse,
   ForgeResponse,
@@ -809,6 +811,19 @@ export async function patchNotificationPreferences(
 ): Promise<NotificationPreferencesResponse> {
   const response = await apiClient.patch<NotificationPreferencesResponse>('/users/me/notifications', changes);
   return response.data;
+}
+
+/** A push registration never waits longer than this, so a bad connection cannot leave a sync pending for ever. */
+const PUSH_REQUEST_TIMEOUT_MS = 10_000;
+
+/** `POST /users/me/push-tokens` -- tells the server this install's push token (Phase 12F). Idempotent; answers 204. */
+export async function registerPushToken(body: RegisterPushTokenRequest): Promise<void> {
+  await apiClient.post('/users/me/push-tokens', body, { timeout: PUSH_REQUEST_TIMEOUT_MS });
+}
+
+/** `DELETE /users/me/push-tokens` -- takes this install's token off the server, before sign-out (Phase 12F). */
+export async function removePushToken(body: RemovePushTokenRequest): Promise<void> {
+  await apiClient.delete('/users/me/push-tokens', { data: body, timeout: PUSH_REQUEST_TIMEOUT_MS });
 }
 
 /**

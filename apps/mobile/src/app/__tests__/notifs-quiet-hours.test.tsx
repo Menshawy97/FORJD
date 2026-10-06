@@ -33,6 +33,9 @@ jest.mock('@/features/notifications/local-notifications', () => ({
 jest.mock('@/features/notifications/use-local-notifications', () => ({
   requestLocalNotificationReconcile: jest.fn(),
 }));
+jest.mock('@/features/notifications/use-push-registration', () => ({
+  requestPushRegistrationSync: jest.fn(),
+}));
 jest.mock('@/store/notification-preferences-sync', () => ({
   syncNotificationPreferences: jest.fn(),
   queueNotificationChange: jest.fn(),
