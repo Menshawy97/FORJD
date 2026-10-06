@@ -747,6 +747,54 @@ describe("WorkoutsRepository", () => {
     });
   });
 
+  describe("priorLiftBestsForUser", () => {
+    const lifted = (exerciseId: string, weightKg: number, over: Partial<CreateWorkoutSessionExerciseInput["sets"][number]> = {}) => ({
+      ...minimalSession("x", exerciseId).exercises[0]!,
+      sets: [{ ...minimalSession("x", exerciseId).exercises[0]!.sets[0]!, weightKg, ...over }],
+    });
+    const store = async (input: CreateWorkoutSessionInput) => {
+      const created = await repository.upsertSession(input);
+      createdSessionIds.push(created.id);
+      return created;
+    };
+
+    it("answers the heaviest completed lift per exercise from sessions that started before the given one", async () => {
+      const owner = await makeUser("prior-bests");
+      const squat = await makeExercise("prior-squat");
+      const bench = await makeExercise("prior-bench");
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-01T09:00:00Z"), exercises: [lifted(squat, 100), lifted(bench, 60)] }));
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-03T09:00:00Z"), exercises: [lifted(squat, 120)] }));
+
+      const bests = await repository.priorLiftBestsForUser(owner, randomUUID(), new Date("2026-09-10T09:00:00Z"), [squat, bench]);
+
+      expect(bests).toEqual(new Map([[squat, 120], [bench, 60]]));
+    });
+
+    it("leaves out the session itself, later sessions, unticked sets, unfinished sessions and other people's lifts", async () => {
+      const owner = await makeUser("prior-bests-excl");
+      const other = await makeUser("prior-bests-other");
+      const squat = await makeExercise("prior-excl-squat");
+      const itself = await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-05T09:00:00Z"), exercises: [lifted(squat, 200)] }));
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-08T09:00:00Z"), exercises: [lifted(squat, 210)] }));
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-02T09:00:00Z"), exercises: [lifted(squat, 220, { isCompleted: false })] }));
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-02T10:00:00Z"), status: "cancelled", exercises: [lifted(squat, 230)] }));
+      await store(minimalSession(other, squat, { startedAt: new Date("2026-09-02T11:00:00Z"), exercises: [lifted(squat, 240)] }));
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-02T12:00:00Z"), status: "in_progress", exercises: [lifted(squat, 250)] }));
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-02T13:00:00Z"), exercises: [lifted(squat, 260, { reps: null })] }));
+      await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-02T14:00:00Z"), exercises: [lifted(squat, 0)] }));
+      const removed = await store(minimalSession(owner, squat, { startedAt: new Date("2026-09-02T15:00:00Z"), exercises: [lifted(squat, 270)] }));
+      await db.update(workoutSessions).set({ deletedAt: new Date() }).where(inArray(workoutSessions.id, [removed.id]));
+
+      const bests = await repository.priorLiftBestsForUser(owner, itself.id, new Date("2026-09-05T09:00:00Z"), [squat]);
+
+      expect(bests.size).toBe(0);
+    });
+
+    it("answers an empty map for no exercises without asking the database", async () => {
+      await expect(repository.priorLiftBestsForUser(randomUUID(), randomUUID(), new Date(), [])).resolves.toEqual(new Map());
+    });
+  });
+
   describe("findSessionByIdForUser", () => {
     it("returns the caller's own session with its exercises and sets", async () => {
       const owner = await makeUser("session-find-own");

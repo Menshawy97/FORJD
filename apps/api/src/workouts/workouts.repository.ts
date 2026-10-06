@@ -119,6 +119,15 @@ export class WorkoutsRepository {
     return this.sessions.listSessionsForUser(filter);
   }
 
+  priorLiftBestsForUser(
+    userId: string,
+    excludeSessionId: string,
+    before: Date,
+    exerciseIds: readonly string[],
+  ): Promise<Map<string, number>> {
+    return this.sessions.priorLiftBestsForUser(userId, excludeSessionId, before, exerciseIds);
+  }
+
   statsForUser(userId: string, timeZone: string, now: Date): Promise<WorkoutStatsRow> {
     return this.sessions.statsForUser(userId, timeZone, now);
   }

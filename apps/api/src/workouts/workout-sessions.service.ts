@@ -15,6 +15,7 @@ import { User, WorkoutSession, WorkoutSessionExercise, WorkoutSet } from "@forjd
 import { CityResolverService } from "../cities/city-resolver.service";
 import { ExercisesRepository } from "../exercises/exercises.repository";
 import { PrivacyService } from "../privacy/privacy.service";
+import { PrCelebrationService } from "./pr-celebration.service";
 import { decodeWorkoutSessionCursor, encodeWorkoutSessionCursor } from "./workout-cursor";
 import {
   CreateRunSummaryInput,
@@ -44,6 +45,7 @@ export class WorkoutSessionsService {
     private readonly exercisesRepository: ExercisesRepository,
     private readonly privacyService: PrivacyService,
     private readonly cityResolver: CityResolverService,
+    private readonly prCelebration: PrCelebrationService,
   ) {}
 
   /**
@@ -75,6 +77,12 @@ export class WorkoutSessionsService {
     const run = await this.resolveRun(owner.id, body.run);
     const input = this.toRepositoryInput(owner.id, body, visibleExercises, city, citySlug, run);
     const session = await this.workoutsRepository.upsertSession(input);
+
+    // A new best queues a push (Phase 12F). Never throws: the workout is already stored.
+    await this.prCelebration.celebrate(
+      session,
+      new Map([...visibleExercises].map(([id, exercise]) => [id, exercise.name])),
+    );
 
     return this.toDetail(session);
   }
