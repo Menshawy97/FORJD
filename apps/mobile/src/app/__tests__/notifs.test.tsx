@@ -44,7 +44,14 @@ jest.mock('@/features/notifications/use-local-notifications', () => ({
 jest.mock('@/store/notification-preferences-sync', () => ({
   syncNotificationPreferences: jest.fn(),
   queueNotificationChange: jest.fn(),
+  queueQuietHoursChange: jest.fn(),
 }));
+// The quiet-hours editor is proven in `notifs-quiet-hours.test.tsx`; here the row only has to show the window.
+jest.mock('@/store/quiet-hours', () => ({
+  loadQuietHours: jest.fn(),
+  saveQuietHours: jest.fn(),
+}));
+jest.mock('@react-native-community/datetimepicker', () => ({ __esModule: true, default: () => null }));
 
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -57,6 +64,7 @@ import {
 } from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
 import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
+import { loadQuietHours } from '@/store/quiet-hours';
 import NotifsScreen from '../notifs';
 
 const METRICS = {
@@ -77,6 +85,7 @@ describe('NotifsScreen', () => {
     (saveNotificationPreferences as jest.Mock).mockResolvedValue(undefined);
     (syncNotificationPreferences as jest.Mock).mockResolvedValue(null);
     (queueNotificationChange as jest.Mock).mockResolvedValue(undefined);
+    (loadQuietHours as jest.Mock).mockResolvedValue({ startMinute: 22 * 60, endMinute: 7 * 60 });
     (readNotificationPermission as jest.Mock).mockResolvedValue('granted');
     (ensureLocalNotificationPermission as jest.Mock).mockResolvedValue(true);
   });
@@ -169,12 +178,12 @@ describe('NotifsScreen', () => {
     ]);
   });
 
-  it('fires the toast and nothing else when Change is pressed', async () => {
+  it('opens the quiet-hours sheet, and nothing else, when Change is pressed', async () => {
     const { findByText } = await render(<NotifsScreen />);
 
     fireEvent.press(await findByText('Change'));
 
-    expect(await findByText('Edit quiet hours')).toBeTruthy();
+    expect(await findByText('Save')).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
     expect(saveNotificationPreferences).not.toHaveBeenCalled();
   });
