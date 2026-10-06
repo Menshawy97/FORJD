@@ -305,6 +305,17 @@ if [ -d apps/api/src ]; then
   fi
 fi
 
+# Phase 12F / ADR-060 / CLAUDE.md rules 3-4: the push service (Expo's hostname, `expo-server-sdk`, and `firebase-admin` as the
+# FCM fallback) is reached only through the `NotificationProvider` adapter in apps/api/src/integrations/push/. Business code
+# builds messages and calls the interface; it never knows which service carries them, so switching service is an adapter.
+if [ -d apps/api/src ]; then
+  hits=$(grep -rln --include='*.ts' -E 'exp\.host|expo-server-sdk|firebase-admin' apps/api/src \
+    | grep -v '^apps/api/src/integrations/push/' || true)
+  if [ -n "$hits" ]; then
+    report "Push service hostname or SDK referenced outside apps/api/src/integrations/push/" "$hits"
+  fi
+fi
+
 # Phase 7 decision 2 / CLAUDE.md rule 5: WHOOP's OAuth secret must never reach the mobile
 # bundle -- the integration runs entirely server-side (docs/product/phase-7-plan.md,
 # docs/architecture/integrations.md's WHOOP section). This is the mechanically enforceable
