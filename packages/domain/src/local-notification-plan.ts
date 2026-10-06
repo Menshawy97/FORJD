@@ -55,6 +55,8 @@ export interface LocalNotificationPlanInput {
    * switch was turned on if there is none. Absent means nothing to count from.
    */
   weighInAnchor?: string;
+  /** The person's quiet hours; absent or invalid means 22:00 to 07:00. No kind is planned inside them. */
+  quietHours?: QuietHours;
 }
 
 export interface PlannedLocalNotification {
@@ -74,9 +76,20 @@ export const LOCAL_NOTIFICATION_HORIZON_DAYS = 14;
 /** Kept well under iOS's limit of 64 pending local notifications. */
 export const MAX_PENDING_LOCAL_NOTIFICATIONS = 60;
 export const WORKOUT_REMINDER_LEAD_MINUTES = 30;
-/** Nothing is sent from 22:00 up to 07:00, until a quiet-hours editor exists. */
+/** The quiet hours before anyone changes them: nothing from 22:00 up to 07:00. */
 export const QUIET_HOURS_START_MINUTE = 22 * 60;
 export const QUIET_HOURS_END_MINUTE = 7 * 60;
+
+/** Minutes since midnight. The start is quiet, the end is not; a start after the end runs through midnight. */
+export interface QuietHours {
+  startMinute: number;
+  endMinute: number;
+}
+
+export const DEFAULT_QUIET_HOURS: QuietHours = {
+  startMinute: QUIET_HOURS_START_MINUTE,
+  endMinute: QUIET_HOURS_END_MINUTE,
+};
 /** The recap arrives right after the Saturday-to-Friday week closes (ADR-056). */
 export const WEEKLY_RECAP_MINUTE = 9 * 60;
 /** The evening nudge to log food, about 19:30 (approved 2026-10-06). */
@@ -138,7 +151,24 @@ const usualStart = (starts: readonly number[]): number =>
 const clock = (minute: number): string =>
   `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 
-const inQuietHours = (minute: number): boolean => minute >= QUIET_HOURS_START_MINUTE || minute < QUIET_HOURS_END_MINUTE;
+/** Whether `minute` falls inside the window; an overnight window (start after end) wraps through midnight. */
+export const isInQuietHours = (minute: number, quietHours: QuietHours): boolean =>
+  quietHours.startMinute > quietHours.endMinute
+    ? minute >= quietHours.startMinute || minute < quietHours.endMinute
+    : minute >= quietHours.startMinute && minute < quietHours.endMinute;
+
+/**
+ * The window to plan with: the person's choice when it is two different valid times, otherwise the default. The
+ * value comes from the server and the phone's storage, so it is checked rather than trusted. Equal times would
+ * mean a window of nothing or of the whole day, which is never what someone meant.
+ */
+export const resolveQuietHours = (chosen: QuietHours | undefined): QuietHours =>
+  chosen !== undefined &&
+  isValidMinuteOfDay(chosen.startMinute) &&
+  isValidMinuteOfDay(chosen.endMinute) &&
+  chosen.startMinute !== chosen.endMinute
+    ? chosen
+    : DEFAULT_QUIET_HOURS;
 
 interface Habit {
   /** Start minutes of the window's sessions, by weekday. */
@@ -220,6 +250,7 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
   const sessions = input.recentSessions.filter(
     (session) => isValidLocalDate(session.date) && isValidMinuteOfDay(session.startMinute),
   );
+  const quietHours = resolveQuietHours(input.quietHours);
   const today = dayNumber(input.now.date);
   const habit = readHabit(sessions, today);
   const trainedToday = sessions.some((session) => session.date === input.now.date);
@@ -242,13 +273,15 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
     const date = dateOfDayNumber(day);
     const weekday = weekdayOfDayNumber(day);
     const isToday = offset === 0;
-    const stillAhead = (minute: number): boolean => !isToday || minute > input.now.minute;
+    // Today only what is still ahead, and never inside quiet hours. A negative minute (a reminder before 00:30 would
+    // belong to the day before) is dropped too, so one check covers every kind.
+    const canSendAt = (minute: number): boolean =>
+      minute >= 0 && !isInQuietHours(minute, quietHours) && (!isToday || minute > input.now.minute);
 
     if (input.switches.workout && !(isToday && trainedToday)) {
       const reminder = reminderFor(weekday, habit, input.programWorkouts, programWeekdays);
-      // A negative minute (a start before 00:30) is inside quiet hours too, so one check covers both.
       const minute = reminder === null ? 0 : reminder.startMinute - WORKOUT_REMINDER_LEAD_MINUTES;
-      if (reminder !== null && !inQuietHours(minute) && stillAhead(minute)) {
+      if (reminder !== null && canSendAt(minute)) {
         plan.push({
           id: `forjd-local:workout:${date}`,
           kind: "workout",
@@ -261,7 +294,7 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
       }
     }
 
-    if (input.switches.meals && !(isToday && input.mealLoggedToday) && stillAhead(MEALS_REMINDER_MINUTE)) {
+    if (input.switches.meals && !(isToday && input.mealLoggedToday) && canSendAt(MEALS_REMINDER_MINUTE)) {
       plan.push({
         id: `forjd-local:meals:${date}`,
         kind: "meals",
@@ -273,7 +306,7 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
       });
     }
 
-    if (input.switches.noWorkout && programHasWorkLeft && weekday === THURSDAY && stillAhead(NO_WORKOUT_REMINDER_MINUTE)) {
+    if (input.switches.noWorkout && programHasWorkLeft && weekday === THURSDAY && canSendAt(NO_WORKOUT_REMINDER_MINUTE)) {
       const weekStart = weekStartOf(day);
       let trainedThisWeek = false;
       for (let back = weekStart; back <= day; back += 1) trainedThisWeek = trainedThisWeek || sessionDays.has(back);
@@ -296,7 +329,7 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
       input.switches.forgeClosing &&
       forgeWeek?.closeToTarget &&
       day === forgeFriday &&
-      stillAhead(FORGE_CLOSING_REMINDER_MINUTE)
+      canSendAt(FORGE_CLOSING_REMINDER_MINUTE)
     ) {
       plan.push({
         id: `forjd-local:forgeClosing:${date}`,
@@ -316,7 +349,7 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
       weighInAnchor !== null &&
       day > weighInAnchor &&
       (day - weighInAnchor) % WEIGH_IN_INTERVAL_DAYS === 0 &&
-      stillAhead(WEIGH_IN_REMINDER_MINUTE)
+      canSendAt(WEIGH_IN_REMINDER_MINUTE)
     ) {
       plan.push({
         id: `forjd-local:weighIn:${date}`,
@@ -329,7 +362,7 @@ export function planLocalNotifications(input: LocalNotificationPlanInput): Plann
       });
     }
 
-    if (input.switches.weekly && weekday === WEEK_START_DOW && stillAhead(WEEKLY_RECAP_MINUTE)) {
+    if (input.switches.weekly && weekday === WEEK_START_DOW && canSendAt(WEEKLY_RECAP_MINUTE)) {
       plan.push({
         id: `forjd-local:weekly:${date}`,
         kind: "weekly",
