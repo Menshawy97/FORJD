@@ -3,6 +3,7 @@ import {
   planLocalNotifications,
   type PlannedLocalNotification,
   type ProgramWeekdayWorkout,
+  type QuietHours,
   type TrainingSessionStart,
 } from '@forjd/domain';
 import type {
@@ -28,6 +29,7 @@ import { isNotFound } from '@/auth/failure';
 import { loadFeatureFlags } from '@/features/flags/feature-flags';
 import { WEEKLY_FORGE_FLAG } from '@/features/forge/use-forge-week';
 import { loadNotificationPreferences, type NotificationPreferences } from '@/store/notification-preferences';
+import { loadQuietHours } from '@/store/quiet-hours';
 import { clearWeighInSince, getOrSetWeighInSince } from '@/store/weigh-in-reminder-anchor';
 
 /**
@@ -37,6 +39,8 @@ import { clearWeighInSince, getOrSetWeighInSince } from '@/store/weigh-in-remind
  */
 export interface PlanInputSources {
   loadPreferences: () => Promise<NotificationPreferences>;
+  /** The person's quiet hours, 22:00 to 07:00 until they change them. Never rejects. */
+  loadQuietHours: () => Promise<QuietHours>;
   listSessions: (query: { limit: number }) => Promise<WorkoutSessionListResponse>;
   getEnrollment: () => Promise<ProgramEnrollmentResponse>;
   getProgram: (id: string) => Promise<ProgramResponse>;
@@ -53,6 +57,7 @@ export interface PlanInputSources {
 
 export const defaultPlanInputSources: PlanInputSources = {
   loadPreferences: loadNotificationPreferences,
+  loadQuietHours,
   listSessions: listWorkoutSessions,
   getEnrollment: getProgramEnrollment,
   getProgram,
@@ -162,6 +167,7 @@ export async function buildLocalNotificationPlan(
       return [];
     }
     const today = localDate(now);
+    const quietHours = await sources.loadQuietHours();
     const [recentSessions, programWorkouts, mealLoggedToday, weekStreak, forgeWeek, weighInAnchor] = await Promise.all([
       switches.workout || switches.noWorkout ? readSessionStarts(sources) : [],
       // The program decides workout days, and whether "no workout yet this week" has anything left to ask for.
@@ -187,6 +193,7 @@ export async function buildLocalNotificationPlan(
       weekStreak,
       forgeWeek,
       weighInAnchor,
+      quietHours,
     });
   } catch {
     return null;

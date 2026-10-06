@@ -1,13 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { notificationPreferencesResponseSchema } from '@forjd/contracts';
+import { notificationPreferencesResponseSchema, quietHoursSchema } from '@forjd/contracts';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   NOTIFICATION_PREFERENCE_KEYS,
   type NotificationPreferences,
+  type QuietHours,
 } from '@forjd/domain';
 
 import { getNotificationPreferences, patchNotificationPreferences } from '@/auth/apiClient';
 import { NOTIFICATION_PREFERENCES_PENDING_STORAGE_KEY, saveNotificationPreferences } from './notification-preferences';
+import { parseQuietHours, QUIET_HOURS_PENDING_STORAGE_KEY, saveQuietHours } from './quiet-hours';
+
+// An older server answers no quiet hours; the switches in its answer still count (the quiet-hours editor, slice 3).
+const serverAnswerSchema = notificationPreferencesResponseSchema.extend({ quietHours: quietHoursSchema.optional() });
 
 // Phase 12D (docs/product/phase-12d-plan.md). The device copy in `notification-preferences.ts` stays
 // the cache the screen reads at once. This module makes the server the home of the choice:
@@ -113,8 +118,65 @@ async function queueInOrder(previous: NotificationPreferences, next: Notificatio
   }
 }
 
+async function readPendingQuietHours(): Promise<QuietHours | null> {
+  try {
+    const raw = await AsyncStorage.getItem(QUIET_HOURS_PENDING_STORAGE_KEY);
+    return raw === null ? null : parseQuietHours(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+async function writePendingQuietHours(hours: QuietHours | null): Promise<void> {
+  try {
+    if (hours === null) {
+      await AsyncStorage.removeItem(QUIET_HOURS_PENDING_STORAGE_KEY);
+    } else {
+      await AsyncStorage.setItem(QUIET_HOURS_PENDING_STORAGE_KEY, JSON.stringify(hours));
+    }
+  } catch {
+    // Best effort, like the switches: the device copy already has the window.
+  }
+}
+
+const sameWindow = (a: QuietHours | null, b: QuietHours | null): boolean =>
+  a !== null && b !== null && a.startMinute === b.startMinute && a.endMinute === b.endMinute;
+
 /**
- * Sends anything waiting, then reads the server's switches and keeps them as the device copy.
+ * Sends a quiet-hours change that is waiting, whole (both times). Forgets it only if it is still the one that was
+ * sent, so a newer choice made meanwhile is kept for the next send.
+ */
+async function flushPendingQuietHours(): Promise<boolean> {
+  const sent = await readPendingQuietHours();
+  if (sent === null) return true;
+  try {
+    await patchNotificationPreferences({ quietHours: sent });
+  } catch {
+    return false;
+  }
+  if (sameWindow(await readPendingQuietHours(), sent)) await writePendingQuietHours(null);
+  return true;
+}
+
+/**
+ * Keeps a chosen quiet-hours window on the phone at once, then tries to send it. Never throws: a window that cannot
+ * be sent is kept and sent the next time the Notifications screen opens, like a switch.
+ */
+export function queueQuietHoursChange(hours: QuietHours): Promise<void> {
+  return inOrder(async () => {
+    try {
+      await saveQuietHours(hours);
+      await writePendingQuietHours(hours);
+      await flushPendingQuietHours();
+    } catch {
+      // The device copy already has the window; it is sent the next time the screen opens.
+    }
+  });
+}
+
+/**
+ * Sends anything waiting, then reads the server's switches and keeps them as the device copy; the server's quiet
+ * hours, when it sends them, become the device copy too.
  * Answers the switches, or `null` when it could not (offline, a send that failed, an answer that is
  * not the contract), in which case the device copy is left exactly as it was.
  */
@@ -124,12 +186,13 @@ export function syncNotificationPreferences(): Promise<NotificationPreferences |
 
 async function syncInOrder(): Promise<NotificationPreferences | null> {
   try {
-    if (!(await flushPending())) return null;
-    const parsed = notificationPreferencesResponseSchema.safeParse(await getNotificationPreferences());
+    if (!(await flushPending()) || !(await flushPendingQuietHours())) return null;
+    const parsed = serverAnswerSchema.safeParse(await getNotificationPreferences());
     if (!parsed.success) return null;
     const preferences = { ...DEFAULT_NOTIFICATION_PREFERENCES };
     for (const key of NOTIFICATION_PREFERENCE_KEYS) preferences[key] = parsed.data[key];
     await saveNotificationPreferences(preferences);
+    if (parsed.data.quietHours) await saveQuietHours(parsed.data.quietHours);
     return preferences;
   } catch {
     return null;

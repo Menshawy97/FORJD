@@ -2,11 +2,12 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
+import { DEFAULT_QUIET_HOURS, type QuietHours } from '@forjd/domain';
+
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
-import { Toast, useToast } from '@/components/toast';
 import { ToggleRow } from '@/components/toggle-row';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -20,16 +21,23 @@ import {
   type NotificationPermission,
 } from '@/features/notifications/local-notifications';
 import { requestLocalNotificationReconcile } from '@/features/notifications/use-local-notifications';
-import { queueNotificationChange, syncNotificationPreferences } from '@/store/notification-preferences-sync';
+import { formatQuietHours } from '@/features/notifications/quiet-hours-format';
+import { QuietHoursSheet } from '@/features/notifications/quiet-hours-sheet';
+import {
+  queueNotificationChange,
+  queueQuietHoursChange,
+  syncNotificationPreferences,
+} from '@/store/notification-preferences-sync';
+import { loadQuietHours } from '@/store/quiet-hours';
 import { colors } from '@/theme/tokens';
 
 // docs/design/slice2-screen-specs.md §5. Device-local only: there is no notifications backend
 // and won't be until push (Phase 6/8), so every toggle writes straight to
 // `store/notification-preferences` — see that file for why AsyncStorage and why behind a seam.
 //
-// **No Save button** (§5.5): toggles apply and persist immediately, and there is no toast on
-// toggle. The only toast is `Edit quiet hours`, fired by `Change`, which is a stub — the
-// design has no quiet-hours editor to navigate to.
+// **No Save button on the switches** (§5.5): toggles apply and persist immediately, and there is no toast on
+// toggle. Quiet hours are edited in a small sheet opened by `Change` (the approved mock-up, 2026-10-06; see
+// `features/notifications/quiet-hours-sheet.tsx`), and that sheet has its own Save.
 //
 // Not to be confused with `notifsFeed`, a different prototype screen with the same header
 // title that backs out to `home` with the Home tab lit (§5.1).
@@ -62,14 +70,17 @@ const SCHEDULED_ON_PHONE: ReadonlySet<keyof NotificationPreferences> = new Set([
   'weighIn',
 ]);
 
-/** §5.2, verbatim: em dash U+2014 with a space either side, not a hyphen. */
-const QUIET_HOURS = '22:00 — 07:00';
-
 export default function NotifsScreen() {
   const [preferences, setPreferences] = useState<NotificationPreferences>(
     DEFAULT_NOTIFICATION_PREFERENCES,
   );
-  const toast = useToast();
+  // The person's quiet hours: the device copy at once, then the server's once it answers. The sheet opens from Change.
+  const [quietHours, setQuietHours] = useState<QuietHours>(DEFAULT_QUIET_HOURS);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Numbers every quiet-hours read, so a slow older read cannot overwrite a newer one or the person's own save.
+  const quietReadCount = useRef(0);
+  // Set once the person saves their own window, so a server answer that arrives later never undoes their save.
+  const quietTouchedRef = useRef(false);
   // Whether the phone lets FORJD show notifications. The note below only appears for a refusal, which only the
   // phone's own settings can undo; before the first question there is nothing to say.
   const [permission, setPermission] = useState<NotificationPermission>('undetermined');
@@ -108,8 +119,15 @@ export default function NotifsScreen() {
     requestLocalNotificationReconcile();
   }, [refreshPermission]);
 
+  const refreshQuietHours = useCallback(async () => {
+    const mine = ++quietReadCount.current;
+    const stored = await loadQuietHours();
+    if (mine === quietReadCount.current) setQuietHours(stored);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
+    void refreshQuietHours();
     loadNotificationPreferences().then((stored) => {
       if (!cancelled) {
         applyPreferences(stored);
@@ -118,17 +136,21 @@ export default function NotifsScreen() {
     });
     // Phase 12D: the server is the home of the switches. Show the device copy at once (above), then
     // adopt the server's answer. Silent when it cannot be reached: the device copy stays.
-    void syncNotificationPreferences().then((fromServer) => {
+    void syncNotificationPreferences().then(async (fromServer) => {
       if (!cancelled && fromServer !== null && !touchedRef.current) {
         applyPreferences(fromServer);
       }
       // The server's answer may differ from the device copy, so the schedule follows it.
-      if (fromServer !== null) requestLocalNotificationReconcile();
+      if (fromServer !== null) {
+        // The sync kept the server's quiet hours as the device copy; show them unless the person just chose their own.
+        if (!cancelled && !quietTouchedRef.current) await refreshQuietHours();
+        requestLocalNotificationReconcile();
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [applyPreferences]);
+  }, [applyPreferences, refreshQuietHours]);
 
   // Read on opening and again whenever the app comes back to the front, because the person may have just changed
   // the setting in the phone's settings.
@@ -150,6 +172,17 @@ export default function NotifsScreen() {
   }, [loaded, permissionKnown, permission, preferences, askPhone]);
 
   const goBack = () => router.replace('/profile');
+
+  // The ordered queue keeps the window on the phone and sends it, behind any sync still on its way, so the sync can
+  // never save an older window over this one. The schedule is planned again only once the window is kept, so the last
+  // plan always sees the final window.
+  const saveHours = (hours: QuietHours) => {
+    quietTouchedRef.current = true;
+    quietReadCount.current += 1;
+    setQuietHours(hours);
+    setSheetOpen(false);
+    void queueQuietHoursChange(hours).then(() => requestLocalNotificationReconcile());
+  };
 
   const toggle = (key: keyof NotificationPreferences) => {
     const next = { ...preferences, [key]: !preferences[key] };
@@ -218,23 +251,26 @@ export default function NotifsScreen() {
           className="flex-row items-center justify-between gap-[10px] rounded-card border border-border bg-surface px-4 py-[15px]">
           <View className="flex-row items-center gap-[12px]">
             <Icon name="clock" size={20} color={colors.metadata} />
-            <Text className="font-archivo text-[14px] font-semibold text-text">{QUIET_HOURS}</Text>
+            <Text className="font-archivo text-[14px] font-semibold text-text">{formatQuietHours(quietHours)}</Text>
           </View>
-          {/* A stub by design: the prototype toasts and does nothing else, because no
-              quiet-hours editor screen exists anywhere in the design (§5.5). */}
           {/* hitSlop, not padding: the design fixes this row's geometry, so the tap target is
               grown outward to the 44pt accessibility minimum without moving the label. */}
           <Pressable
             accessibilityRole="button"
             hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-            onPress={() => toast.show('Edit quiet hours')}>
+            onPress={() => setSheetOpen(true)}>
             <Text className="font-archivo text-[12.5px] font-semibold text-accent">Change</Text>
           </Pressable>
         </View>
+        <Text className="mx-[2px] mt-[8px] font-archivo text-row-subtitle text-dimmer">
+          No reminders arrive during this time.
+        </Text>
       </ScrollView>
 
       <TabBar active="profile" />
-      <Toast message={toast.message} />
+      {sheetOpen ? (
+        <QuietHoursSheet hours={quietHours} onSave={saveHours} onClose={() => setSheetOpen(false)} />
+      ) : null}
     </ScreenBackground>
   );
 }

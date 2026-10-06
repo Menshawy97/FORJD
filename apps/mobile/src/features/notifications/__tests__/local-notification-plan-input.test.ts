@@ -1,5 +1,5 @@
 import type { ForgeResponse, ProgramResponse, WorkoutSessionSummary } from '@forjd/contracts';
-import { DEFAULT_NOTIFICATION_PREFERENCES, type PlannedLocalNotification } from '@forjd/domain';
+import { DEFAULT_NOTIFICATION_PREFERENCES, DEFAULT_QUIET_HOURS, type PlannedLocalNotification } from '@forjd/domain';
 
 import { buildLocalNotificationPlan, type PlanInputSources } from '../local-notification-plan-input';
 
@@ -33,6 +33,7 @@ const enrollment = {
 function sources(overrides: Partial<PlanInputSources> = {}): PlanInputSources {
   return {
     loadPreferences: jest.fn(async () => allOn),
+    loadQuietHours: jest.fn(async () => DEFAULT_QUIET_HOURS),
     listSessions: jest.fn(async () => ({ items: [], nextCursor: null })),
     getEnrollment: jest.fn(async () => ({ enrollment: null })),
     getProgram: jest.fn(),
@@ -49,6 +50,24 @@ function sources(overrides: Partial<PlanInputSources> = {}): PlanInputSources {
 
 const withSessions = (items: WorkoutSessionSummary[]) => jest.fn(async () => ({ items, nextCursor: null }));
 const ids = (plan: PlannedLocalNotification[] | null) => (plan ?? []).map((entry) => entry.id);
+
+describe('buildLocalNotificationPlan and the quiet hours', () => {
+  const mealsOnly = { ...DEFAULT_NOTIFICATION_PREFERENCES, workout: false, weekly: false, meals: true };
+
+  it("plans around the person's own quiet hours", async () => {
+    const open = await buildLocalNotificationPlan(sources({ loadPreferences: jest.fn(async () => mealsOnly) }), NOW);
+    const evening = await buildLocalNotificationPlan(
+      sources({
+        loadPreferences: jest.fn(async () => mealsOnly),
+        loadQuietHours: jest.fn(async () => ({ startMinute: 19 * 60, endMinute: 21 * 60 })),
+      }),
+      NOW,
+    );
+
+    expect(ids(open).length).toBeGreaterThan(0);
+    expect(ids(evening)).toEqual([]);
+  });
+});
 
 describe('buildLocalNotificationPlan', () => {
   it('plans the weekly recap even with no history, and stays quiet about workouts', async () => {
