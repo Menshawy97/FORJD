@@ -177,6 +177,20 @@ export const accountExportPushTokenSchema = z.object({
   lastSeenAt: z.string().datetime(),
 });
 
+/**
+ * One push FORJD queued or sent to the person (Phase 12F): what it said (a training fact or a city, never a health value) and
+ * what became of it. Finished ones are removed after 30 days.
+ */
+export const accountExportPushNotificationSchema = z.object({
+  kind: z.enum(['pr', 'rank']),
+  status: z.enum(['pending', 'sending', 'sent', 'dropped', 'failed']),
+  title: z.string(),
+  body: z.string(),
+  createdAt: z.string().datetime(),
+  sendAfter: z.string().datetime(),
+  sentAt: z.string().datetime().nullable(),
+});
+
 /** Everything in the export that comes from `AccountExportExtrasRepository` (8C). */
 export const accountExportExtrasSchema = z.object({
   customExercises: z.array(accountExportCustomExerciseSchema),
@@ -198,6 +212,8 @@ export const accountExportExtrasSchema = z.object({
   notificationPreferences: notificationPreferencesResponseSchema.nullable(),
   /** Added with Phase 12F (additive, so `version` stays 1). One entry per registered phone, without the token value; empty when none. */
   pushTokens: z.array(accountExportPushTokenSchema),
+  /** Added with Phase 12F (additive, so `version` stays 1). */
+  pushNotifications: z.array(accountExportPushNotificationSchema),
   healthConnections: z.array(accountExportHealthConnectionSchema),
   programEnrollmentHistory: z.array(accountExportEnrollmentHistorySchema),
   /** Added with Weekly Forge (additive, so `version` stays 1). */

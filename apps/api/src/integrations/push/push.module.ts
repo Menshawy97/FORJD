@@ -4,9 +4,8 @@ import { expoPushProvider } from './expo-push-provider';
 import { NOTIFICATION_PROVIDER } from './notification-provider';
 
 /**
- * Provides the `NotificationProvider` (the Expo adapter) to whichever module sends a push (Phase 12F). Not imported by
- * `AppModule` yet: the dispatch service that uses it arrives in slice 3, and an integration nothing consumes has no
- * reason to be in the boot graph (the same call `TurnstileModule` made).
+ * Provides the `NotificationProvider` (the Expo adapter) to whichever module sends a push (Phase 12F). `NotificationsModule`
+ * imports it for the dispatch service.
  */
 @Module({
   providers: [expoPushProvider],

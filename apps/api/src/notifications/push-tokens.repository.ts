@@ -59,6 +59,12 @@ export class PushTokensRepository {
     await this.db.delete(devicePushTokens).where(inArray(devicePushTokens.token, [...tokens]));
   }
 
+  /** Tokens by id, for a phone a receipt or a send said is gone (the dispatcher knows ids, not values). */
+  async deleteByIds(ids: readonly string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.db.delete(devicePushTokens).where(inArray(devicePushTokens.id, [...ids]));
+  }
+
   async listForUser(userId: string): Promise<DevicePushTokenRow[]> {
     return this.db
       .select()

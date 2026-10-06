@@ -1,4 +1,4 @@
-import { accountExportPushTokenSchema } from "./account-export";
+import { accountExportPushNotificationSchema, accountExportPushTokenSchema } from "./account-export";
 import { registerPushTokenRequestSchema, removePushTokenRequestSchema } from "./push-tokens";
 
 // Phase 12F slice 1 (docs/product/phase-12f-plan.md). The phone registers its push token once it has permission and
@@ -52,5 +52,26 @@ describe("accountExportPushTokenSchema", () => {
     expect(accountExportPushTokenSchema.safeParse({ ...row, lastSeenAt: "yesterday" }).success).toBe(false);
     // The schema is not strict, so a token value in the input is simply dropped from what it returns.
     expect(accountExportPushTokenSchema.parse({ ...row, token: EXPO_TOKEN })).toEqual(row);
+  });
+});
+describe("accountExportPushNotificationSchema", () => {
+  const row = {
+    kind: "pr",
+    status: "sent",
+    title: "New PR on Back Squat",
+    body: "Open FORJD to see it.",
+    createdAt: "2026-10-07T12:00:00.000Z",
+    sendAfter: "2026-10-07T12:00:00.000Z",
+    sentAt: "2026-10-07T12:00:05.000Z",
+  };
+
+  it("describes a push the person was sent or is waiting for, with its text and what became of it", () => {
+    expect(accountExportPushNotificationSchema.parse(row)).toEqual(row);
+    expect(accountExportPushNotificationSchema.parse({ ...row, status: "pending", sentAt: null }).sentAt).toBeNull();
+  });
+
+  it("refuses a kind or a status it does not know", () => {
+    expect(accountExportPushNotificationSchema.safeParse({ ...row, kind: "recovery" }).success).toBe(false);
+    expect(accountExportPushNotificationSchema.safeParse({ ...row, status: "lost" }).success).toBe(false);
   });
 });
