@@ -1,6 +1,6 @@
 # Phase 12F — server push
 
-**Status (2026-10-06): proposed, awaiting the owner's answers to the open questions at the end.** Nothing is built.
+**Status (2026-10-06): the owner answered the four questions (see the end); ready to start at slice 1 on the owner's word. Nothing is built.**
 Every slice is its own PR, test-first, reviewed, merged with `main` green, and **each PR also updates this plan, the roadmap and
 `remaining-checklist.md`** (standing instruction, 2026-10-06). Decisions already made:
 [ADR-060](../decisions/ADR-060-push-notification-transport.md) (Expo push service behind a `NotificationProvider`),
@@ -14,7 +14,7 @@ and 12E ([phase-12e-plan.md](phase-12e-plan.md): local reminders, the permission
 
 | Push | Switch | When | Text (no health value, ADR-061) | Tap opens |
 |---|---|---|---|---|
-| **PR celebration** | `pr` (default on) | Just after a workout session uploads and holds a new personal record | "New PR on Back Squat" (the exercise name is training, allowed by ADR-061 point 2); several in one session: "3 new PRs in that session" | The session |
+| **PR celebration** | `pr` (default on) | Just after a workout session or run uploads and holds a new personal record (lifts and runs, owner 2026-10-06) | "New PR on Back Squat" (the exercise name is training, allowed by ADR-061 point 2); a run: "New PR: your longest run" or "New PR: your fastest pace", with no figures; several in one session: "3 new PRs in that session" | The session |
 | **Leaderboard move** | `rank` (default off) | Once a week, when the Saturday snapshot shows the person's city rank changed | "You moved up in <City>" / "You moved down in <City>" (a rank the person published; the city name is on their public profile) | Rank tab |
 
 **Out:** recovery alerts (12G: health data, own consent and device test), any new switch, any new screen (the two
@@ -44,7 +44,7 @@ switches and the permission note already exist, so this slice needs **no new UI*
 **One outbox, one drain.** Every push is a row in `push_outbox` (user, kind, payload ids, `dedupe_key` unique, `send_after`,
 `sent_at`, status). Senders only write rows; a single `PushDispatchService` sends what is due. Reasons: it makes sending idempotent
 (a retried upload cannot send twice), it handles quiet hours (a row's `send_after` is the next moment outside the person's quiet
-hours in their time zone), and it works without a scheduler: a small GitHub Actions workflow (`push-drain.yml`, every 15 minutes, same
+hours in their time zone: **a push that would land inside quiet hours is moved to the first minute after them**, never dropped, owner 2026-10-06), and it works without a scheduler: a small GitHub Actions workflow (`push-drain.yml`, every 15 minutes, same
 pattern and the same environment matrix as the snapshot workflow) runs a script that calls the service. Best-effort cron is accepted,
 as for the snapshot. A PR push also tries an immediate send for that user after the upload response has gone out, so the usual case
 needs no wait.
@@ -61,6 +61,12 @@ the kind and ids. The exit check of 12F is this test plus a captured-payload tes
 with the person's best **before** it (the first time anyone lifts an exercise is not a PR; the record needs something to beat).
 Dedupe key `pr:<sessionId>`; one push per session, naming the exercise with the biggest jump, or a count when there are several. A
 detection failure is logged and swallowed.
+
+**Run records (owner chose lifts and runs).** Proposed rules, to confirm with the owner when slice 5b starts: a run is a record when it is
+the **longest distance** the person has run, or has the **fastest average pace among runs of at least 2 km**, against their best before it
+(the first run is not a record). Distance, time and pace are training facts, not health values, but the push **shows no figures**
+("New PR: your longest run"), the safe reading of ADR-061; heart rate and calories are never read for this. A run uploads through
+the same idempotent path, so the same dedupe key rule applies (`pr:<runId>`).
 
 **Leaderboard move** is computed by the snapshot script itself: before it replaces the week's rows it already has last week's rank
 (the "up 3 this week" arrow is exactly this comparison), so a move is the difference between the old baseline and the new standings.
@@ -89,8 +95,8 @@ receipts) are deleted by the drain. The export lists the person's tokens; accoun
    `pr` or `rank`, and opening the screen with either on, also asks), token fetch and registration after sign-in and on launch when
    permitted, token deletion before sign-out, a separate Android channel (default importance, "Updates"), tap routing from the data
    payload (validated, never trusted), seam-injected so Jest covers it. No new UI.
-5. **PR celebration sender:** detection at upload, outbox write, immediate try, tests including the idempotent retry and the offline
-   backlog drop.
+5. **PR celebration sender, in two PRs.** 5a lifts: detection at upload, outbox write, immediate try, tests including the idempotent
+   retry and the offline backlog drop. 5b runs: the two run-record rules above (confirmed with the owner first), same sender.
 6. **Leaderboard move sender and the drain workflow:** the snapshot script writes outbox rows; `push-drain.yml` and its script;
    tests for the comparison and the quiet-hours hold.
 7. **Docs close:** data inventory (tokens, outbox), FAQ entry (wording needs the owner's approval, `faq-copy.md` process), roadmap,
@@ -127,7 +133,14 @@ receipts) are deleted by the drain. The export lists the person's tokens; accoun
 3. The **Play Data safety** and **privacy policy** wording for push (I draft it, you approve it).
 4. (Later, with Phase 11) the Apple Developer account and an APNs key for iPhone push.
 
-## Open questions for the owner
+## Owner's answers (2026-10-06)
+
+1. **Android first, iPhone later:** yes.
+2. **PR celebrations:** lifts **and runs** (heaviest weight on a lift; runs by the rules proposed above, to confirm at 5b). Bigger than lifts alone, so it is two PRs.
+3. **Leaderboard push:** up and down, any change, at most once a week.
+4. **Quiet hours:** the notification is **moved to a time outside them** (the first minute after quiet hours end), not dropped.
+
+## Questions that were asked
 
 1. **Android first, iPhone later?** Recommended: yes (ADR-007; the Apple account is still missing).
 2. **What counts as a PR celebration?** Recommended for 12F: the heaviest weight on a lift only. Runs (best time or distance) would
