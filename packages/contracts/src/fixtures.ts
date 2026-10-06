@@ -1091,6 +1091,17 @@ export const responseFixtures = {
         quietHours: { startMinute: 1380, endMinute: 360 },
         updatedAt: '2026-10-05T12:00:00.000Z',
       },
+      pushNotifications: [
+        {
+          kind: 'pr',
+          status: 'sent',
+          title: 'New PR on Back Squat',
+          body: 'Open FORJD to see it.',
+          createdAt: '2026-10-07T12:00:00.000Z',
+          sendAfter: '2026-10-07T12:00:00.000Z',
+          sentAt: '2026-10-07T12:00:05.000Z',
+        },
+      ],
       pushTokens: [
         {
           platform: 'android',

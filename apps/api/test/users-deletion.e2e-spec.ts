@@ -18,6 +18,7 @@ import { healthObservations } from "../src/database/schema/health-data.schema";
 import { externalConnections } from "../src/database/schema/external-connections.schema";
 import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from "../src/database/schema/forge.schema";
 import { devicePushTokens } from "../src/database/schema/device-push-tokens.schema";
+import { pushOutbox } from "../src/database/schema/push-outbox.schema";
 import { notificationPreferences } from "../src/database/schema/notification-preferences.schema";
 import { foods, nutritionLogEntries } from "../src/database/schema/nutrition.schema";
 import { workoutTemplates, workoutSessions, programs, programEnrollments } from "../src/database/schema/workouts.schema";
@@ -203,6 +204,17 @@ describe("Account deletion (e2e)", () => {
       await db.insert(forgeRewards).values({ userId, ladderKey: "volume", type: "forge_mark", level: 2, band: "ore", weekStart: "2026-09-26" });
       await db.insert(forgeWeekAcks).values({ userId, weekStart: "2026-09-26" });
       await db.insert(notificationPreferences).values({ userId, rank: true });
+      await db.insert(pushOutbox).values({
+        userId,
+        kind: "pr",
+        dedupeKey: `pr:deletion-${label}-${suiteId}`,
+        title: "New PR on Back Squat",
+        body: "Open FORJD to see it.",
+        data: { type: "pr", sessionId: "s1" },
+        occurredAt: new Date(),
+        // Never due, so a dispatcher running at the same time cannot claim it.
+        sendAfter: new Date("2099-01-01T00:00:00.000Z"),
+      });
       await db.insert(devicePushTokens).values({ userId, token: `ExponentPushToken[deletion-${label}-${suiteId}]`, platform: "android" });
     };
 
@@ -238,6 +250,7 @@ describe("Account deletion (e2e)", () => {
       { name: "forge_week_acks", table: forgeWeekAcks, userColumn: forgeWeekAcks.userId },
       { name: "notification_preferences", table: notificationPreferences, userColumn: notificationPreferences.userId },
       { name: "device_push_tokens", table: devicePushTokens, userColumn: devicePushTokens.userId },
+      { name: "push_outbox", table: pushOutbox, userColumn: pushOutbox.userId },
     ] as const;
 
     for (const { name, table, userColumn } of tablesWithUserId) {

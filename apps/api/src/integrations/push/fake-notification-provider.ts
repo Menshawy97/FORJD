@@ -13,6 +13,9 @@ import {
  * keeps the same contract as the real adapter (`notification-provider-contract.ts`).
  */
 export class FakeNotificationProvider implements NotificationProvider {
+  /** `ticketPrefix` keeps ticket ids unique between fakes, for tests that share a database. */
+  constructor(private readonly ticketPrefix: string = 'fake-ticket') {}
+
   /** Every message the service accepted, in order. */
   readonly sent: PushMessage[] = [];
   /** How many calls reached the service (a call with nothing to do does not). */
@@ -44,7 +47,7 @@ export class FakeNotificationProvider implements NotificationProvider {
       const rejection = this.rejections.get(message.token);
       if (rejection) return failedTicket(message.token, rejection);
       this.ticketCounter += 1;
-      const ticketId = `fake-ticket-${this.ticketCounter}`;
+      const ticketId = `${this.ticketPrefix}-${this.ticketCounter}`;
       this.issued.add(ticketId);
       this.sent.push(message);
       return { token: message.token, status: 'ok', ticketId };

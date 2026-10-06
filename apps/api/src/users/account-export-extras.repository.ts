@@ -11,6 +11,7 @@ import { forgeRewards, forgeUserLadders, forgeWeekAcks, forgeWeeks } from '../da
 import { foods, foodServings, macroGoals, savedMealItems, savedMeals } from '../database/schema/nutrition.schema';
 import { devicePushTokens } from '../database/schema/device-push-tokens.schema';
 import { notificationPreferences } from '../database/schema/notification-preferences.schema';
+import { pushOutbox } from '../database/schema/push-outbox.schema';
 import { preferences } from '../database/schema/preferences.schema';
 import { programEnrollments } from '../database/schema/workouts.schema';
 
@@ -42,6 +43,7 @@ export class AccountExportExtrasRepository {
       [preferenceRow],
       [notificationRow],
       pushTokenRows,
+      pushOutboxRows,
       connectionRows,
       enrollmentRows,
     ] = await Promise.all([
@@ -54,6 +56,7 @@ export class AccountExportExtrasRepository {
       this.db.select().from(preferences).where(eq(preferences.userId, userId)),
       this.db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId)),
       this.db.select().from(devicePushTokens).where(eq(devicePushTokens.userId, userId)).orderBy(asc(devicePushTokens.createdAt), asc(devicePushTokens.id)),
+      this.db.select().from(pushOutbox).where(eq(pushOutbox.userId, userId)).orderBy(asc(pushOutbox.createdAt), asc(pushOutbox.id)),
       this.db.select().from(healthConnections).where(eq(healthConnections.userId, userId)),
       this.db
         .select()
@@ -153,6 +156,15 @@ export class AccountExportExtrasRepository {
             updatedAt: notificationRow.updatedAt.toISOString(),
           }
         : null,
+      pushNotifications: pushOutboxRows.map((row) => ({
+        kind: row.kind as 'pr' | 'rank',
+        status: row.status as 'pending' | 'sending' | 'sent' | 'dropped' | 'failed',
+        title: row.title,
+        body: row.body,
+        createdAt: row.createdAt.toISOString(),
+        sendAfter: row.sendAfter.toISOString(),
+        sentAt: row.sentAt ? row.sentAt.toISOString() : null,
+      })),
       pushTokens: pushTokenRows.map((row) => ({
         platform: row.platform as 'android' | 'ios',
         createdAt: row.createdAt.toISOString(),
