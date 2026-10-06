@@ -9,7 +9,7 @@ const textOf = (blocks: readonly FaqBlock[]): string =>
 const allEntries = FAQ_SECTIONS.flatMap((s) => s.entries);
 
 describe('FAQ content', () => {
-  it('has the seven approved sections in order, Weekly Forge after the rank (X5), Workouts after Runs (12B)', () => {
+  it('has the eight approved sections in order, Weekly Forge after the rank (X5), Workouts after Runs (12B), Notifications after Workouts (12E)', () => {
     expect(FAQ_SECTIONS.map((s) => s.title)).toEqual([
       'Your rank and the leaderboard',
       'Weekly Forge',
@@ -17,13 +17,14 @@ describe('FAQ content', () => {
       'Recovery and health data',
       'Runs',
       'Workouts',
+      'Notifications',
       'Your account and data',
     ]);
   });
 
-  it('has the approved 37 questions, seven, nine, six, four, five, three and three per section', () => {
-    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 9, 6, 4, 5, 3, 3]);
-    expect(allEntries).toHaveLength(37);
+  it('has the approved 42 questions, seven, nine, six, four, five, three, five and three per section', () => {
+    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 9, 6, 4, 5, 3, 5, 3]);
+    expect(allEntries).toHaveLength(42);
   });
 
   it('ties only the Weekly Forge section to a feature flag', () => {
@@ -47,6 +48,25 @@ describe('FAQ content', () => {
     expect(withSource('calories')).toMatch(/ACSM/);
     // scan-height-age-plan.md §4.4: the heart-rate estimate cites its equation too.
     expect(withSource('calories')).toMatch(/Keytel/);
+  });
+
+  // 12E, approved by the owner 2026-10-06 (docs/product/faq-copy.md): ADR-061 says the FAQ must say what
+  // notifications contain, and these claims are what the code does.
+  it('has the approved Notifications section, and says what the notifications contain and that they stay on the phone', () => {
+    const section = FAQ_SECTIONS.find((s) => s.title === 'Notifications');
+    expect(section?.entries.map((e) => e.id)).toEqual([
+      'notifications-which',
+      'notifications-when-to-train',
+      'notifications-contents',
+      'notifications-missing',
+      'notifications-permission',
+    ]);
+    const answer = (id: string) => textOf(section?.entries.find((e) => e.id === id)?.answer ?? []);
+    expect(answer('notifications-which')).toMatch(/22:00 and 07:00/);
+    expect(answer('notifications-when-to-train')).toMatch(/at least two of the last four weeks/);
+    expect(answer('notifications-contents')).toMatch(/nothing in them is sent anywhere/);
+    expect(answer('notifications-contents')).toMatch(/never a health reading/);
+    expect(answer('notifications-missing')).toMatch(/two weeks/);
   });
 
   it('never shows an unfinished note to a user', () => {
