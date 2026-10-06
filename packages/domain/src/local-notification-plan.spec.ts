@@ -1,8 +1,11 @@
 import {
+  DEFAULT_QUIET_HOURS,
   isAnyLadderCloseToTarget,
+  isInQuietHours,
   limitPlannedNotifications,
   MAX_PENDING_LOCAL_NOTIFICATIONS,
   planLocalNotifications,
+  resolveQuietHours,
   type LocalNotificationPlanInput,
   type PlannedLocalNotification,
 } from "./local-notification-plan";
@@ -776,5 +779,126 @@ describe("planLocalNotifications: monthly weigh-in or scan (12E-8)", () => {
       expect(entry.minute).toBeGreaterThanOrEqual(at(7));
       expect(entry.minute).toBeLessThan(at(22));
     }
+  });
+});
+
+describe("quiet hours the person chose (the editor)", () => {
+  const meals = { workout: false, weekly: false, meals: true };
+  const window = (from: number, until: number) => ({ startMinute: from, endMinute: until });
+
+  describe("isInQuietHours", () => {
+    it("treats an overnight window as from the start through midnight to the end, start included and end excluded", () => {
+      expect(isInQuietHours(at(22), DEFAULT_QUIET_HOURS)).toBe(true);
+      expect(isInQuietHours(at(21, 59), DEFAULT_QUIET_HOURS)).toBe(false);
+      expect(isInQuietHours(at(0), DEFAULT_QUIET_HOURS)).toBe(true);
+      expect(isInQuietHours(at(6, 59), DEFAULT_QUIET_HOURS)).toBe(true);
+      expect(isInQuietHours(at(7), DEFAULT_QUIET_HOURS)).toBe(false);
+    });
+
+    it("treats a same-day window as the hours between its two times", () => {
+      const afternoon = window(at(13), at(15));
+
+      expect(isInQuietHours(at(12, 59), afternoon)).toBe(false);
+      expect(isInQuietHours(at(13), afternoon)).toBe(true);
+      expect(isInQuietHours(at(14, 59), afternoon)).toBe(true);
+      expect(isInQuietHours(at(15), afternoon)).toBe(false);
+    });
+  });
+
+  describe("resolveQuietHours", () => {
+    it("keeps a valid choice and falls back to 22:00 to 07:00 for anything else", () => {
+      expect(resolveQuietHours(window(at(23), at(6)))).toEqual(window(at(23), at(6)));
+      expect(resolveQuietHours(undefined)).toEqual(DEFAULT_QUIET_HOURS);
+      expect(resolveQuietHours(window(at(8), at(8)))).toEqual(DEFAULT_QUIET_HOURS);
+      expect(resolveQuietHours(window(-1, at(7)))).toEqual(DEFAULT_QUIET_HOURS);
+      expect(resolveQuietHours(window(at(22), 1440))).toEqual(DEFAULT_QUIET_HOURS);
+      expect(resolveQuietHours(window(22.5, at(7)))).toEqual(DEFAULT_QUIET_HOURS);
+      expect(resolveQuietHours(window(Number.NaN, at(7)))).toEqual(DEFAULT_QUIET_HOURS);
+    });
+  });
+
+  describe("planLocalNotifications", () => {
+    it("plans exactly as before when no quiet hours are given", () => {
+      const withDefault = planLocalNotifications(base({ switches: meals, quietHours: DEFAULT_QUIET_HOURS }));
+
+      expect(planLocalNotifications(base({ switches: meals }))).toEqual(withDefault);
+    });
+
+    it("lets a workout reminder through that the default window would have dropped", () => {
+      const late = [
+        { date: "2026-09-30", startMinute: at(22, 45) },
+        { date: "2026-09-23", startMinute: at(22, 45) },
+      ];
+
+      expect(ofKind(planLocalNotifications(base({ recentSessions: late })), "workout")).toEqual([]);
+      const [first] = ofKind(planLocalNotifications(base({ recentSessions: late, quietHours: window(at(23, 30), at(6)) })), "workout");
+      expect(first?.minute).toBe(at(22, 15));
+    });
+
+    it("drops a workout reminder that falls inside the chosen window", () => {
+      const [first] = ofKind(planLocalNotifications(base({ recentSessions: wednesdayHabit })), "workout");
+      expect(first?.minute).toBe(at(17, 30));
+
+      const plan = planLocalNotifications(base({ recentSessions: wednesdayHabit, quietHours: window(at(17), at(18)) }));
+
+      expect(ofKind(plan, "workout")).toEqual([]);
+    });
+
+    it("still drops a reminder for a start before 00:30 when the chosen window is in the afternoon", () => {
+      const justAfterMidnight = [
+        { date: "2026-09-30", startMinute: at(0, 10) },
+        { date: "2026-09-23", startMinute: at(0, 10) },
+      ];
+
+      const plan = planLocalNotifications(base({ recentSessions: justAfterMidnight, quietHours: window(at(13), at(15)) }));
+
+      expect(ofKind(plan, "workout")).toEqual([]);
+    });
+
+    it("drops the evening meals reminder when quiet hours cover 19:30, and keeps it at the edges", () => {
+      const covering = planLocalNotifications(base({ switches: meals, quietHours: window(at(19), at(21)) }));
+      const startsAtIt = planLocalNotifications(base({ switches: meals, quietHours: window(at(19, 30), at(21)) }));
+      const endsAtIt = planLocalNotifications(base({ switches: meals, quietHours: window(at(18), at(19, 30)) }));
+
+      expect(ofKind(covering, "meals")).toEqual([]);
+      expect(ofKind(startsAtIt, "meals")).toEqual([]);
+      expect(ofKind(endsAtIt, "meals").length).toBeGreaterThan(0);
+    });
+
+    it("applies the chosen window to the Saturday recap at 09:00", () => {
+      const weekly = { workout: false, weekly: true };
+
+      expect(ofKind(planLocalNotifications(base({ switches: weekly })), "weekly").length).toBe(2);
+      expect(ofKind(planLocalNotifications(base({ switches: weekly, quietHours: window(at(8), at(10)) })), "weekly")).toEqual([]);
+    });
+
+    it("applies the chosen window to the Thursday nudge, the Friday Forge nudge and the monthly check-in", () => {
+      const all = { workout: false, weekly: false, noWorkout: true, forgeClosing: true, weighIn: true };
+      const input = base({
+        switches: all,
+        forgeWeek: { weekStart: "2026-10-03", closeToTarget: true },
+        weighInAnchor: "2026-09-12",
+      });
+
+      const open = planLocalNotifications(input);
+      expect(ofKind(open, "noWorkout").length).toBeGreaterThan(0);
+      expect(ofKind(open, "forgeClosing").length).toBeGreaterThan(0);
+      expect(ofKind(open, "weighIn").length).toBeGreaterThan(0);
+
+      const eveningQuiet = planLocalNotifications({ ...input, quietHours: window(at(17), at(19)) });
+      expect(ofKind(eveningQuiet, "noWorkout")).toEqual([]);
+      expect(ofKind(eveningQuiet, "forgeClosing")).toEqual([]);
+      expect(ofKind(eveningQuiet, "weighIn").length).toBeGreaterThan(0);
+
+      const morningQuiet = planLocalNotifications({ ...input, quietHours: window(at(9), at(11)) });
+      expect(ofKind(morningQuiet, "weighIn")).toEqual([]);
+      expect(ofKind(morningQuiet, "noWorkout").length).toBeGreaterThan(0);
+    });
+
+    it("uses the default window when the chosen one is invalid", () => {
+      const invalid = planLocalNotifications(base({ switches: meals, quietHours: window(at(19, 30), at(19, 30)) }));
+
+      expect(invalid).toEqual(planLocalNotifications(base({ switches: meals })));
+    });
   });
 });
