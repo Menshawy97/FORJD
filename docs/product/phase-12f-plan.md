@@ -151,3 +151,28 @@ receipts) are deleted by the drain. The export lists the person's registered pho
    you would rather never send a bad-news push.
 4. **A push that would arrive during quiet hours: hold it until quiet hours end, or drop it?** Recommended: hold (the Saturday
    02:20 rank change reads fine at 07:00; a PR after a late workout reads fine the next morning).
+
+## Status (2026-10-07)
+
+Built and merged: slices 1 (#350), 2 (#351), 3a (#352), 3b (#353), 4 (#354), 5a (#355) and 6 (#356). Slice 7 is this docs close.
+**Left:** 5b (run records: the owner confirms the two rules first) and the owner steps below.
+
+## Text for the owner: privacy policy and Play Data safety
+
+**Privacy policy (paragraph to add under notifications).** "If you turn on PR or leaderboard notifications, FORJD stores a
+device push token (a code that identifies the app on your phone) and your phone's platform, and queues the notification text
+(an exercise name or a city, and which screen to open) on our servers. We send it through Expo's push notification service
+and then Google's (Android) or Apple's (iPhone) service to your phone. These notifications never contain health data. Finished
+notifications are deleted after 30 days. Your push token is deleted when you sign out and when you delete your account, and
+you can switch each notification off in the app."
+
+**Google Play Data safety.** Declare *Device or other IDs* (the push token): collected, shared with a service provider
+(Expo, Google), used for app functionality only, not for advertising, optional (it exists only when a push switch is on),
+deleted on sign-out or account deletion. The notification text is *App activity* shared with the same providers for app
+functionality.
+
+**Owner steps still owed before anything reaches a phone:** a free Firebase project and an FCM key uploaded with
+`eas credentials`; a new development-client build; the device walk (register, a PR push, a rank push, quiet hours, sign-out
+removes the token); the privacy-policy and Data safety wording above; approval of the two FAQ entries in `faq-copy.md`;
+the cadence of `push-drain.yml` (every 3 hours today, because Actions minutes are limited in a private repository); and the
+5b run-record rules.

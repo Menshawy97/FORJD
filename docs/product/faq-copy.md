@@ -385,3 +385,24 @@ Notifications screen says so and links to them. Reminders are a nudge, not a gua
 "The first time you turn on a reminder, or when you open the Notifications screen with one on, FORJD asks your phone
 for permission. If you say no, nothing else changes: your choices are saved and the rest of FORJD works the same. You
 can allow it later in your phone's settings."
+
+## Proposed for 12F (server push), needs the owner's approval before it goes in `faq-content.ts`
+
+Two entries for the "Notifications" section, after "Why didn't a reminder arrive?". Every claim is what the code does
+(`docs/product/phase-12f-plan.md`, ADR-060, ADR-061, ADR-065). Not built into the app until approved. Note for the owner:
+only PRs on lifts exist so far; run records (5b) wait for the two rules to be confirmed, and this wording says "lift" until then.
+
+### Notifications → new entry: What are PR and leaderboard notifications?
+
+"Two optional notifications come from FORJD's servers instead of your phone. A PR notification arrives soon after you
+lift heavier than you ever have on an exercise. A leaderboard notification arrives once a week, when you move up or down
+in your city. Both are on by default and you can switch each one in Profile, then Notifications. They name the exercise or
+the city and nothing else: never a weight, a time or a health reading. If one is due during your quiet hours, it is sent
+just after they end. A PR notification that is more than a day old is not sent at all."
+
+### Notifications → new entry: What does FORJD share to send these?
+
+"Your phone's push address (a code that identifies FORJD on your phone), the short text of the notification, and which
+screen to open when you tap it. It travels through the push service FORJD uses (Expo's) and then Google's (or Apple's) to
+reach your phone. It contains no health reading. When you sign out, or delete your account, your phone's address is removed
+from FORJD's servers."
