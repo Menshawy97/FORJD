@@ -60,6 +60,27 @@ describe('PR push (e2e)', () => {
       .expect(201)
       .then(() => id);
   };
+  const uploadRun = (distanceMeters: number, movingSeconds: number, startedAt: Date) => {
+    const id = randomUUID();
+    sessionIds.push(id);
+    return request(app.getHttpServer())
+      .post('/api/v1/workouts/sessions')
+      .set('Authorization', 'Bearer pr-token')
+      .send({
+        id,
+        name: `${suiteId} Run`,
+        activity: 'running',
+        status: 'completed',
+        startedAt: startedAt.toISOString(),
+        endedAt: new Date(startedAt.getTime() + movingSeconds * 1000).toISOString(),
+        durationSeconds: movingSeconds,
+        isLiveTracked: true,
+        exercises: [],
+        run: { distanceMeters, movingSeconds, elevationGainMeters: null, avgHeartRateBpm: null, caloriesKcal: null, caloriesSource: null, splits: [] },
+      })
+      .expect(201)
+      .then(() => id);
+  };
   const outboxFor = (id: string) => db.select().from(pushOutbox).where(eq(pushOutbox.dedupeKey, `pr:${id}`));
   const sentCount = async () => {
     for (let i = 0; i < 40 && provider.sent.length === 0; i += 1) await new Promise((r) => setTimeout(r, 50));
@@ -156,6 +177,18 @@ describe('PR push (e2e)', () => {
     await upload(squat, 130, new Date(Date.now() - 30 * 60_000), id);
 
     expect(await outboxFor(id)).toHaveLength(1);
+  });
+
+  it('says nothing for a first run, then celebrates a longer one without naming a distance', async () => {
+    const first = await uploadRun(5000, 1800, new Date(Date.now() - 4 * HOUR));
+    expect(await outboxFor(first)).toHaveLength(0);
+
+    const longer = await uploadRun(8000, 3200, new Date(Date.now() - 2 * HOUR));
+
+    const rows = await outboxFor(longer);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ kind: 'pr', title: 'New PR: your longest run', data: { type: 'pr', sessionId: longer } });
+    expect(`${rows[0]!.title} ${rows[0]!.body}`).not.toMatch(/8000|8 km|5000|km|min/);
   });
 
   it('does not celebrate a record from a workout uploaded days late', async () => {

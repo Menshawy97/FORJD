@@ -795,6 +795,65 @@ describe("WorkoutsRepository", () => {
     });
   });
 
+  describe("runFiguresForSession", () => {
+    it("answers only the distance and moving time of a stored run, and null for a session without one", async () => {
+      const owner = await makeUser("run-figures");
+      const ex = await makeExercise("run-figures-ex");
+      const run = { distanceMeters: 5230.45, movingSeconds: 1800, elevationGainMeters: null, avgHeartRateBpm: 150, caloriesKcal: 300, caloriesSource: "estimate" as const, splits: [] };
+      const withRun = await repository.upsertSession(minimalSession(owner, ex, { activity: "running", run }));
+      const without = await repository.upsertSession(minimalSession(owner, ex));
+      createdSessionIds.push(withRun.id, without.id);
+
+      await expect(repository.runFiguresForSession(withRun.id)).resolves.toEqual({ distanceMeters: 5230.45, movingSeconds: 1800 });
+      await expect(repository.runFiguresForSession(without.id)).resolves.toBeNull();
+    });
+  });
+
+  describe("priorRunBestsForUser", () => {
+    const runOf = (distanceMeters: number, movingSeconds: number) => ({
+      distanceMeters,
+      movingSeconds,
+      elevationGainMeters: null,
+      avgHeartRateBpm: null,
+      caloriesKcal: null,
+      caloriesSource: null,
+      splits: [],
+    });
+    const store = async (owner: string, exerciseId: string, startedAt: Date, run: ReturnType<typeof runOf>, over: Partial<CreateWorkoutSessionInput> = {}) => {
+      const created = await repository.upsertSession(minimalSession(owner, exerciseId, { activity: "running", startedAt, run, ...over }));
+      createdSessionIds.push(created.id);
+      return created;
+    };
+
+    it("answers the longest earlier run and the fastest pace among earlier runs of 2 km or more", async () => {
+      const owner = await makeUser("prior-runs");
+      const ex = await makeExercise("prior-runs-ex");
+      await store(owner, ex, new Date("2026-09-01T07:00:00Z"), runOf(10000, 3600)); // 360 s/km
+      await store(owner, ex, new Date("2026-09-02T07:00:00Z"), runOf(5000, 1400)); // 280 s/km
+      await store(owner, ex, new Date("2026-09-03T07:00:00Z"), runOf(1500, 300)); // 200 s/km but under 2 km
+
+      const bests = await repository.priorRunBestsForUser(owner, randomUUID(), new Date("2026-09-10T07:00:00Z"));
+
+      expect(bests).toEqual({ bestDistanceMeters: 10000, bestPaceSecPerKm: 280 });
+    });
+
+    it("leaves out the run itself, later runs, other people, unfinished and deleted runs, and answers nulls with no history", async () => {
+      const owner = await makeUser("prior-runs-excl");
+      const other = await makeUser("prior-runs-other");
+      const ex = await makeExercise("prior-runs-excl-ex");
+      const itself = await store(owner, ex, new Date("2026-09-05T07:00:00Z"), runOf(20000, 6000));
+      await store(owner, ex, new Date("2026-09-08T07:00:00Z"), runOf(21000, 6000));
+      await store(other, ex, new Date("2026-09-02T07:00:00Z"), runOf(22000, 6000));
+      await store(owner, ex, new Date("2026-09-02T08:00:00Z"), runOf(23000, 6000), { status: "cancelled" });
+      const removed = await store(owner, ex, new Date("2026-09-02T09:00:00Z"), runOf(24000, 6000));
+      await db.update(workoutSessions).set({ deletedAt: new Date() }).where(inArray(workoutSessions.id, [removed.id]));
+
+      const bests = await repository.priorRunBestsForUser(owner, itself.id, new Date("2026-09-05T07:00:00Z"));
+
+      expect(bests).toEqual({ bestDistanceMeters: null, bestPaceSecPerKm: null });
+    });
+  });
+
   describe("findSessionByIdForUser", () => {
     it("returns the caller's own session with its exercises and sets", async () => {
       const owner = await makeUser("session-find-own");

@@ -119,6 +119,18 @@ export class WorkoutsRepository {
     return this.sessions.listSessionsForUser(filter);
   }
 
+  runFiguresForSession(sessionId: string): Promise<{ distanceMeters: number; movingSeconds: number } | null> {
+    return this.sessions.runFiguresForSession(sessionId);
+  }
+
+  priorRunBestsForUser(
+    userId: string,
+    excludeSessionId: string,
+    before: Date,
+  ): Promise<{ bestDistanceMeters: number | null; bestPaceSecPerKm: number | null }> {
+    return this.sessions.priorRunBestsForUser(userId, excludeSessionId, before);
+  }
+
   priorLiftBestsForUser(
     userId: string,
     excludeSessionId: string,

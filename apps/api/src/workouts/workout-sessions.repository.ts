@@ -708,6 +708,47 @@ export class WorkoutSessionsRepository {
     return new Map(rows.map((row) => [row.exerciseId, Number(row.best)]));
   }
 
+  /** Only the distance and moving time of a stored run, for the PR check: heart rate and calories are never loaded for it. */
+  async runFiguresForSession(sessionId: string): Promise<{ distanceMeters: number; movingSeconds: number } | null> {
+    const [row] = await this.db
+      .select({ distanceMeters: workoutRunSummaries.distanceMeters, movingSeconds: workoutRunSummaries.movingSeconds })
+      .from(workoutRunSummaries)
+      .where(eq(workoutRunSummaries.sessionId, sessionId));
+    return row ? { distanceMeters: Number(row.distanceMeters), movingSeconds: row.movingSeconds } : null;
+  }
+
+  /**
+   * The longest run, and the fastest average pace among runs of at least 2 km, this person had before `before`, leaving out the
+   * run being judged (Phase 12F slice 5b). Completed, not deleted, with a stored run summary. `null` for each when there was
+   * none, which is how "a first run is not a record" is told. Pace is seconds per kilometre.
+   */
+  async priorRunBestsForUser(
+    userId: string,
+    excludeSessionId: string,
+    before: Date,
+  ): Promise<{ bestDistanceMeters: number | null; bestPaceSecPerKm: number | null }> {
+    const result = await this.db.execute<{ best_distance: string | null; best_pace: string | null }>(sql`
+      select
+        max(${workoutRunSummaries.distanceMeters}) as best_distance,
+        min(${workoutRunSummaries.movingSeconds} * 1000.0 / ${workoutRunSummaries.distanceMeters})
+          filter (where ${workoutRunSummaries.distanceMeters} >= 2000) as best_pace
+      from ${workoutRunSummaries}
+      join ${workoutSessions} on ${workoutSessions.id} = ${workoutRunSummaries.sessionId}
+      where ${workoutSessions.userId} = ${userId}::uuid
+        and ${workoutSessions.id} <> ${excludeSessionId}::uuid
+        and ${workoutSessions.startedAt} < ${before.toISOString()}::timestamptz
+        and ${workoutSessions.deletedAt} is null
+        and ${workoutSessions.status} = 'completed'
+        and ${workoutRunSummaries.distanceMeters} > 0
+        and ${workoutRunSummaries.movingSeconds} > 0
+    `);
+    const row = result.rows[0];
+    return {
+      bestDistanceMeters: row?.best_distance == null ? null : Number(row.best_distance),
+      bestPaceSecPerKm: row?.best_pace == null ? null : Number(row.best_pace),
+    };
+  }
+
   /** Reads an existing session's exercise/set tree, in order -- shared by `findSessionByIdForUser` and `upsertSession`'s replay path. */
   private async readSessionExerciseTree(
     tx: Database,

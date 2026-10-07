@@ -154,8 +154,8 @@ receipts) are deleted by the drain. The export lists the person's registered pho
 
 ## Status (2026-10-07)
 
-Built and merged: slices 1 (#350), 2 (#351), 3a (#352), 3b (#353), 4 (#354), 5a (#355) and 6 (#356). Slice 7 is this docs close.
-**Left:** 5b (run records: the owner confirms the two rules first) and the owner steps below.
+Built and merged (5b once its PR merges): slices 1 (#350), 2 (#351), 3a (#352), 3b (#353), 4 (#354), 5a (#355) and 6 (#356). Slice 7 is this docs close.
+**Left:** only the owner steps below. **5b built 2026-10-07 on the owner's go-ahead for the two rules:** `domain/run-records.ts` (`detectRunRecords`, `paceSecondsPerKm`, `MIN_PACE_RECORD_METERS` = 2000), `priorRunBestsForUser` (the longest earlier run, and the fastest pace among earlier runs of 2 km or more, from completed runs started before this one), and `PrCelebrationService` now judges the stored run summary as well as the lifts, so a session that sets lift and run records sends one push with a count. Titles: "New PR: your longest run", "New PR: your fastest pace"; no distance, time or pace in the text; heart rate and calories are never read.
 
 ## Text for the owner: privacy policy and Play Data safety
 

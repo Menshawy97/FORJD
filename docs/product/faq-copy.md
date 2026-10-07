@@ -389,13 +389,12 @@ can allow it later in your phone's settings."
 ## Proposed for 12F (server push), needs the owner's approval before it goes in `faq-content.ts`
 
 Two entries for the "Notifications" section, after "Why didn't a reminder arrive?". Every claim is what the code does
-(`docs/product/phase-12f-plan.md`, ADR-060, ADR-061, ADR-065). Not built into the app until approved. Note for the owner:
-only PRs on lifts exist so far; run records (5b) wait for the two rules to be confirmed, and this wording says "lift" until then.
+(`docs/product/phase-12f-plan.md`, ADR-060, ADR-061, ADR-065). Not built into the app until approved. Lifts and runs are both covered (run rules confirmed 2026-10-07).
 
 ### Notifications → new entry: What are PR and leaderboard notifications?
 
 "Two optional notifications come from FORJD's servers instead of your phone. A PR notification arrives soon after you
-lift heavier than you ever have on an exercise. A leaderboard notification arrives once a week, when you move up or down
+lift heavier than you ever have on an exercise, or run your longest run or your fastest pace over 2 km or more. A leaderboard notification arrives once a week, when you move up or down
 in your city. Both are on by default and you can switch each one in Profile, then Notifications. They name the exercise or
 the city and nothing else: never a weight, a time or a health reading. If one is due during your quiet hours, it is sent
 just after they end. A PR notification that is more than a day old is not sent at all."
