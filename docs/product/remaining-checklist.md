@@ -113,7 +113,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] 12F FAQ: approve the two proposed entries in [faq-copy.md](faq-copy.md) ("What are PR and leaderboard notifications?", "What does FORJD share to send these?"); then they go into `faq-content.ts`
 - [ ] 12F privacy policy and Play Data safety: add the wording at the end of [phase-12f-plan.md](phase-12f-plan.md) (Expo, Google and Apple named as processors; device push token declared)
 - [ ] 12F decision (owner): how often `push-drain.yml` runs. Every 3 hours on production only today, because Actions minutes are limited in a private repository; a held push can be up to 3 hours late. Tighten it only if the minutes allow
-- [ ] Housekeeping (owner): about 117 merged local branches are safe to delete (the harness blocked deleting them); keep `worktree-agent-acf680f476a74c000`, the one stash and the worktrees
+- [x] Housekeeping: 128 merged local branches deleted 2026-10-07 (each was an ancestor of main or matched a merged PR's final commit). Kept: main, `worktree-agent-acf680f476a74c000`, the one stash and the 8 worktrees (7 branches, 1 detached), which are still checked out
 - [ ] 12G recovery alerts
 - [ ] 12H Android widgets
 - [ ] 12I iPhone widgets
