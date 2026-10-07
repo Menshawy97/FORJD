@@ -212,4 +212,5 @@ export * from "./notification-vocabulary";
 export * from "./local-notification-plan";
 export * from "./lift-records";
 export * from "./push-messages";
+export * from "./rank-moves";
 export * from "./push-policy";

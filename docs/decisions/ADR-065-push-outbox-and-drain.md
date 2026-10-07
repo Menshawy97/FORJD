@@ -29,7 +29,7 @@ make "send it in the request" or "send it from a timer" wrong:
    of sending, because the person may have changed a switch, their quiet hours or their phones in between. A push in quiet hours is
    given a `send_after` at the first minute after them in the person's own time zone; one that would be stale by then (PR 24 hours,
    rank 48 hours, judged at the time it would go) is dropped.
-4. **A small workflow drains.** `push-drain.yml` (slice 6, every 15 minutes, the snapshot workflow's pattern and environment matrix) calls
+4. **A small workflow drains.** `push-drain.yml` (slice 6, the snapshot workflow's pattern; **every 3 hours on production only** because Actions minutes in a private repository are limited, so a held push can be up to 3 hours late; the first plan said every 15 minutes) calls
    `drain`: send what is due, read receipts about 15 minutes after sending (removing a phone the service says is gone), purge finished
    rows after 30 days. GitHub's cron is best effort and is disabled after 60 idle days; both are accepted. A PR push also tries an
    immediate send after the upload response has gone out, so the usual case does not wait for the workflow.

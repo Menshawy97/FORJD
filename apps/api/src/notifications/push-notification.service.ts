@@ -167,18 +167,21 @@ export class PushNotificationService {
   }
 
   /** Everything the workflow does each time it runs: send what is due, read receipts, tidy up. */
-  async drain(now: Date = new Date()): Promise<{ dispatched: DispatchSummary; receipts: ReceiptSummary; purged: number }> {
-    // The three steps are independent: one failing is logged and does not stop the others or lose their results.
-    const dispatched = await this.step('dispatch', () => this.dispatchDue(now), { claimed: 0, sent: 0, dropped: 0, held: 0, retried: 0, failed: 0 });
-    const receipts = await this.step('receipts', () => this.checkReceipts(now), { checked: 0, removedTokens: 0, expired: 0 });
-    const purged = await this.step('purge', () => this.outbox.purge(new Date(now.getTime() - RETENTION_MS)), 0);
-    return { dispatched, receipts, purged };
+  async drain(now: Date = new Date()): Promise<{ dispatched: DispatchSummary; receipts: ReceiptSummary; purged: number; failedSteps: string[] }> {
+    // The three steps are independent: one failing is logged and does not stop the others or lose their results. The names of
+    // the ones that failed are returned, so the workflow can turn red instead of looking healthy with a summary of zeros.
+    const failedSteps: string[] = [];
+    const dispatched = await this.step('dispatch', failedSteps, () => this.dispatchDue(now), { claimed: 0, sent: 0, dropped: 0, held: 0, retried: 0, failed: 0 });
+    const receipts = await this.step('receipts', failedSteps, () => this.checkReceipts(now), { checked: 0, removedTokens: 0, expired: 0 });
+    const purged = await this.step('purge', failedSteps, () => this.outbox.purge(new Date(now.getTime() - RETENTION_MS)), 0);
+    return { dispatched, receipts, purged, failedSteps };
   }
 
-  private async step<T>(name: string, run: () => Promise<T>, fallback: T): Promise<T> {
+  private async step<T>(name: string, failedSteps: string[], run: () => Promise<T>, fallback: T): Promise<T> {
     try {
       return await run();
     } catch (error) {
+      failedSteps.push(name);
       this.logger.error(`Push drain step "${name}" failed (${error instanceof Error ? error.name : 'unknown error'}).`);
       return fallback;
     }

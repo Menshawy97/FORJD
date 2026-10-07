@@ -383,6 +383,7 @@ describe('PushNotificationService (Phase 12F)', () => {
 
       expect(result.dispatched.sent).toBeGreaterThanOrEqual(1);
       expect(result.receipts).toEqual({ checked: 0, removedTokens: 0, expired: 0 });
+      expect(result.failedSteps).toEqual(['receipts']);
       expect(typeof result.purged).toBe('number');
       expect(provider.sent.filter((message) => phones.includes(message.token))).toHaveLength(1);
       jest.restoreAllMocks();
@@ -396,6 +397,7 @@ describe('PushNotificationService (Phase 12F)', () => {
       const second = await service.drain(later(16));
 
       expect(first.dispatched.sent).toBeGreaterThanOrEqual(1);
+      expect(first.failedSteps).toEqual([]);
       expect(second.receipts.checked).toBeGreaterThanOrEqual(1);
       expect(typeof second.purged).toBe('number');
       expect((await outbox.listForUser(user.id))[0]).toMatchObject({ status: 'sent' });
