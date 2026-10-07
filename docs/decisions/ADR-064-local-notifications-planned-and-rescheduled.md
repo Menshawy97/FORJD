@@ -36,7 +36,7 @@ approach does not scale to a fortnight of reminders whose conditions drift.
    right for a dormant person.
 6. **Text is composed on the phone, so values are allowed** (ADR-061 decision 3). The weekly recap is nevertheless
    a **fixed message with no numbers**, because a notification scheduled in advance would show stale figures.
-   Numbers arrive with server push (12F).
+   Server push (12F) is built, but its text carries no numbers either (ADR-061): it names an exercise or a city and opens the screen that has the figures.
 7. **The scheduler stays behind the ADR-026 seam**, injected, and typed against the library's own types (never an
    `as unknown as` cast, which hid a silent failure there). A physical-device walk is mandatory before each kind
    ships, as in ADR-026: Jest cannot prove the OS delivers anything.

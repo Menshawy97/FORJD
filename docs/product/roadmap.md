@@ -57,7 +57,7 @@ saved-for-later list, so they are not part of it (owner decision). Plan: [phase-
 Owed on a device with the 12A/12B walk: finish a workout offline, reconnect, lock the phone, and check it reaches the
 server without opening the app.
 
-**Next for a session (2026-10-06):** 12F can start at slice 1 (device tokens), see [phase-12f-plan.md](phase-12f-plan.md); fix whatever the owner's 12A, 12B and 12C device walk finds. **12D (the notification switches on the server) was built 2026-10-05**, see [phase-12d-plan.md](phase-12d-plan.md). **12E (local scheduled notifications) was built 2026-10-06**, all six notifications and the permission note, see [phase-12e-plan.md](phase-12e-plan.md); its FAQ section is in the app (approved 2026-10-06); it needs its device walk before it counts as done. 12F-12I wait for the beta.
+**Next for a session (2026-10-07):** **12F (server push) is fully built** (slices 1 to 7, #350 to #358), see [phase-12f-plan.md](phase-12f-plan.md); what is left is the owner's: the Firebase project and FCM key, a new dev-client build, the 12F device walk, approving the two FAQ drafts, the privacy-policy and Play Data safety text, and the drain cadence. Fix whatever the owner's 12A, 12B and 12C device walk finds. **12D (the notification switches on the server) was built 2026-10-05**, see [phase-12d-plan.md](phase-12d-plan.md). **12E (local scheduled notifications) was built 2026-10-06**, all six notifications and the permission note, see [phase-12e-plan.md](phase-12e-plan.md); its FAQ section is in the app (approved 2026-10-06); it needs its device walk before it counts as done. 12G-12I wait for the beta.
 
 ## Current status (last updated 2026-09-25)
 
@@ -2724,7 +2724,7 @@ failure).
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
 | 11 — iOS track (parallel with 10) | 40-46 | AppleHealthProvider, Codemagic, TestFlight → App Store | Not started |
-| 12 — Background, notifications, widgets | 4-6 | Background run and session, push and local notifications, Android and iPhone widgets | **In progress** — see its section near the top of this file. 12A-12C (background run, session, upload) built, device walk owed; 12D built, its quiet-hours editor built (device walk owed); 12E built, its device walk owed; 12F-12I after the beta, iPhone widgets (12I) included |
+| 12 — Background, notifications, widgets | 4-6 | Background run and session, push and local notifications, Android and iPhone widgets | **In progress** — see its section near the top of this file. 12A-12C (background run, session, upload) built, device walk owed; 12D built, its quiet-hours editor built (device walk owed); 12E built, its device walk owed; **12F built 2026-10-07 (server push; owner steps and device walk owed)**; 12G-12I after the beta, iPhone widgets (12I) included |
 | Dual-platform public launch | ~47 | Both stores | Not started |
 
 ## Decisions that shaped this sequencing

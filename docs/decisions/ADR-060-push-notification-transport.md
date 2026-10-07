@@ -8,7 +8,7 @@
 
 ## Context
 
-12F sends server-side notifications: a leaderboard move after the Monday snapshot, a PR celebration
+12F sends server-side notifications: a leaderboard move after the Saturday snapshot (weeks start on Saturday, ADR-056), a PR celebration
 when a session uploads. The app already has `expo-notifications` 57 behind an injected seam for local
 notifications (ADR-026). A push needs a transport from the NestJS API to the phone. Constraints:
 
