@@ -1,5 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { buildPrPush, detectLiftRecords, sessionLiftBests, type WorkoutSession } from "@forjd/domain";
+import {
+  buildPrPush,
+  detectLiftRecords,
+  detectRunRecords,
+  sessionLiftBests,
+  type PrRecord,
+  type WorkoutSession,
+} from "@forjd/domain";
 
 import { PushNotificationService } from "../notifications/push-notification.service";
 import { WorkoutsRepository } from "./workouts.repository";
@@ -23,19 +30,7 @@ export class PrCelebrationService {
   async celebrate(session: WorkoutSession, exerciseNames: ReadonlyMap<string, string>): Promise<void> {
     try {
       if (session.status !== "completed") return;
-      const bests = sessionLiftBests(session.exercises);
-      if (bests.size === 0) return;
-
-      const exerciseIds = [...bests.keys()];
-      const priors = await this.workouts.priorLiftBestsForUser(session.userId, session.id, session.startedAt, exerciseIds);
-      const records = detectLiftRecords(
-        exerciseIds.map((exerciseId) => ({
-          exerciseId,
-          exerciseName: exerciseNames.get(exerciseId) ?? "",
-          bestKg: bests.get(exerciseId) ?? 0,
-          priorBestKg: priors.get(exerciseId) ?? null,
-        })),
-      );
+      const records = [...(await this.liftRecords(session, exerciseNames)), ...(await this.runRecords(session))];
       const content = buildPrPush({ sessionId: session.id, records });
       if (!content) return;
 
@@ -53,6 +48,29 @@ export class PrCelebrationService {
     } catch (error) {
       this.logFailure("celebrating", error);
     }
+  }
+
+  private async liftRecords(session: WorkoutSession, exerciseNames: ReadonlyMap<string, string>): Promise<PrRecord[]> {
+    const bests = sessionLiftBests(session.exercises);
+    if (bests.size === 0) return [];
+    const exerciseIds = [...bests.keys()];
+    const priors = await this.workouts.priorLiftBestsForUser(session.userId, session.id, session.startedAt, exerciseIds);
+    return detectLiftRecords(
+      exerciseIds.map((exerciseId) => ({
+        exerciseId,
+        exerciseName: exerciseNames.get(exerciseId) ?? "",
+        bestKg: bests.get(exerciseId) ?? 0,
+        priorBestKg: priors.get(exerciseId) ?? null,
+      })),
+    );
+  }
+
+  /** A run's records (longest, fastest pace over 2 km or more), from its stored summary; none for a session that was not a run. */
+  private async runRecords(session: WorkoutSession): Promise<PrRecord[]> {
+    const summary = await this.workouts.runFiguresForSession(session.id);
+    if (!summary) return [];
+    const prior = await this.workouts.priorRunBestsForUser(session.userId, session.id, session.startedAt);
+    return detectRunRecords({ distanceMeters: summary.distanceMeters, movingSeconds: summary.movingSeconds }, prior);
   }
 
   private logFailure(step: string, error: unknown): void {

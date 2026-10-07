@@ -33,8 +33,17 @@ const NAMES = new Map([
   ["bench", "Bench press"],
 ]);
 
-function setup(priors: Map<string, number> = new Map([["squat", 120]])) {
-  const repository = { priorLiftBestsForUser: jest.fn(async () => priors) };
+const runSummary = (distanceMeters: number, movingSeconds: number) => ({ distanceMeters, movingSeconds });
+
+function setup(
+  priors: Map<string, number> = new Map([["squat", 120]]),
+  run: { summary?: { distanceMeters: number; movingSeconds: number }; prior?: { bestDistanceMeters: number | null; bestPaceSecPerKm: number | null } } = {},
+) {
+  const repository = {
+    priorLiftBestsForUser: jest.fn(async () => priors),
+    runFiguresForSession: jest.fn(async () => run.summary ?? null),
+    priorRunBestsForUser: jest.fn(async () => run.prior ?? { bestDistanceMeters: null, bestPaceSecPerKm: null }),
+  };
   const push = {
     enqueue: jest.fn(async () => ({ result: "queued" }) as const),
     dispatchDue: jest.fn(async () => ({})),
@@ -62,6 +71,50 @@ describe("PrCelebrationService", () => {
       occurredAt: ENDED,
     });
     expect(push.dispatchDue).toHaveBeenCalledTimes(1);
+  });
+
+  it("queues a PR push for a run that is the longest yet, with no figure in it", async () => {
+    const { service, repository, push } = setup(new Map(), {
+      summary: runSummary(12000, 4000),
+      prior: { bestDistanceMeters: 10000, bestPaceSecPerKm: 300 },
+    });
+
+    await service.celebrate(session({ exercises: [] }), NAMES);
+
+    expect(repository.priorRunBestsForUser).toHaveBeenCalledWith("user-1", SESSION_ID, new Date("2026-10-07T09:00:00.000Z"));
+    expect(push.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dedupeKey: `pr:${SESSION_ID}`,
+        content: { title: "New PR: your longest run", body: "Open FORJD to see it.", data: { type: "pr", sessionId: SESSION_ID } },
+      }),
+    );
+  });
+
+  it("queues a PR push for a faster pace over 2 km or more", async () => {
+    const { service, push } = setup(new Map(), { summary: runSummary(5000, 1400), prior: { bestDistanceMeters: 8000, bestPaceSecPerKm: 300 } });
+
+    await service.celebrate(session({ exercises: [] }), NAMES);
+
+    expect(push.enqueue).toHaveBeenCalledWith(expect.objectContaining({ content: expect.objectContaining({ title: "New PR: your fastest pace" }) }));
+  });
+
+  it("is one push with a count when a lift and a run both set records in the same session", async () => {
+    const { service, push } = setup(undefined, { summary: runSummary(12000, 4000), prior: { bestDistanceMeters: 10000, bestPaceSecPerKm: null } });
+
+    await service.celebrate(session(), NAMES);
+
+    expect(push.enqueue).toHaveBeenCalledTimes(1);
+    expect(push.enqueue).toHaveBeenCalledWith(expect.objectContaining({ content: expect.objectContaining({ title: "2 new PRs in that session" }) }));
+  });
+
+  it("queues nothing for a first run, and does not look at runs for a session without one", async () => {
+    const first = setup(new Map(), { summary: runSummary(5000, 1500) });
+    await first.service.celebrate(session({ exercises: [] }), NAMES);
+    const noRun = setup();
+    await noRun.service.celebrate(session(), NAMES);
+
+    expect(first.push.enqueue).not.toHaveBeenCalled();
+    expect(noRun.repository.priorRunBestsForUser).not.toHaveBeenCalled();
   });
 
   it("says how many when a session set several records", async () => {
