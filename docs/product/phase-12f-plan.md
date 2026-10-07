@@ -1,6 +1,6 @@
 # Phase 12F — server push
 
-**Status (2026-10-06): the owner answered the four questions (see the end). Slice 0 (this plan) merged (#349); slice 1 (device tokens on the server) built; slices 2 to 7 follow.**
+**Status (2026-10-07): fully built, slices 0 to 7 merged (#349 to #358, including 5b run records) with `main` green. Left: the owner steps and device walk at the end of this file.**
 Every slice is its own PR, test-first, reviewed, merged with `main` green, and **each PR also updates this plan, the roadmap and
 `remaining-checklist.md`** (standing instruction, 2026-10-06). Decisions already made:
 [ADR-060](../decisions/ADR-060-push-notification-transport.md) (Expo push service behind a `NotificationProvider`),
@@ -62,7 +62,7 @@ with the person's best **before** it (the first time anyone lifts an exercise is
 Dedupe key `pr:<sessionId>`; one push per session, naming the exercise with the biggest jump, or a count when there are several. A
 detection failure is logged and swallowed.
 
-**Run records (owner chose lifts and runs).** Proposed rules, to confirm with the owner when slice 5b starts: a run is a record when it is
+**Run records (owner chose lifts and runs).** Rules (confirmed by the owner 2026-10-07, built in slice 5b): a run is a record when it is
 the **longest distance** the person has run, or has the **fastest average pace among runs of at least 2 km**, against their best before it
 (the first run is not a record). Distance, time and pace are training facts, not health values, but the push **shows no figures**
 ("New PR: your longest run"), the safe reading of ADR-061; heart rate and calories are never read for this. A run uploads through
@@ -138,7 +138,7 @@ receipts) are deleted by the drain. The export lists the person's registered pho
 ## Owner's answers (2026-10-06)
 
 1. **Android first, iPhone later:** yes.
-2. **PR celebrations:** lifts **and runs** (heaviest weight on a lift; runs by the rules proposed above, to confirm at 5b). Bigger than lifts alone, so it is two PRs.
+2. **PR celebrations:** lifts **and runs** (heaviest weight on a lift; runs by the rules above, confirmed 2026-10-07). Bigger than lifts alone, so it is two PRs.
 3. **Leaderboard push:** up and down, any change, at most once a week.
 4. **Quiet hours:** the notification is **moved to a time outside them** (the first minute after quiet hours end), not dropped.
 
@@ -154,7 +154,7 @@ receipts) are deleted by the drain. The export lists the person's registered pho
 
 ## Status (2026-10-07)
 
-Built and merged (5b once its PR merges): slices 1 (#350), 2 (#351), 3a (#352), 3b (#353), 4 (#354), 5a (#355) and 6 (#356). Slice 7 is this docs close.
+Built and merged: slices 1 (#350), 2 (#351), 3a (#352), 3b (#353), 4 (#354), 5a (#355), 6 (#356), 7 (#357) and 5b (#358).
 **Left:** only the owner steps below. **5b built 2026-10-07 on the owner's go-ahead for the two rules:** `domain/run-records.ts` (`detectRunRecords`, `paceSecondsPerKm`, `MIN_PACE_RECORD_METERS` = 2000), `priorRunBestsForUser` (the longest earlier run, and the fastest pace among earlier runs of 2 km or more, from completed runs started before this one), and `PrCelebrationService` now judges the stored run summary as well as the lifts, so a session that sets lift and run records sends one push with a count. Titles: "New PR: your longest run", "New PR: your fastest pace"; no distance, time or pace in the text; heart rate and calories are never read.
 
 ## Text for the owner: privacy policy and Play Data safety
@@ -174,5 +174,4 @@ functionality.
 **Owner steps still owed before anything reaches a phone:** a free Firebase project and an FCM key uploaded with
 `eas credentials`; a new development-client build; the device walk (register, a PR push, a rank push, quiet hours, sign-out
 removes the token); the privacy-policy and Data safety wording above; approval of the two FAQ entries in `faq-copy.md`;
-the cadence of `push-drain.yml` (every 3 hours today, because Actions minutes are limited in a private repository); and the
-5b run-record rules.
+and the cadence of `push-drain.yml` (every 3 hours today, because Actions minutes are limited in a private repository).
