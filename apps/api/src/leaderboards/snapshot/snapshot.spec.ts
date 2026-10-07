@@ -2,7 +2,16 @@ import { describeError, formatSummary } from "./snapshot";
 
 describe("formatSummary", () => {
   it("is one line when every city was captured", () => {
-    expect(formatSummary({ cities: 3, rows: 42, failures: [] })).toBe("captured 3 cities (42 rows)\n");
+    expect(formatSummary({ cities: 3, rows: 42, failures: [], moves: 0, moveFailures: 0 })).toBe("captured 3 cities (42 rows)\n");
+  });
+
+  it("adds how many rank pushes were queued, and how many could not be", () => {
+    expect(formatSummary({ cities: 3, rows: 42, failures: [], moves: 5, moveFailures: 0 })).toBe(
+      "captured 3 cities (42 rows), 5 rank pushes queued\n",
+    );
+    expect(formatSummary({ cities: 3, rows: 42, failures: [], moves: 5, moveFailures: 2 })).toBe(
+      "captured 3 cities (42 rows), 5 rank pushes queued, 2 could not be queued\n",
+    );
   });
 
   it("names each city that failed and why", () => {
@@ -13,6 +22,8 @@ describe("formatSummary", () => {
         { citySlug: "cairo-eg-360630", message: "boom" },
         { citySlug: "oslo-no-3143244", message: "timeout" },
       ],
+      moves: 0,
+      moveFailures: 0,
     });
 
     expect(text).toBe("captured 1 cities (10 rows), 2 failed:\n  cairo-eg-360630: boom\n  oslo-no-3143244: timeout\n");

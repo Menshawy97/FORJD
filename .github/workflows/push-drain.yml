@@ -1,0 +1,108 @@
+name: Drain the push queue
+
+# Every 3 hours, sends the pushes that are due, reads the receipts of earlier ones (removing phones the push service says
+# are gone) and tidies old rows (Phase 12F, ADR-065). A push held until after someone's quiet hours is sent by the first run
+# after it. "Immediately" for a PR celebration is the API trying the queue straight after the upload; this is the safety net,
+# and the only sender for held pushes and rank moves.
+#
+# GitHub cron is best-effort (a run can start several minutes late or be dropped) and it disables scheduled workflows in a
+# repository after 60 days without activity. Both are accepted: a push is late, never lost, and the queue keeps it until a run
+# reaches it (the policy drops a PR push once it is a day old, and a rank push after two).
+#
+# Cost: this repository is private, so Actions minutes are limited (free tier only). Every 3 hours on production alone is about
+# 8 runs a day, roughly 700 billed minutes a month; every 15 minutes on both environments would use the month in a week. The price
+# is that a push held until the end of someone's quiet hours can arrive up to 3 hours after it, and a rank push up to 3 hours
+# after the Saturday snapshot. Tighten the cron only if the budget allows (the owner decides).
+#
+# The schedule drains PRODUCTION only (staging has no real users; drain it by hand with a dispatch); a manual dispatch drains the one it names. Safe to run at any time or twice at once:
+# a dispatcher claims each row with FOR UPDATE SKIP LOCKED, so no push goes out twice because two drains overlapped.
+#
+# Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire.
+on:
+  schedule:
+    # Minute 7: off the top of the hour, when GitHub's scheduler is busiest.
+    - cron: "7 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment whose queue to drain
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+# A drain still running when the next is due is left to finish; the next one waits.
+concurrency:
+  group: push-drain-${{ github.event_name }}-${{ inputs.target || 'all' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for google-github-actions/auth's Workload Identity Federation
+
+jobs:
+  # Same split as leaderboard-snapshot.yml: missing GCP setup shows as a skipped job (green), not a red failure every
+  # 3 hours until the credentials exist.
+  check:
+    name: Check prerequisites
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && [ -n "${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}" ] && [ -n "${{ vars.GCP_PROJECT_ID }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GCP config not set yet (GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOY_SERVICE_ACCOUNT, GCP_PROJECT_ID) — skipping the drain."
+          fi
+
+  drain:
+    name: Send what is due
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    environment: ${{ matrix.target }}
+    # A drain is a few seconds of work; a hung one must not hold the next runs for hours.
+    timeout-minutes: 10
+    strategy:
+      # One environment failing (say production is not provisioned yet) must not stop the other.
+      fail-fast: false
+      matrix:
+        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["production"]') }}
+    env:
+      TARGET: ${{ matrix.target }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - id: auth
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+      - name: Drain the queue
+        # The database URL comes from Secret Manager (forjd-<target>-database-url), the same secret the deploy and the
+        # snapshot use, and must be the Supabase session pooler string. The workspace packages are built first because
+        # ts-node resolves `@forjd/domain` through `dist/`. The optional EXPO_ACCESS_TOKEN is not wired in until Expo's
+        # "enhanced push security" is switched on (ADR-060). The log shows counts only, never a token or a push's text.
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @forjd/domain --filter @forjd/contracts build
+          DATABASE_URL="$(gcloud secrets versions access latest --secret="forjd-${TARGET}-database-url")"
+          echo "::add-mask::${DATABASE_URL}"
+          export DATABASE_URL
+          pnpm --filter @forjd/api push:drain

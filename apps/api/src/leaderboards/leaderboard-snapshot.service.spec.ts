@@ -65,7 +65,7 @@ describe('LeaderboardSnapshotService', () => {
     expect(monthRows).toHaveLength(6);
     expect(monthRows[0]).toMatchObject({ userId: 'user-6', rank: 1, cohortSize: 6 });
     expect(monthRows.map((r) => r.rank)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(summary).toEqual({ cities: 1, rows: 12, failures: [] });
+    expect(summary).toEqual({ cities: 1, rows: 12, failures: [], moves: 0, moveFailures: 0 });
   });
 
   it('measures the month in the city\'s own calendar', async () => {
@@ -151,14 +151,14 @@ describe('LeaderboardSnapshotService', () => {
     const summary = await service.captureAll(NOW);
 
     expect(peak).toBe(4);
-    expect(summary).toEqual({ cities: 10, rows: 100, failures: [] });
+    expect(summary).toEqual({ cities: 10, rows: 100, failures: [], moves: 0, moveFailures: 0 });
     expect(new Set(snapshots.replaceWeek.mock.calls.map((c) => c[0]))).toEqual(new Set(slugs));
   });
 
   it('does nothing when no city has a board', async () => {
     snapshots.eligibleCities.mockResolvedValue([]);
 
-    await expect(service.captureAll(NOW)).resolves.toEqual({ cities: 0, rows: 0, failures: [] });
+    await expect(service.captureAll(NOW)).resolves.toEqual({ cities: 0, rows: 0, failures: [], moves: 0, moveFailures: 0 });
     expect(leaderboards.cityAthletes).not.toHaveBeenCalled();
   });
 });

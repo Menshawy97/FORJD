@@ -28,7 +28,8 @@
     "forge:evaluate": "ts-node src/forge/evaluate/evaluate.ts",
     "prompt:golden": "ts-node scripts/write-inbody-prompt-golden.ts",
     "inbody:eval": "ts-node scripts/eval-inbody.ts",
-    "leaderboard:snapshot": "ts-node src/leaderboards/snapshot/snapshot.ts"
+    "leaderboard:snapshot": "ts-node src/leaderboards/snapshot/snapshot.ts",
+    "push:drain": "ts-node src/notifications/push-drain.ts"
   },
   "dependencies": {
     "@forjd/contracts": "workspace:*",

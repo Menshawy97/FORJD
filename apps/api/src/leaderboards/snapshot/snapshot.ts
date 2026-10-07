@@ -4,6 +4,9 @@ import { Pool } from "pg";
 import { loadCitySnapshotFromDisk } from "../../cities/city-snapshot";
 import { CityResolverService } from "../../cities/city-resolver.service";
 import { Database } from "../../database/database.module";
+import type { NotificationProvider } from "../../integrations/push/notification-provider";
+import { createPushNotificationService } from "../../notifications/push-service-factory";
+import { RankPushSender } from "../../notifications/rank-push-sender";
 import { LeaderboardSnapshotRepository } from "../leaderboard-snapshot.repository";
 import { LeaderboardSnapshotService, SnapshotSummary } from "../leaderboard-snapshot.service";
 import { LeaderboardsRepository } from "../leaderboards.repository";
@@ -21,7 +24,9 @@ import { LeaderboardsRepository } from "../leaderboards.repository";
 
 /** One line for the run log, and one per failed city. */
 export function formatSummary(summary: SnapshotSummary): string {
-  const head = `captured ${summary.cities} cities (${summary.rows} rows)`;
+  let head = `captured ${summary.cities} cities (${summary.rows} rows)`;
+  if (summary.moves > 0 || summary.moveFailures > 0) head += `, ${summary.moves} rank pushes queued`;
+  if (summary.moveFailures > 0) head += `, ${summary.moveFailures} could not be queued`;
   if (summary.failures.length === 0) return `${head}\n`;
   const failed = summary.failures.map((f) => `  ${f.citySlug}: ${f.message}`).join("\n");
   return `${head}, ${summary.failures.length} failed:\n${failed}\n`;
@@ -58,6 +63,12 @@ function describeCause(cause: unknown): string {
   return parts.join(" ");
 }
 
+/** The snapshot only queues pushes (`enqueue`), so it has no push service to talk to and must not be able to send one. */
+const neverSends: NotificationProvider = {
+  send: () => Promise.reject(new Error("The snapshot does not send pushes.")),
+  receipts: () => Promise.reject(new Error("The snapshot does not read receipts.")),
+};
+
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -71,6 +82,8 @@ async function main(): Promise<void> {
       new LeaderboardsRepository(db),
       new LeaderboardSnapshotRepository(db),
       new CityResolverService(loadCitySnapshotFromDisk),
+      // Rank moves are only queued here; the drain workflow sends them, so this provider is never used.
+      new RankPushSender(createPushNotificationService(db, neverSends)),
     );
     const summary = await service.captureAll(new Date());
 
