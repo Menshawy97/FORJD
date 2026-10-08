@@ -18,17 +18,16 @@ Everything else, database rows and object storage alike, relies on the host's de
 encryption at rest (Supabase), which this repository does not configure and has not verified
 (`data-inventory.md` lists it as "platform default"). Secrets in a secret manager, never mobile
 source (`CLAUDE.md` rule 5). Access control
-enforced in NestJS guards — **and only there.** Row-level security is not
-enabled on any table, and `apps/api` connects to Postgres directly through
-`pg.Pool` with `DATABASE_URL`'s configured role, not through Supabase's
-PostgREST/anon-key path that RLS policies actually gate — so even adding
-RLS today would be bypassed by that role rather than acting as a real second
-layer. NestJS guards are the sole authorization layer, and that is
-consistent with `CLAUDE.md` rule 12 ("a rule that exists only in SQL is a
-rule you can't unit test"), not a gap in it. See
-[ADR-038](../decisions/ADR-038-audit-remediation-pass-2026-09.md) for the
-record of this correction (this line previously, and incorrectly, claimed
-RLS existed as defense-in-depth). Audit logs. User data export and deletion
+enforced in NestJS guards — the only real authorization layer. Row-level
+security is enabled, deny-all with no policies, on every table (migration
+`0037`, [ADR-066](../decisions/ADR-066-deny-all-rls-on-every-table.md)):
+`apps/api` connects as the owning `postgres` role, which bypasses RLS, but
+Supabase's Data API (the public anon key) is shut out of every table, and CI
+fails any new table created without it. Policies are written only if a client
+is ever given direct database access. `CLAUDE.md` rule 12 stands ("a rule that
+exists only in SQL is a rule you can't unit test"). ADR-038 had called RLS
+"theatre" because the API bypasses it; that missed the PostgREST path, and
+ADR-066 corrects it. Audit logs. User data export and deletion
 (real deletion, not hiding). Provider disconnect. Consent tracking. Minimal
 permissions requested per provider capability, not blanket grants.
 

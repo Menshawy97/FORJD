@@ -260,6 +260,13 @@
       "when": 1791323463603,
       "tag": "0036_push-outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791499208613,
+      "tag": "0037_enable-row-level-security",
+      "breakpoints": true
     }
   ]
 }
