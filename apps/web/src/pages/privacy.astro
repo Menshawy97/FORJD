@@ -1,52 +1,113 @@
 ---
 import Base from '../layouts/Base.astro';
+
+// Who runs FORJD, shown in section 1. Fill in the legal name and country; a test fails the build while it is a placeholder.
+const operator = 'OPERATOR_NAME_TO_FILL';
+const supportEmail = 'support@getforjd.com';
+const updated = '8 October 2026';
 ---
 
 <Base
-  title="Privacy and terms | FORJD"
+  title="Privacy policy | FORJD"
   description="FORJD uses your health data to show you your own training and recovery, and for nothing else. It never reaches an analytics or advertising service."
 >
   <div class="page-head">
     <div class="wrap">
-      <span class="label accent">Privacy and terms</span>
+      <span class="label accent">Privacy policy</span>
       <h1 class="display page-display">Your body's data<span class="dot">.</span><br />Your call<span class="dot">.</span></h1>
-      <p class="lede">The short version: we use your health data to show you your own training and recovery, and for nothing else.</p>
+      <p class="lede">The short version: we use your health data to show you your own training and recovery, and for nothing else. It never goes to an analytics or advertising service.</p>
+      <p class="label">Last updated {updated}</p>
     </div>
   </div>
 
   <div class="sec legal-sec">
     <div class="wrap legal-grid">
       <nav class="toc" aria-label="On this page">
+        <a href="#who">Who we are</a>
         <a href="#collect">What we collect</a>
         <a href="#use">How we use it</a>
+        <a href="#location">Location and runs</a>
+        <a href="#share">Who else receives it</a>
+        <a href="#notifications">Notifications</a>
         <a href="#never">What we never do</a>
-        <a href="#control">Your controls</a>
+        <a href="#keep">Keeping it safe</a>
+        <a href="#stored">Where it is stored</a>
+        <a href="#basis">Our legal basis</a>
+        <a href="#control">Your rights</a>
+        <a href="#children">Children</a>
+        <a href="#website">The website</a>
+        <a href="#changes">Changes</a>
         <a href="#credits">Data sources</a>
-        <a href="#terms">Terms of use</a>
       </nav>
       <div class="doc">
-        <div class="draft">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.01M10.3 4.3 2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" stroke="#c9a03c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-          <p><b>Draft, not legal text.</b> This page lays out structure and plain-language commitments. It needs review by someone qualified before launch.</p>
-        </div>
+        <section id="who">
+          <h2>Who we are</h2>
+          <p>
+            FORJD is run by <strong>{operator}</strong>. Questions about your data, and any request in "Your rights" below, go to
+            <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+          </p>
+        </section>
 
         <section id="collect">
           <h2>What we collect</h2>
           <ul>
-            <li><strong>Your account:</strong> email address, username, and the profile details you choose to add, such as your city.</li>
-            <li><strong>Training:</strong> the workouts, sets, runs and programs you log in FORJD.</li>
-            <li><strong>Health readings you connect:</strong> sleep, heart rate variability, resting heart rate and steps from Apple Health, Health Connect or WHOOP, only after you give permission on your phone.</li>
-            <li><strong>Body composition:</strong> the InBody results you add.</li>
-            <li><strong>Nutrition:</strong> the foods and meals you log.</li>
+            <li><strong>Your account:</strong> email address, a password (stored only as a one-way hash, never readable), username, and the profile details you add: name, date of birth (you must be at least 16), sex, height, units, goals, city and a profile photo.</li>
+            <li><strong>Training:</strong> the workouts, sets, runs, programs and templates you log, and the exercises you create or favourite.</li>
+            <li><strong>Runs:</strong> distance, moving time, elevation gain and kilometre splits. Heart rate and calories for a run are stored only if you gave health-data consent.</li>
+            <li><strong>Health readings you connect:</strong> sleep, heart rate variability, resting heart rate, steps, active energy, weight and similar, from Apple Health, Health Connect or WHOOP, only after you give permission on your phone and in FORJD.</li>
+            <li><strong>Body composition:</strong> the InBody results you add, and the scan photo if you add one.</li>
+            <li><strong>Nutrition:</strong> the foods, meals, saved meals and macro goals you log.</li>
+            <li><strong>Location:</strong> your city as text. If you turn on "location for leaderboards", the phone reads your approximate position once when a workout starts; we turn it into a city and do not store the position.</li>
+            <li><strong>Notifications:</strong> if you leave PR or leaderboard notifications on, a push token (a code that identifies FORJD on your phone), your phone's platform (Android or iPhone), and the short text of each notification we queue for you.</li>
+            <li><strong>Your settings and consents:</strong> privacy choices, notification switches and quiet hours, your time zone, and a record of sign-ins and consent changes.</li>
+            <li><strong>Crash reports:</strong> if you leave "crash diagnostics" on, our server sends an error report when it fails. It contains technical details of the failure, never your content.</li>
+            <li><strong>On the website:</strong> if you join the waitlist, your email address.</li>
           </ul>
         </section>
 
         <section id="use">
           <h2>How we use it</h2>
           <p>
-            To run the features you see: your history, charts, readiness score, FORJD Insights and, if you opt in, your
-            place on your city's leaderboard. Each health reading is stored with the app or device it came from, so you
-            can always see where a number originated.
+            To run the features you see: your history and charts, your readiness score, FORJD Insights, Weekly Forge, the notifications you chose and, if you opt in,
+            your place on your city's leaderboard. Each health reading is stored with the app or device it came from, so you can always see where a number
+            originated. We do not use your data to build profiles for advertising, and we do not sell it.
+          </p>
+        </section>
+
+        <section id="location">
+          <h2>Location and your run route</h2>
+          <ul>
+            <li><strong>Run route:</strong> while a run is open, the app reads your precise position, including with the screen off (Android shows an ongoing notification while it does). The route stays on your phone and is never uploaded. FORJD never reads your location in the background when no run is open.</li>
+            <li><strong>Leaderboard city:</strong> only the city is kept, as described above.</li>
+            <li><strong>Public by design:</strong> if you join leaderboards, other athletes in your city can see your rank and score, and your name, username and photo only if you made your profile public.</li>
+          </ul>
+        </section>
+
+        <section id="share">
+          <h2>Who else receives your data</h2>
+          <p>We use a small number of companies to run FORJD. Each gets only what it needs, and acts on our behalf. We name a company only where you or the app stores would expect it; infrastructure providers are described by what they do.</p>
+          <ul>
+            <li><strong>Our database, sign-in and file hosting provider:</strong> your account, the data above and your photos. Always.</li>
+            <li><strong>Our server hosting provider:</strong> the requests the app makes to our server. Always.</li>
+            <li><strong>OpenAI:</strong> your InBody scan photo, to read the numbers off it. Only after you give AI consent, which you can withdraw.</li>
+            <li><strong>WHOOP:</strong> sign-in details for the connection; we read your WHOOP recovery, sleep and workouts. Only if you connect WHOOP.</li>
+            <li><strong>Google or Apple sign-in:</strong> your Google or Apple account identity. Only if you choose that sign-in; we never receive your password.</li>
+            <li><strong>Expo, then Google (Android) or Apple (iPhone):</strong> your push token, platform and the notification text. Only if PR or leaderboard notifications are on.</li>
+            <li><strong>Our crash-reporting provider:</strong> technical failure details, no text. Not sent at all if you turned crash diagnostics off.</li>
+            <li><strong>Cloudflare:</strong> the bot check on the website waitlist form. Only on the website.</li>
+          </ul>
+        </section>
+
+        <section id="notifications">
+          <h2>Notifications</h2>
+          <p>
+            Reminders, such as your workout reminder and weekly summary, are made on your phone and never leave it. PR and leaderboard notifications come from our
+            servers; they are on by default and you can switch each off in Profile, then Notifications. A notification names an exercise or a city and never
+            contains a weight, a time or any health reading. It travels through Expo's push service and then Google's or Apple's service to reach your phone.
+          </p>
+          <p>
+            Finished notifications are deleted from our servers after 30 days. Your push token is removed when you sign out, when you turn both notifications off,
+            and when you delete your account. If your phone is offline when you sign out, the removal can be delayed.
           </p>
         </section>
 
@@ -58,24 +119,73 @@ import Base from '../layouts/Base.astro';
           <p>Data read from Apple Health and Health Connect is used only to provide FORJD's health and fitness features, as both platforms require.</p>
         </section>
 
+        <section id="keep">
+          <h2>How long we keep it, and keeping it safe</h2>
+          <ul>
+            <li>We keep your data until you delete your account. Notifications are deleted 30 days after they finish. Your run route is never on our servers.</li>
+            <li>After you delete your account, copies in our hosting provider's backups are removed as those backups expire in the ordinary course.</li>
+            <li>Traffic between the app and our server is encrypted. Passwords are stored as one-way hashes, and sign-in credentials for services you connect are encrypted.</li>
+            <li>No system is perfectly secure. If a breach affects you, we will tell you, as the law requires.</li>
+          </ul>
+        </section>
+
+        <section id="stored">
+          <h2>Where your data is stored</h2>
+          <p>
+            Our server, database and file storage are located in the European Union. Some companies listed above process data in other countries, including the
+            United States, under their own safeguards.
+          </p>
+        </section>
+
+        <section id="basis">
+          <h2>Our legal basis</h2>
+          <p>
+            Where the law asks for one, for example in the UK and EU: we process your account, training and nutrition data to provide the service you asked for
+            (contract). We process health data, location for leaderboards, AI scan reading and push notifications only with your consent, which you can withdraw in
+            the app at any time. We keep sign-in and consent records to protect the service and meet our obligations (legitimate interest).
+          </p>
+        </section>
+
         <section id="control">
-          <h2>Your controls</h2>
+          <h2>Your rights and controls</h2>
           <ul>
             <li><strong>Export:</strong> download a copy of your account data from the app.</li>
-            <li><strong>Delete:</strong> delete your account and its data from the app.</li>
+            <li><strong>Delete:</strong> delete your account and its data from the app. Deletion is real, not hiding. A few records of sign-ins keep no link to you afterwards.</li>
+            <li><strong>Correct:</strong> edit your profile and logs in the app.</li>
             <li><strong>Disconnect:</strong> revoke Apple Health, Health Connect or WHOOP access at any time.</li>
-            <li><strong>Public profile:</strong> choose what other athletes can see in privacy settings.</li>
+            <li><strong>Consents and visibility:</strong> health data, AI scan reading, location for leaderboards, leaderboards and your public profile each have a switch in privacy settings.</li>
+            <li><strong>Notifications:</strong> switch PR and leaderboard notifications on or off at any time in Profile, then Notifications.</li>
+            <li><strong>Ask us:</strong> email <a href={`mailto:${supportEmail}`}>{supportEmail}</a> to access, correct, delete, restrict or move your data, or to object to a use. We answer within 30 days. You can also complain to the data protection authority where you live.</li>
           </ul>
+        </section>
+
+        <section id="children">
+          <h2>Children</h2>
+          <p>
+            FORJD is for people aged 16 and over. We ask for your date of birth when you sign up and don't create accounts for younger people. If you think a
+            younger person has an account, email us and we will delete it.
+          </p>
+        </section>
+
+        <section id="website">
+          <h2>The website</h2>
+          <p>
+            This website sets no cookies and uses no analytics or advertising tools. The waitlist form uses a bot check from Cloudflare (Turnstile) so that only
+            people can join. If that ever changes, this page changes first.
+          </p>
+        </section>
+
+        <section id="changes">
+          <h2>Changes to this policy</h2>
+          <p>
+            We will update this page when what we do with data changes, and change the "last updated" date. For a change that matters to you, we will tell you in
+            the app or by email before it starts.
+          </p>
         </section>
 
         <section id="credits">
           <h2>Data sources</h2>
           <p>City names and locations come from <strong>GeoNames</strong> (geonames.org), used under the Creative Commons Attribution 4.0 licence.</p>
-        </section>
-
-        <section id="terms">
-          <h2>Terms of use</h2>
-          <p>To be written. It will cover accounts, subscriptions and renewals, acceptable use, and the fact that FORJD gives training information, not medical advice.</p>
         </section>
       </div>
     </div>
@@ -85,5 +195,4 @@ import Base from '../layouts/Base.astro';
 <style>
   .page-display { font-size: clamp(42px, 6vw, 80px); }
   .legal-sec { padding-top: clamp(40px, 5vw, 64px); }
-  .draft { margin-top: 0; }
 </style>
