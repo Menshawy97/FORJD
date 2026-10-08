@@ -1,0 +1,197 @@
+---
+import Base from '../layouts/Base.astro';
+
+const operator = 'Mostafa Ashraf, an individual based in Egypt';
+const supportEmail = 'support@getforjd.com';
+const updated = '8 October 2026';
+---
+
+<Base
+  title="Terms of use | FORJD"
+  description="The terms for using FORJD: who can use it, what it is and is not, fair use, free and paid features, and your rights."
+>
+  <div class="page-head">
+    <div class="wrap">
+      <span class="label accent">Terms of use</span>
+      <h1 class="display page-display">The rules of the road<span class="dot">.</span></h1>
+      <p class="lede">Plain terms for using FORJD. The short version: it is training information, not medical advice, and you stay in control of your data.</p>
+      <p class="label">Last updated {updated}</p>
+    </div>
+  </div>
+
+  <div class="sec legal-sec">
+    <div class="wrap legal-grid">
+      <nav class="toc" aria-label="On this page">
+        <a href="#who">Who can use FORJD</a>
+        <a href="#what">What FORJD is</a>
+        <a href="#content">Your account and content</a>
+        <a href="#fair">Using FORJD fairly</a>
+        <a href="#services">Other services</a>
+        <a href="#notifications">Notifications</a>
+        <a href="#plans">Free and paid features</a>
+        <a href="#rights">Our rights</a>
+        <a href="#risk">Use at your own risk</a>
+        <a href="#liability">Limitation of liability</a>
+        <a href="#breach">If you break these terms</a>
+        <a href="#ending">Ending your use</a>
+        <a href="#changes">Changes and the law</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <div class="doc">
+        <section id="intro">
+          <p>
+            These terms are the agreement between you and <strong>{operator}</strong> ("we", "us") about your use of the FORJD app and website. By creating an
+            account or using FORJD you agree to them. If you don't agree, please don't use FORJD. Our <a href="/privacy">privacy policy</a> explains how we
+            handle your data and is part of how we run the service.
+          </p>
+        </section>
+
+        <section id="who">
+          <h2>1. Who can use FORJD</h2>
+          <p>
+            You must be at least 16 to have an account. You need to give a real date of birth and keep your sign-in details to yourself. You are responsible for
+            what happens under your account, so tell us at <a href={`mailto:${supportEmail}`}>{supportEmail}</a> if you think someone else has got into it.
+          </p>
+        </section>
+
+        <section id="what">
+          <h2>2. What FORJD is, and what it is not</h2>
+          <p>
+            FORJD helps you log training, runs, food and body measurements, and shows you your own trends. <strong>It gives training and general wellness information,
+            not medical advice.</strong> Scores, targets, estimates (such as calories, readiness or one-rep max), insights and leaderboard ranks are guides worked out
+            from the data you give us. They can be wrong, and they are not a diagnosis or a treatment.
+          </p>
+          <p>
+            Talk to a doctor or other qualified professional before you start or change an exercise or nutrition plan, especially if you have a health condition, are
+            pregnant, are injured, or feel unwell. Stop and get help if you feel pain, dizziness or anything unusual. You use FORJD, and train, at your own risk.
+          </p>
+        </section>
+
+        <section id="content">
+          <h2>3. Your account and your content</h2>
+          <p>
+            What you log (workouts, runs, meals, measurements, photos, notes) is yours. You give us permission to store it and process it only to run FORJD for you,
+            as described in the privacy policy. You are responsible for what you add, and for having the right to add it (for example, a photo of yourself, not of
+            someone else).
+          </p>
+          <p>You can export your data and delete your account in the app at any time.</p>
+        </section>
+
+        <section id="fair">
+          <h2>4. Using FORJD fairly</h2>
+          <p>Please don't:</p>
+          <ul>
+            <li>break the law, or use FORJD to harm, harass or impersonate anyone;</li>
+            <li>add content that is unlawful, hateful or someone else's private information;</li>
+            <li>cheat the leaderboards, for example by faking workouts or runs, using another person's data, or tampering with the app;</li>
+            <li>try to get into accounts or systems that aren't yours, probe or overload our service, or bypass its limits and protections;</li>
+            <li>copy, scrape or resell FORJD's data or content, or reverse-engineer the app, except where the law lets you;</li>
+            <li>use FORJD to build a competing product from its data.</li>
+          </ul>
+          <p>
+            Leaderboards and public profiles show only what your privacy settings allow. We may remove an entry, a score or an account that breaks these rules.
+          </p>
+        </section>
+
+        <section id="services">
+          <h2>5. Connections to other services</h2>
+          <p>
+            FORJD can connect to Apple Health, Health Connect, WHOOP, and sign-in with Google or Apple, only if you choose to. Those services have their own terms
+            and privacy policies, and what they let us read can change or stop. We aren't responsible for them. You can disconnect at any time.
+          </p>
+          <p>
+            If you use the InBody scan photo reading, a photo is sent to an AI provider after you consent, and the numbers it reads are suggestions for you to check,
+            not guaranteed to be correct.
+          </p>
+        </section>
+
+        <section id="notifications">
+          <h2>6. Notifications</h2>
+          <p>
+            If you allow them, FORJD sends reminders (made on your phone) and PR and leaderboard notifications (from our servers). You can switch them off in the
+            app or in your phone's settings.
+          </p>
+        </section>
+
+        <section id="plans">
+          <h2>7. Free and paid features</h2>
+          <p>
+            Some FORJD features are free and some need a paid plan. The app shows you which is which, and, before you buy, the price, what you get, and how renewal
+            and cancellation work. The app store you buy through takes the payment and handles refunds under its own rules. Nothing becomes a charge without your
+            clear approval, and you can cancel in your app store account at any time; you keep the paid features until the end of the period you've paid for. Which
+            features are free or paid, and their prices, can change; a change never takes away something you've already paid for during the period you paid for.
+          </p>
+        </section>
+
+        <section id="rights">
+          <h2>8. Our rights</h2>
+          <p>
+            FORJD, its name, logo, design and software belong to us or our licensors. We give you a personal, non-exclusive, non-transferable permission to use the
+            app for your own training, for as long as you follow these terms. Exercise data, maps, city data and other third-party material stay with their owners,
+            with credits as listed in the privacy policy.
+          </p>
+        </section>
+
+        <section id="risk">
+          <h2>9. Use at your own risk</h2>
+          <p>
+            Your use of FORJD is at your own risk. FORJD is provided "as is" and "as available". We don't give any warranties of any kind, express or implied,
+            including the warranties of merchantability, fitness for a particular purpose and non-infringement, except where the law doesn't allow us to exclude them.
+          </p>
+          <p>FORJD isn't free of errors or bugs. Use it carefully, and keep your own record of anything you can't afford to lose.</p>
+        </section>
+
+        <section id="liability">
+          <h2>10. Limitation of liability</h2>
+          <p>
+            We are not responsible for any indirect, incidental or consequential damages, including loss of data you could have kept a copy of, or injury or loss
+            that comes from how you train, eat or act on what FORJD shows.
+          </p>
+          <p>
+            Some features of FORJD need an internet connection (you can log a workout without one, and it uploads when you are back online). You are responsible for
+            any charges from your mobile network provider, and we are not liable for them.
+          </p>
+          <p>Nothing in these terms limits liability that can't be limited by law, and your legal rights as a consumer are not affected.</p>
+        </section>
+
+        <section id="breach">
+          <h2>11. If you break these terms</h2>
+          <p>
+            If you break these terms or someone else's rights, and that causes us a loss, you are responsible for that loss, to the extent the law allows.
+          </p>
+        </section>
+
+        <section id="ending">
+          <h2>12. Ending your use</h2>
+          <p>
+            You can stop at any time and delete your account in the app. We may suspend or end your access if you break these terms, if the law requires it, or if
+            keeping your account puts others or the service at risk; where we reasonably can, we will tell you why first. We may also stop offering FORJD, with
+            notice where we can. When an account is deleted, its data is deleted as the privacy policy describes.
+          </p>
+        </section>
+
+        <section id="changes">
+          <h2>13. Changes, and the law that applies</h2>
+          <p>
+            We may update these terms when FORJD or the law changes. We will change the "last updated" date and tell you in the app or by email before a change that
+            matters to you starts. If you keep using FORJD after that, you accept the new terms; if you don't agree, you can delete your account.
+          </p>
+          <p>
+            These terms are governed by the law of <strong>Egypt</strong>, and the courts of <strong>Cairo</strong> can hear disputes, except that where you live
+            gives you consumer rights that can't be waived, those still apply. If any part of these terms is found not to work, the rest stays.
+          </p>
+        </section>
+
+        <section id="contact">
+          <h2>14. Contact</h2>
+          <p>Questions about these terms: <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .page-display { font-size: clamp(42px, 6vw, 80px); }
+  .legal-sec { padding-top: clamp(40px, 5vw, 64px); }
+</style>

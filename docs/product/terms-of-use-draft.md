@@ -1,6 +1,6 @@
 # Terms of use: draft for the owner's approval
 
-Status: **draft, not approved, not published** (2026-10-08). Plain language on purpose, written to match what the app does today. It is
+Status: **approved and published** (2026-10-08) as apps/web/src/pages/terms.astro; this file is the record of the draft. Plain language on purpose, written to match what the app does today. It is
 **not legal advice**: a qualified person should review it before launch, especially sections 9 to 13 (risk, liability, termination, governing
 law). Items in **[square brackets]** are for the owner to fill in or confirm. Once approved it becomes a `/terms` page on the website, and
 the sign-up line "Terms of Service" and the footer link point to it.
