@@ -45,7 +45,26 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     outputs:
       ready: ${{ steps.check.outputs.ready }}
+      api_changed: ${{ steps.changed.outputs.api_changed }}
     steps:
+      # Deploying the API (about 13 minutes) for a change that is only the website, the app or the docs wastes the private repository's
+      # limited free Actions minutes and changes nothing running. A push to main is one squash commit, so HEAD^1 is the base. A manual
+      # dispatch always deploys, and so does anything this cannot read.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+      - id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "api_changed=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          files="$(git diff --name-only HEAD^1 HEAD 2>/dev/null || true)"
+          echo "Changed files:"; echo "$files"
+          if [ -z "$files" ] || echo "$files" | grep -Eq '^(apps/api/|packages/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$)'; then
+            echo "api_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api_changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No API or shared package change in this commit, so there is nothing to deploy."
+          fi
       - id: check
         run: |
           if [ -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && [ -n "${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}" ] && [ -n "${{ vars.GCP_PROJECT_ID }}" ] && [ -n "${{ vars.GCP_REGION }}" ]; then
@@ -59,7 +78,7 @@ jobs:
     name: Build, migrate, deploy
     runs-on: ubuntu-latest
     needs: check
-    if: needs.check.outputs.ready == 'true'
+    if: needs.check.outputs.ready == 'true' && needs.check.outputs.api_changed == 'true'
     environment: ${{ inputs.target || 'staging' }}
 
     steps:
