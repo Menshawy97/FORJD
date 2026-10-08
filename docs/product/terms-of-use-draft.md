@@ -1,7 +1,7 @@
 # Terms of use: draft for the owner's approval
 
 Status: **draft, not approved, not published** (2026-10-08). Plain language on purpose, written to match what the app does today. It is
-**not legal advice**: a qualified person should review it before launch, especially sections 9 to 12 (liability, termination, governing
+**not legal advice**: a qualified person should review it before launch, especially sections 9 to 13 (risk, liability, termination, governing
 law). Items in **[square brackets]** are for the owner to fill in or confirm. Once approved it becomes a `/terms` page on the website, and
 the sign-up line "Terms of Service" and the footer link point to it.
 
@@ -83,11 +83,13 @@ FORJD, its name, logo, design and software belong to us or our licensors. We giv
 permission to use the app for your own training, for as long as you follow these terms. Exercise data, maps, city data and other
 third-party material stay with their owners, with credits as listed in the privacy policy.
 
-## 9. Availability, and what we don't promise
+## 9. Use at your own risk
 
-We work to keep FORJD running and your data safe, but we can't promise it will always be available, error-free or never lose data.
-Keep your own record of anything you can't afford to lose. The app is provided "as is" and "as available". Where the law allows, we
-don't give any promise beyond what is written here, and your legal rights as a consumer are not affected.
+Your use of FORJD is at your own risk. FORJD is provided "as is" and "as available". We don't give any warranties of any kind, express
+or implied, including the warranties of merchantability, fitness for a particular purpose and non-infringement, except where the law
+doesn't allow us to exclude them.
+
+FORJD isn't free of errors or bugs. Use it carefully, and keep your own record of anything you can't afford to lose.
 
 ## 10. Limitation of liability
 
@@ -100,13 +102,18 @@ are responsible for any charges from your mobile network provider, and we are no
 Nothing in these terms limits liability that can't be limited by law, and your legal rights as a consumer are not affected. **[Reviewer: confirm the wording for the countries you
 serve.]**
 
-## 11. Ending your use
+## 11. If you break these terms
+
+If you break these terms or someone else's rights, and that causes us a loss, you are responsible for that loss, to the extent the law
+allows.
+
+## 12. Ending your use
 
 You can stop at any time and delete your account in the app. We may suspend or end your access if you break these terms, if the law
 requires it, or if keeping your account puts others or the service at risk; where we reasonably can, we will tell you why first. We may
 also stop offering FORJD, with notice where we can. When an account is deleted, its data is deleted as the privacy policy describes.
 
-## 12. Changes, and the law that applies
+## 13. Changes, and the law that applies
 
 We may update these terms when FORJD or the law changes. We will change the "last updated" date and tell you in the app or by email
 before a change that matters to you starts. If you keep using FORJD after that, you accept the new terms; if you don't agree, you can
@@ -115,7 +122,7 @@ delete your account.
 These terms are governed by the law of **Egypt**, and the courts of **Cairo** can hear disputes, except that where you
 live gives you consumer rights that can't be waived, those still apply. If any part of these terms is found not to work, the rest stays.
 
-## 13. Contact
+## 14. Contact
 
 Questions about these terms: **support@getforjd.com**.
 
@@ -128,7 +135,7 @@ agreed to "you tell me"); some features free and some paid, shown in the app.
 
 Still open:
 1. Approve the wording (nothing is published).
-2. Section 10 follows the owner's sample wording (no cap on the amount), with the carve-outs the law requires.
-3. A qualified person reviews sections 9 to 12 before launch. Because FORJD is run by an individual, not a company, you are personally
+2. Section 10 follows the owner's sample wording (no cap on the amount), with the carve-outs the law requires. Section 9 (own risk, warranties) and section 11 (if you break these terms) were added 2026-10-08 in our own words, not copied from another company's terms.
+3. A qualified person reviews sections 9 to 13 before launch. Because FORJD is run by an individual, not a company, you are personally
    responsible for claims; a lawyer can say whether to form a company before you have paying users.
 4. When paid plans ship, the in-app screen that shows the plan, price and renewal must match section 7.
