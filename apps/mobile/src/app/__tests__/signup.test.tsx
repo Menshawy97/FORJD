@@ -31,6 +31,14 @@ describe('signup screen - privacy policy link', () => {
     expect(Linking.openURL).toHaveBeenCalledWith('https://getforjd.com/privacy');
   });
 
+  it('opens the terms of use when "Terms of Service" in the consent line is tapped', async () => {
+    const { findByText } = await renderApp({ initialUrl: '/signup' });
+
+    fireEvent.press(await findByText('Terms of Service'));
+
+    expect(Linking.openURL).toHaveBeenCalledWith('https://getforjd.com/terms');
+  });
+
   it('keeps the whole consent sentence', async () => {
     const { findByText } = await renderApp({ initialUrl: '/signup' });
 

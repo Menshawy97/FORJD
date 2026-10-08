@@ -12,7 +12,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { SocialAuthRow } from '@/components/social-auth-row';
 import { Toast, useToast } from '@/components/toast';
 import { useSocialSignIn } from '@/auth/use-social-sign-in';
-import { PRIVACY_POLICY_URL } from '@/legal/links';
+import { PRIVACY_POLICY_URL, TERMS_URL } from '@/legal/links';
 import { colors } from '@/theme/tokens';
 
 // Copy and layout from the prototype's `s_signup()`; validation order from
@@ -228,7 +228,13 @@ export default function SignupScreen() {
         <Text
           className="mt-[18px] text-center font-archivo text-legal"
           style={{ color: colors.legal }}>
-          By creating an account you agree to our Terms of Service and{' '}
+          By creating an account you agree to our{' '}
+          <Text
+            accessibilityRole="link"
+            onPress={() => void Linking.openURL(TERMS_URL).catch(() => undefined)}>
+            Terms of Service
+          </Text>{' '}
+          and{' '}
           <Text
             accessibilityRole="link"
             onPress={() => void Linking.openURL(PRIVACY_POLICY_URL).catch(() => undefined)}>
