@@ -357,7 +357,9 @@ if [ -d apps/api/drizzle ]; then
     | sed -E 's/.*"([^"]+)"$/\1/' | sort -u || true)
   missing=""
   for table in $created; do
-    if ! printf '%s\n' "$all_sql" | grep -qE "ALTER TABLE \"$table\" ENABLE ROW LEVEL SECURITY"; then
+    # Here-string, not a pipe: `grep -q` exits at the first match and a piped printf would die of
+    # SIGPIPE, which pipefail turns into a false "not found" on large migration sets.
+    if ! grep -qE "ALTER TABLE \"$table\" ENABLE ROW LEVEL SECURITY" <<<"$all_sql"; then
       missing="$missing$table"$'\n'
     fi
   done

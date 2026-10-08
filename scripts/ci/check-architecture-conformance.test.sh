@@ -343,6 +343,18 @@ setup_table_with_rls_in_same_migration() {
 ALTER TABLE "widgets" ENABLE ROW LEVEL SECURITY;'
 }
 
+# Regression: with a large migration set, `printf | grep -q` under pipefail reported a table
+# that DOES have RLS as missing (grep -q exits early, printf dies of SIGPIPE).
+setup_table_with_rls_large_migrations() {
+  local dir="$1"
+  setup_table_with_rls_in_same_migration "$dir"
+  local i
+  for i in 1 2 3 4 5 6 7 8; do
+    write "$dir/apps/api/drizzle/01${i}_padding.sql" "$(head -c 60000 /dev/zero | tr '\0' 'x')"
+  done
+}
+
+run_case "table-with-rls-large-migrations" pass setup_table_with_rls_large_migrations
 run_case "table-without-rls"           fail setup_table_without_rls
 run_case "table-with-rls"              pass setup_table_with_rls
 run_case "table-with-rls-same-migration" pass setup_table_with_rls_in_same_migration
