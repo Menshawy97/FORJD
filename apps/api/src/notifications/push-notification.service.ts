@@ -15,6 +15,7 @@ import {
   type PushTicket,
 } from '../integrations/push/notification-provider';
 import { NotificationPreferencesRepository } from './notification-preferences.repository';
+import { describeFailure } from './failure-description';
 import { PushOutboxRepository, type OutboxRow } from './push-outbox.repository';
 import { PushTokensRepository } from './push-tokens.repository';
 
@@ -133,7 +134,7 @@ export class PushNotificationService {
         await this.dispatchRow(row, now, summary);
       } catch (error) {
         // An unexpected failure must not leave the row `sending` until it goes stale: put it back, counted as a try.
-        this.logger.error(`Dispatching push ${row.id} failed (${error instanceof Error ? error.name : 'unknown error'}).`);
+        this.logger.error(`Dispatching push ${row.id} failed (${describeFailure(error)}).`);
         await this.retryOrFail(row, now, summary);
       }
     }
@@ -182,7 +183,7 @@ export class PushNotificationService {
       return await run();
     } catch (error) {
       failedSteps.push(name);
-      this.logger.error(`Push drain step "${name}" failed (${error instanceof Error ? error.name : 'unknown error'}).`);
+      this.logger.error(`Push drain step "${name}" failed (${describeFailure(error)}).`);
       return fallback;
     }
   }
@@ -301,7 +302,7 @@ export class PushNotificationService {
     try {
       await step();
     } catch (error) {
-      this.logger.error(`Push ${row.id}: could not ${what} after sending (${error instanceof Error ? error.name : 'unknown error'}).`);
+      this.logger.error(`Push ${row.id}: could not ${what} after sending (${describeFailure(error)}).`);
     }
   }
 
