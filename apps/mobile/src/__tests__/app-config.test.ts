@@ -132,3 +132,35 @@ describe('app config: the run map key', () => {
     expect(plugin[1]).not.toHaveProperty('iosGoogleMapsApiKey');
   });
 });
+
+describe('app config: Firebase for Android push (12F)', () => {
+  // The file comes from the EAS file variable GOOGLE_SERVICES_JSON (its value is a path); it is never committed.
+  const loadConfig = (path: string | undefined) => {
+    const previous = process.env.GOOGLE_SERVICES_JSON;
+    if (path === undefined) delete process.env.GOOGLE_SERVICES_JSON;
+    else process.env.GOOGLE_SERVICES_JSON = path;
+    try {
+      let loaded: typeof config | undefined;
+      jest.isolateModules(() => {
+        loaded = require('../../app.config').default;
+      });
+      return loaded as typeof config;
+    } finally {
+      if (previous === undefined) delete process.env.GOOGLE_SERVICES_JSON;
+      else process.env.GOOGLE_SERVICES_JSON = previous;
+    }
+  };
+
+  it('points Android at the Firebase file when one is supplied', () => {
+    expect(loadConfig('/tmp/eas/google-services.json').android?.googleServicesFile).toBe('/tmp/eas/google-services.json');
+  });
+
+  it('declares no Firebase file when none is supplied, or when it is empty, so builds without push still work', () => {
+    expect(loadConfig(undefined).android).not.toHaveProperty('googleServicesFile');
+    expect(loadConfig('').android).not.toHaveProperty('googleServicesFile');
+  });
+
+  it('puts no Firebase file on iOS, which gets push from Apple through Expo', () => {
+    expect(loadConfig('/tmp/eas/google-services.json').ios).not.toHaveProperty('googleServicesFile');
+  });
+});
