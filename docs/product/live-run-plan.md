@@ -165,10 +165,16 @@ route-tree suites (signup, welcome, profile navigation); they pass alone and in 
 - ~~**Leftover snapshot of a queued run.**~~ **Fixed 2026-10-01 (G6):** enqueue and clear are one SQLite transaction. Recovery now drops a snapshot whose run is still in the upload queue, but
   one whose run has already uploaded (a crash between enqueue and clear, then a successful sync) could still be
   offered. Fix by also checking the server, or by enqueueing and clearing in one SQLite transaction.
-- **Source-blind calories.** The watch energy is summed across every source that writes to Health Connect, so a
-  phone and a watch both writing could double-count; rule 10 says to preserve source. Filter by data origin.
-- **Failures shown as silence.** `sync()` reports a revoked permission in `failedMetricTypes`; the run reads that
-  as "no watch". A one-time "Heart rate unavailable, check Health Connect" hint would be honest.
+- ~~**Source-blind calories.**~~ **Fixed 2026-10-09.** `SyncedObservation` now carries an optional `dataOrigin`
+  (Health Connect's writing app), and `sumActiveEnergyKcal` counts one app only: the one that gave the heart
+  rate, otherwise the one with the largest total. Other apps' records stay in Health Connect untouched (rule 10).
+  The reader reads heart rate first so it knows which app that is. Device walk owed (two apps writing calories).
+- ~~**Failures shown as silence.**~~ **Fixed 2026-10-09.** The reader records which metric `sync()` listed in
+  `failedMetricTypes` (and forgets it once a read works again). The live heart-rate card shows "Heart rate is
+  turned off for FORJD in Health Connect." with an "Open Health Connect" link in place of the chart, and the
+  run-complete screen shows the calories version ("... so this run uses an estimate."). Replica approved
+  2026-10-09; `openHealthConnectSettings` is called only from `integrations/health/health-settings.ts` (rule 17).
+  Nothing changes on the server or in the upload.
 - **Stale consent write after sign-out.** Home writes the health consent copy after `getMe`; a response that lands
   after `clearSession` could put the old account's yes back. Check a session still exists before writing (the
   location consent copy has the same narrow race). The server still drops health fields either way.

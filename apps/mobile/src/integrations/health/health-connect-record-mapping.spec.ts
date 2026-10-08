@@ -76,6 +76,31 @@ describe("mapHeartRateRecord", () => {
   });
 });
 
+describe("data origin (rule 10: the writing app is kept, never inferred)", () => {
+  it("keeps the app that wrote a heart rate and a calories record", () => {
+    const [heart] = mapHeartRateRecord({
+      startTime: "2026-09-07T00:00:00.000Z",
+      endTime: "2026-09-07T00:01:00.000Z",
+      samples: [{ time: "2026-09-07T00:00:00.000Z", beatsPerMinute: 60 }],
+      metadata: { id: "rec-1", dataOrigin: "com.watch.app" },
+    });
+    const [energy] = mapActiveEnergyRecord({
+      startTime: "2026-09-07T00:00:00.000Z",
+      endTime: "2026-09-07T00:01:00.000Z",
+      energy: { inKilocalories: 5, inCalories: 5000, inJoules: 20920, inKilojoules: 20.92 },
+      metadata: { id: "rec-2", dataOrigin: "com.phone.app" },
+    });
+
+    expect(heart?.dataOrigin).toBe("com.watch.app");
+    expect(energy?.dataOrigin).toBe("com.phone.app");
+  });
+
+  it("is null when Health Connect names no app", () => {
+    const [observation] = mapHrvRecord({ time: "2026-09-07T00:00:00.000Z", heartRateVariabilityMillis: 55 });
+    expect(observation?.dataOrigin).toBeNull();
+  });
+});
+
 describe("mapHrvRecord", () => {
   it("reads heartRateVariabilityMillis as the value in ms", () => {
     const [observation] = mapHrvRecord({ time: "2026-09-07T00:00:00.000Z", heartRateVariabilityMillis: 55 });

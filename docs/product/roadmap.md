@@ -125,9 +125,11 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
   `GET /nutrition/foods?ids=`). ~~The two R28 timing tests~~ removed (G4).
 - ~~**CI (8.5E, unconfirmed):** `ci.yml` had no top-level `permissions:` block~~ added (G2); it touches no
   credentials, so this rests on the repository's default token permission.
-- **Rule 10:** watch calories are summed across every Health Connect data origin (possible
-  double count); filter by origin.
-- **Honest failures:** a revoked Health Connect permission reads as "no watch".
+- ~~**Rule 10:** watch calories are summed across every Health Connect data origin (possible
+  double count)~~ fixed 2026-10-09: `dataOrigin` is kept and a run counts one app's calories (the heart-rate
+  app, else the largest). Device walk owed.
+- ~~**Honest failures:** a revoked Health Connect permission reads as "no watch"~~ fixed 2026-10-09: the live
+  heart-rate card and the run-complete screen say so and link to Health Connect's settings. Device walk owed.
 - **Run follow-ups:** ~~a leftover snapshot of an already-uploaded run; the route rebuilt every
   second; the unused `run_points` table~~ fixed (G6); no miles option; the run share card ("coming soon").
 - **Website:** the privacy page's "Waitlist" section (W4 step 3). The production build's form now

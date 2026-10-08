@@ -75,6 +75,14 @@ export interface SyncedObservation {
   providerRecordId: string | null;
   deviceId: string | null;
   quality: number | null;
+  /**
+   * The app that wrote this reading into the provider (Health Connect's `dataOrigin`, a package
+   * name), recorded explicitly and never inferred (CLAUDE.md rule 10). Several apps can write the
+   * same metric for the same minutes, so a caller that adds readings up needs it to avoid counting
+   * them twice. Optional so providers with no such notion need not invent one; `null` when the
+   * provider named none.
+   */
+  dataOrigin?: string | null;
 }
 
 export interface SyncResult {

@@ -52,6 +52,32 @@ describe('sumActiveEnergyKcal', () => {
     expect(sumActiveEnergyKcal([obs({ metricType: 'active_energy', value: 40, unit: 'kJ' })], T0, T0 + 5000)).toBeNull();
     expect(sumActiveEnergyKcal([energy(-3, 0, 1000)], T0, T0 + 5000)).toBeNull();
   });
+
+  // Rule 10: two apps can both write calories for the same minutes. Adding them double counts.
+  describe('when more than one app wrote calories', () => {
+    const from = (origin: string | null, kcal: number, at = 0) => ({
+      ...energy(kcal, at, at + 60_000),
+      dataOrigin: origin,
+    });
+    const both = [from('com.watch', 100), from('com.watch', 50, 60_000), from('com.phone', 120)];
+
+    it('counts only the preferred app (the one that gave the heart rate)', () => {
+      expect(sumActiveEnergyKcal(both, T0, T0 + 200_000, 'com.watch')).toBe(150);
+      expect(sumActiveEnergyKcal(both, T0, T0 + 200_000, 'com.phone')).toBe(120);
+    });
+
+    it('counts the app with the most calories when none is preferred', () => {
+      expect(sumActiveEnergyKcal(both, T0, T0 + 200_000)).toBe(150);
+    });
+
+    it('counts the app with the most calories when the preferred app wrote none', () => {
+      expect(sumActiveEnergyKcal(both, T0, T0 + 200_000, 'com.other')).toBe(150);
+    });
+
+    it('treats records that name no app as one app', () => {
+      expect(sumActiveEnergyKcal([from(null, 40), from(null, 35)], T0, T0 + 200_000)).toBe(75);
+    });
+  });
 });
 
 describe('prepareRunHealth', () => {
@@ -155,15 +181,85 @@ describe('readFinalHealth', () => {
   });
 
   it('gives nothing, quickly, when there is no reader or the watch is slow', async () => {
-    expect(await readFinalHealth(null, T0, T0 + 1000, 1000)).toEqual({ heartRate: [], caloriesKcal: null });
+    const none = { heartRate: [], caloriesKcal: null, blocked: [] };
+    expect(await readFinalHealth(null, T0, T0 + 1000, 1000)).toEqual(none);
 
-    const slow = { readHeartRate: () => new Promise<never>(() => undefined), readActiveEnergyKcal: () => new Promise<never>(() => undefined) };
-    expect(await readFinalHealth(slow, T0, T0 + 1000, 20)).toEqual({ heartRate: [], caloriesKcal: null });
+    const slow = {
+      readHeartRate: () => new Promise<never>(() => undefined),
+      readActiveEnergyKcal: () => new Promise<never>(() => undefined),
+      blockedMetrics: () => [],
+    };
+    expect(await readFinalHealth(slow, T0, T0 + 1000, 20)).toEqual(none);
   });
 
   it('gives nothing when a read fails, so a finished run is never lost to a watch', async () => {
-    const broken = { readHeartRate: jest.fn().mockRejectedValue(new Error('x')), readActiveEnergyKcal: jest.fn().mockRejectedValue(new Error('x')) };
-    expect(await readFinalHealth(broken, T0, T0 + 1000, 1000)).toEqual({ heartRate: [], caloriesKcal: null });
+    const broken = {
+      readHeartRate: jest.fn().mockRejectedValue(new Error('x')),
+      readActiveEnergyKcal: jest.fn().mockRejectedValue(new Error('x')),
+      blockedMetrics: () => [],
+    };
+    expect(await readFinalHealth(broken, T0, T0 + 1000, 1000)).toEqual({ heartRate: [], caloriesKcal: null, blocked: [] });
+  });
+
+  // Rule 10: the watch's calories, not the phone app's on top of them.
+  it('counts the calories from the app that gave the heart rate, not every app added together', async () => {
+    const energy = (kcal: number, dataOrigin: string) =>
+      obs({ metricType: 'active_energy', value: kcal, unit: 'kcal', startTime: new Date(T0 + 1000), endTime: new Date(T0 + 60_000), dataOrigin });
+    const provider = new FakeHealthProvider({
+      observations: [obs({ value: 150, dataOrigin: 'com.watch' }), energy(100, 'com.watch'), energy(180, 'com.phone')],
+    });
+    const reader = await prepareRunHealth(provider, { alreadyAsked: false, markAsked: jest.fn() });
+
+    const result = await readFinalHealth(reader, T0, T0 + 120_000, 1000);
+
+    expect(result.caloriesKcal).toBe(100);
+  });
+});
+
+// Health Connect refused a read the person once allowed (they turned it off there). It must say so,
+// not look like a watch that has not synced.
+describe('a metric Health Connect no longer lets FORJD read', () => {
+  const refusing = (failed: Array<'heart_rate' | 'active_energy'>) => {
+    const provider = new FakeHealthProvider();
+    jest.spyOn(provider, 'sync').mockImplementation(async (request) => ({
+      observations: [],
+      syncedAt: new Date(T0),
+      failedMetricTypes: request.metricTypes.filter((m) => failed.includes(m as 'heart_rate' | 'active_energy')),
+    }));
+    return provider;
+  };
+
+  it('reports heart rate as blocked after a read it could not make', async () => {
+    const reader = await prepareRunHealth(refusing(['heart_rate']), { alreadyAsked: true, markAsked: jest.fn() });
+
+    expect(reader?.blockedMetrics()).toEqual([]);
+    await reader?.readHeartRate(T0);
+    expect(reader?.blockedMetrics()).toEqual(['heart_rate']);
+  });
+
+  it('reports calories as blocked, and the final read carries both', async () => {
+    const reader = await prepareRunHealth(refusing(['heart_rate', 'active_energy']), { alreadyAsked: true, markAsked: jest.fn() });
+
+    const result = await readFinalHealth(reader, T0, T0 + 1000, 1000);
+
+    expect(result).toEqual({ heartRate: [], caloriesKcal: null, blocked: ['heart_rate', 'active_energy'] });
+  });
+
+  it('reports nothing when the reads simply returned no data', async () => {
+    const reader = await prepareRunHealth(new FakeHealthProvider(), { alreadyAsked: true, markAsked: jest.fn() });
+
+    expect((await readFinalHealth(reader, T0, T0 + 1000, 1000)).blocked).toEqual([]);
+  });
+
+  it('forgets a block once the read works again', async () => {
+    const provider = refusing(['heart_rate']);
+    const reader = await prepareRunHealth(provider, { alreadyAsked: true, markAsked: jest.fn() });
+    await reader?.readHeartRate(T0);
+    jest.spyOn(provider, 'sync').mockResolvedValue({ observations: [], syncedAt: new Date(T0) });
+
+    await reader?.readHeartRate(T0);
+
+    expect(reader?.blockedMetrics()).toEqual([]);
   });
 });
 

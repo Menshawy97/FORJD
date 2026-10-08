@@ -23,7 +23,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Decide whether owed device tests are carried into the beta (this keeps Phase 8.5 open)
 
 ### Cloud and production
-- [ ] Delete old `us-central1` Cloud Run services `forjd-api-production` and `forjd-api-staging`
+- [x] Delete old `us-central1` Cloud Run services `forjd-api-production` and `forjd-api-staging` (done by the owner; confirmed 2026-10-09: only the two `europe-west1` services remain)
 - [ ] Supabase access-token lifetime to 900 s (both projects)
 - [ ] Custom SMTP on the production Supabase project
 - [ ] Fix exercise-media mirroring on production (wrong key in the service-role secret, or a Storage RLS difference)
@@ -54,8 +54,8 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] L3-3: Sentry text and consent (G1, #312): reports keep only error type and stack frames; none sent when crash diagnostics is off
 - [ ] Define data retention periods (privacy policy needs them)
 - [x] `security.md` encryption claim corrected: only WHOOP tokens are app-level encrypted; the rest relies on the host (not verified here)
-- [ ] Revoked Health Connect permission reads as "no watch"; show an honest hint
-- [ ] Watch calories summed across all Health Connect origins (possible double count, rule 10); filter by origin
+- [x] Revoked Health Connect permission reads as "no watch": built 2026-10-09. The run reader reports which of heart rate and calories Health Connect refused; the live heart-rate card and the run-complete screen show a note with an "Open Health Connect" link (replica approved 2026-10-09). **Device walk owed:** turn heart rate off in Health Connect, start a run, and check the note appears; turn it back on and check it goes. Proposed FAQ line for "Why does heart rate show a dash?" (needs your approval before it goes in the app): "If you turned heart rate off for FORJD in Health Connect, the run says so and links you there."
+- [x] Watch calories summed across all Health Connect origins (rule 10): built 2026-10-09. `dataOrigin` is kept on every Health Connect reading; a run counts one app's calories (the app that gave the heart rate, else the app with the most). The other apps' records are untouched. **Device walk owed:** a phone where two apps write calories
 - [ ] *(unconfirmed)* `AuthenticatedGate` date-of-birth `getMe` may misroute a new account after a quick account switch
 
 ### Website
@@ -108,7 +108,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Quiet-hours editor device walk (owner): an iPhone and an Android phone. Change opens the sheet; the real time picker sets From and Until; equal times are refused; Save updates the row and a reminder inside the window does not fire; tapping outside closes without saving; the choice survives a reinstall (it comes from the server)
 - [ ] CI: stop `cancel-in-progress` cancelling runs on `main` (`.github/workflows/ci.yml`): make it apply to pull requests only, so every merge gets a full run (owner decision pending)
 - [x] 12F server push built, all seven slices (#350 to #358), see [phase-12f-plan.md](phase-12f-plan.md): device tokens, the Expo provider behind `NotificationProvider`, the send policy and message builders, the outbox and dispatcher, the phone side, PR pushes for lifts and runs, rank pushes from the weekly snapshot, and the `push-drain.yml` workflow. **Nothing registers on a phone until the owner steps below are done.**
-- [ ] 12F owner steps. **Done 2026-10-08:** Firebase project `forjd-8e910` with the Android app `com.forjd.app`; `google-services.json` is at `apps/mobile/` (gitignored) and `app.config.ts` reads it from the `GOOGLE_SERVICES_JSON` variable. `GOOGLE_SERVICES_JSON` and `GOOGLE_MAPS_ANDROID_API_KEY` are saved in EAS (checked in the development environment). **Still to do:** (1) Firebase console, Project settings, Service accounts, Generate new private key, then upload that JSON with `eas credentials` (Android, Google Service Account, FCM V1); (2) a new dev-client build (push and the maps key need a native change). The device walk is skipped for now
+- [ ] 12F owner steps. **Done 2026-10-08:** Firebase project `forjd-8e910` with the Android app `com.forjd.app`; `google-services.json` is at `apps/mobile/` (gitignored) and `app.config.ts` reads it from the `GOOGLE_SERVICES_JSON` variable. `GOOGLE_SERVICES_JSON` and `GOOGLE_MAPS_ANDROID_API_KEY` are saved in EAS (checked in the development environment). **Also done (confirmed 2026-10-09):** the FCM V1 service-account key is uploaded to EAS (owner), and a dev-client build finished 2026-10-08 (EAS build `cd2102a5`, commit `6eebbcf`, after all of 12F). **Still to do:** install that build on an Android 7+ phone and walk it (see the 12F device walk below); the OPPO A37f (Android 5.1.1) cannot run it
 - [ ] 12F device walk (owner, Android first): the permission ask when PR celebrations or leaderboard moves is turned on; the token registers (a row appears for the phone); a PR push after a heavier lift and after a longest or fastest run, tap opens the workout; a rank push after the Saturday snapshot, tap opens Rank; a push due in quiet hours arrives after them; logging out removes the token (no push afterwards); turning both switches off stops pushes
 - [x] 12F production deploy: done 2026-10-08 (Deploy API to Cloud Run, target production); the push tables now exist there, a production drain run passed, and the scheduled drain covers staging and production
 - [x] 12F FAQ: the two entries ("What are PR and leaderboard notifications?", "What does FORJD share to send these?") approved 2026-10-08 and in the app (44 questions in all)

@@ -542,6 +542,38 @@ describe('RunScreen -- watch heart rate and calories (R8)', () => {
     expect(screen.getByText('147')).toBeTruthy();
   });
 
+  it('says heart rate is turned off when Health Connect refuses the read, instead of looking like a quiet watch', async () => {
+    const provider = watchProvider();
+    provider.sync.mockImplementation(async (request: { metricTypes: string[] }) => ({
+      observations: [],
+      syncedAt: new Date(),
+      failedMetricTypes: request.metricTypes,
+    }));
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(true);
+    (hasAskedRunHealthAccess as jest.Mock).mockResolvedValue(true);
+
+    await render(<RunScreen />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Heart rate is turned off for FORJD in Health Connect.')).toBeTruthy(),
+    );
+    expect(screen.getByText('— bpm now')).toBeTruthy();
+  });
+
+  it('shows no note when the watch is simply quiet', async () => {
+    const provider = watchProvider();
+    provider.sync.mockResolvedValue({ observations: [], syncedAt: new Date() });
+    (getDeviceHealthProvider as jest.Mock).mockReturnValue(provider);
+    (readHealthConsent as jest.Mock).mockResolvedValue(true);
+    (hasAskedRunHealthAccess as jest.Mock).mockResolvedValue(true);
+
+    await render(<RunScreen />);
+    await waitFor(() => expect(provider.sync).toHaveBeenCalled());
+
+    expect(screen.queryByText('Heart rate is turned off for FORJD in Health Connect.')).toBeNull();
+  });
+
   it('does not pause the run when Health Connect opens its own screen', async () => {
     const provider = watchProvider();
     let release: () => void = () => undefined;
