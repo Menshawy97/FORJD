@@ -157,6 +157,8 @@ receipts) are deleted by the drain. The export lists the person's registered pho
 Built and merged: slices 1 (#350), 2 (#351), 3a (#352), 3b (#353), 4 (#354), 5a (#355), 6 (#356), 7 (#357) and 5b (#358).
 **Left:** only the owner steps below. **5b built 2026-10-07 on the owner's go-ahead for the two rules:** `domain/run-records.ts` (`detectRunRecords`, `paceSecondsPerKm`, `MIN_PACE_RECORD_METERS` = 2000), `priorRunBestsForUser` (the longest earlier run, and the fastest pace among earlier runs of 2 km or more, from completed runs started before this one), and `PrCelebrationService` now judges the stored run summary as well as the lifts, so a session that sets lift and run records sends one push with a count. Titles: "New PR: your longest run", "New PR: your fastest pace"; no distance, time or pace in the text; heart rate and calories are never read.
 
+**Production note (2026-10-08):** a push to main migrates and deploys staging only; production is deployed by hand, so its database lacks the push tables. The drain schedule therefore targets staging until production is deployed once.
+
 ## Text for the owner: privacy policy and Play Data safety
 
 **Privacy policy (paragraph to add under notifications).** "If you turn on PR or leaderboard notifications, FORJD stores a
