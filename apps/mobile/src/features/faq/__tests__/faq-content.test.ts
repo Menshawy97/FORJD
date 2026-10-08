@@ -22,9 +22,9 @@ describe('FAQ content', () => {
     ]);
   });
 
-  it('has the approved 42 questions, seven, nine, six, four, five, three, five and three per section', () => {
-    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 9, 6, 4, 5, 3, 5, 3]);
-    expect(allEntries).toHaveLength(42);
+  it('has the approved 44 questions, seven, nine, six, four, five, three, seven and three per section', () => {
+    expect(FAQ_SECTIONS.map((s) => s.entries.length)).toEqual([7, 9, 6, 4, 5, 3, 7, 3]);
+    expect(allEntries).toHaveLength(44);
   });
 
   it('ties only the Weekly Forge section to a feature flag', () => {
@@ -59,6 +59,8 @@ describe('FAQ content', () => {
       'notifications-when-to-train',
       'notifications-contents',
       'notifications-missing',
+      'notifications-server',
+      'notifications-shared',
       'notifications-permission',
     ]);
     const answer = (id: string) => textOf(section?.entries.find((e) => e.id === id)?.answer ?? []);
@@ -67,6 +69,18 @@ describe('FAQ content', () => {
     expect(answer('notifications-contents')).toMatch(/nothing in them is sent anywhere/);
     expect(answer('notifications-contents')).toMatch(/never a health reading/);
     expect(answer('notifications-missing')).toMatch(/two weeks/);
+  });
+
+  // 12F, approved by the owner 2026-10-08 (docs/product/faq-copy.md): what the server pushes are, and what is shared to send them.
+  it('explains PR and leaderboard pushes and what is shared, with no health reading in them', () => {
+    const section = FAQ_SECTIONS.find((s) => s.title === 'Notifications');
+    const entry = (id: string) => section?.entries.find((e) => e.id === id);
+    expect(entry('notifications-server')?.question).toBe('What are PR and leaderboard notifications?');
+    expect(textOf(entry('notifications-server')?.answer ?? [])).toMatch(/never a weight, a time or a health reading/);
+    expect(textOf(entry('notifications-server')?.answer ?? [])).toMatch(/longest run or your fastest pace over 2 km or more/);
+    expect(entry('notifications-shared')?.question).toBe('What does FORJD share to send these?');
+    expect(textOf(entry('notifications-shared')?.answer ?? [])).toMatch(/It contains no health reading/);
+    expect(textOf(entry('notifications-shared')?.answer ?? [])).toMatch(/removed from FORJD's servers/);
   });
 
   it('never shows an unfinished note to a user', () => {

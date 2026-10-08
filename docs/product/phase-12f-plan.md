@@ -175,5 +175,5 @@ functionality.
 
 **Owner steps still owed before anything reaches a phone** (Firebase project and `google-services.json` done 2026-10-08, wired in `app.config.ts` through the `GOOGLE_SERVICES_JSON` variable): the file given to EAS as a file variable, the FCM service account key uploaded with
 `eas credentials`; a new development-client build; the device walk (register, a PR push, a rank push, quiet hours, sign-out
-removes the token); the privacy-policy and Data safety wording above; approval of the two FAQ entries in `faq-copy.md`;
+removes the token); the privacy-policy and Data safety wording above; the two FAQ entries (approved 2026-10-08, in the app);
 and the cadence of `push-drain.yml` (once a day today, at 05:07 UTC, because Actions minutes are limited in a private repository; Cloud Scheduler is the free way to run it more often).

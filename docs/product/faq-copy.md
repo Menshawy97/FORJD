@@ -386,10 +386,10 @@ Notifications screen says so and links to them. Reminders are a nudge, not a gua
 for permission. If you say no, nothing else changes: your choices are saved and the rest of FORJD works the same. You
 can allow it later in your phone's settings."
 
-## Proposed for 12F (server push), needs the owner's approval before it goes in `faq-content.ts`
+## Approved for 12F (owner, 2026-10-08), now in `faq-content.ts`
 
 Two entries for the "Notifications" section, after "Why didn't a reminder arrive?". Every claim is what the code does
-(`docs/product/phase-12f-plan.md`, ADR-060, ADR-061, ADR-065). Not built into the app until approved. Lifts and runs are both covered (run rules confirmed 2026-10-07).
+(`docs/product/phase-12f-plan.md`, ADR-060, ADR-061, ADR-065). Built into the app (44 questions in all). One wording change when built: "it is sent just after they end" became "it waits until they have ended", because the daily push drain sends a held push at its next run, not at the exact minute. Lifts and runs are both covered (run rules confirmed 2026-10-07).
 
 ### Notifications → new entry: What are PR and leaderboard notifications?
 

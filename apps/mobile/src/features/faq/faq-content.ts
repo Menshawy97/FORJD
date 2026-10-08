@@ -443,6 +443,24 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
         ],
       },
       {
+        id: 'notifications-server',
+        question: `What are PR and leaderboard notifications?`,
+        answer: [
+          {
+            p: `Two optional notifications come from FORJD's servers instead of your phone. A PR notification arrives soon after you lift heavier than you ever have on an exercise, or run your longest run or your fastest pace over 2 km or more. A leaderboard notification arrives once a week, when you move up or down in your city. Both are on by default and you can switch each one in Profile, then Notifications. They name the exercise or the city and nothing else: never a weight, a time or a health reading. If one is due during your quiet hours, it waits until they have ended. A PR notification that is more than a day old is not sent at all.`,
+          },
+        ],
+      },
+      {
+        id: 'notifications-shared',
+        question: `What does FORJD share to send these?`,
+        answer: [
+          {
+            p: `Your phone's push address (a code that identifies FORJD on your phone), the short text of the notification, and which screen to open when you tap it. It travels through the push service FORJD uses (Expo's) and then Google's (or Apple's) to reach your phone. It contains no health reading. When you sign out, or delete your account, your phone's address is removed from FORJD's servers.`,
+          },
+        ],
+      },
+      {
         id: 'notifications-permission',
         question: `Why does FORJD ask to send notifications?`,
         answer: [
