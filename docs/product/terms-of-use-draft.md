@@ -89,12 +89,17 @@ We work to keep FORJD running and your data safe, but we can't promise it will a
 Keep your own record of anything you can't afford to lose. The app is provided "as is" and "as available". Where the law allows, we
 don't give any promise beyond what is written here, and your legal rights as a consumer are not affected.
 
-## 10. Limits on our responsibility
+## 10. Limitation of liability
 
-Where the law allows, we are not responsible for indirect or consequential loss, for loss of data you could have kept a copy of, or for
-injury or loss that comes from how you train, eat or act on what FORJD shows. Nothing in these terms limits liability that can't be
-limited by law, for example for death or personal injury caused by our negligence, or for fraud. Our total responsibility to you for any claim is limited to the greater of the amount you paid us in the 12 months before the claim
-and 1,000 Egyptian pounds. **[Proposed. Reviewer: confirm the cap and the wording for the countries you serve.]**
+We are not responsible for any indirect, incidental or consequential damages, including loss of data you could have kept a copy of, or
+injury or loss that comes from how you train, eat or act on what FORJD shows.
+
+Some features of FORJD need an internet connection (you can log a workout without one, and it uploads when you are back online). You
+are responsible for any charges from your mobile network provider, and we are not liable for them.
+
+Nothing in these terms limits liability that can't be limited by law, for example for death or personal injury caused by our
+negligence, or for fraud, and your legal rights as a consumer are not affected. **[Reviewer: confirm the wording for the countries you
+serve.]**
 
 ## 11. Ending your use
 
@@ -124,7 +129,7 @@ agreed to "you tell me"); some features free and some paid, shown in the app.
 
 Still open:
 1. Approve the wording (nothing is published).
-2. The liability cap in section 10 is proposed (the greater of what you paid in 12 months and 1,000 EGP); a reviewer should confirm it.
+2. Section 10 follows the owner's sample wording (no cap on the amount), with the carve-outs the law requires.
 3. A qualified person reviews sections 9 to 12 before launch. Because FORJD is run by an individual, not a company, you are personally
    responsible for claims; a lawyer can say whether to form a company before you have paying users.
 4. When paid plans ship, the in-app screen that shows the plan, price and renewal must match section 7.
