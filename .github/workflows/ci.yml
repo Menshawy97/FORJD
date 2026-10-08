@@ -46,6 +46,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which parts of the repository this change touches, so a website-only or mobile-only change does not pay for the API suite (and
+  # the other way round). The private repository's free Actions minutes ran short (2026-10-08: about 1,880 of 2,000 used in eight
+  # days), and most of that was running every job for every change. Conformance is cheap and always runs. If the list of changed
+  # files cannot be read, everything runs: skipping a needed job is the failure to avoid, not running an unneeded one.
+  changes:
+    name: Which parts changed
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # A pull request is checked out as a merge commit and a squash-merged push is one commit: either way HEAD^1 is the base.
+          fetch-depth: 2
+      - id: filter
+        run: |
+          files="$(git diff --name-only HEAD^1 HEAD 2>/dev/null || true)"
+          echo "Changed files:"; echo "$files"
+          root='package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|.github/workflows/ci.yml$'
+          match() { if [ -z "$files" ]; then echo true; elif echo "$files" | grep -Eq "$1"; then echo true; else echo false; fi; }
+          echo "api=$(match "^(apps/api/|packages/|scripts/ci/|$root)")" >> "$GITHUB_OUTPUT"
+          echo "mobile=$(match "^(apps/mobile/|packages/|$root)")" >> "$GITHUB_OUTPUT"
+          echo "web=$(match "^(apps/web/|$root)")" >> "$GITHUB_OUTPUT"
+
   conformance:
     name: Architecture conformance
     runs-on: ubuntu-latest
@@ -56,6 +82,8 @@ jobs:
 
   api:
     name: API lint, build, test
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -230,6 +258,8 @@ jobs:
 
   mobile:
     name: Mobile lint, typecheck, test
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -278,6 +308,8 @@ jobs:
 
   web:
     name: Website check, test, build
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
 
     steps:

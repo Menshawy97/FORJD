@@ -2,7 +2,7 @@ name: Evaluate Weekly Forge
 
 # Judges every enrolled athlete's closed Weekly Forge week (ADR-057). Weeks close at Saturday 00:00
 # in each athlete's own zone, which falls between Friday 10:00 UTC (UTC+14) and Saturday 12:00 UTC
-# (UTC-12), so the job runs at ten past every hour on Friday and Saturday UTC. Ten past, not on the
+# (UTC-12), so the original plan was to run at ten past every hour on Friday and Saturday UTC. Ten past, not on the
 # hour, because the top of the hour is when GitHub's scheduler is busiest and delays or drops runs.
 #
 # Safe to run any number of times: each athlete's next week is evaluated once, under a row lock,
@@ -10,14 +10,17 @@ name: Evaluate Weekly Forge
 # evaluates the caller on read, so a delayed or dropped run delays nobody who opens the app.
 #
 # While the `weekly_forge` flag is off the script evaluates nothing and exits cleanly, so the
-# feature stays dark. Cost: about 48 runs a week, roughly 200-400 of the private repository's 2,000
-# free Actions minutes a month.
+# feature stays dark. **Changed 2026-10-08:** that hourly plan costs about 48 runs a week, roughly 200-400
+# of the private repository's 2,000 free Actions minutes a month, to do nothing while the flag is off, and
+# the minutes ran short. It now runs once a week, on Saturday at 12:10 UTC (after the last zone's week has
+# closed), as the backstop; `GET /forge` still evaluates anyone who opens the app. When the flag goes on for
+# real users and the hourly cadence is wanted again, change the cron back to "10 * * * 5,6" and weigh the minutes.
 #
 # Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire, and
 # with several instances it would fire once per instance (ADR-047).
 on:
   schedule:
-    - cron: "10 * * * 5,6"
+    - cron: "10 12 * * 6"
   workflow_dispatch:
     inputs:
       target:
