@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 
 import type { Database } from '../database/database.module';
 import { createExpoPushProvider } from '../integrations/push/expo-push-provider';
+import { describeFailure } from './failure-description';
 import { createPushNotificationService } from './push-service-factory';
 import type { PushNotificationService } from './push-notification.service';
 
@@ -44,8 +45,8 @@ async function main(): Promise<void> {
 // Importing this file (the spec does) must never open a connection or send anything.
 if (require.main === module) {
   main().catch((error: unknown) => {
-    // Only the error's name and message: a database error must never print a connection string or a push token.
-    process.stderr.write(`push drain failed: ${error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'}\n`);
+    // Only the error's name and codes: a database error's message can carry a connection string or a push token.
+    process.stderr.write(`push drain failed: ${describeFailure(error)}\n`);
     process.exitCode = 1;
   });
 }
