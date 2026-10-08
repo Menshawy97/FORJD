@@ -25,6 +25,8 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 ### Cloud and production
 - [x] Delete old `us-central1` Cloud Run services `forjd-api-production` and `forjd-api-staging` (done by the owner; confirmed 2026-10-09: only the two `europe-west1` services remain)
 - [ ] Supabase access-token lifetime to 900 s (both projects)
+- [ ] Merge RLS-everywhere PR (ADR-066); after the deploy, re-run the Supabase security advisor on `forjd-prod` and confirm `rls_disabled_in_public` is gone, then smoke-test the app (sign in, log a workout)
+- [ ] Supabase: enable leaked-password protection (dashboard) and move `pg_trgm` out of `public` (advisor warnings, separate from RLS)
 - [ ] Custom SMTP on the production Supabase project
 - [ ] Fix exercise-media mirroring on production (wrong key in the service-role secret, or a Storage RLS difference)
 - [ ] Real `API_BASE_URL` for the production profile in `apps/mobile/eas.json`

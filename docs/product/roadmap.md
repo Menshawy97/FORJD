@@ -2182,7 +2182,7 @@ expires, so **the access-token lifetime is now the revocation window** — curre
 and needing to be set to 900 s in the Supabase dashboard. That manual step is listed below
 and ADR-012 is incomplete until it is done.
 
-**RLS is enabled on no table.** Acceptable today because nothing except the API holds a
+**RLS is enabled on no table.** (Superseded 2026-10-09: now deny-all on every table, ADR-066.) Acceptable today because nothing except the API holds a
 Postgres credential — the mobile app has no Supabase client, and the CI conformance check
 structurally prevents one appearing. It stops being acceptable the moment either the
 storage adapter hands clients signed URLs (Phase 5) or any client gets a direct Supabase

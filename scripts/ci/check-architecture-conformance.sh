@@ -345,6 +345,29 @@ if [ -d .github/workflows ]; then
   fi
 fi
 
+# ADR-038 amendment / CLAUDE.md rule 12: every table a migration creates also has row-level
+# security enabled by some migration. Deny-all, no policies: the API connects as the owning
+# `postgres` role (BYPASSRLS), so this changes nothing for it, but it shuts the Supabase Data API
+# (PostgREST + the public anon key) out of every table. A table nobody enabled it on is readable
+# and writable by anyone holding that key. Authorization itself stays in the NestJS guards.
+if [ -d apps/api/drizzle ]; then
+  all_sql=$(cat apps/api/drizzle/*.sql 2>/dev/null || true)
+  created=$(printf '%s\n' "$all_sql" \
+    | grep -oE 'CREATE TABLE (IF NOT EXISTS )?"[A-Za-z0-9_]+"' \
+    | sed -E 's/.*"([^"]+)"$/\1/' | sort -u || true)
+  missing=""
+  for table in $created; do
+    # Here-string, not a pipe: `grep -q` exits at the first match and a piped printf would die of
+    # SIGPIPE, which pipefail turns into a false "not found" on large migration sets.
+    if ! grep -qE "ALTER TABLE \"$table\" ENABLE ROW LEVEL SECURITY" <<<"$all_sql"; then
+      missing="$missing$table"$'\n'
+    fi
+  done
+  if [ -n "$missing" ]; then
+    report "table created by a migration without ENABLE ROW LEVEL SECURITY (add ALTER TABLE \"<name>\" ENABLE ROW LEVEL SECURITY; in a migration)" "$missing"
+  fi
+fi
+
 if [ "$violations" -gt 0 ]; then
   echo ""
   echo "$violations conformance rule(s) violated. Fix the import, or change the rule in CLAUDE.md"

@@ -319,6 +319,45 @@ run_case "push-sdk-outside-adapter"     fail setup_push_sdk_outside_adapter
 run_case "push-adapter-in-place"        pass setup_push_adapter_in_place
 run_case "ongoing-notice-outside-adapter" fail setup_ongoing_notice_outside_adapter
 run_case "ongoing-notice-in-adapter"   pass setup_ongoing_notice_in_adapter
+# ADR-038 amendment (rule 12 backstop): every table a migration creates must also have row-level
+# security enabled (deny-all, no policies) by some migration, so the Supabase Data API exposes none.
+setup_table_without_rls() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/api/drizzle/0001_add-widgets.sql" 'CREATE TABLE "widgets" ("id" uuid PRIMARY KEY NOT NULL);'
+}
+
+setup_table_with_rls() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/api/drizzle/0001_add-widgets.sql" 'CREATE TABLE "widgets" ("id" uuid PRIMARY KEY NOT NULL);'
+  write "$dir/apps/api/drizzle/0002_enable-rls.sql" 'ALTER TABLE "widgets" ENABLE ROW LEVEL SECURITY;'
+}
+
+setup_table_with_rls_in_same_migration() {
+  local dir="$1"
+  setup_everything_clean "$dir"
+  write "$dir/apps/api/drizzle/0001_add-widgets.sql" \
+    'CREATE TABLE "widgets" ("id" uuid PRIMARY KEY NOT NULL);
+--> statement-breakpoint
+ALTER TABLE "widgets" ENABLE ROW LEVEL SECURITY;'
+}
+
+# Regression: with a large migration set, `printf | grep -q` under pipefail reported a table
+# that DOES have RLS as missing (grep -q exits early, printf dies of SIGPIPE).
+setup_table_with_rls_large_migrations() {
+  local dir="$1"
+  setup_table_with_rls_in_same_migration "$dir"
+  local i
+  for i in 1 2 3 4 5 6 7 8; do
+    write "$dir/apps/api/drizzle/01${i}_padding.sql" "$(head -c 60000 /dev/zero | tr '\0' 'x')"
+  done
+}
+
+run_case "table-with-rls-large-migrations" pass setup_table_with_rls_large_migrations
+run_case "table-without-rls"           fail setup_table_without_rls
+run_case "table-with-rls"              pass setup_table_with_rls
+run_case "table-with-rls-same-migration" pass setup_table_with_rls_in_same_migration
 run_case "everything-clean"            pass setup_everything_clean
 
 echo ""

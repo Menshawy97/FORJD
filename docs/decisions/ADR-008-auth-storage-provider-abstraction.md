@@ -98,6 +98,7 @@ later swap to S3 or R2 a single new file.
   remains, exclusively in NestJS guards (`CLAUDE.md` rule 12) — see
   [ADR-038](./ADR-038-audit-remediation-pass-2026-09.md) for the fuller record of this
   correction.
+- **Further correction (2026-10-09):** RLS is now enabled, deny-all, on every table -- see [ADR-066](./ADR-066-deny-all-rls-on-every-table.md). "Theatre" was true of the API's own access but missed the Data API path.
 - Accepted once both adapters existed and the conformance check passed against real code.
   `SupabaseAuthProvider` and `SupabaseStorageProvider` are the only two files in the
   repository that import `@supabase/supabase-js`, verified by grep and enforced in CI.
