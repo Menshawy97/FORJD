@@ -14,11 +14,8 @@ name: Drain the push queue
 # is that a push held until the end of someone's quiet hours can arrive up to 3 hours after it, and a rank push up to 3 hours
 # after the Saturday snapshot. Tighten the cron only if the budget allows (the owner decides).
 #
-# The schedule drains STAGING only for now: a push to main deploys and migrates staging, while production is deployed by hand, so
-# production does not have the push tables (migrations 0035 and 0036) until it is deployed once (run "Deploy API to Cloud Run"
-# with target production). The first three scheduled runs failed on production with Postgres 42P01, a missing table. When
-# production is deployed, change '["staging"]' below to '["staging","production"]' or '["production"]'. A manual dispatch drains the
-# one it names. Safe to run at any time or twice at once:
+# The schedule drains BOTH environments (production was deployed once by hand on 2026-10-08, which created its push tables); a manual
+# dispatch drains the one it names. Two environments doubles the Actions minutes: if the budget gets tight, drop one from the matrix. Safe to run at any time or twice at once:
 # a dispatcher claims each row with FOR UPDATE SKIP LOCKED, so no push goes out twice because two drains overlapped.
 #
 # Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire.
@@ -74,7 +71,7 @@ jobs:
       # One environment failing (say production is not provisioned yet) must not stop the other.
       fail-fast: false
       matrix:
-        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["staging"]') }}
+        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["staging","production"]') }}
     env:
       TARGET: ${{ matrix.target }}
 
