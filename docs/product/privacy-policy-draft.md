@@ -1,6 +1,6 @@
 # Privacy policy: full draft for the owner's approval
 
-Status: **draft, not approved, not published** (2026-10-08). Replaces the outline on `apps/web/src/pages/privacy.astro` once
+Status: **approved and published** (2026-10-08) as apps/web/src/pages/privacy.astro; this file is the record of the draft. Replaces the outline on `apps/web/src/pages/privacy.astro` once
 approved. Every statement below was checked against `docs/architecture/data-inventory.md` and the code. Items in
 **[square brackets]** are things only the owner can fill in or confirm. A qualified person should review the final text before launch
 (sections 1, 9, 10, 11 and 16 are legal questions). Plain language on purpose.
