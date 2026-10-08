@@ -5,6 +5,11 @@ approved. Every statement below was checked against `docs/architecture/data-inve
 **[square brackets]** are things only the owner can fill in or confirm. A qualified person should review the final text before launch
 (sections 1, 9, 10, 11 and 16 are legal questions). Plain language on purpose.
 
+What this draft deliberately leaves out, so the public page does not describe how the app is built: unreleased feature names (for
+example Weekly Forge is behind a feature flag), exact hosting region and provider names for pure infrastructure, encryption details,
+where tokens are kept on the phone, and the precision of the approximate location. The data inventory in `docs/architecture/`
+keeps the full detail for internal use and for the store forms.
+
 ---
 
 ## Your body's data. Your call.
@@ -30,21 +35,21 @@ That is also where you send any request in section 11.
   Apple Health, Health Connect or WHOOP, only after you give permission on your phone and in FORJD.
 - **Body composition:** the InBody results you add, and the scan photo if you add one.
 - **Nutrition:** the foods, meals, saved meals and macro goals you log.
-- **Location:** your city (as text). If you turn on "location for leaderboards", the phone reads your approximate position (about
-  110 metres) once when a workout starts; we turn it into a city and **do not store the position**.
+- **Location:** your city (as text). If you turn on "location for leaderboards", the phone reads your approximate position once
+  when a workout starts; we turn it into a city and **do not store the position**.
 - **Notifications:** if you leave PR or leaderboard notifications on, a push token (a code that identifies FORJD on your phone),
   your phone's platform (Android or iPhone), and the short text of each notification we queue for you.
 - **Your settings and consents:** privacy choices, notification switches and quiet hours, your time zone, and a record of sign-ins
   and consent changes.
-- **Crash reports:** if you leave "crash diagnostics" on, our server sends an error report when it fails. It contains the type of
-  error and where in the code it happened, never your content.
+- **Crash reports:** if you leave "crash diagnostics" on, our server sends an error report when it fails. It contains technical details of
+  the failure, never your content.
 
 On the website, if you join the waitlist we collect your email address. The form is protected by Cloudflare Turnstile, which checks
 that you are not a bot.
 
 ## 3. How we use it
 
-To run the features you see: your history and charts, your readiness score, FORJD Insights, Weekly Forge, notifications you chose,
+To run the features you see: your history and charts, your scores and insights, notifications you chose,
 and, if you opt in, your place on your city's leaderboard. Each health reading is stored with the app or device it came from, so you
 can always see where a number originated. We do not use your data to build profiles for advertising, and we do not sell it.
 
@@ -63,16 +68,16 @@ We use a small number of companies to run FORJD. Each gets only what it needs.
 
 | Company | What it receives | When |
 |---|---|---|
-| Supabase (database, sign-in and file hosting) | Your account, all data above, your photos | Always |
-| Google Cloud (our server) | The requests the app makes to our server | Always |
+| Our database, sign-in and file hosting provider | Your account, all data above, your photos | Always |
+| Our server hosting provider | The requests the app makes to our server | Always |
 | OpenAI | Your InBody scan photo, to read the numbers off it | Only after you give AI consent; you can withdraw it |
 | WHOOP | Sign-in details for the connection; we read your WHOOP recovery, sleep and workouts | Only if you connect WHOOP |
 | Google or Apple (sign-in) | Your Google or Apple account identity | Only if you choose that sign-in; we never receive your password |
 | Expo, then Google (Android) or Apple (iPhone) | Your push token, platform and the notification text | Only if PR or leaderboard notifications are on |
-| Sentry (crash reports) | Error type and location in code, no text | Not sent at all if you turned crash diagnostics off |
+| Our crash-reporting provider | Technical failure details, no text | Not sent at all if you turned crash diagnostics off |
 | Cloudflare (website) | The waitlist form check | Only on the website |
 
-These companies act on our behalf. **Health data never reaches an analytics or advertising service.** Not in the app, not on our
+These companies act on our behalf. We name a company only where you or the app stores would expect it; infrastructure providers are described by what they do. **Health data never reaches an analytics or advertising service.** Not in the app, not on our
 servers, not while we fix a bug.
 
 ## 6. Notifications
@@ -93,14 +98,14 @@ Apple Health and Health Connect is used only to provide FORJD's health and fitne
 
 - We keep your data until you delete your account. Notifications are deleted 30 days after they finish. Your run route is never on our
   servers. **[Owner to confirm: how long backups are kept, and any other retention period you want to state.]**
-- **Security:** traffic between the app and our server is encrypted; passwords are stored as one-way hashes; WHOOP connection tokens are
-  encrypted in our database; your session on the phone is kept in the phone's secure storage. No system is perfectly secure, and we
+- **Security:** traffic between the app and our server is encrypted; passwords are stored as one-way hashes; sign-in credentials for services you
+  connect are encrypted. No system is perfectly secure, and we
   will tell you if a breach affects you, as the law requires.
 
 ## 9. Where your data is stored
 
-Our server runs on Google Cloud in Belgium. Our database and file storage are with Supabase, in **[region, confirm in the Supabase
-project settings]**. Some companies in section 5 process data in other countries, including the United States, under their own
+Our server and our database and file storage are located in **[the EU, or the exact region you want to state; confirm in the
+hosting settings]**. Some companies in section 5 process data in other countries, including the United States, under their own
 safeguards. **[Owner and reviewer: confirm the transfer wording for the countries you serve.]**
 
 ## 10. Our legal basis
@@ -154,7 +159,7 @@ advice.]**
 
 1. Legal name of the person or company behind FORJD, and its country (section 1).
 2. Backup retention and any other retention period (section 8).
-3. The Supabase region (section 9) and the regulator to name (section 11).
+3. The hosting region to state (section 9) and the regulator to name (section 11).
 4. Response time for requests (section 11), and the cookies statement (section 13).
 5. The dataset credits (section 15), and the Terms of use (section 16).
 6. A qualified reviewer for the legal sections before launch.
