@@ -1,28 +1,31 @@
 name: Drain the push queue
 
-# Every 3 hours, sends the pushes that are due, reads the receipts of earlier ones (removing phones the push service says
-# are gone) and tidies old rows (Phase 12F, ADR-065). A push held until after someone's quiet hours is sent by the first run
-# after it. "Immediately" for a PR celebration is the API trying the queue straight after the upload; this is the safety net,
-# and the only sender for held pushes and rank moves.
+# Once a day, at 05:07 UTC (07:07 in Cairo in winter, 08:07 in summer: just after the default quiet hours end at 07:00), sends the
+# pushes that are due, reads the receipts of earlier ones (removing phones the push service says are gone) and tidies old rows
+# (Phase 12F, ADR-065). What waits for it: a rank push (the Saturday snapshot only queues it, at night, and the policy holds it
+# until after quiet hours, so this run is the one that sends it), a push held for quiet hours, a retry, and receipts.
+# A PR celebration does not wait: the API tries the queue straight after the upload.
 #
-# GitHub cron is best-effort (a run can start several minutes late or be dropped) and it disables scheduled workflows in a
-# repository after 60 days without activity. Both are accepted: a push is late, never lost, and the queue keeps it until a run
-# reaches it (the policy drops a PR push once it is a day old, and a rank push after two).
+# Why only once a day: this repository is private, so Actions minutes are limited (free tier only). Once a day on both
+# environments is about 150 billed minutes a month; every 3 hours was about 1,400 and every 15 minutes would use the month in a
+# week. The price: a push held for someone whose quiet hours end at a different time than the default goes out at the next daily
+# run, a failed send is retried only at that run (so a PR push that fails twice is dropped as a day old), and a receipt is read
+# once a day (Expo keeps receipts 24 hours, so a dead phone is sometimes noticed only at its next send). If pushes should arrive
+# exactly after quiet hours, the way to do it without Actions minutes is Google Cloud Scheduler calling a protected drain
+# endpoint (free for 3 jobs); that needs a one-time setup and a short ADR-065 note.
 #
-# Cost: this repository is private, so Actions minutes are limited (free tier only). Every 3 hours on one environment is about
-# 8 runs a day, roughly 700 billed minutes a month; every 15 minutes on both environments would use the month in a week. The price
-# is that a push held until the end of someone's quiet hours can arrive up to 3 hours after it, and a rank push up to 3 hours
-# after the Saturday snapshot. Tighten the cron only if the budget allows (the owner decides).
+# GitHub cron is best-effort (a run can start late or be dropped) and it disables scheduled workflows in a repository after 60
+# days without activity. Both are accepted: a push is late, never lost, and the queue keeps it until a run reaches it (the policy
+# drops a PR push once it is a day old, and a rank push after two).
 #
-# The schedule drains BOTH environments (production was deployed once by hand on 2026-10-08, which created its push tables); a manual
-# dispatch drains the one it names. Two environments doubles the Actions minutes: if the budget gets tight, drop one from the matrix. Safe to run at any time or twice at once:
-# a dispatcher claims each row with FOR UPDATE SKIP LOCKED, so no push goes out twice because two drains overlapped.
+# The schedule drains BOTH environments; a manual dispatch drains the one it names. Safe to run at any time or twice at once: a
+# dispatcher claims each row with FOR UPDATE SKIP LOCKED, so no push goes out twice because two drains overlapped.
 #
 # Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire.
 on:
   schedule:
-    # Minute 7: off the top of the hour, when GitHub's scheduler is busiest.
-    - cron: "7 */3 * * *"
+    # 05:07 UTC every day: off the top of the hour, when GitHub's scheduler is busiest.
+    - cron: "7 5 * * *"
   workflow_dispatch:
     inputs:
       target:
@@ -43,7 +46,7 @@ permissions:
 
 jobs:
   # Same split as leaderboard-snapshot.yml: missing GCP setup shows as a skipped job (green), not a red failure every
-  # 3 hours until the credentials exist.
+  # day until the credentials exist.
   check:
     name: Check prerequisites
     runs-on: ubuntu-latest
