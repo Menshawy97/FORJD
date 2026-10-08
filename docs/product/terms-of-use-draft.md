@@ -5,7 +5,7 @@ Status: **draft, not approved, not published** (2026-10-08). Plain language on p
 law). Items in **[square brackets]** are for the owner to fill in or confirm. Once approved it becomes a `/terms` page on the website, and
 the sign-up line "Terms of Service" and the footer link point to it.
 
-What it is based on: the app is free today (there is no paid plan yet; billing is a later phase), people must be 16 or over, the app
+What it is based on: some features are free and some are paid (the app itself shows which, with the price), people must be 16 or over, the app
 gives training information and not medical advice, leaderboards are opt-in, health connections and the InBody scan photo reading are
 opt-in, and accounts can be exported and deleted in the app.
 
@@ -15,7 +15,7 @@ opt-in, and accounts can be exported and deleted in the app.
 
 *Last updated: [date of publication].*
 
-These terms are the agreement between you and **[legal name of the person or company, and country]** ("we", "us") about your use of the
+These terms are the agreement between you and **Mostafa Ashraf, an individual based in Egypt** ("we", "us") about your use of the
 FORJD app and website. By creating an account or using FORJD you agree to them. If you don't agree, please don't use FORJD. Our
 [privacy policy](/privacy) explains how we handle your data and is part of how we run the service.
 
@@ -69,11 +69,13 @@ for you to check, not guaranteed to be correct.
 If you allow them, FORJD sends reminders (made on your phone) and PR and leaderboard notifications (from our servers). You can switch
 them off in the app or in your phone's settings.
 
-## 7. Price and paid plans
+## 7. Free and paid features
 
-FORJD is free today. If we add paid plans, we will show you the price, what you get and how renewal and cancellation work before you
-buy, and the app store you buy through handles the payment under its own rules. Nothing becomes a charge without your clear approval.
-Features and limits may change, and we will update these terms when they do.
+Some FORJD features are free and some need a paid plan. The app shows you which is which, and, before you buy, the price, what you get,
+and how renewal and cancellation work. The app store you buy through takes the payment and handles refunds under its own rules. Nothing
+becomes a charge without your clear approval, and you can cancel in your app store account at any time; you keep the paid features until
+the end of the period you've paid for. Which features are free or paid, and their prices, can change; a change never takes away
+something you've already paid for during the period you paid for.
 
 ## 8. Our rights
 
@@ -91,8 +93,8 @@ don't give any promise beyond what is written here, and your legal rights as a c
 
 Where the law allows, we are not responsible for indirect or consequential loss, for loss of data you could have kept a copy of, or for
 injury or loss that comes from how you train, eat or act on what FORJD shows. Nothing in these terms limits liability that can't be
-limited by law, for example for death or personal injury caused by our negligence, or for fraud. **[Reviewer: confirm the cap and the
-wording for the countries you serve.]**
+limited by law, for example for death or personal injury caused by our negligence, or for fraud. Our total responsibility to you for any claim is limited to the greater of the amount you paid us in the 12 months before the claim
+and 1,000 Egyptian pounds. **[Proposed. Reviewer: confirm the cap and the wording for the countries you serve.]**
 
 ## 11. Ending your use
 
@@ -106,7 +108,7 @@ We may update these terms when FORJD or the law changes. We will change the "las
 before a change that matters to you starts. If you keep using FORJD after that, you accept the new terms; if you don't agree, you can
 delete your account.
 
-These terms are governed by the law of **[country or state]**, and the courts of **[place]** can hear disputes, except that where you
+These terms are governed by the law of **Egypt**, and the courts of **Cairo** can hear disputes, except that where you
 live gives you consumer rights that can't be waived, those still apply. If any part of these terms is found not to work, the rest stays.
 
 ## 13. Contact
@@ -115,10 +117,14 @@ Questions about these terms: **support@getforjd.com**.
 
 ---
 
-### What the owner needs to provide or confirm
+### Decided 2026-10-08, and what is still open
 
-1. The legal name and country of whoever runs FORJD (the same as in the privacy policy).
-2. The governing law and the place for disputes (section 12).
-3. Whether you want a cap on liability stated (section 10), which a reviewer should word.
-4. Anything about a future paid plan you already know (section 7), or leave as is.
-5. A qualified reviewer for sections 9 to 12 before launch.
+Decided: the operator is Mostafa Ashraf, an individual based in Egypt; governed by Egyptian law with the courts of Cairo (suggested, owner
+agreed to "you tell me"); some features free and some paid, shown in the app.
+
+Still open:
+1. Approve the wording (nothing is published).
+2. The liability cap in section 10 is proposed (the greater of what you paid in 12 months and 1,000 EGP); a reviewer should confirm it.
+3. A qualified person reviews sections 9 to 12 before launch. Because FORJD is run by an individual, not a company, you are personally
+   responsible for claims; a lawyer can say whether to form a company before you have paying users.
+4. When paid plans ship, the in-app screen that shows the plan, price and renewal must match section 7.
