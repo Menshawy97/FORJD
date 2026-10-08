@@ -15,7 +15,8 @@ feature changes what is collected, update this file in the same PR.
 | WHOOP | OAuth exchange; FORJD reads recovery, sleep and workout data from WHOOP | Only after the user connects WHOOP. |
 | Sentry (server only) | Error type and stack frames only, no text; not sent at all for a user with crash diagnostics off; user ID kept only when it is on | The mobile app has no Sentry SDK. |
 | NVIDIA | Nothing. A provider class exists but is not wired up. | Development only. |
-| Analytics, ad, push services | Nothing. None are integrated. | `expo-notifications` and the small local Android notice module (ADR-063) post local notices only: the rest-complete alert, the run notice, the workout notice and, from 12E, the workout reminders and weekly recap the phone schedules for itself (planned on the phone from its own history, cleared on sign-out). Nothing is sent. |
+| Expo push service, then Google (Android) or Apple (iPhone) push | The device push token, the phone's platform, and the text of each PR or leaderboard notification (an exercise name or a city, a kind and an id; never a health value) | Only when a PR or leaderboard switch is on and the phone allowed notifications (Phase 12F, ADR-060, ADR-061). |
+| Analytics and ad services | Nothing. None are integrated. | The phone's own reminders and notices (`expo-notifications` and the small local Android notice module, ADR-063: the rest-complete alert, the run notice, the workout notice, the workout reminders and weekly recap from 12E) are scheduled and shown on the phone and are never sent. |
 
 Health data is never sent to analytics or advertising services (CLAUDE.md rule 15).
 
@@ -65,6 +66,7 @@ Derived from the table. Confirm against the final build and the lawyer's privacy
 - **Shared with third parties:** InBody photos with OpenAI (after consent) and WHOOP OAuth
   exchange only. Hosting and processing by Supabase is service-provider processing.
 - **Encrypted in transit:** yes. **Deletion available:** yes, in-app (Profile, Delete account).
+- **Device or other IDs (12F):** the push token (a code the push service gives this phone) is collected when PR or leaderboard notifications are on, shared with Expo and Google/Apple only to deliver notifications, optional, deleted on sign-out, when both switches are off, and on account deletion. The notification text is app activity shared with the same providers.
 - **Not collected on the server:** precise location, contacts, advertising ID, financial info. Once
   runs ship (ADR-049), the app *uses* precise location on the device while a run is open, keeps the
   route only on the device, and the Play Data safety form must say so. Since 12A (ADR-059) that use
