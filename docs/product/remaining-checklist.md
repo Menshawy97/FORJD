@@ -37,7 +37,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Live WHOOP OAuth round trip (ADR-037)
 - [ ] Lawyer: privacy policy, terms, consent wording, wger CC-BY-SA question
 - [ ] Play Data safety form (precise location during runs; heart rate and calories from Health Connect)
-- [ ] Support address and privacy-policy URL for store listings and the placeholder "Contact Us" / "Privacy Policy" rows
+- [x] Profile Support group (2026-10-08, from the approved design): **Privacy Policy** opens https://getforjd.com/privacy in the phone browser and **Contact Us** opens an email to support@getforjd.com; the sign-up line's "Privacy Policy" opens the same page. **About App** (in the design) is not built: it needs its content decided. The same URL and address go on the store listings (still to enter)
 - [ ] Business entity and D-U-N-S number
 
 ### Data and judgement
