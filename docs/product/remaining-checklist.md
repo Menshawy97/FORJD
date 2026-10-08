@@ -52,7 +52,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 
 ### Privacy and honesty
 - [x] L3-3: Sentry text and consent (G1, #312): reports keep only error type and stack frames; none sent when crash diagnostics is off
-- [ ] Define data retention periods (privacy policy needs them)
+- [x] Define data retention periods: the published privacy policy ("How long we keep it") says data is kept until the account is deleted, finished notifications are deleted after 30 days, the run route never reaches the servers, and backups expire in the ordinary course. A qualified person still reviews it with the rest of the policy
 - [x] `security.md` encryption claim corrected: only WHOOP tokens are app-level encrypted; the rest relies on the host (not verified here)
 - [x] Revoked Health Connect permission reads as "no watch": built 2026-10-09. The run reader reports which of heart rate and calories Health Connect refused; the live heart-rate card and the run-complete screen show a note with an "Open Health Connect" link (replica approved 2026-10-09). **Device walk owed:** turn heart rate off in Health Connect, start a run, and check the note appears; turn it back on and check it goes. The FAQ line for "Why does heart rate show a dash?" was approved 2026-10-09 and is in the app: "If you turned heart rate off for FORJD in Health Connect, the run says so and links you there."
 - [x] Watch calories summed across all Health Connect origins (rule 10): built 2026-10-09. `dataOrigin` is kept on every Health Connect reading; a run counts one app's calories (the app that gave the heart rate, else the app with the most). The other apps' records are untouched. **Device walk owed:** a phone where two apps write calories
@@ -70,7 +70,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] Unused `run_points` table removed (G6, #314)
 - [ ] Miles option
 - [ ] Run share card ("Route & Splits", currently "coming soon")
-- [ ] Discarding a run whose snapshot clear fails is silent
+- [x] Discarding a run whose snapshot clear fails was silent: fixed 2026-10-09. Discard tries the clear twice; if both fail the person still leaves the run but sees "Run not fully deleted ... may be offered back the next time you open Run". No design change beyond a system alert
 
 ### Speed and CI (low)
 - [x] Leaderboard 15 s cache eviction (G3, #313)
@@ -116,7 +116,7 @@ $&
 - [x] Website search (2026-10-08): home title and description now say "FORJD app", structured data (organization, website with the alternate names "FORJD app" and "Get FORJD", software application; no ratings, prices or download links) on the home page, a fuller Support description, the 404 page set to noindex, and a test that keeps every page title and description unique and the right length
 - [ ] Google Search Console: **done 2026-10-08:** the getforjd.com Domain property is added and the sitemap (https://getforjd.com/sitemap-index.xml) is submitted. **Still to do (owner):** request indexing for /terms/ and /privacy/ (URL inspection), check back in a few days that the sitemap shows Success and the pages are indexed, and later add the website to the Google Play listing
 - [x] Privacy policy page: the full policy (approved wording, 16 sections) replaced the outline and was published 2026-10-08 at https://getforjd.com/privacy, naming Mostafa Ashraf, an individual based in Egypt. Still open: a qualified person reviews the legal sections (basis, rights, transfers, Egypt's data protection law); the Play Data safety form; the hosting-region and backup wording stays generic on purpose
-- [ ] 12F privacy policy and Play Data safety: add the wording at the end of [phase-12f-plan.md](phase-12f-plan.md) (Expo, Google and Apple named as processors; device push token declared)
+- [x] 12F privacy policy: already in the published policy (push token, platform and notification text; Expo then Google or Apple named as processors; 30-day deletion; token removed on sign-out). **Still owed (owner):** enter the Play Data safety form in Play Console using the wording at the end of [phase-12f-plan.md](phase-12f-plan.md)
 - [ ] GitHub Actions minutes (2026-10-08): about 1,880 of the 2,000 free minutes were used in 8 days (API deploys 655, CI on pull requests 636, CI after merges 515, Weekly Forge evaluation 50). Done to stop it: the push drain workflow is **disabled** in GitHub (re-enable with `gh workflow enable push-drain.yml` when phones register; it was once a day on both environments, about 150 minutes a month), CI runs the API, mobile and website jobs only for changes to that part, the API deploys only when API or shared-package files change, and Weekly Forge evaluation runs once a week instead of hourly on Fridays and Saturdays. Owner: check the exact balance at github.com/settings/billing, and decide whether to pay for more minutes, make the repository public (unlimited minutes for public repositories), or keep working inside the cap. Cloud Scheduler stays the free way to run the push drain more often
 - [x] Housekeeping: 128 merged local branches deleted 2026-10-07 (each was an ancestor of main or matched a merged PR's final commit). Kept: main, `worktree-agent-acf680f476a74c000`, the one stash and the 8 worktrees (7 branches, 1 detached), which are still checked out
 - [ ] 12G recovery alerts

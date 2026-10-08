@@ -83,6 +83,8 @@ const AUTOSAVE_MS = 10_000;
 const NOTICE_UPDATE_MS = 5000;
 /** How many recent heart-rate samples the live sparkline draws. */
 const HEART_RATE_POINTS = 60;
+/** Wait before the one retry of clearing a discarded run's saved copy. */
+const CLEAR_RETRY_DELAY_MS = 150;
 
 export interface RunSplitView {
   index: number;
@@ -405,12 +407,27 @@ export function useRunSession(): RunSession {
     const current = runRef.current;
     closedRef.current = true;
     stopWatching();
+    let isSavedCopyGone = true;
     if (current) {
-      try {
-        await clearRunSnapshot(await getDb(), current.id);
-      } catch {
-        // An orphaned snapshot is offered back next time; discarding must still leave the screen.
+      // One more try before giving up: a busy database is usually free a moment later.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          await clearRunSnapshot(await getDb(), current.id);
+          isSavedCopyGone = true;
+          break;
+        } catch {
+          isSavedCopyGone = false;
+          if (attempt === 0) await new Promise<void>((resolve) => setTimeout(resolve, CLEAR_RETRY_DELAY_MS));
+        }
       }
+    }
+    // Discarding must still leave the screen, but the person was told the run would be deleted: if its
+    // saved copy is still there it comes back next time, so say so instead of letting it surprise them.
+    if (!isSavedCopyGone) {
+      Alert.alert(
+        'Run not fully deleted',
+        "This run was discarded, but FORJD couldn't clear its saved copy. It may come back the next time you open Run, and you can discard it again then.",
+      );
     }
     router.back();
   }, [getDb, stopWatching]);

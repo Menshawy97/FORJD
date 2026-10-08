@@ -908,4 +908,41 @@ describe('RunScreen -- leaving without finishing', () => {
     expect(mockBack).toHaveBeenCalled();
     expect(enqueueSessionUpload).not.toHaveBeenCalled();
   });
+
+  // Discard promises "Your run so far will be deleted". If the saved copy cannot be cleared it comes back
+  // on the next visit, so the person is told rather than left to find it.
+  describe('when the saved copy of a discarded run cannot be cleared', () => {
+    const confirmDiscard = async () => {
+      await render(<RunScreen />);
+      await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+      await fireEvent.press(screen.getByLabelText('Discard run'));
+      const buttons = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+      await act(async () => {
+        buttons.find((b) => b.text === 'Discard')?.onPress?.();
+      });
+    };
+
+    it('tries once more, and says nothing when the second try works', async () => {
+      (clearRunSnapshot as jest.Mock).mockRejectedValueOnce(new Error('disk busy'));
+
+      await confirmDiscard();
+
+      await waitFor(() => expect(mockBack).toHaveBeenCalled());
+      expect(clearRunSnapshot).toHaveBeenCalledTimes(2);
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+    });
+
+    it('still leaves the run, and says it may be offered back', async () => {
+      (clearRunSnapshot as jest.Mock).mockRejectedValue(new Error('disk I/O error'));
+
+      await confirmDiscard();
+
+      await waitFor(() => expect(mockBack).toHaveBeenCalled());
+      expect(clearRunSnapshot).toHaveBeenCalledTimes(2);
+      expect(Alert.alert).toHaveBeenCalledTimes(2);
+      expect((Alert.alert as jest.Mock).mock.calls[1][0]).toBe('Run not fully deleted');
+      expect((Alert.alert as jest.Mock).mock.calls[1][1]).toMatch(/may come back/);
+    });
+
+  });
 });
