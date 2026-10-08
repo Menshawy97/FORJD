@@ -9,12 +9,16 @@ name: Drain the push queue
 # repository after 60 days without activity. Both are accepted: a push is late, never lost, and the queue keeps it until a run
 # reaches it (the policy drops a PR push once it is a day old, and a rank push after two).
 #
-# Cost: this repository is private, so Actions minutes are limited (free tier only). Every 3 hours on production alone is about
+# Cost: this repository is private, so Actions minutes are limited (free tier only). Every 3 hours on one environment is about
 # 8 runs a day, roughly 700 billed minutes a month; every 15 minutes on both environments would use the month in a week. The price
 # is that a push held until the end of someone's quiet hours can arrive up to 3 hours after it, and a rank push up to 3 hours
 # after the Saturday snapshot. Tighten the cron only if the budget allows (the owner decides).
 #
-# The schedule drains PRODUCTION only (staging has no real users; drain it by hand with a dispatch); a manual dispatch drains the one it names. Safe to run at any time or twice at once:
+# The schedule drains STAGING only for now: a push to main deploys and migrates staging, while production is deployed by hand, so
+# production does not have the push tables (migrations 0035 and 0036) until it is deployed once (run "Deploy API to Cloud Run"
+# with target production). The first three scheduled runs failed on production with Postgres 42P01, a missing table. When
+# production is deployed, change '["staging"]' below to '["staging","production"]' or '["production"]'. A manual dispatch drains the
+# one it names. Safe to run at any time or twice at once:
 # a dispatcher claims each row with FOR UPDATE SKIP LOCKED, so no push goes out twice because two drains overlapped.
 #
 # Not `@nestjs/schedule`: Cloud Run scales to zero, so an in-process timer would never fire.
@@ -70,7 +74,7 @@ jobs:
       # One environment failing (say production is not provisioned yet) must not stop the other.
       fail-fast: false
       matrix:
-        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["production"]') }}
+        target: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.target)) || fromJSON('["staging"]') }}
     env:
       TARGET: ${{ matrix.target }}
 
