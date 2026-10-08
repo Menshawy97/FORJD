@@ -25,6 +25,7 @@
 // @forjd/domain is a one-member tuple (`['free']`, billing is Phase 10), so there is no
 // second value to branch on yet, not stale sample data.
 import { fireEvent } from '@testing-library/react-native';
+import { Linking } from 'react-native';
 import { renderApp } from './render-app';
 
 jest.mock('expo-secure-store');
@@ -171,6 +172,48 @@ describe('profile screen', () => {
     await findByText('Leaderboard, location, AI');
     await findByText('Notifications');
     await findByText('Workouts, recovery, PRs');
+  });
+
+  // The approved Profile design has a Support group (screenshots/profile 2.png): Privacy Policy and Contact Us, each a single
+  // line with no subtitle. The policy lives on the website; the app opens it in the phone's browser.
+  describe('the Support group', () => {
+    beforeEach(() => {
+      jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as never);
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it('lists Privacy Policy and Contact Us under Support', async () => {
+      const { findByText } = await renderApp({ initialUrl: '/profile' });
+
+      await findByText('Support');
+      await findByText('Privacy Policy');
+      await findByText('Contact Us');
+    });
+
+    it('opens the privacy policy on the website when Privacy Policy is tapped', async () => {
+      const { findByText } = await renderApp({ initialUrl: '/profile' });
+
+      fireEvent.press(await findByText('Privacy Policy'));
+
+      expect(Linking.openURL).toHaveBeenCalledWith('https://getforjd.com/privacy');
+    });
+
+    it('opens an email to support when Contact Us is tapped', async () => {
+      const { findByText } = await renderApp({ initialUrl: '/profile' });
+
+      fireEvent.press(await findByText('Contact Us'));
+
+      expect(Linking.openURL).toHaveBeenCalledWith('mailto:support@getforjd.com');
+    });
+
+    it('does not crash the screen when the phone cannot open the link', async () => {
+      (Linking.openURL as jest.Mock).mockRejectedValue(new Error('no browser'));
+      const { findByText } = await renderApp({ initialUrl: '/profile' });
+
+      fireEvent.press(await findByText('Privacy Policy'));
+
+      await findByText('Contact Us');
+    });
   });
 
   it('replaces the "coming soon" placeholder', async () => {

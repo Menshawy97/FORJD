@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ACTIVITY_LEVEL_FACTORS, type Activity, type ActivityLevel, type TrainingGoal } from '@forjd/domain';
 
 import { getMe } from '@/auth/apiClient';
@@ -15,6 +15,7 @@ import { shareAccountExport } from '@/data-export/share-account-export';
 import { ProfileForgeSection } from '@/features/forge/profile-forge-section';
 import { useForgeShare } from '@/features/forge/use-forge-share';
 import { activityLevelLabel, bodyGoalSummary } from '@/features/targets/labels';
+import { PRIVACY_POLICY_URL, SUPPORT_MAILTO } from '@/legal/links';
 import { colors } from '@/theme/tokens';
 
 // Structure, copy and geometry from the prototype's `isProfile` branch of
@@ -105,10 +106,16 @@ function unitsSubtitle(unitSystem: 'metric' | 'imperial', weightUnit: string): s
   return `${systemLabel} · ${weightUnit}`;
 }
 
+/** Opens a page or mail app outside FORJD. A phone with no browser or mail app is not an error worth showing. */
+function openExternally(url: string): void {
+  void Linking.openURL(url).catch(() => undefined);
+}
+
 interface SettingsRow {
   icon: IconName;
   title: string;
-  subtitle: string;
+  /** Absent for the one-line Support rows in the approved design. */
+  subtitle?: string;
   /** Absent means inert — see this file's header comment for why most rows have none yet. */
   onPress?: () => void;
 }
@@ -199,6 +206,14 @@ function buildGroups(
         subtitle: 'Workouts, recovery, PRs',
         onPress: () => router.replace('/notifs'),
       },
+    ],
+  },
+  {
+    label: 'Support',
+    rows: [
+      // The approved Profile design (screenshots/profile 2.png): single-line rows. The policy is a page on the website.
+      { icon: 'shield', title: 'Privacy Policy', onPress: () => openExternally(PRIVACY_POLICY_URL) },
+      { icon: 'mail', title: 'Contact Us', onPress: () => openExternally(SUPPORT_MAILTO) },
     ],
   },
   {
@@ -482,7 +497,7 @@ function Row({ icon, title, subtitle, onPress }: SettingsRow) {
       <Icon name={icon} size={ROW_ICON_SIZE} color={colors.metadata} />
       <View className="flex-1">
         <Text className="font-archivo text-row-title font-semibold text-text">{title}</Text>
-        <Text className="mt-[3px] font-archivo text-row-subtitle text-dimmer">{subtitle}</Text>
+        {subtitle ? <Text className="mt-[3px] font-archivo text-row-subtitle text-dimmer">{subtitle}</Text> : null}
       </View>
       <TrailingChevron />
     </Container>
