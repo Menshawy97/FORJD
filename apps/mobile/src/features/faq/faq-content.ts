@@ -367,6 +367,9 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
           {
             p: `FORJD reads heart rate from a watch that shares it through Health Connect, and only if you've allowed health data. With no watch connected, or health data switched off, it shows a dash rather than a number that isn't yours.`,
           },
+          {
+            p: `If you turned heart rate off for FORJD in Health Connect, the run says so and links you there.`,
+          },
         ],
       },
     ],
