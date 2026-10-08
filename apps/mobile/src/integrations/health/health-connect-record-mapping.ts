@@ -91,6 +91,13 @@ function deviceId(metadata: Metadata | undefined): string | null {
   return metadata?.device?.model ?? metadata?.device?.manufacturer ?? null;
 }
 
+/** The package name of the app that wrote the record (rule 10): the device above says what hardware
+ *  measured it, this says which app put it in Health Connect, which is what tells two copies of the
+ *  same minutes apart. */
+function dataOrigin(metadata: Metadata | undefined): string | null {
+  return metadata?.dataOrigin ?? null;
+}
+
 export function mapHeartRateRecord(record: HeartRateRecordResult): SyncedObservation[] {
   return record.samples.map((sample) => ({
     metricType: "heart_rate",
@@ -100,6 +107,7 @@ export function mapHeartRateRecord(record: HeartRateRecordResult): SyncedObserva
     endTime: new Date(sample.time),
     providerRecordId: providerRecordId(record.metadata),
     deviceId: deviceId(record.metadata),
+    dataOrigin: dataOrigin(record.metadata),
     quality: null,
   }));
 }
@@ -115,6 +123,7 @@ export function mapHrvRecord(record: HeartRateVariabilityRmssdRecordResult): Syn
       endTime: time,
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -131,6 +140,7 @@ export function mapRestingHeartRateRecord(record: RestingHeartRateRecordResult):
       endTime: time,
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -146,6 +156,7 @@ export function mapStepsRecord(record: StepsRecordResult): SyncedObservation[] {
       endTime: new Date(record.endTime),
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -161,6 +172,7 @@ export function mapActiveEnergyRecord(record: ActiveCaloriesBurnedRecordResult):
       endTime: new Date(record.endTime),
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -177,6 +189,7 @@ export function mapWeightRecord(record: WeightRecordResult): SyncedObservation[]
       endTime: time,
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -193,6 +206,7 @@ export function mapVo2MaxRecord(record: Vo2MaxRecordResult): SyncedObservation[]
       endTime: time,
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -209,6 +223,7 @@ export function mapRespiratoryRateRecord(record: RespiratoryRateRecordResult): S
       endTime: time,
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -243,6 +258,7 @@ export function mapSleepSessionRecord(record: SleepSessionRecordResult): SyncedO
       endTime: new Date(record.endTime),
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     },
   ];
@@ -259,6 +275,7 @@ export function mapSleepSessionRecord(record: SleepSessionRecordResult): SyncedO
       endTime: new Date(stage.endTime),
       providerRecordId: providerRecordId(record.metadata),
       deviceId: deviceId(record.metadata),
+      dataOrigin: dataOrigin(record.metadata),
       quality: null,
     });
   }

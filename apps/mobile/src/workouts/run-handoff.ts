@@ -16,7 +16,12 @@ export interface CompletedRun {
   splits: Array<{ index: number; durationSeconds: number; avgHeartRateBpm: number | null }>;
   /** The accepted readings, for drawing the route. It stays on the phone. */
   route: Array<{ latitude: number; longitude: number }>;
+  /** Metrics Health Connect refused at Finish (access turned off), so the summary can say so. */
+  healthBlocked?: readonly RunMetric[];
 }
+
+/** The two watch readings a run asks Health Connect for; also what it can be refused. */
+export type RunMetric = 'heart_rate' | 'active_energy';
 
 let completed: CompletedRun | null = null;
 

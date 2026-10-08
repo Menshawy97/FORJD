@@ -162,7 +162,11 @@ export default function RunScreen() {
           </View>
         </View>
 
-        <RunHeartRateCard currentBpm={session.heartRate.currentBpm} series={session.heartRate.series} />
+        <RunHeartRateCard
+          currentBpm={session.heartRate.currentBpm}
+          series={session.heartRate.series}
+          isBlocked={session.healthBlocked.includes('heart_rate')}
+        />
         <RunSplits splits={session.splits} />
       </ScrollView>
 

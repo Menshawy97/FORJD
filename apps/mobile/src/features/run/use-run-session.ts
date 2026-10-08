@@ -38,7 +38,14 @@ import { syncPendingSessions } from '@/workouts/sync-sessions';
 
 import { gpsQuality, type GpsQuality } from './gps-quality';
 import { fetchRunCalorieInputs } from './latest-weight';
-import { HEART_RATE_POLL_MS, prepareRunHealth, readFinalHealth, type FinalHealth, type RunHealthReader } from './run-health';
+import {
+  HEART_RATE_POLL_MS,
+  prepareRunHealth,
+  readFinalHealth,
+  type FinalHealth,
+  type RunHealthReader,
+  type RunMetric,
+} from './run-health';
 import { runNotifier } from './run-notification';
 import { runNotificationContent } from './run-notification-content';
 import { restoreRunSnapshot, toRunSnapshot } from './run-snapshot';
@@ -92,6 +99,12 @@ export interface RunSession {
   stats: ReturnType<typeof runStats> | null;
   splits: RunSplitView[];
   heartRate: { currentBpm: number | null; averageBpm: number | null; series: number[] };
+  /**
+   * Metrics Health Connect refused (access turned off), as opposed to a watch that has not synced.
+   * While the run is live only heart rate is polled, so only `heart_rate` can appear here; calories
+   * are read once at Finish and reported on the run-complete screen instead.
+   */
+  healthBlocked: readonly RunMetric[];
   toast: ReturnType<typeof useToast>;
   pause: () => void;
   resume: () => void;
@@ -106,6 +119,7 @@ export function useRunSession(): RunSession {
   const [permission, setPermission] = useState<RunPermission>('checking');
   const [lastAccuracy, setLastAccuracy] = useState<{ meters: number | null } | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [healthBlocked, setHealthBlocked] = useState<readonly RunMetric[]>([]);
   const toast = useToast();
   // `toast` is a new object each render; only its `show` is stable, so that is what callbacks depend on.
   const showToast = toast.show;
@@ -326,6 +340,9 @@ export function useRunSession(): RunSession {
       if (!current || closedRef.current) return;
       try {
         const samples = await reader.readHeartRate(current.startedAtMs);
+        const blockedNow = reader.blockedMetrics();
+        // Kept as the same array while nothing changes, so a quiet poll never re-renders the screen.
+        if (!cancelled) setHealthBlocked((prev) => (prev.join() === blockedNow.join() ? prev : blockedNow));
         const latest = runRef.current;
         if (!cancelled && latest && samples.length > 0) commit(addHeartRate(latest, samples));
       } catch {
@@ -443,7 +460,7 @@ export function useRunSession(): RunSession {
     void (async () => {
       try {
         const db = await getDb();
-        const noHealth: FinalHealth = { heartRate: [], caloriesKcal: null };
+        const noHealth: FinalHealth = { heartRate: [], caloriesKcal: null, blocked: [] };
         const healthConsentRead = readHealthConsent();
         // The final watch read runs beside the weight lookup, so Finish waits for the slower, not both.
         const finalHealthRead = healthConsentRead.then((consent) =>
@@ -475,7 +492,10 @@ export function useRunSession(): RunSession {
         // From here the run is safely queued: nothing below may report it as "not saved".
         stopWatching();
         try {
-          setCompletedRun(toRunSummary(request, stats.route));
+          setCompletedRun({
+            ...toRunSummary(request, stats.route),
+            healthBlocked: healthAllowed ? finalHealth.blocked : [],
+          });
         } catch {
           // The summary is a convenience; the run is queued either way.
         }
@@ -565,6 +585,7 @@ export function useRunSession(): RunSession {
     stats,
     splits,
     heartRate,
+    healthBlocked,
     toast,
     pause,
     resume,

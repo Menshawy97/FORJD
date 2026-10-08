@@ -7,6 +7,7 @@ import { pressGhost } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
+import { HealthAccessNote } from '@/features/run/health-access-note';
 import { formatDistanceKm, formatDuration, formatPace } from '@/features/run/run-format';
 import { RunSplits } from '@/features/run/run-splits';
 import { RunStatTile } from '@/features/run/run-stat-tile';
@@ -121,6 +122,15 @@ export default function RunDoneScreen() {
             unit="m"
           />
         </View>
+
+        {(run.healthBlocked ?? []).map((metric) => (
+          <View
+            key={metric}
+            className="mt-[12px] rounded-card px-[15px] py-[14px]"
+            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+            <HealthAccessNote metric={metric} />
+          </View>
+        ))}
 
         <RunSplits splits={run.splits} />
 

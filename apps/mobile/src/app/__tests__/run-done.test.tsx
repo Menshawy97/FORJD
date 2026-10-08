@@ -112,6 +112,23 @@ describe('RunDoneScreen', () => {
     expect(screen.getByText('estimated')).toBeTruthy();
   });
 
+  it('explains an estimate when Health Connect refused the watch calories', async () => {
+    setCompletedRun({ ...SCREENSHOT_RUN, caloriesSource: 'estimate', healthBlocked: ['active_energy'] });
+    await render(<RunDoneScreen />);
+
+    expect(
+      screen.getByText('Watch calories are turned off for FORJD in Health Connect, so this run uses an estimate.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Open Health Connect' })).toBeTruthy();
+  });
+
+  it('adds no health note when nothing was refused', async () => {
+    setCompletedRun({ ...SCREENSHOT_RUN, caloriesSource: 'estimate', healthBlocked: [] });
+    await render(<RunDoneScreen />);
+
+    expect(screen.queryByRole('button', { name: 'Open Health Connect' })).toBeNull();
+  });
+
   it('does not say estimated for a watch reading', async () => {
     setCompletedRun(SCREENSHOT_RUN);
     await render(<RunDoneScreen />);
