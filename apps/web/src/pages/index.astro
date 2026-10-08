@@ -9,11 +9,13 @@ import sources from '../assets/screens/sources.png';
 import Phone from '../components/Phone.astro';
 import WaitlistForm from '../components/WaitlistForm.astro';
 import Base from '../layouts/Base.astro';
+import { siteJsonLd } from '../lib/seo';
 ---
 
 <Base
-  title="FORJD: Training, Recovery, Progress"
-  description="Your training, recovery, nutrition and body composition -- finally connected, and explained. Coming soon to iPhone and Android."
+  title="FORJD app: Training, Recovery, Progress"
+  description="The FORJD app connects your training, recovery, nutrition and body composition, and explains them. Coming soon to iPhone and Android."
+  jsonLd={siteJsonLd(Astro.site!.href)}
 >
   <div class="hero">
     <div class="wrap">
