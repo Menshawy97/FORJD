@@ -5,8 +5,10 @@ approved. Every statement below was checked against `docs/architecture/data-inve
 **[square brackets]** are things only the owner can fill in or confirm. A qualified person should review the final text before launch
 (sections 1, 9, 10, 11 and 16 are legal questions). Plain language on purpose.
 
-What this draft deliberately leaves out, so the public page does not describe how the app is built: unreleased feature names (for
-example Weekly Forge is behind a feature flag), exact hosting region and provider names for pure infrastructure, encryption details,
+Feature names: the owner chose to name FORJD Insights and Weekly Forge in section 3 (2026-10-08) even though Weekly Forge is behind a
+server feature flag, so the page describes it before every user can see it.
+
+What this draft deliberately leaves out, so the public page does not describe how the app is built: exact hosting region and provider names for pure infrastructure, encryption details,
 where tokens are kept on the phone, and the precision of the approximate location. The data inventory in `docs/architecture/`
 keeps the full detail for internal use and for the store forms.
 
@@ -49,7 +51,7 @@ that you are not a bot.
 
 ## 3. How we use it
 
-To run the features you see: your history and charts, your scores and insights, notifications you chose,
+To run the features you see: your history and charts, your readiness score, FORJD Insights, Weekly Forge, notifications you chose,
 and, if you opt in, your place on your city's leaderboard. Each health reading is stored with the app or device it came from, so you
 can always see where a number originated. We do not use your data to build profiles for advertising, and we do not sell it.
 
