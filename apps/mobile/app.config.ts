@@ -37,6 +37,10 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.forjd.app',
+    // Phase 12F: Android push is delivered through Firebase (FCM). The file comes from the EAS file variable GOOGLE_SERVICES_JSON
+    // (its value is a path; locally, point it at apps/mobile/google-services.json, which is gitignored). Left out when not
+    // supplied, so a build without push still works. iOS gets push from Apple through Expo and needs no such file.
+    ...(process.env.GOOGLE_SERVICES_JSON ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON } : {}),
     adaptiveIcon: {
       backgroundColor: '#1B1B1D',
       foregroundImage: './assets/images/android-icon-foreground.png',
