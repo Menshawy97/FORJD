@@ -97,8 +97,7 @@ injury or loss that comes from how you train, eat or act on what FORJD shows.
 Some features of FORJD need an internet connection (you can log a workout without one, and it uploads when you are back online). You
 are responsible for any charges from your mobile network provider, and we are not liable for them.
 
-Nothing in these terms limits liability that can't be limited by law, for example for death or personal injury caused by our
-negligence, or for fraud, and your legal rights as a consumer are not affected. **[Reviewer: confirm the wording for the countries you
+Nothing in these terms limits liability that can't be limited by law, and your legal rights as a consumer are not affected. **[Reviewer: confirm the wording for the countries you
 serve.]**
 
 ## 11. Ending your use
