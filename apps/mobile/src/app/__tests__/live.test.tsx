@@ -1074,3 +1074,91 @@ describe('finishing when the session cannot be handed to the sync queue (C3 / H6
     expect(enqueueSessionUpload).not.toHaveBeenCalled();
   });
 });
+
+describe('while Finish is saving (checklist-cleanup-oct-plan.md, F1; replica approved 2026-10-13)', () => {
+  /** An enqueue the test releases by hand, so the screen can be inspected mid-save. */
+  function holdTheSave() {
+    let release: () => void = () => undefined;
+    (enqueueSessionUpload as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    return () => release();
+  }
+
+  it('saves once and leaves once when Finish is tapped twice', async () => {
+    const release = holdTheSave();
+    stageSession();
+    const { findByLabelText } = await render(<LiveScreen />);
+    const finish = await findByLabelText('Finish workout');
+
+    await fireEvent.press(finish);
+    await fireEvent.press(finish);
+    await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
+    release();
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/workout-done'));
+    expect(enqueueSessionUpload).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Finish as busy, and holds Cancel and Pause, until the save ends', async () => {
+    const release = holdTheSave();
+    stageSession();
+    const { findByLabelText, findByTestId } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Finish workout'));
+
+    const finish = await findByLabelText('Finish workout');
+    await waitFor(() => expect(finish.props.accessibilityState).toEqual({ disabled: true, busy: true }));
+    // The spinner shows over the word, as on InBody's Confirm & Save; the word stays, unseen, to hold the width.
+    expect(await findByTestId('finish-saving-spinner')).toBeTruthy();
+    const cancel = await findByLabelText('Cancel workout');
+    const pause = await findByLabelText('Pause workout');
+    expect(cancel.props.accessibilityState).toEqual({ disabled: true });
+    expect(pause.props.accessibilityState).toEqual({ disabled: true });
+    await fireEvent.press(cancel);
+    expect(mockBack).not.toHaveBeenCalled();
+
+    release();
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/workout-done'));
+  });
+
+  it('gives the buttons back when finishing fails before the save starts', async () => {
+    const markFinishing = jest.spyOn(activeWorkout, 'markFinishing').mockImplementationOnce(() => {
+      throw new Error('store refused');
+    });
+    stageSession();
+    const { findByLabelText } = await render(<LiveScreen />);
+
+    await expect(fireEvent.press(await findByLabelText('Finish workout'))).rejects.toThrow('store refused');
+
+    const finish = await findByLabelText('Finish workout');
+    await waitFor(() => expect(finish.props.accessibilityState).toEqual({ disabled: false, busy: false }));
+    markFinishing.mockRestore();
+
+    // And the next tap really finishes: nothing is left holding the button.
+    await fireEvent.press(finish);
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/workout-done'));
+  });
+
+  it('gives the buttons back when the save fails, so Finish can be tried again', async () => {
+    (enqueueSessionUpload as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
+    stageSession();
+    const { findByLabelText, findByText, queryByTestId } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Finish workout'));
+    expect(await findByText(/not saved/i)).toBeTruthy();
+
+    const finish = await findByLabelText('Finish workout');
+    await waitFor(() => expect(finish.props.accessibilityState).toEqual({ disabled: false, busy: false }));
+    expect((await findByLabelText('Cancel workout')).props.accessibilityState).toEqual({ disabled: false });
+    expect(queryByTestId('finish-saving-spinner')).toBeNull();
+
+    await fireEvent.press(finish);
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/workout-done'));
+    expect(enqueueSessionUpload).toHaveBeenCalledTimes(2);
+  });
+});

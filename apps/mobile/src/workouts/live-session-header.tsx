@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme/tokens';
@@ -25,10 +25,19 @@ interface LiveSessionHeaderProps {
   isLogging: boolean;
   /** True when this screen picked a session back up after a crash rather than starting one. */
   resumed: boolean;
+  /**
+   * True while Finish is handing the workout to the upload queue. The three controls ignore taps,
+   * Finish shows a spinner and Cancel and Pause dim (replica approved 2026-10-13).
+   */
+  isSaving: boolean;
   onCancel: () => void;
   onPauseResume: () => void;
   onFinish: () => void;
 }
+
+/** The dimming while saving: Finish as InBody's Confirm & Save, the others as the design's disabled Save. */
+const SAVING_FINISH_OPACITY = 0.6;
+const SAVING_CONTROL_OPACITY = 0.4;
 
 export function LiveSessionHeader({
   sessionName,
@@ -37,10 +46,12 @@ export function LiveSessionHeader({
   stats,
   isLogging,
   resumed,
+  isSaving,
   onCancel,
   onPauseResume,
   onFinish,
 }: LiveSessionHeaderProps) {
+  const controlOpacity = isSaving ? SAVING_CONTROL_OPACITY : 1;
   return (
     <View className="flex-none px-screen-x pb-[14px]">
       <View className="flex-row items-center" style={{ gap: 8 }}>
@@ -59,30 +70,46 @@ export function LiveSessionHeader({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Cancel workout"
+            accessibilityState={{ disabled: isSaving }}
+            disabled={isSaving}
             onPress={onCancel}
             className="h-[44px] w-[44px] items-center justify-center rounded-[12px]"
-            style={{ backgroundColor: 'rgba(255,255,255,.06)' }}>
+            style={{ backgroundColor: 'rgba(255,255,255,.06)', opacity: controlOpacity }}>
             <Icon name="x" size={15} color="#C9503C" />
           </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={isPaused ? 'Resume workout' : 'Pause workout'}
+            accessibilityState={{ disabled: isSaving }}
+            disabled={isSaving}
             onPress={onPauseResume}
             className="h-[44px] items-center justify-center rounded-[12px] px-[14px]"
-            style={{ backgroundColor: 'rgba(255,255,255,.06)' }}>
+            style={{ backgroundColor: 'rgba(255,255,255,.06)', opacity: controlOpacity }}>
             <Text className="font-archivo text-[12px] font-bold text-text">{isPaused ? 'Resume' : 'Pause'}</Text>
           </Pressable>
           {/* Deliberately 34px tall, not 44 -- the prototype's own asymmetry. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Finish workout"
+            accessibilityState={{ disabled: isSaving, busy: isSaving }}
+            disabled={isSaving}
             onPress={onFinish}
             className="h-[34px] items-center justify-center rounded-[10px] px-[14px]"
             // R19 (H13): white text on the raw `accent` fill measured 3.06:1, below the 4.5:1
             // AA floor for body-weight text. `accentDark` is the user-approved fix (Option A) --
             // see apps/mobile/src/theme/__tests__/tokens.test.ts.
-            style={{ backgroundColor: colors.accentDark }}>
-            <Text className="font-archivo text-[12px] font-bold text-white">Finish</Text>
+            style={{ backgroundColor: colors.accentDark, opacity: isSaving ? SAVING_FINISH_OPACITY : 1 }}>
+            {/* While saving the word stays, unseen, so the button keeps its width under the spinner. */}
+            <Text
+              className="font-archivo text-[12px] font-bold text-white"
+              style={{ opacity: isSaving ? 0 : 1 }}>
+              Finish
+            </Text>
+            {isSaving ? (
+              <View className="absolute inset-0 items-center justify-center">
+                <ActivityIndicator testID="finish-saving-spinner" size="small" color="#fff" />
+              </View>
+            ) : null}
           </Pressable>
         </View>
       </View>

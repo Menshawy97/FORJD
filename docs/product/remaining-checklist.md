@@ -82,7 +82,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] R28 wall-clock timing tests deleted (G4, #311)
 - [x] `ci.yml` least-privilege token (G2, #311)
 - [ ] Re-measure cold start in europe-west1
-- [x] `pg` pool settings and pooler port on `DATABASE_URL` (2026-10-13): confirmed the session pooler (port 5432), and the API used pg's defaults (10 connections per instance, no connect timeout) with no Cloud Run instance cap. Now 5 per instance, 10 s idle and connect timeouts (`apps/api/src/database/pool-options.ts`), and `--max-instances 3` in `deploy-api.yml`; a spec keeps pool times instances within 15 connections
+- [x] `pg` pool settings and pooler port on `DATABASE_URL` (2026-10-13): confirmed the session pooler (port 5432), and the API used pg's defaults (10 connections per instance, no connect timeout) with no Cloud Run instance cap. Now 5 per instance, 10 s idle and connect timeouts (`apps/api/src/database/pool-options.ts`), and `--max-instances 3` in `deploy-api.yml`; a spec keeps pool times instances within 15 connections. Live on staging 2026-10-13; **production deploy owed (owner)**: `gh workflow run deploy-api.yml --ref main -f target=production`
 
 ### Product and architecture
 - [ ] Phase 7 decision E: readiness baseline crossover when WHOOP connects mid-baseline
@@ -94,7 +94,8 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Expo web cannot bundle (expo-sqlite worker); previews rely on HTML mirrors
 - [x] `ADR-017` written (canonical exercise model) and the "reserved/unwritten" notes updated
 - [x] InBody `confirm` orphaned photo on a failed save: now deleted (#329)
-- [ ] *(unconfirmed)* `live.tsx` Finish has no disabled state
+- [x] `live.tsx` Finish had no disabled state (confirmed, then fixed 2026-10-13): a second tap re-ran the save and the navigation (no duplicate workout: the queue and the server both key on the session id). Now extra taps are ignored, Finish shows a spinner and Cancel and Pause dim while it saves, and a failed save gives all three back for a retry (replica approved 2026-10-13). **Device walk owed:** finish a workout and tap Finish twice quickly; one summary opens
+- [ ] `live.tsx` Finish: if navigation itself fails after the workout was queued, the screen says "Workout not saved" and a retry queues it again (harmless: the queue replaces by session id and the server ignores repeats, but the message is wrong). Older than the 2026-10-13 change; found by its review. Low
 - [x] Contrast of chip and segment text measured and pinned in `tokens.test.ts`: `dim` and `metadata` pass everywhere; `segmentedInactive` passes on its track by a hair (4.501:1)
 - [ ] Onboarding brief (including showing Weekly Forge "How it works" once); needs owner approval
 - [ ] Quiet-hours editor (12D follow-up): mock-up approved 2026-10-06. Slice 1 planner done (#346); slice 2 server storage built (migration `0034`, `quietHours` on `GET/PATCH /users/me/notifications` and the export); slice 3 the screen built (sheet, device copy, sync, planner input, sign-out clearing). **Device walk owed**, see the next lines
