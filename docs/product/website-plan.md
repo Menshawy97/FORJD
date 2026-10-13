@@ -23,9 +23,11 @@ Still open, and shown as undecided on the site rather than filled in:
 
 - **What is in Free versus Pro.** The pricing page shows Pro's price and features from the app's Go
   Pro screen and leaves Free blank.
-- **The yearly discount label.** The app's Go Pro screen says "Save 40%", but $59.99 a year against
-  $9.99 a month is 50%. The site says 50%; the app screen needs the same fix.
-- **Terms of use** text, and a qualified review of the privacy page before launch.
+- **The yearly discount label.** The ADR-021 Go Pro design says "Save 40%", but $59.99 a year against
+  $9.99 a month is 50%. The site says 50%. The app has no pricing screen yet (checked 2026-10-13), so
+  this is a note for when Phase 10 builds it, not a fix to existing code.
+- A qualified review of the privacy and terms pages before launch. (The terms of use were published
+  2026-10-08, #378.)
 - **Launch-day email**: which service sends it, and its cost. Not needed until launch.
 
 ## Ownership and sequencing

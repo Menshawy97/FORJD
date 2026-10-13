@@ -2,6 +2,7 @@
 
 Compiled 2026-10-05 from a read of `docs/` (roadmap, plans, reviews, architecture, ADR statuses), then
 brought up to date with `main` at `ab49fa5` (engineering gaps G1-G7 and Phase 12A-12C merged).
+Re-checked against the code, GitHub and the `forjd-prod` advisor on 2026-10-13 (`main` at `5f26c4d`).
 `roadmap.md` stays the source of truth; tick items here as they close and update the roadmap in
 the same PR. Items marked *(unconfirmed)* were reported by a review but not reproduced.
 
@@ -25,8 +26,9 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 ### Cloud and production
 - [x] Delete old `us-central1` Cloud Run services `forjd-api-production` and `forjd-api-staging` (done by the owner; confirmed 2026-10-09: only the two `europe-west1` services remain)
 - [ ] Supabase access-token lifetime to 900 s (both projects)
-- [ ] Merge RLS-everywhere PR (ADR-066); after the deploy, re-run the Supabase security advisor on `forjd-prod` and confirm `rls_disabled_in_public` is gone, then smoke-test the app (sign in, log a workout)
-- [ ] Supabase: enable leaked-password protection (dashboard) and move `pg_trgm` out of `public` (advisor warnings, separate from RLS)
+- [x] Merge RLS-everywhere PR (ADR-066): merged as #386 (migration `0037`) and deployed to production 2026-10-08. The `forjd-prod` security advisor re-run on 2026-10-13 no longer reports `rls_disabled_in_public`; it lists 43 "RLS enabled, no policy" notices, which is the intended deny-all
+- [ ] Smoke-test the app on production after the RLS change (owner): sign in, log a workout
+- [ ] Supabase: enable leaked-password protection (dashboard) and move `pg_trgm` out of `public` (advisor warnings, separate from RLS; `pg_trgm` still flagged on 2026-10-13)
 - [ ] Custom SMTP on the production Supabase project
 - [ ] Fix exercise-media mirroring on production (wrong key in the service-role secret, or a Storage RLS difference)
 - [ ] Real `API_BASE_URL` for the production profile in `apps/mobile/eas.json`
@@ -61,16 +63,16 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] *(unconfirmed)* `AuthenticatedGate` date-of-birth `getMe` may misroute a new account after a quick account switch
 
 ### Website
-- [ ] Privacy page "Waitlist" section (W4 step 3)
-- [ ] Terms of use text
-- [ ] Decide Free vs Pro; fix the app's "Save 40%" label (about 50%)
+- [ ] Privacy page "Waitlist" section (W4 step 3): the published policy lists the waitlist email among what is collected and names Cloudflare's bot check, but does not yet say the email is used only for the launch email or how to be removed
+- [x] Terms of use text: published 2026-10-08 at https://getforjd.com/terms (#378); the sign-up "Terms of Service" words open it (#379). A qualified review is still owed under Accounts and legal
+- [ ] Decide Free vs Pro. The "Save 40%" yearly label (it should be about 50%: $59.99 a year against $9.99 a month) is in the ADR-021 design only; the app has no pricing screen yet (the Profile "Go Pro" banner shows no prices). Use 50% when that screen is built in Phase 10
 - [ ] Choose the launch-email service
 
 ### Runs
 - [x] Leftover snapshot of an uploaded run: finish is now atomic (G6, #314)
 - [x] Route array rebuilt every second (G6, #314)
 - [x] Unused `run_points` table removed (G6, #314)
-- [ ] Miles option
+- [ ] Miles option on the run screens (still kilometres only; the Units setting's `mi` covers logged cardio exercises, not live runs)
 - [ ] Run share card ("Route & Splits", currently "coming soon")
 - [x] Discarding a run whose snapshot clear fails was silent: fixed 2026-10-09. Discard tries the clear twice; if both fail the person still leaves the run but sees "Run not fully deleted ... may be offered back the next time you open Run". No design change beyond a system alert
 
