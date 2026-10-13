@@ -118,8 +118,9 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
 - **Privacy:** ~~crash-recovery snapshots and the late `getMe` consent race after sign-out~~ fixed
   in 8.5 S1. ~~L3-3, Sentry not scrubbing health values~~ fixed 2026-10-01 (G1): reports keep
   no text, and none is sent for a user with crash diagnostics off.
-  Unconfirmed (8.5E): the date-of-birth `getMe` in `AuthenticatedGate` could, if the gate stays
-  mounted across a quick account switch, redirect the new account on the old one's profile.
+  ~~Unconfirmed (8.5E): the date-of-birth `getMe` in `AuthenticatedGate` could, if the gate stays
+  mounted across a quick account switch, redirect the new account on the old one's profile.~~
+  Not a bug (2026-10-13): the gate unmounts on sign-out; a regression test pins it.
 - **Speed (8.5E, low):** ~~the board cache never drops past months' keys~~ fixed (G3);
   ~~a first Nutrition visit still reads each food separately~~ fixed (G5,
   `GET /nutrition/foods?ids=`). ~~The two R28 timing tests~~ removed (G4).
