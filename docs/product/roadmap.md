@@ -132,7 +132,7 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
   heart-rate card and the run-complete screen say so and link to Health Connect's settings. Device walk owed.
 - **Run follow-ups:** ~~a leftover snapshot of an already-uploaded run; the route rebuilt every
   second; the unused `run_points` table~~ fixed (G6); no miles option; the run share card ("coming soon").
-- **Website:** the privacy page's "Waitlist" section (W4 step 3). The production build's form now
+- **Website:** ~~the privacy page's "Waitlist" section (W4 step 3)~~ published 2026-10-13. The production build's form now
   posts to the europe-west1 production API with the real Turnstile key (checked 2026-09-26), and
   the site sends CSP, HSTS and framing headers (8.5 S11).
 - **Readiness:** Phase 7 decision E's baseline-crossover surfacing.

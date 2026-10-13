@@ -4,7 +4,7 @@ import Base from '../layouts/Base.astro';
 // Who runs FORJD, shown in section 1. Fill in the legal name and country; a test fails the build while it is a placeholder.
 const operator = 'Mostafa Ashraf, an individual based in Egypt';
 const supportEmail = 'support@getforjd.com';
-const updated = '8 October 2026';
+const updated = '13 October 2026';
 ---
 
 <Base
@@ -72,6 +72,9 @@ const updated = '8 October 2026';
             your place on your city's leaderboard. Each health reading is stored with the app or device it came from, so you can always see where a number
             originated. We do not use your data to build profiles for advertising, and we do not sell it.
           </p>
+          <p>
+            If you join the waitlist on our website, we use your email address only to tell you when FORJD launches. We do not add it to any other list or sell it.
+          </p>
         </section>
 
         <section id="location">
@@ -124,6 +127,7 @@ const updated = '8 October 2026';
           <ul>
             <li>We keep your data until you delete your account. Notifications are deleted 30 days after they finish. Your run route is never on our servers.</li>
             <li>After you delete your account, copies in our hosting provider's backups are removed as those backups expire in the ordinary course.</li>
+            <li>Waitlist email addresses are deleted once the launch email has been sent. To be removed sooner, email <a href={`mailto:${supportEmail}`}>{supportEmail}</a> and we will delete yours.</li>
             <li>Traffic between the app and our server is encrypted. Passwords are stored as one-way hashes, and sign-in credentials for services you connect are encrypted.</li>
             <li>No system is perfectly secure. If a breach affects you, we will tell you, as the law requires.</li>
           </ul>

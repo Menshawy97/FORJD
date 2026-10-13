@@ -1,6 +1,6 @@
 # Website plan: getforjd.com
 
-Status: **W0-W3 and W6 done; W4 partly done. The site is live at https://getforjd.com and the form is wired (#239). Owed: the privacy page's "Waitlist" section (W4 step 3) and one real sign-up checked end to end (W4 step 4, W5).** (2026-09-26; `roadmap.md` is the source of truth.)
+Status: **W0-W3 and W6 done; W4 partly done. The site is live at https://getforjd.com and the form is wired (#239). Owed: one real sign-up checked end to end (W4 step 4, W5). The privacy page's "Waitlist" wording (W4 step 3) was published 2026-10-13.** (2026-10-13; `roadmap.md` is the source of truth.)
 Decisions in `docs/decisions/ADR-051-marketing-website-and-waitlist.md`.
 Design source: `docs/design/website/design-v1.html` (the published preview, with `%%name%%`
 placeholders where the cropped app screenshots were embedded; `crop-screenshots.js` produced them).
