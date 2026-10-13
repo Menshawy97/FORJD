@@ -122,6 +122,11 @@ export default function LiveScreen() {
 
   const toast = useToast();
 
+  // Finish in flight (F1, checklist-cleanup-oct-plan.md). The ref turns away a second tap that lands
+  // before the re-render disables the button; the state drives the saving look.
+  const isSavingRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Whether this screen is open decides when the lock-screen card is taken down (three hours away).
   useFocusEffect(
     useCallback(() => {
@@ -356,16 +361,35 @@ export default function LiveScreen() {
    * enqueue rejecting, or `db` never having opened at all -- keeps the athlete on this screen
    * with a warning instead of discarding the workout.
    */
-  const handleFinish = () => {
+  const releaseFinish = () => {
+    isSavingRef.current = false;
+    setIsSaving(false);
+  };
+
+  const beginFinish = () => {
     // From here a late start position is ignored: Finish clears the snapshot, and a position that
     // arrived afterwards must not write it back for a workout that is already in the upload queue.
     activeWorkout.markFinishing();
     const endedAt = new Date();
     const change = finishSession(session, endedAt);
     apply(change);
+    return { endedAt, finished: change.session, summary: sessionStats(change.session) };
+  };
 
-    const finished = change.session;
-    const summary = sessionStats(finished);
+  const handleFinish = () => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+    setIsSaving(true);
+
+    let begun: ReturnType<typeof beginFinish>;
+    try {
+      begun = beginFinish();
+    } catch (error) {
+      // Failing before the save starts must not leave Finish held: the athlete can still retry.
+      releaseFinish();
+      throw error;
+    }
+    const { endedAt, finished, summary } = begun;
 
     void (async () => {
       try {
@@ -412,6 +436,7 @@ export default function LiveScreen() {
         // memory but not yet durable anywhere else. Staying on this screen keeps the
         // in-memory state (and the athlete's option to retry Finish) alive rather
         // than navigating away from data that only exists here.
+        releaseFinish();
         toast.show('Workout not saved — check your connection and try Finish again.');
       }
     })();
@@ -426,6 +451,7 @@ export default function LiveScreen() {
         stats={stats}
         isLogging={workout.isLogging}
         resumed={workout.resumed}
+        isSaving={isSaving}
         onCancel={() => router.back()}
         onPauseResume={handlePauseResume}
         onFinish={handleFinish}

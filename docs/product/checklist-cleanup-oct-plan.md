@@ -90,6 +90,6 @@ In **How long we keep it**, add (its timing depends on Q3):
 ## Progress
 
 - [x] Slice 1, F2 regression test (2026-10-13; passes, and fails with the `cancelled` check removed)
-- [ ] Slice 2, F1 replica approved, then guard plus saving state
+- [x] Slice 2, F1 replica approved, then guard plus saving state (2026-10-13; three new tests in `live.test.tsx`)
 - [ ] Slice 3, F3 pool limits, deployed and checked
 - [x] Slice 4, F4 wording approved, then published (2026-10-13)
