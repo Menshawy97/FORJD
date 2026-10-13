@@ -230,10 +230,16 @@ jobs:
           # free tier's monthly allowance, and nothing while idle. There is
           # deliberately no --min-instances: an always-on instance is billed, and FORJD stays on
           # free tiers.
+          #
+          # --max-instances 3 (checklist-cleanup-oct-plan.md, F3): DATABASE_URL is Supabase's session
+          # pooler, where each open connection holds a database connection, so the API's share is
+          # the pool size (`apps/api/src/database/pool-options.ts`) times the instance count.
+          # `pool-options.spec.ts` reads this line and fails if the product leaves the budget.
           gcloud run deploy "forjd-api-${TARGET}" \
             --image "$IMAGE" \
             --region "$RUN_REGION" \
             --cpu-boost \
+            --max-instances 3 \
             --platform managed \
             --allow-unauthenticated \
             --set-secrets "SUPABASE_URL=forjd-${TARGET}-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=forjd-${TARGET}-supabase-service-role-key:latest,DATABASE_URL=forjd-${TARGET}-database-url:latest,OPENAI_API_KEY=forjd-${TARGET}-openai-api-key:latest,TURNSTILE_SECRET_KEY=forjd-${TARGET}-turnstile-secret-key:latest" \

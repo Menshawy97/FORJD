@@ -82,7 +82,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] R28 wall-clock timing tests deleted (G4, #311)
 - [x] `ci.yml` least-privilege token (G2, #311)
 - [ ] Re-measure cold start in europe-west1
-- [ ] *(unconfirmed)* `pg` pool settings and pooler port on `DATABASE_URL`
+- [x] `pg` pool settings and pooler port on `DATABASE_URL` (2026-10-13): confirmed the session pooler (port 5432), and the API used pg's defaults (10 connections per instance, no connect timeout) with no Cloud Run instance cap. Now 5 per instance, 10 s idle and connect timeouts (`apps/api/src/database/pool-options.ts`), and `--max-instances 3` in `deploy-api.yml`; a spec keeps pool times instances within 15 connections. Live on staging 2026-10-13; **production deploy owed (owner)**: `gh workflow run deploy-api.yml --ref main -f target=production`
 
 ### Product and architecture
 - [ ] Phase 7 decision E: readiness baseline crossover when WHOOP connects mid-baseline

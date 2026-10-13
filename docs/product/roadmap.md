@@ -123,7 +123,8 @@ They go into Phase 8.5's triage below, so each one is fixed, scheduled or closed
   Not a bug (2026-10-13): the gate unmounts on sign-out; a regression test pins it.
 - **Speed (8.5E, low):** ~~the board cache never drops past months' keys~~ fixed (G3);
   ~~a first Nutrition visit still reads each food separately~~ fixed (G5,
-  `GET /nutrition/foods?ids=`). ~~The two R28 timing tests~~ removed (G4).
+  `GET /nutrition/foods?ids=`). ~~The two R28 timing tests~~ removed (G4). ~~`pg` pool on defaults~~
+  limited 2026-10-13: 5 connections per instance, 10 s timeouts, at most 3 Cloud Run instances.
 - ~~**CI (8.5E, unconfirmed):** `ci.yml` had no top-level `permissions:` block~~ added (G2); it touches no
   credentials, so this rests on the repository's default token permission.
 - ~~**Rule 10:** watch calories are summed across every Health Connect data origin (possible
