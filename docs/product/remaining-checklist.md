@@ -63,7 +63,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] *(unconfirmed)* `AuthenticatedGate` date-of-birth `getMe` may misroute a new account after a quick account switch
 
 ### Website
-- [ ] Privacy page "Waitlist" section (W4 step 3): the published policy lists the waitlist email among what is collected and names Cloudflare's bot check, but does not yet say the email is used only for the launch email or how to be removed
+- [x] Privacy page "Waitlist" section (W4 step 3): published 2026-10-13 with the owner's approved wording. The email is used only to announce the launch, is deleted once the launch email has been sent, and is removed sooner on request to support@getforjd.com. See [checklist-cleanup-oct-plan.md](checklist-cleanup-oct-plan.md)
 - [x] Terms of use text: published 2026-10-08 at https://getforjd.com/terms (#378); the sign-up "Terms of Service" words open it (#379). A qualified review is still owed under Accounts and legal
 - [ ] Decide Free vs Pro. The "Save 40%" yearly label (it should be about 50%: $59.99 a year against $9.99 a month) is in the ADR-021 design only; the app has no pricing screen yet (the Profile "Go Pro" banner shows no prices). Use 50% when that screen is built in Phase 10
 - [ ] Choose the launch-email service

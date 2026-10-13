@@ -23,6 +23,12 @@ describe('privacy policy page', () => {
     expect(page).toMatch(/Health data never reaches an analytics or advertising service/);
   });
 
+  it('says what the waitlist email is for, when it is deleted and how to be removed sooner (W4 step 3)', () => {
+    expect(page).toMatch(/waitlist on our website, we use your email address only to tell you when FORJD\s+launches/);
+    expect(page).toMatch(/Waitlist email addresses are deleted once the launch email has been sent/);
+    expect(page).toMatch(/To be removed sooner,\s+email <a href=\{`mailto:\$\{supportEmail\}`\}>\{supportEmail\}<\/a>/);
+  });
+
   it('links only to sections that exist on the page', () => {
     const ids = new Set([...page.matchAll(/id="([a-z-]+)"/g)].map((m) => m[1]));
     const linked = [...(page + footer).matchAll(/\/privacy#([a-z-]+)|href="#([a-z-]+)"/g)].map((m) => m[1] ?? m[2]);
