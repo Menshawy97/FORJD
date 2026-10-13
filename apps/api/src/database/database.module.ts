@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
+import { poolOptions } from './pool-options';
+
 export const PG_POOL = Symbol('PG_POOL');
 export const DRIZZLE = Symbol('DRIZZLE');
 
@@ -15,7 +17,7 @@ export type Database = NodePgDatabase<Record<string, never>>;
       provide: PG_POOL,
       inject: [ConfigService],
       useFactory: (config: ConfigService): Pool =>
-        new Pool({ connectionString: config.getOrThrow<string>('DATABASE_URL') }),
+        new Pool(poolOptions(config.getOrThrow<string>('DATABASE_URL'))),
     },
     {
       provide: DRIZZLE,

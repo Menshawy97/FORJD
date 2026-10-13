@@ -57,6 +57,9 @@ step later will fill in only what's still missing, once the RLS or key issue is 
 2. **Get the session-pooler connection string.** Project Settings, Database, Connection string, "Session
    pooler" (not the direct one: GitHub-hosted runners have no IPv6). Reset the database password there if it
    is not known. URL-encode any special characters in the password.
+   In session mode every open connection holds a database connection, so the API keeps its share small:
+   5 per instance (`apps/api/src/database/pool-options.ts`) and at most 3 instances (`deploy-api.yml`).
+   Raising either is a deliberate change; `pool-options.spec.ts` fails if the total passes 15.
 3. **Create the four secrets** in Google Cloud project `forjd-506508`, in Secret Manager:
    - `forjd-production-database-url`: the pooler string from step 2
    - `forjd-production-supabase-url`: `https://lzhwyvrtkmgtjruvjins.supabase.co`
