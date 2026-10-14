@@ -5,14 +5,15 @@
 // cases pin the trigger's contract, which is mostly about what it must NOT do -- it must not
 // throw, and it must not surface a failure the athlete did not ask about.
 import { uploadWorkoutSession } from '@/auth/apiClient';
-import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb } from '@/store/workout-session';
+import { drainSyncQueue, ensureWorkoutSessionSchema, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
 
-import { syncPendingSessions } from '../sync-sessions';
+import { hasPendingUploads, syncPendingSessions } from '../sync-sessions';
 
 jest.mock('@/store/workout-session', () => ({
   openWorkoutSessionDb: jest.fn(),
   ensureWorkoutSessionSchema: jest.fn(),
   drainSyncQueue: jest.fn(),
+  getQueuedSessions: jest.fn(),
 }));
 
 jest.mock('@/auth/apiClient', () => ({
@@ -111,4 +112,21 @@ it("clamps an out-of-range set in a queued payload before uploading it, so a wor
       exercises: [{ exerciseId: "e1", sets: [expect.objectContaining({ durationSeconds: 86400 })] }],
     }),
   );
+});
+
+// Owner decision 2026-10-14 (walk finding 14): the back-online tick uploads at once, past the queue's backoff, and
+// only when something is waiting.
+it('uploads past the backoff when asked to, by draining as if every retry time had passed', async () => {
+  await syncPendingSessions({ ignoreBackoff: true });
+
+  const now = (drainSyncQueue as jest.Mock).mock.calls[0]?.[3] as Date;
+  expect(now).toBeInstanceOf(Date);
+  expect(now.getTime()).toBeGreaterThan(Date.now() + 365 * 86_400_000);
+});
+
+it('reports whether a workout is waiting to upload', async () => {
+  (getQueuedSessions as jest.Mock).mockResolvedValueOnce([{ status: 'failed' }]).mockResolvedValueOnce([{ status: 'failed' }, { status: 'pending' }]);
+
+  await expect(hasPendingUploads()).resolves.toBe(false);
+  await expect(hasPendingUploads()).resolves.toBe(true);
 });

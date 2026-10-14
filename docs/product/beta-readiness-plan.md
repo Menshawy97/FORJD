@@ -121,3 +121,14 @@ Failures get fixed test-first, each in its own PR, and UI changes get a replica 
   scheduling walked; findings 4 and 13 fixed (#396). The emulator list is done. The open findings
   (3, 5, 6, 7, 8, 12, 14, 15, 17, 18, 19, 22) need either an owner decision or a replica first;
   see the report.
+
+## Owner decisions on the walk findings (2026-10-14 evening)
+
+- **15, Profile rows:** show real counts (sessions logged; last scan date or "No scans yet"). Replica first.
+- **3, exercise catalogue:** download at app start and at sign-in (`features/exercises/refresh-catalogue.ts`,
+  called from the authenticated effect in `app/_layout.tsx`; never throws; 304 when unchanged).
+- **14, back online:** no new native library. While the app is open, every 30 s: if a workout is waiting,
+  ping the API (`GET /health`); if it answers, upload at once, past the queue's backoff (drain with a
+  far-future `now`). A tick while offline uses no upload attempts (`workouts/back-online-retry.ts`).
+- **17, Home bell:** the owner wants it to show their notifications: a notifications list screen. Design
+  it from the app's patterns and show a replica before building.

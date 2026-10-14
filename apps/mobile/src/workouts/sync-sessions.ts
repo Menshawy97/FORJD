@@ -7,7 +7,27 @@ import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 import { sanitizeUploadRequest } from './live-session';
 import { RUN_EXERCISE_PLACEHOLDER_ID } from './live-run';
 import { resolveRunExerciseId } from './run-exercise';
-import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb, UploadRejection } from '@/store/workout-session';
+import {
+  drainSyncQueue,
+  ensureWorkoutSessionSchema,
+  getQueuedSessions,
+  openWorkoutSessionDb,
+  UploadRejection,
+} from '@/store/workout-session';
+
+/** Later than any retry time the queue can set, so a drain at this moment treats every row as due. */
+const FAR_FUTURE = new Date(8_640_000_000_000_000);
+
+/** Whether any workout is waiting to upload (not given up on). Never throws: an unreadable queue reads as empty. */
+export async function hasPendingUploads(): Promise<boolean> {
+  try {
+    const db = await openWorkoutSessionDb();
+    await ensureWorkoutSessionSchema(db);
+    return (await getQueuedSessions(db)).some((row) => row.status === 'pending');
+  } catch {
+    return false;
+  }
+}
 
 /**
  * A queued run still carries `RUN_EXERCISE_PLACEHOLDER_ID` (ADR-050) if it was recorded before the
@@ -83,13 +103,19 @@ function makeUploadSession() {
  * exhausted its attempts, is skipped without a request -- so calling this on every app
  * foreground costs nothing when there is nothing to send.
  */
-export async function syncPendingSessions(): Promise<{ uploaded: string[]; failed: string[] }> {
+export async function syncPendingSessions(
+  options: { ignoreBackoff?: boolean } = {},
+): Promise<{ uploaded: string[]; failed: string[] }> {
   try {
     const db = await openWorkoutSessionDb();
     await ensureWorkoutSessionSchema(db);
     // Only the signed-in account's sessions: the upload is filed under whoever's token carries
     // it, so another account's queued work waits for its owner (whole-app review 8.5, L3-1).
-    return await drainSyncQueue(db, await getAccountId(), makeUploadSession());
+    const accountId = await getAccountId();
+    // The back-online tick (`back-online-retry.ts`) has just seen the server answer, so it drains as if every
+    // retry time had passed rather than waiting out a backoff built up while offline (walk finding 14).
+    if (options.ignoreBackoff) return await drainSyncQueue(db, accountId, makeUploadSession(), FAR_FUTURE);
+    return await drainSyncQueue(db, accountId, makeUploadSession());
   } catch {
     // Nothing to surface: the queue is durable, and the next trigger tries again.
     return { uploaded: [], failed: [] };

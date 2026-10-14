@@ -315,6 +315,22 @@ export async function getLeaderboard(
  * Returns the same `CatalogueFetchResult` shape `syncExerciseCatalogue` expects, so this
  * function can be passed to it directly, exactly as the pre-R20 unconditional version was.
  */
+/** How long the reachability check waits before calling the server unreachable. */
+const PING_TIMEOUT_MS = 5000;
+
+/**
+ * Whether the API answers right now (`GET /health`, unauthenticated, on `publicClient` so no token refresh runs).
+ * Used by the back-online upload tick (walk finding 14) before it uploads. Never throws.
+ */
+export async function pingApi(): Promise<boolean> {
+  try {
+    await publicClient.get('/health', { timeout: PING_TIMEOUT_MS });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function getExerciseCatalogue(
   storedVersion: string | null,
 ): Promise<CatalogueFetchResult> {
