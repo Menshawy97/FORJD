@@ -49,8 +49,10 @@ const TOGGLE_ROWS: ReadonlyArray<{ key: keyof PrivacyFlags; title: string; subti
   },
   {
     key: 'aiFeaturesConsent',
-    title: 'AI insights',
-    subtitle: 'Analyse your training and recovery to write your weekly insights.',
+    // Walk finding 8: FORJD Insight is rules-based; the only thing this switch governs is an AI model reading an InBody
+    // photo (`body.service.ts`). Named for what it does. The stored field keeps its name.
+    title: 'AI scan reading',
+    subtitle: 'Read your InBody sheet with an AI model when you scan one.',
   },
   {
     key: 'publicProfile',
@@ -255,8 +257,8 @@ export default function PrivacyScreen() {
                   <Icon name="shield" size={18} color={colors.metadata} />
                 </View>
                 <Text className="flex-1 font-archivo text-[12px] leading-[1.5] text-dimmer">
-                  Turning off AI insights stops new insights being generated. Your history
-                  stays on your device either way.
+                  Turning off AI scan reading stops new scan photos being read by an AI model.
+                  You can still enter a scan by hand.
                 </Text>
               </View>
             </>

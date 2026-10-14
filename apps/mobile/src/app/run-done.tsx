@@ -128,7 +128,7 @@ export default function RunDoneScreen() {
             key={metric}
             className="mt-[12px] rounded-card px-[15px] py-[14px]"
             style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-            <HealthAccessNote metric={metric} />
+            <HealthAccessNote metric={metric} hasEstimate={run.caloriesKcal !== null} />
           </View>
         ))}
 

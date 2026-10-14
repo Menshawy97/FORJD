@@ -30,6 +30,16 @@ describe('HealthAccessNote', () => {
   });
 });
 
+// Walk finding 19: with no estimate to show (Calories reads "—"), the note does not claim one.
+describe('HealthAccessNote without an estimate', () => {
+  it('says calories are off without claiming an estimate', async () => {
+    await render(<HealthAccessNote metric="active_energy" hasEstimate={false} />);
+
+    expect(screen.getByText('Watch calories are turned off for FORJD in Health Connect.')).toBeTruthy();
+    expect(screen.queryByText(/uses an estimate/)).toBeNull();
+  });
+});
+
 describe('RunHeartRateCard when heart rate is blocked', () => {
   it('shows the note in place of the chart and keeps the dash figure', async () => {
     await render(<RunHeartRateCard currentBpm={null} series={[]} isBlocked />);

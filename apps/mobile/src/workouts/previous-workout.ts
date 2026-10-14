@@ -155,7 +155,8 @@ function chipLabel(name: string, exercise: SessionExercise, set: SessionSet): st
     return `${name} ${set.durationSeconds}s`;
   }
   if (exercise.measure === 'distance' && set.distanceMeters !== null) {
-    return `${name} ${set.distanceMeters}m`;
+    // Walk finding 18: the card's own style ("0.19 km"), not raw metres with decimals ("193.56m").
+    return `${name} ${(set.distanceMeters / 1000).toFixed(2)} km`;
   }
   if (set.reps === null) return null;
   // The prototype's fourth chip is `Dips BW×12`: a set logged without a weight is bodyweight,

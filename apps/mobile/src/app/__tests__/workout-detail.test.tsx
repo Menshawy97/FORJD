@@ -216,7 +216,8 @@ describe('exercise names come from the on-device catalogue', () => {
     expect(await findByText('1×5000 m')).toBeTruthy();
   });
 
-  it('shows an em dash when a template exercise prescribes no target at all', async () => {
+  // Walk finding 6: a program exercise with no target shows what the workout will lay out (10 reps), not "4×—".
+  it("shows the workout's own 10 reps when a template exercise prescribes no target at all", async () => {
     (getWorkoutTemplate as jest.Mock).mockResolvedValue(
       template({
         blocks: [
@@ -230,7 +231,7 @@ describe('exercise names come from the on-device catalogue', () => {
 
     const { findByText } = await render(<WorkoutDetailScreen />);
 
-    expect(await findByText('4×—')).toBeTruthy();
+    expect(await findByText('4×10 reps')).toBeTruthy();
   });
 });
 

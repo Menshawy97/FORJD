@@ -162,10 +162,10 @@ export function LiveExerciseCard({
         </View>
       </View>
 
-      {/* Column headers: `padding:'0 11px 6px'`, widths 16 / 66 / flex / 44. */}
+      {/* Column headers: `padding:'0 11px 6px'`, widths 24 / 66 / flex / 44 (24, not the prototype's 16: Android wrapped "SET" to "SE/T", walk finding 5). */}
       <View className="mt-[12px] flex-row items-center px-[11px] pb-[6px]" style={{ gap: 8 }}>
         <Text
-          className="w-[16px] text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
+          className="w-[24px] text-center font-archivo text-[8.5px] font-semibold uppercase tracking-[.1em]"
           style={{ color: '#4D4D47' }}>
           Set
         </Text>
@@ -195,7 +195,7 @@ export function LiveExerciseCard({
                 borderColor: set.isCompleted ? 'rgba(121,185,138,.25)' : colors.border,
                 gap: 8,
               }}>
-              <Text className="w-[16px] text-center font-archivo text-[11.5px] font-semibold" style={{ color: '#5C5C55' }}>
+              <Text className="w-[24px] text-center font-archivo text-[11.5px] font-semibold" style={{ color: '#5C5C55' }}>
                 {setIndex + 1}
               </Text>
               {/*

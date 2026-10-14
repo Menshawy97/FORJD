@@ -49,12 +49,15 @@ describe('ConnectScreen', () => {
 
   it('shows WHOOP as Connect and the other two sources as inert when disconnected', async () => {
     (getWhoopStatus as jest.Mock).mockResolvedValue({ connected: false, lastSyncAt: null });
-    const { findByText, getAllByText, queryByText } = await render(<ConnectScreen />);
+    const { findByText, getAllByText, getByText, queryByText } = await render(<ConnectScreen />);
 
     await findByText('Connect');
     expect(queryByText('Disconnect')).toBeNull();
     // Apple Health and Health Connect never render an action pill at all.
-    expect(getAllByText('Coming soon')).toHaveLength(2);
+    // Walk finding 22: runs already read Health Connect, so it says so; only Apple Health is still coming.
+    expect(getAllByText('Coming soon')).toHaveLength(1);
+    getByText('Used by runs');
+    getByText('Heart rate and calories for your runs');
   });
 
   it('shows WHOOP as Disconnect when already connected', async () => {

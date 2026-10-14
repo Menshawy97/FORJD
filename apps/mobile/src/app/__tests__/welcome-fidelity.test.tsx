@@ -80,6 +80,7 @@ describe('welcome screen - design fidelity', () => {
     await findByLabelText('FORJD');
     await findByText('Strength · Running · Cross Training · Mobility');
     await findByText('Sleep · HRV · Recovery · Body Composition');
-    await findByText('AI Insights · City Leaderboards · Analytics');
+    // Walk finding 8: FORJD Insight is rules-based, so the welcome line does not call it AI (owner wording).
+    await findByText('FORJD Insight · City Leaderboards · Analytics');
   });
 });
