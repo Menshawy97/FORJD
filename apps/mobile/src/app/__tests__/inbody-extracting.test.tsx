@@ -105,7 +105,7 @@ describe('InBody photo extraction refused', () => {
     const { findByText, findByRole, queryByText } = await render(<InBodyScreen />);
     await fireEvent.press(await findByText('Choose from library instead'));
 
-    expect(await findByText(/Turn on AI insights in Privacy to continue/)).toBeTruthy();
+    expect(await findByText(/Turn on AI scan reading in Privacy to continue/)).toBeTruthy();
     expect(queryByText(/better lighting/)).toBeNull();
 
     await fireEvent.press(await findByRole('button', { name: 'Open Privacy settings' }));
@@ -119,7 +119,7 @@ describe('InBody photo extraction refused', () => {
     await fireEvent.press(await findByText('Choose from library instead'));
 
     expect(await findByText(/better lighting/)).toBeTruthy();
-    expect(queryByText(/Turn on AI insights/)).toBeNull();
+    expect(queryByText(/Turn on AI scan reading/)).toBeNull();
   });
 });
 

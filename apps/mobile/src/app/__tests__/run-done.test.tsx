@@ -122,6 +122,15 @@ describe('RunDoneScreen', () => {
     expect(screen.getByRole('button', { name: 'Open Health Connect' })).toBeTruthy();
   });
 
+  // Walk finding 19: no weight on the account means no estimate, so the note must not claim one.
+  it('does not claim an estimate when there is none', async () => {
+    setCompletedRun({ ...SCREENSHOT_RUN, caloriesKcal: null, caloriesSource: null, healthBlocked: ['active_energy'] });
+    await render(<RunDoneScreen />);
+
+    expect(screen.getByText('Watch calories are turned off for FORJD in Health Connect.')).toBeTruthy();
+    expect(screen.queryByText(/uses an estimate/)).toBeNull();
+  });
+
   it('adds no health note when nothing was refused', async () => {
     setCompletedRun({ ...SCREENSHOT_RUN, caloriesSource: 'estimate', healthBlocked: [] });
     await render(<RunDoneScreen />);

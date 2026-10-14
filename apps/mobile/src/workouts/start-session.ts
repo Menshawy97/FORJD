@@ -38,9 +38,9 @@ interface ExercisePrescription {
 }
 
 /** The design's own defaults, matching what the builder seeds a newly picked exercise with. */
-const DEFAULT_REPS = 10;
-const DEFAULT_SECONDS = 45;
-const DEFAULT_DISTANCE_METERS = 500;
+export const DEFAULT_REPS = 10;
+export const DEFAULT_SECONDS = 45;
+export const DEFAULT_DISTANCE_METERS = 500;
 
 /**
  * Expands one prescription into its individual sets.

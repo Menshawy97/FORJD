@@ -84,9 +84,10 @@ describe('PrivacyScreen', () => {
     expect(await findByText('Use approximate location')).toBeTruthy();
     // British spelling, as the prototype has it (§6.2).
     expect(
-      await findByText('Analyse your training and recovery to write your weekly insights.'),
+      await findByText('Read your InBody sheet with an AI model when you scan one.'),
     ).toBeTruthy();
-    expect(await findByText('AI insights')).toBeTruthy();
+    // Walk finding 8: insights are rules-based; this switch only governs AI reading of a scan photo.
+    expect(await findByText('AI scan reading')).toBeTruthy();
     expect(await findByText('Public profile')).toBeTruthy();
     expect(await findByText('Crash diagnostics')).toBeTruthy();
     expect(await findByText('Anonymous crash reports only — never health data.')).toBeTruthy();
@@ -321,7 +322,7 @@ describe('PrivacyScreen', () => {
 
     expect(
       await findByText(
-        'Turning off AI insights stops new insights being generated. Your history stays on your device either way.',
+        'Turning off AI scan reading stops new scan photos being read by an AI model. You can still enter a scan by hand.',
       ),
     ).toBeTruthy();
   });

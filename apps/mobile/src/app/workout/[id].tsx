@@ -13,7 +13,13 @@ import { TypeChip } from '@/components/type-chip';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { setBuilderPrefill } from '@/workouts/builder-handoff';
 import { setPendingLiveSession } from '@/workouts/live-handoff';
-import { newSessionId, toLiveExercise } from '@/workouts/start-session';
+import {
+  DEFAULT_DISTANCE_METERS,
+  DEFAULT_REPS,
+  DEFAULT_SECONDS,
+  newSessionId,
+  toLiveExercise,
+} from '@/workouts/start-session';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -41,10 +47,21 @@ interface DisplayRow {
   targetLabel: string;
 }
 
-function targetLabelOf(exercise: WorkoutTemplateResponse['blocks'][number]['exercises'][number]): string {
+/**
+ * The exercise's target, or, when the template sets none (every program preset), what the live workout will lay out
+ * for it (`start-session.ts`'s defaults), so this page and the workout agree (walk finding 6). An exercise whose kind
+ * is not known on this phone yet keeps the dash.
+ */
+function targetLabelOf(
+  exercise: WorkoutTemplateResponse['blocks'][number]['exercises'][number],
+  measure: ExerciseResponse['measure'] | null,
+): string {
   if (exercise.targetSeconds !== null) return `${exercise.targetSeconds} s`;
   if (exercise.targetDistanceMeters !== null) return `${exercise.targetDistanceMeters} m`;
   if (exercise.targetReps !== null) return `${exercise.targetReps} reps`;
+  if (measure === 'weight') return `${DEFAULT_REPS} reps`;
+  if (measure === 'time') return `${DEFAULT_SECONDS} s`;
+  if (measure === 'distance') return `${DEFAULT_DISTANCE_METERS} m`;
   return '—';
 }
 
@@ -73,7 +90,7 @@ export default function WorkoutDetailScreen() {
                 name: cached?.name ?? 'Exercise',
                 measure: cached?.measure ?? null,
                 setCount: exercise.setCount,
-                targetLabel: targetLabelOf(exercise),
+                targetLabel: targetLabelOf(exercise, cached?.measure ?? null),
               };
             }),
           );

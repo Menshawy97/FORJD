@@ -18,7 +18,7 @@ import { colors } from '@/theme/tokens';
 
 const CAMERA_PERMISSION_MESSAGE = 'Camera access is needed to photograph your InBody sheet.';
 const PHOTO_UNREADABLE_MESSAGE = 'Could not read that photo. Try again with better lighting.';
-const AI_CONSENT_MESSAGE = 'Reading your scan uses AI. Turn on AI insights in Privacy to continue.';
+const AI_CONSENT_MESSAGE = 'Reading your scan uses AI. Turn on AI scan reading in Privacy to continue.';
 
 /**
  * The API refuses to send a scan photo to the AI provider until the account has turned on AI

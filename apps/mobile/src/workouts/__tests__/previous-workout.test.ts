@@ -227,7 +227,8 @@ describe('sessionExerciseChips', () => {
       }),
       resolveName,
     );
-    expect(chips).toEqual(['Bench Press 45s', 'Dips 800m']);
+    // Walk finding 18: a distance reads like the rest of the card ("0.80 km"), not raw metres ("800m", "193.56m").
+    expect(chips).toEqual(['Bench Press 45s', 'Dips 0.80 km']);
   });
 
   // The catalogue is a local cache and can miss an id -- a chip with no name is worse than no

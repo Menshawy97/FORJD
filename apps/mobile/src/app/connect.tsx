@@ -41,12 +41,22 @@ interface SourceMeta {
   name: string;
   subtitle: string;
   icon: IconName;
+  /** What an inert card says on the right; "Coming soon" unless set. */
+  status?: string;
 }
 
 const SOURCES: readonly SourceMeta[] = [
   { key: 'apple_health', name: 'Apple Health', subtitle: 'Steps, HR, sleep, workouts', icon: 'heart' },
   { key: 'whoop', name: 'WHOOP', subtitle: 'Recovery, strain, sleep', icon: 'bolt' },
-  { key: 'health_connect', name: 'Health Connect', subtitle: 'Android health aggregation', icon: 'link' },
+  // Runs already read heart rate and calories from it once health data is allowed in Privacy, so it is not
+  // "coming" (walk finding 22). Still not a card to connect from: there is nothing to do here.
+  {
+    key: 'health_connect',
+    name: 'Health Connect',
+    subtitle: 'Heart rate and calories for your runs',
+    icon: 'link',
+    status: 'Used by runs',
+  },
 ];
 
 /** Since expo-web-browser's own redirect result is only a client-side signal (the browser
@@ -243,7 +253,7 @@ function WhoopSourceCard({ meta, connected, busy, loaded, onConnect, onDisconnec
 function InertSourceCard({ meta }: { meta: SourceMeta }) {
   return (
     <SourceCardShell meta={meta} connected={false}>
-      <Text className="font-archivo text-[11px] text-dimmer">Coming soon</Text>
+      <Text className="font-archivo text-[11px] text-dimmer">{meta.status ?? 'Coming soon'}</Text>
     </SourceCardShell>
   );
 }

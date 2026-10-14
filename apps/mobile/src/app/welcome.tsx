@@ -38,7 +38,8 @@ const FEATURES: Array<{ icon: IconName; text: string }> = [
   { icon: 'heart', text: 'Sleep · HRV · Recovery · Body Composition' },
   // The prototype inlines the bar-chart mark here (not the `progress` glyph the fidelity
   // spec's summary names) — prototype wins.
-  { icon: 'bars', text: 'AI Insights · City Leaderboards · Analytics' },
+  // Not "AI Insights": FORJD Insight is rules-based (walk finding 8; owner's wording).
+  { icon: 'bars', text: 'FORJD Insight · City Leaderboards · Analytics' },
 ];
 
 const FEATURE_ICON_SIZE = 19;
