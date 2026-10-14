@@ -57,6 +57,8 @@ import {
 import { workoutNotice } from '@/workouts/workout-notice';
 import { GOAL_GUIDE } from '@/workouts/goal-guide';
 import { LiveExerciseCard } from '@/workouts/live-exercise-card';
+import { rememberFinishedWorkout } from '@/workouts/load-previous-sets';
+import { usePreviousSets } from '@/workouts/use-previous-sets';
 import { LiveSessionHeader } from '@/workouts/live-session-header';
 import { RestTimerCard } from '@/workouts/rest-timer-card';
 import { TrainingGuideCard } from '@/workouts/training-guide-card';
@@ -78,7 +80,8 @@ import { colors } from '@/theme/tokens';
  *
  * **No network call appears anywhere in this file** -- CLAUDE.md rule 6. Exercise names arrive
  * already resolved from the on-device catalogue (ADR-022) via the handoff, and the session is
- * handed to the sync queue only when it finishes, which is Phase I's job.
+ * handed to the sync queue only when it finishes, which is Phase I's job. PREV's history is fetched by
+ * `usePreviousSets` in the background (phone memory first) and never holds the workout up.
  */
 
 export { formatElapsed };
@@ -121,6 +124,10 @@ export default function LiveScreen() {
   }, []);
 
   const toast = useToast();
+
+  // PREV and the start-filled sets (docs/product/live-prev-column-plan.md): loaded in the background by the hook,
+  // phone memory first, so the workout never waits on it.
+  const previousSets = usePreviousSets(session, workout.resumed);
 
   // Finish in flight (F1, checklist-cleanup-oct-plan.md). The ref turns away a second tap that lands
   // before the re-render disables the button; the state drives the saving look.
@@ -395,7 +402,10 @@ export default function LiveScreen() {
       try {
         // Hand the session to the sync queue and clear the snapshot that would offer it back. The store
         // does both behind every log write, and rejects when the workout could not be queued.
-        await activeWorkout.queueForUpload(toUploadRequest(finished, endedAt, elapsedSeconds));
+        const request = toUploadRequest(finished, endedAt, elapsedSeconds);
+        await activeWorkout.queueForUpload(request);
+        // Its sets become last time's on this phone at once, for the next workout's PREV. Never throws.
+        void rememberFinishedWorkout(request);
 
         setCompletedSummary({
           name: finished.name,
@@ -512,6 +522,7 @@ export default function LiveScreen() {
             onCompleteSet={(setIndex) => apply(completeSet(session, exerciseIndex, setIndex, new Date()))}
             onRemoveSet={(setIndex) => activeWorkout.update((current) => removeSet(current, exerciseIndex, setIndex))}
             onAddSet={() => activeWorkout.update((current) => addSet(current, exerciseIndex))}
+            previous={previousSets[exercise.exerciseId]}
           />
         ))}
 
