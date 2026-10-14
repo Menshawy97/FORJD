@@ -8,6 +8,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { clearCompletedSummary, getCompletedSummary } from '@/workouts/live-handoff';
+import { tallyMuscleSets } from '@/workouts/muscle-tally';
 import { formatSessionDuration } from '@/workouts/previous-workout';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { colors } from '@/theme/tokens';
@@ -93,15 +94,15 @@ export default function WorkoutDoneScreen() {
     void (async () => {
       try {
         const db = await openExerciseCatalogueDb();
-        const tally = new Map<MuscleGroup, number>();
-        for (const exerciseId of summary.exerciseIds) {
-          const cached = await getCachedExercise(db, exerciseId);
-          for (const muscle of cached?.primaryMuscles ?? []) {
-            tally.set(muscle, (tally.get(muscle) ?? 0) + 1);
-          }
-        }
+        const primaryMusclesOf = async (exerciseId: string) =>
+          (await getCachedExercise(db, exerciseId))?.primaryMuscles ?? null;
+        // Completed sets per exercise when the summary has them (a workout just finished here). A summary
+        // opened from history carries only exercise ids, so it still counts one per exercise: an open
+        // finding (emulator walk 2026-10-14, 13), left as it was until the owner decides what it shows.
+        const exercises = summary.exercises ?? summary.exerciseIds.map((exerciseId) => ({ exerciseId, setCount: 1 }));
+        const rows = await tallyMuscleSets(exercises, primaryMusclesOf);
         if (cancelled) return;
-        setMuscles([...tally.entries()].map(([muscle, sets]) => ({ muscle, sets })).sort((a, b) => b.sets - a.sets));
+        setMuscles(rows);
       } catch {
         // The catalogue being unavailable costs this one section, not the whole screen.
       }

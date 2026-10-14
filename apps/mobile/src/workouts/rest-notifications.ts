@@ -68,7 +68,8 @@ export const defaultScheduler: NotificationScheduler = {
     await Notifications.setNotificationChannelAsync(REST_CHANNEL_ID, {
       name: 'Rest timer',
       importance: Notifications.AndroidImportance.HIGH,
-      sound: 'default',
+      // No `sound` key: leaving it out is what gives the phone's default sound. `sound: 'default'` was read as a
+      // sound file named "default" and logged "Custom sound 'default' not found" (emulator walk 2026-10-14).
       // The point of the alert is to be noticed with the phone face-down in a gym bag.
       vibrationPattern: [0, 250, 250, 250],
     });
