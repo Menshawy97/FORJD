@@ -8,6 +8,7 @@ import {
 import { PUSH_TOKEN_STORAGE_KEY } from './push-token';
 import { QUIET_HOURS_PENDING_STORAGE_KEY, QUIET_HOURS_STORAGE_KEY } from './quiet-hours';
 import { RECENT_EXERCISES_STORAGE_KEY } from './recent-exercises';
+import { RUN_DISTANCE_UNIT_STORAGE_KEY } from './run-distance-unit';
 import { TIME_ZONE_SENT_STORAGE_KEY, forgetTimeZoneSent } from './time-zone-sent';
 import { WEIGH_IN_SINCE_STORAGE_KEY } from './weigh-in-reminder-anchor';
 
@@ -29,6 +30,7 @@ const ACCOUNT_PREFERENCE_KEYS = [
   QUIET_HOURS_PENDING_STORAGE_KEY,
   PUSH_TOKEN_STORAGE_KEY,
   EXERCISE_UNITS_STORAGE_KEY,
+  RUN_DISTANCE_UNIT_STORAGE_KEY,
   TIME_ZONE_SENT_STORAGE_KEY,
   WEIGH_IN_SINCE_STORAGE_KEY,
 ] as const;

@@ -11,7 +11,11 @@ jest.mock('@/auth/apiClient', () => ({
   updateProfile: jest.fn(),
 }));
 
+// Runs in miles (docs/product/run-miles-plan.md): Save also keeps the distance choice on the phone, for runs offline.
+jest.mock('@/store/run-distance-unit', () => ({ saveRunDistanceUnit: jest.fn().mockResolvedValue(undefined) }));
+
 import { getMe, updateProfile } from '@/auth/apiClient';
+import { saveRunDistanceUnit } from '@/store/run-distance-unit';
 import UnitsScreen from '../units';
 
 const METRICS = {
@@ -126,6 +130,17 @@ describe('UnitsScreen', () => {
       }),
     );
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/profile'));
+  });
+
+  it('keeps the saved distance choice on the phone, so a run shows it offline', async () => {
+    (updateProfile as jest.Mock).mockResolvedValue(PROFILE);
+
+    const { findByLabelText, findByText } = await render(<UnitsScreen />);
+
+    fireEvent.press(await findByLabelText('Imperial'));
+    fireEvent.press(await findByText('Save Changes'));
+
+    await waitFor(() => expect(saveRunDistanceUnit).toHaveBeenCalledWith('mi'));
   });
 
   it('shows the toast on save', async () => {

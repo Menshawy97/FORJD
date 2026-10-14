@@ -8,7 +8,13 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
 import { Toast, useToast } from '@/components/toast';
 import { HealthAccessNote } from '@/features/run/health-access-note';
-import { formatDistanceKm, formatDuration, formatPace } from '@/features/run/run-format';
+import {
+  formatDuration,
+  formatRunDistance,
+  formatRunElevation,
+  formatRunPace,
+  RUN_UNIT_LABELS,
+} from '@/features/run/run-format';
 import { RunSplits } from '@/features/run/run-splits';
 import { RunStatTile } from '@/features/run/run-stat-tile';
 import { RouteMap } from '@/integrations/maps/route-map';
@@ -51,6 +57,10 @@ export default function RunDoneScreen() {
     );
   }
 
+  // The unit the run was shown in (docs/product/run-miles-plan.md); kilometres when the run says none.
+  const unit = run.unit ?? 'km';
+  const labels = RUN_UNIT_LABELS[unit];
+
   return (
     <ScreenBackground>
       <ScrollView className="flex-1 px-screen-x" showsVerticalScrollIndicator={false}>
@@ -89,17 +99,17 @@ export default function RunDoneScreen() {
         <RouteMap
           points={run.route}
           height={MAP_HEIGHT}
-          caption="route + km markers"
-          accessibilityLabel={`Map of your run, ${formatDistanceKm(run.distanceMeters)} kilometres`}
+          caption={`route + ${unit === 'mi' ? 'mile' : 'km'} markers`}
+          accessibilityLabel={`Map of your run, ${formatRunDistance(run.distanceMeters, unit)} ${unit === 'mi' ? 'miles' : 'kilometres'}`}
         />
 
         <View className="mt-[12px] flex-row" style={{ gap: 8 }}>
-          <RunStatTile label="Distance" value={formatDistanceKm(run.distanceMeters)} unit="km" />
+          <RunStatTile label="Distance" value={formatRunDistance(run.distanceMeters, unit)} unit={labels.distance} />
           <RunStatTile label="Duration" value={formatDuration(run.movingSeconds)} />
           <RunStatTile
             label="Avg pace"
-            value={formatPace(run.averagePaceSecondsPerKm)}
-            unit="/km"
+            value={formatRunPace(run.averagePaceSecondsPerKm, unit)}
+            unit={labels.pace}
             color={colors.accent}
           />
         </View>
@@ -118,8 +128,8 @@ export default function RunDoneScreen() {
           />
           <RunStatTile
             label="Elevation"
-            value={run.elevationGainMeters === null ? DASH : String(Math.round(run.elevationGainMeters))}
-            unit="m"
+            value={run.elevationGainMeters === null ? DASH : formatRunElevation(run.elevationGainMeters, unit)}
+            unit={labels.elevation}
           />
         </View>
 
@@ -132,7 +142,7 @@ export default function RunDoneScreen() {
           </View>
         ))}
 
-        <RunSplits splits={run.splits} />
+        <RunSplits splits={run.splits} unit={unit} />
 
         <Pressable
           accessibilityRole="button"

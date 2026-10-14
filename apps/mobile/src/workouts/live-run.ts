@@ -8,6 +8,7 @@ import {
   estimateRunActiveCaloriesKcal,
   netClimbMeters,
   splitsFromTrack,
+  METERS_PER_MILE,
   trackDistanceMeters,
   type HeartRateSample,
   type RunFix,
@@ -161,6 +162,8 @@ export interface RunStats {
   averagePaceSecondsPerKm: number | null;
   currentSpeedMetersPerSecond: number | null;
   splits: RunSplit[];
+  /** Mile splits for the runs-in-miles display (docs/product/run-miles-plan.md). Never uploaded: `splits` is. */
+  mileSplits: RunSplit[];
   elevationGainMeters: number | null;
   netClimbMeters: number | null;
   /** The accepted readings, oldest first, for drawing the route. */
@@ -195,6 +198,7 @@ export function runTrackStats(fixes: RunState['fixes']): RunTrackStats {
     distanceMeters: trackDistanceMeters(track),
     currentSpeedMetersPerSecond: currentSpeedMetersPerSecond(track),
     splits: splitsFromTrack(track),
+    mileSplits: splitsFromTrack(track, METERS_PER_MILE),
     elevationGainMeters: elevationGainMeters(track),
     netClimbMeters: netClimbMeters(track),
     route: track.map(({ latitude, longitude }) => ({ latitude, longitude })),

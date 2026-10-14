@@ -39,6 +39,7 @@ import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { useBackOnlineRetry } from '@/workouts/use-back-online-retry';
 import { workoutNotice } from '@/workouts/workout-notice';
 import { dismissStaleRunNotice } from '@/features/run/run-notification';
+import { saveRunDistanceUnit } from '@/store/run-distance-unit';
 
 import { TAB_BAR_HEIGHT } from './(tabs)/_layout';
 // ADR-059: loading this module defines the run's location task, which TaskManager needs at every
@@ -331,6 +332,10 @@ function AuthenticatedGate() {
         const me = await getMe();
         if (!cancelled && me.profile && me.profile.dateOfBirth === null) {
           requireDateOfBirth();
+        }
+        // The Units distance choice, kept on the phone so a run shows it without signal (run-miles-plan.md).
+        if (!cancelled && me.profile?.distanceUnit) {
+          void saveRunDistanceUnit(me.profile.distanceUnit === 'mi' ? 'mi' : 'km');
         }
       } catch {
         // See above: the server's own refusal is the backstop.

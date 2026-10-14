@@ -451,6 +451,17 @@ describe('sessionLoadLabel', () => {
     expect(sessionLoadLabel(s)).toBe('3.56 km');
   });
 
+  // Runs in miles (docs/product/run-miles-plan.md, replica approved 2026-10-14).
+  it('shows miles for a run when Units is miles, and the chip in miles too', () => {
+    const s = session({
+      activity: 'running',
+      exercises: [exercise('distance', [set({ distanceMeters: 4828.032, durationSeconds: 1471 })])],
+    });
+    expect(sessionLoadLabel(s, 'mi')).toBe('3.00 mi');
+    expect(sessionExerciseChips(s, () => 'Outdoor Run', 'mi')).toEqual(['Outdoor Run 3.00 mi']);
+    expect(sessionExerciseChips(s, () => 'Outdoor Run')).toEqual(['Outdoor Run 4.83 km']);
+  });
+
   it('ignores sets that were not completed', () => {
     const s = session({
       activity: 'running',

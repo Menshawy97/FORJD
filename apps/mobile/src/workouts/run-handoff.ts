@@ -18,6 +18,11 @@ export interface CompletedRun {
   route: Array<{ latitude: number; longitude: number }>;
   /** Metrics Health Connect refused at Finish (access turned off), so the summary can say so. */
   healthBlocked?: readonly RunMetric[];
+  /**
+   * The unit the run was shown in (docs/product/run-miles-plan.md); kilometres when absent. With miles, `splits` are
+   * the mile splits worked out on the phone: the saved run keeps kilometre splits either way.
+   */
+  unit?: 'km' | 'mi';
 }
 
 /** The two watch readings a run asks Health Connect for; also what it can be refused. */

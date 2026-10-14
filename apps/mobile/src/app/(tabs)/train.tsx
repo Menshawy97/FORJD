@@ -22,6 +22,7 @@ import { TypeChip } from '@/components/type-chip';
 import { PreviousWorkoutCard } from '@/features/train/previous-workout-card';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { getExerciseUnits, type ExerciseUnitMap } from '@/store/exercise-unit-preferences';
+import { loadRunDistanceUnit } from '@/store/run-distance-unit';
 import { setCompletedSummary, setPendingLiveSession } from '@/workouts/live-handoff';
 import { summaryExerciseLines } from '@/workouts/summary-lines';
 import {
@@ -106,12 +107,14 @@ async function loadPreviousWorkout(): Promise<PreviousWorkout | null> {
 
   const performedAt = formatRelativeDay(new Date(session.startedAt), new Date());
   const units = await getExerciseUnits().catch((): ExerciseUnitMap => ({}));
+  // A run's line and chip in the Units choice (run-miles-plan.md); never throws, kilometres by default.
+  const runUnit = await loadRunDistanceUnit();
   return {
     session,
     performedAt,
     // `avg 151 bpm` is in the design and not in the data — no HealthProvider feeds this app.
-    meta: `${performedAt} · ${formatSessionDuration(session.durationSeconds)} · ${sessionLoadLabel(session)}`,
-    chips: sessionExerciseChips(session, (id) => resolved.get(id)?.name ?? null),
+    meta: `${performedAt} · ${formatSessionDuration(session.durationSeconds)} · ${sessionLoadLabel(session, runUnit)}`,
+    chips: sessionExerciseChips(session, (id) => resolved.get(id)?.name ?? null, runUnit),
     resolved,
     units,
   };

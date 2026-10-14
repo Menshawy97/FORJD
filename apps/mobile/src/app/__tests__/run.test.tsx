@@ -68,6 +68,8 @@ jest.mock('@/store/run-health-access', () => ({
 jest.mock('@/features/run/latest-weight', () => ({ fetchRunCalorieInputs: jest.fn() }));
 jest.mock('@/workouts/sync-sessions', () => ({ syncPendingSessions: jest.fn() }));
 jest.mock('@/store/leaderboard-consent', () => ({ readLocationConsent: jest.fn() }));
+// Runs in miles (docs/product/run-miles-plan.md): the phone's copy of the Units choice, kilometres unless a test says.
+jest.mock('@/store/run-distance-unit', () => ({ loadRunDistanceUnit: jest.fn().mockResolvedValue('km') }));
 
 import {
   getPrecisePermission,
@@ -84,6 +86,7 @@ import { toRunSnapshot } from '@/features/run/run-snapshot';
 import { fetchRunCalorieInputs } from '@/features/run/latest-weight';
 import { clearRunSnapshot, getUnfinishedRunSnapshot, saveRunSnapshot } from '@/store/run-session';
 import { readLocationConsent } from '@/store/leaderboard-consent';
+import { loadRunDistanceUnit } from '@/store/run-distance-unit';
 import { enqueueSessionUpload, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
 import { addFix, addHeartRate, pauseRun, startRun } from '@/workouts/live-run';
 import { clearCompletedRun, getCompletedRun } from '@/workouts/run-handoff';
@@ -213,6 +216,24 @@ describe('RunScreen -- what it shows', () => {
     expect(screen.getByText('GPS strong')).toBeTruthy();
     expect(screen.getByText('1.01')).toBeTruthy();
     expect(screen.getByText('1 km')).toBeTruthy();
+  });
+
+  it('reads in miles, with mile splits, when Units is miles', async () => {
+    (loadRunDistanceUnit as jest.Mock).mockResolvedValueOnce('mi');
+    const base = Date.now();
+    await render(<RunScreen />);
+    await waitFor(() => expect(screen.getByText('mph')).toBeTruthy());
+    expect(screen.getByText('mi')).toBeTruthy();
+    expect(screen.getByText('/mi')).toBeTruthy();
+    expect(screen.getByText('live map · route + mile markers')).toBeTruthy();
+    await waitFor(() => expect(startRunLocationUpdates).toHaveBeenCalled());
+
+    await feed(fixAt(base, 0, 1));
+    await feed(fixAt(base, 800, 201));
+    await feed(fixAt(base, 1620, 401));
+
+    expect(screen.getByText('1.01')).toBeTruthy();
+    expect(screen.getByText('1 mi')).toBeTruthy();
   });
 
   it('says the signal is weak when readings are poor', async () => {

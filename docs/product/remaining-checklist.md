@@ -77,8 +77,8 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] Leftover snapshot of an uploaded run: finish is now atomic (G6, #314)
 - [x] Route array rebuilt every second (G6, #314)
 - [x] Unused `run_points` table removed (G6, #314)
-- [ ] Miles option on the run screens (still kilometres only; the Units setting's `mi` covers logged cardio exercises, not live runs)
-- [ ] Run share card ("Route & Splits", currently "coming soon")
+- [x] Miles option on the run screens (2026-10-14, [plan](run-miles-plan.md)): runs follow the Units setting (miles, /mi, mph, feet, mile splits, the notice and the Train card); runs are still saved in kilometres
+- [ ] Run share card ("Route & Splits", currently "coming soon"): owner decision 2026-10-14, build before the beta (replica first)
 - [x] Discarding a run whose snapshot clear fails was silent: fixed 2026-10-09. Discard tries the clear twice; if both fail the person still leaves the run but sees "Run not fully deleted ... may be offered back the next time you open Run". No design change beyond a system alert
 
 ### Speed and CI (low)
@@ -94,7 +94,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Analytics rebuild tool for rule changes (deferred until rules first change)
 - [ ] Barcode scanning decision
 - [ ] kcal vs kJ default for kJ-majority markets
-- [ ] "Analyse" vs "Analyze" spelling consistency
+- [x] "Analyse" vs "Analyze" spelling consistency: resolved 2026-10-14, the one "Analyse" (the old Privacy AI subtitle) went with #404
 - [ ] Heart-rate zones (Tanaka) as a possible feature
 - [ ] Expo web cannot bundle (expo-sqlite worker); previews rely on HTML mirrors
 - [x] `ADR-017` written (canonical exercise model) and the "reserved/unwritten" notes updated
@@ -116,7 +116,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] 12E local scheduled notifications: all six notifications, the permission ask and note, the four new switches, the FAQ section (approved 2026-10-06) and the rest-week rule are built (#335 to #344). Still owed, see the device-walk line below
 - [ ] 12E device walk (owner): an iPhone and an Android 13+ phone. The permission prompt on a fresh install, a refusal shows the note, each reminder fires at its time and is skipped once done (food logged, workout finished), the FORJD logo shows, a tap opens the right screen including from a closed app
 - [ ] Quiet-hours editor device walk (owner): an iPhone and an Android phone. Change opens the sheet; the real time picker sets From and Until; equal times are refused; Save updates the row and a reminder inside the window does not fire; tapping outside closes without saving; the choice survives a reinstall (it comes from the server)
-- [ ] CI: stop `cancel-in-progress` cancelling runs on `main` (`.github/workflows/ci.yml`): make it apply to pull requests only, so every merge gets a full run (owner decision pending)
+- [x] (owner decision 2026-10-14: keep as is, to save Actions minutes) CI: stop `cancel-in-progress` cancelling runs on `main` (`.github/workflows/ci.yml`): make it apply to pull requests only, so every merge gets a full run (owner decision pending)
 - [x] 12F server push built, all seven slices (#350 to #358), see [phase-12f-plan.md](phase-12f-plan.md): device tokens, the Expo provider behind `NotificationProvider`, the send policy and message builders, the outbox and dispatcher, the phone side, PR pushes for lifts and runs, rank pushes from the weekly snapshot, and the `push-drain.yml` workflow. **Nothing registers on a phone until the owner steps below are done.**
 - [ ] 12F owner steps. **Done 2026-10-08:** Firebase project `forjd-8e910` with the Android app `com.forjd.app`; `google-services.json` is at `apps/mobile/` (gitignored) and `app.config.ts` reads it from the `GOOGLE_SERVICES_JSON` variable. `GOOGLE_SERVICES_JSON` and `GOOGLE_MAPS_ANDROID_API_KEY` are saved in EAS (checked in the development environment). **Also done (confirmed 2026-10-09):** the FCM V1 service-account key is uploaded to EAS (owner), and a dev-client build finished 2026-10-08 (EAS build `cd2102a5`, commit `6eebbcf`, after all of 12F). **Still to do:** install that build on an Android 7+ phone and walk it (see the 12F device walk below); the OPPO A37f (Android 5.1.1) cannot run it
 - [ ] 12F device walk (owner, Android first): the permission ask when PR celebrations or leaderboard moves is turned on; the token registers (a row appears for the phone); a PR push after a heavier lift and after a longest or fastest run, tap opens the workout; a rank push after the Saturday snapshot, tap opens Rank; a push due in quiet hours arrives after them; logging out removes the token (no push afterwards); turning both switches off stops pushes

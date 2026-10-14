@@ -19,6 +19,14 @@ describe('runNotificationContent', () => {
     });
   });
 
+  // Runs in miles (docs/product/run-miles-plan.md, replica approved 2026-10-14).
+  it('reads in miles when Units is miles', () => {
+    expect(runNotificationContent(stats(1471, 4828.032, 305), 'running', 'mi')).toMatchObject({
+      title: '24:31 · 3.00 mi',
+      body: 'Avg pace 8:11 /mi',
+    });
+  });
+
   it('says paused, and offers Resume instead of Pause, while paused', () => {
     expect(runNotificationContent(stats(1471, 4820, 305), 'paused')).toEqual({
       header: 'Run paused',
