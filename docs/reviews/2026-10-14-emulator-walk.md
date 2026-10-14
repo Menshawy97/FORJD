@@ -33,6 +33,11 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 | 15 | **High** | Profile shows invented numbers as the person's own data: "InBody History: Last scan 8 days ago" and "Workout History: 147 sessions logged" are hard-coded (`app/(tabs)/profile.tsx:176-177`), and both rows do nothing when tapped. Staging has 0 scans and 3 sessions in total. Phase J ruled out invented numbers shown as a user's data | Open: needs the owner's decision (real counts, or hide the rows) and a replica |
 | 16 | **Critical** | No phone could ever register for push. `defaultPushDeps.getUserId` read the stored `userId`, which no sign-in path ever saves (`saveSession` is called without an identity in login, sign-up, token refresh and social sign-in), so it was always null and registration returned "unavailable". Staging had never had a push token. The tests injected their own `getUserId`, so they could not see it | Fixed: the account comes from the access token (`getAccountId`). Re-walked: a token registered, and a test push arrived with the FORJD icon |
 | 17 | Low | The Home bell (`features/home/home-header.tsx:39`) has no action: tapping it does nothing. Notification settings are reached only from Profile | Open |
+| 18 | Low | The Train tab's "Previous workout" chip shows a run as "Outdoor Run 193.56m" (raw metres with two decimals) where the rest of the app says "0.19 km" | Open (visible change: replica first) |
+| 19 | Low | The run summary note "Watch calories are turned off for FORJD in Health Connect, so this run uses an estimate" shows while Calories reads "—": with no weight on the account there is no estimate | Open (copy) |
+| 20 | Watch | "FORJD isn't responding" appeared once behind Health Connect's permission screen on a run's first ask. The emulator was slow at the time; watch for it on a real phone | Watch |
+| 21 | Watch | Reminders are scheduled with a 1-hour window (inexact alarms), so a reminder can arrive up to an hour after its time | Watch |
+| 22 | Low | The Connect screen shows Health Connect as "Coming soon", although runs already read heart rate and calories from it once health data is allowed in Privacy Settings | Open, decide |
 
 ## Walked and passed
 
@@ -59,6 +64,10 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 - Notifications screen: the nine switches and quiet hours 22:00 to 07:00 show.
 - Push (12F), after finding 16 was fixed: the token registered on staging and one test push arrived.
 
+- Health Connect: allowing Health data in Privacy Settings, then the first run asks Health Connect for exactly two read permissions (active calories, heart rate). Heart rate allowed, calories refused: no note on that first run (by design: a refused metric is never read); on the next run (not asked again) the summary shows "Watch calories are turned off ... Open Health Connect", and the link opens Health Connect.
+- Quiet-hours editor: the sheet opens, the time picker sets From, equal times are refused ("Pick two different times."), tapping outside closes without saving.
+- Reminders (12E): two Weekly summary alarms are scheduled with Android (Sat 17 and Sat 24 Oct, 09:00). Watching one fire, and the workout reminder (needs a training pattern), stay for the real phone.
+
 ## Not yet walked
 
-local reminders firing (12E), the quiet-hours editor, Health Connect permissions and the refusal note, large system text.
+Nothing on the emulator list. For a real phone: a reminder actually firing, a full 30-minute locked run, real GPS, Google sign-in, Rank "coarse location, asked once".

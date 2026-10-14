@@ -117,3 +117,7 @@ Failures get fixed test-first, each in its own PR, and UI changes get a replica 
    14 (upload on "back online"), 17 (what the Home bell opens), 8 (the word "AI").
 4. Owner: run the production deploy for #390 (`gh workflow run deploy-api.yml --ref main -f
    target=production`), and a new dev-client build is not needed for any of these fixes (JS only).
+- [x] Part 2 complete (2026-10-14 evening). Health Connect, the quiet-hours editor and reminder
+  scheduling walked; findings 4 and 13 fixed (#396). The emulator list is done. The open findings
+  (3, 5, 6, 7, 8, 12, 14, 15, 17, 18, 19, 22) need either an owner decision or a replica first;
+  see the report.
