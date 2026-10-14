@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import type { RegisterPushTokenRequest, RemovePushTokenRequest } from '@forjd/contracts';
 
 import { registerPushToken, removePushToken } from '@/auth/apiClient';
-import { getUserId } from '@/auth/secureStorage';
+import { getAccountId } from '@/auth/secureStorage';
 import { loadNotificationPreferences } from '@/store/notification-preferences';
 import { clearPushToken, loadPushToken, savePushToken, type StoredPushToken } from '@/store/push-token';
 
@@ -80,7 +80,10 @@ export const defaultPushDeps: PushRegistrationDeps = {
     const { pr, rank } = await loadNotificationPreferences();
     return { pr, rank };
   },
-  getUserId,
+  // From the access token, which every sign-in saves. The stored `userId` this used to read is never written
+  // (`saveSession` is called without an identity), so it was always null and no phone ever registered for push
+  // (emulator walk 2026-10-14).
+  getUserId: getAccountId,
 };
 
 /** Bumped by every sign-out removal, so a registration that was on its way then does not keep its token. */
