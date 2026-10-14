@@ -31,6 +31,8 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 | 13 | Low | Workout summary "Muscles worked" showed Chest 2 sets and Triceps 1 set after a single completed set of bench press. Check whether a muscle listed twice for an exercise is counted twice | Open, check |
 | 14 | Low | No "back online" trigger: after a workout finished offline, staying in the app once the network returned uploaded nothing (the triggers are launch, return to the app, the finish itself and the OS background task). Returning to the app uploaded it | Open, decide |
 | 15 | **High** | Profile shows invented numbers as the person's own data: "InBody History: Last scan 8 days ago" and "Workout History: 147 sessions logged" are hard-coded (`app/(tabs)/profile.tsx:176-177`), and both rows do nothing when tapped. Staging has 0 scans and 3 sessions in total. Phase J ruled out invented numbers shown as a user's data | Open: needs the owner's decision (real counts, or hide the rows) and a replica |
+| 16 | **Critical** | No phone could ever register for push. `defaultPushDeps.getUserId` read the stored `userId`, which no sign-in path ever saves (`saveSession` is called without an identity in login, sign-up, token refresh and social sign-in), so it was always null and registration returned "unavailable". Staging had never had a push token. The tests injected their own `getUserId`, so they could not see it | Fixed: the account comes from the access token (`getAccountId`). Re-walked: a token registered, and a test push arrived with the FORJD icon |
+| 17 | Low | The Home bell (`features/home/home-header.tsx:39`) has no action: tapping it does nothing. Notification settings are reached only from Profile | Open |
 
 ## Walked and passed
 
@@ -54,7 +56,9 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 - Weekly Forge share (Profile): the card is captured as an image and the Android share sheet opens with its preview.
 - Rank tab: the opt-in card shows ("approximate location ... exact location is never stored"). Not opted in, to leave the staging account's privacy settings as they were; "coarse only, asked once" stays for the real phone, since this emulator had already granted precise location for the run.
 
+- Notifications screen: the nine switches and quiet hours 22:00 to 07:00 show.
+- Push (12F), after finding 16 was fixed: the token registered on staging and one test push arrived.
+
 ## Not yet walked
 
-local reminders firing (12E), quiet
-hours, push token and a test push (12F), Health Connect permissions and the refusal note, large system text.
+local reminders firing (12E), the quiet-hours editor, Health Connect permissions and the refusal note, large system text.
