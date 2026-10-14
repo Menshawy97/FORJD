@@ -4,10 +4,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   EXERCISE_GOAL_DISPLAY_NAMES,
-  distanceForDisplay,
   nextDistanceUnit,
   nextWeightUnit,
-  weightForDisplay,
   type DistanceDisplayUnit,
   type ExerciseGoal,
   type WeightDisplayUnit,
@@ -59,6 +57,7 @@ import { GOAL_GUIDE } from '@/workouts/goal-guide';
 import { LiveExerciseCard } from '@/workouts/live-exercise-card';
 import { rememberFinishedWorkout } from '@/workouts/load-previous-sets';
 import { usePreviousSets } from '@/workouts/use-previous-sets';
+import { summaryExerciseLines } from '@/workouts/summary-lines';
 import { LiveSessionHeader } from '@/workouts/live-session-header';
 import { RestTimerCard } from '@/workouts/rest-timer-card';
 import { TrainingGuideCard } from '@/workouts/training-guide-card';
@@ -415,27 +414,7 @@ export default function LiveScreen() {
           exerciseIds: finished.exercises.map((exercise) => exercise.exerciseId),
           // Completed sets only, and in the unit the athlete was reading -- this is a
           // record of what they did, not of what was prescribed.
-          exercises: finished.exercises
-            .map((exercise) => {
-              const done = exercise.sets.filter((set) => set.isCompleted);
-              const first = done[0];
-              const unit = weightUnitFor(exercise.exerciseId);
-              const detail =
-                first === undefined
-                  ? ''
-                  : exercise.measure === 'time'
-                    ? `${first.durationSeconds ?? 0} s`
-                    : exercise.measure === 'distance'
-                      ? `${distanceForDisplay(first.distanceMeters ?? 0, distanceUnitFor(exercise.exerciseId))} ${distanceUnitFor(exercise.exerciseId)}`
-                      : `${weightForDisplay(first.weightKg ?? 0, unit)} ${unit}`;
-              return {
-                exerciseId: exercise.exerciseId,
-                name: exercise.name,
-                setCount: done.length,
-                detail,
-              };
-            })
-            .filter((line) => line.setCount > 0),
+          exercises: summaryExerciseLines(finished.exercises, (exerciseId) => unitByExercise[exerciseId]),
           origin: 'live',
         });
         router.replace('/workout-done');

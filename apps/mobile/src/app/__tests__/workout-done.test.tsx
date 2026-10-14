@@ -231,3 +231,46 @@ describe('leaving the screen', () => {
     expect(mockPush).toHaveBeenCalled();
   });
 });
+
+// Walk finding 13 (replica approved 2026-10-14, docs/product/walk-small-fixes-plan.md slice 3): every summary lists its
+// exercises, and one opened from History counts real sets, because Train hands over the session's sets.
+describe('the Exercises list', () => {
+  const EXERCISES = [
+    { exerciseId: 'ex-1', name: 'Barbell Bench Press', setCount: 3, detail: '40 kg' },
+    { exerciseId: 'ex-2', name: 'Triceps Pushdown', setCount: 2, detail: '25 kg' },
+  ];
+
+  it('lists each exercise done with its sets and first weight', async () => {
+    stageSummary({ exercises: EXERCISES });
+
+    const { findByText, getByText } = await render(<WorkoutDoneScreen />);
+
+    expect(await findByText('Exercises')).toBeTruthy();
+    getByText('Barbell Bench Press');
+    getByText('3 × 40 kg');
+    getByText('Triceps Pushdown');
+    getByText('2 × 25 kg');
+  });
+
+  it('counts real sets per muscle for a summary opened from History', async () => {
+    stageSummary({ origin: 'history', performedAt: 'Yesterday', exercises: EXERCISES });
+    (getCachedExercise as jest.Mock)
+      .mockResolvedValueOnce({ primaryMuscles: ['chest', 'triceps'] })
+      .mockResolvedValueOnce({ primaryMuscles: ['triceps'] });
+
+    const { findByText } = await render(<WorkoutDoneScreen />);
+
+    expect(await findByText('Chest')).toBeTruthy();
+    expect(await findByText('3 sets')).toBeTruthy();
+    expect(await findByText('5 sets')).toBeTruthy();
+  });
+
+  it('shows no Exercises card when there are no lines', async () => {
+    stageSummary();
+
+    const { findByText, queryByText } = await render(<WorkoutDoneScreen />);
+
+    await findByText('Session complete');
+    expect(queryByText('Exercises')).toBeNull();
+  });
+});

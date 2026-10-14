@@ -124,6 +124,7 @@ export default function WorkoutDoneScreen() {
   }
 
   const maxSets = muscles.reduce((most, row) => Math.max(most, row.sets), 0);
+  const exerciseLines = summary?.exercises ?? [];
 
   return (
     <ScreenBackground>
@@ -223,6 +224,38 @@ export default function WorkoutDoneScreen() {
                   </View>
                   <Text className="font-archivo text-[11px] font-medium" style={{ color: '#8A8A82' }}>
                     {`${row.sets} ${row.sets === 1 ? 'set' : 'sets'}`}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Each exercise done, its completed sets and first set (walk finding 13; replica approved 2026-10-14). */}
+        {exerciseLines.length > 0 ? (
+          <View className="mt-[20px]">
+            <Text
+              className="font-archivo text-[9.5px] font-semibold uppercase tracking-[.14em]"
+              style={{ color: '#94948B' }}>
+              Exercises
+            </Text>
+            <View
+              className="mt-[10px] rounded-card px-[15px] py-[4px]"
+              style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+              {exerciseLines.map((line, index) => (
+                <View
+                  key={`${line.exerciseId}-${index}`}
+                  className="flex-row items-center py-[11px]"
+                  style={
+                    index < exerciseLines.length - 1
+                      ? { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,.05)', gap: 11 }
+                      : { gap: 11 }
+                  }>
+                  <Text className="flex-1 font-archivo text-[12.5px] font-semibold text-text" numberOfLines={1}>
+                    {line.name}
+                  </Text>
+                  <Text className="font-archivo text-[11px] font-medium" style={{ color: '#8A8A82' }}>
+                    {`${line.setCount} × ${line.detail}`}
                   </Text>
                 </View>
               ))}
