@@ -9,6 +9,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 ## 1. Only the user can do these
 
 ### Device tests (most urgent first)
+- [x] Emulator walk, first pass (2026-10-14, [walk report](../reviews/2026-10-14-emulator-walk.md)): found and fixed the critical "Run not saved" database bug (runs and workouts could not be saved once a dropped SQLite handle was garbage collected), and found 6 smaller issues (listed in the report). The physical-phone items below still stand, but most of the app flow is now proven on Android 14
 - [ ] **Health Connect test on a physical Android phone** (ADR-035, R8, 8.5 S10). Grant and refuse heart rate and calories each alone; the run must keep whichever was granted.
 - [ ] Dev-client build, then walk: a real run (GPS, map, keep-awake, pause on lock)
 - [ ] 12A locked-phone 30-minute run, 12B workout-notice walk, 12C offline-finish-then-upload walk (needs an Android 7+ phone; your OPPO A37f is Android 5.1.1, so an EAS build plus a borrowed phone or an emulator)
