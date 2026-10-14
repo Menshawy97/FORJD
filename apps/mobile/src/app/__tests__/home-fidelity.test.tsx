@@ -251,14 +251,13 @@ describe('Recent PR', () => {
 });
 
 describe('Notifications bell', () => {
-  // The design's destination is `notifsFeed`, which does not exist -- `notifs.tsx` is the
-  // settings screen, a different one. train.tsx's precedent: render the control, route it
-  // nowhere yet.
-  it('renders but navigates nowhere', async () => {
+  // The design's destination is `notifsFeed`: the Notifications list (walk finding 17), not
+  // `notifs.tsx`, the settings screen.
+  it('opens the notifications list', async () => {
     const screen = await render(<HomeScreen />);
 
     fireEvent.press(screen.getByLabelText('Notifications'));
 
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith('/notifications');
   });
 });

@@ -24,7 +24,8 @@ describe("notificationListResponseSchema", () => {
   });
 
   it("refuses an item without a sent time", () => {
-    const { sentAt: _sentAt, ...unsent } = ITEM;
+    const unsent: Partial<typeof ITEM> = { ...ITEM };
+    delete unsent.sentAt;
     expect(notificationListResponseSchema.safeParse({ items: [unsent] }).success).toBe(false);
   });
 });
