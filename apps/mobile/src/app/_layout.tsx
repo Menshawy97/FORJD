@@ -38,6 +38,7 @@ import { useHasActiveWorkout } from '@/workouts/use-active-workout';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
 import { useBackOnlineRetry } from '@/workouts/use-back-online-retry';
 import { workoutNotice } from '@/workouts/workout-notice';
+import { dismissStaleRunNotice } from '@/features/run/run-notification';
 
 import { TAB_BAR_HEIGHT } from './(tabs)/_layout';
 // ADR-059: loading this module defines the run's location task, which TaskManager needs at every
@@ -104,6 +105,12 @@ export default function RootLayout() {
     setShowIntro(false);
   }, []);
   const authenticated = useSyncExternalStore(subscribeToSession, getCachedHasSession, getCachedHasSession);
+
+  // A run notice an app closed mid-run left behind (walk finding 12): no run is live at start, and a run picked
+  // back up posts its own.
+  useEffect(() => {
+    void dismissStaleRunNotice();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

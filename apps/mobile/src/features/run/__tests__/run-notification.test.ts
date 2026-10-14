@@ -6,6 +6,7 @@ jest.mock('expo-notifications', () => ({ setNotificationHandler: jest.fn(), Andr
 import {
   RUN_NOTIFICATION_ID,
   createRunNotifier,
+  dismissStaleRunNotice,
   foregroundPresentation,
   type RunNotificationApi,
 } from '../run-notification';
@@ -190,5 +191,35 @@ describe('foregroundPresentation', () => {
       shouldShowBanner: true,
       shouldShowList: true,
     });
+  });
+});
+
+// Emulator walk finding 12: a run notice is sticky, so when the app was killed mid-run it stayed in the status bar,
+// its Pause and Finish doing nothing, next to the next run's. At app start no run is live yet (a run picked back up
+// posts its own), so a leftover one is taken down.
+describe('dismissStaleRunNotice', () => {
+  it('takes down a run notice left by an app that was closed mid-run', async () => {
+    const { api } = fakeApi();
+
+    await dismissStaleRunNotice(api);
+
+    expect(api.dismissNotificationAsync).toHaveBeenCalledWith(RUN_NOTIFICATION_ID);
+  });
+
+  it('never throws when there is nothing to take down', async () => {
+    const { api } = fakeApi({ dismissNotificationAsync: jest.fn().mockRejectedValue(new Error('none')) });
+
+    await expect(dismissStaleRunNotice(api)).resolves.toBeUndefined();
+  });
+
+  it('leaves a running notifier able to post afterwards', async () => {
+    const { api } = fakeApi();
+    const notifier = createRunNotifier(api);
+    await notifier.ensureReady();
+
+    await dismissStaleRunNotice(api);
+    await notifier.show(content);
+
+    expect(api.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
   });
 });
