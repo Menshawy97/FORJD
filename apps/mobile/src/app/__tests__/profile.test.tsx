@@ -163,9 +163,11 @@ describe('profile screen', () => {
     await findByText('Connected Sources');
     await findByText('Apple Health, WHOOP, Health Connect');
     await findByText('InBody History');
-    await findByText('Last scan 8 days ago');
+    // This file's apiClient mock has no stats or scans, so the counts stay unknown: the neutral lines, not the
+    // made-up "147 sessions logged" the design sample had (finding 15; real counts in profile-data-counts.test.tsx).
+    await findByText('Your InBody scans');
     await findByText('Workout History');
-    await findByText('147 sessions logged');
+    await findByText('Your logged sessions');
 
     await findByText('Privacy & permissions');
     await findByText('Privacy Settings');

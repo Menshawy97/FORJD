@@ -124,7 +124,8 @@ Failures get fixed test-first, each in its own PR, and UI changes get a replica 
 
 ## Owner decisions on the walk findings (2026-10-14 evening)
 
-- **15, Profile rows:** show real counts (sessions logged; last scan date or "No scans yet"). Replica first.
+- **15, Profile rows:** show real counts (sessions logged; last scan date or "No scans yet"). Replica approved;
+  built (slice A of `notifications-list-and-profile-counts-plan.md`).
 - **3, exercise catalogue:** download at app start and at sign-in (`features/exercises/refresh-catalogue.ts`,
   called from the authenticated effect in `app/_layout.tsx`; never throws; 304 when unchanged).
 - **14, back online:** no new native library. While the app is open, every 30 s: if a workout is waiting,

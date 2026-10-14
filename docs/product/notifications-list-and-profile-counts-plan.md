@@ -5,6 +5,10 @@ on 2026-10-14 (shown in the session; this file is the record). Build each test-f
 
 ## Slice A: Profile counts (finding 15)
 
+**Built.** `features/profile/data-subtitles.ts`. Home's stats already carried `totalSessions`, so no API change. The
+neutral lines are "Your logged sessions" and "Your InBody scans". A response missing its field, or a scan date that
+cannot be read, reads as unknown.
+
 Approved: in Profile → Data, only two subtitles change, in the normal grey. Tapping the two rows still does
 nothing, as today.
 

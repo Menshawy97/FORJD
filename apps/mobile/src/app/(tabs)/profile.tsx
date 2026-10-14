@@ -13,6 +13,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { Toast } from '@/components/toast';
 import { shareAccountExport } from '@/data-export/share-account-export';
 import { ProfileForgeSection } from '@/features/forge/profile-forge-section';
+import { loadDataCounts, scansSubtitle, sessionsSubtitle, type DataCounts } from '@/features/profile/data-subtitles';
 import { useForgeShare } from '@/features/forge/use-forge-share';
 import { activityLevelLabel, bodyGoalSummary } from '@/features/targets/labels';
 import { PRIVACY_POLICY_URL, SUPPORT_MAILTO } from '@/legal/links';
@@ -122,6 +123,7 @@ interface SettingsRow {
 
 function buildGroups(
   identity: Identity,
+  counts: DataCounts,
   onExportData: () => void,
   isExportingData: boolean,
 ): Array<{ label: string; rows: SettingsRow[] }> {
@@ -173,8 +175,9 @@ function buildGroups(
         // screen (ADR-011) -- a settings destination, not a stack to accumulate entries on.
         onPress: () => router.replace('/connect'),
       },
-      { icon: 'scale', title: 'InBody History', subtitle: 'Last scan 8 days ago' },
-      { icon: 'clock', title: 'Workout History', subtitle: '147 sessions logged' },
+      // Real counts (emulator walk finding 15), neutral until known. Both rows still have no destination.
+      { icon: 'scale', title: 'InBody History', subtitle: scansSubtitle(counts.scans) },
+      { icon: 'clock', title: 'Workout History', subtitle: sessionsSubtitle(counts.totalSessions) },
       {
         icon: 'pin',
         title: 'Data sources',
@@ -278,6 +281,7 @@ export default function ProfileScreen() {
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [isExportingData, setIsExportingData] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [dataCounts, setDataCounts] = useState<DataCounts>({ totalSessions: null, scans: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -300,6 +304,16 @@ export default function ProfileScreen() {
           setLoadError(describeLoadFailure(cause));
         }
       });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadDataCounts().then((counts) => {
+      if (!cancelled) setDataCounts(counts);
+    });
     return () => {
       cancelled = true;
     };
@@ -366,7 +380,7 @@ export default function ProfileScreen() {
         {/* Weekly Forge (ADR-057): renders nothing until the weekly_forge flag is on. */}
         <ProfileForgeSection share={forgeShare} />
 
-        {buildGroups(identity, handleExportData, isExportingData).map((group, groupIndex) => (
+        {buildGroups(identity, dataCounts, handleExportData, isExportingData).map((group, groupIndex) => (
           <View key={group.label}>
             <Text
               className={`${groupIndex === 0 ? 'mt-2' : 'mt-section-gap'} mb-[2px] font-archivo text-section-label font-semibold uppercase text-label`}>
