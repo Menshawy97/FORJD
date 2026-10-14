@@ -38,3 +38,10 @@ The 2026-09-25 whole-app review measured the two biggest causes of slowness on t
 - The owner must update the website's `PUBLIC_API_URL` in Cloudflare Pages to the new production URL
   before the old production service is deleted.
 - Cold starts still happen (no minimum instances), just shorter.
+
+## Measured (2026-10-15)
+
+Staging in `europe-west1` with `--cpu-boost`, timed with `curl` from Egypt: the first request after
+more than 20 minutes idle took **6.3 s, 5.7 s and 5.7 s** (three samples, about 20 minutes apart),
+against 14.6 s before the move. Warm requests took 0.3-1.0 s. Production runs the same image and
+flags, so it should match; it was not measured, to avoid traffic on it.
