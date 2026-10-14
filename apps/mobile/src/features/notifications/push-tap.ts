@@ -11,7 +11,15 @@ const SESSION_ID = /^[0-9a-fA-F-]{8,64}$/;
 export function routeForPushTap(response: TapLike): string | null {
   const { identifier, content } = response.notification.request;
   if (identifier.startsWith(LOCAL_NOTIFICATION_ID_PREFIX)) return null;
-  const data = content.data as { type?: unknown; sessionId?: unknown } | undefined | null;
+  return routeForPushData(content.data);
+}
+
+/**
+ * The route for a push's data, by the same untrusting rules. Shared with the notifications list (walk finding 17), so a
+ * row there opens exactly what tapping its push opened.
+ */
+export function routeForPushData(raw: unknown): string | null {
+  const data = raw as { type?: unknown; sessionId?: unknown } | undefined | null;
   if (data?.type === 'rank') return '/rank';
   if (data?.type === 'pr' && typeof data.sessionId === 'string' && SESSION_ID.test(data.sessionId)) {
     return `/workout/${data.sessionId}`;
