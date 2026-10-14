@@ -181,6 +181,6 @@ route-tree suites (signup, welcome, profile navigation); they pass alone and in 
 - ~~**Live-screen cost on long runs.**~~ **Fixed (G6):** `runTrackStats` is memoised on the fixes; only time and pace tick.
 - ~~**`run_points`** unused~~ **Removed (G6):** on-phone migration step 5 drops it.
 - **Miles.** The run screens are kilometres only; there is no miles option yet.
-- **Share card.** The summary's share tile says "coming soon"; the run share card ("Route & Splits") is unbuilt.
+- **Share card.** Built 2026-10-15: the summary's share tile opens Share Run ([run-share-card-plan.md](run-share-card-plan.md)).
 - **Discard of a run whose snapshot clear fails** is silent; the screen closes and the run could come back. Tell the
   person, or retry on the next database open.

@@ -173,11 +173,13 @@ describe('RunDoneScreen', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(tabs)/train');
   });
 
-  it('the share tile says sharing is coming soon rather than doing nothing', async () => {
+  // The run share card (docs/product/run-share-card-plan.md, replica approved 2026-10-14) replaces 'coming soon'.
+  it('the share tile opens Share Run', async () => {
     setCompletedRun(SCREENSHOT_RUN);
     await render(<RunDoneScreen />);
     await fireEvent.press(screen.getByLabelText('Share run'));
-    expect(screen.getByText('Sharing a run is coming soon')).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith('/run-share');
+    expect(screen.queryByText('Sharing a run is coming soon')).toBeNull();
   });
 
   it('does not show a finished run twice, however the screen is left', async () => {
