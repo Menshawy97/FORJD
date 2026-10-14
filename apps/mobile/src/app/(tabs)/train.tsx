@@ -21,7 +21,9 @@ import { ScreenBackground } from '@/components/screen-background';
 import { TypeChip } from '@/components/type-chip';
 import { PreviousWorkoutCard } from '@/features/train/previous-workout-card';
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
+import { getExerciseUnits, type ExerciseUnitMap } from '@/store/exercise-unit-preferences';
 import { setCompletedSummary, setPendingLiveSession } from '@/workouts/live-handoff';
+import { summaryExerciseLines } from '@/workouts/summary-lines';
 import {
   formatRelativeDay,
   formatSessionDuration,
@@ -67,6 +69,8 @@ interface PreviousWorkout {
   chips: string[];
   performedAt: string;
   resolved: Map<string, ResolvedExercise>;
+  /** The unit each exercise is read in, so a summary from History reads like one just finished (walk finding 13). */
+  units: ExerciseUnitMap;
 }
 
 /**
@@ -101,6 +105,7 @@ async function loadPreviousWorkout(): Promise<PreviousWorkout | null> {
   }
 
   const performedAt = formatRelativeDay(new Date(session.startedAt), new Date());
+  const units = await getExerciseUnits().catch((): ExerciseUnitMap => ({}));
   return {
     session,
     performedAt,
@@ -108,6 +113,7 @@ async function loadPreviousWorkout(): Promise<PreviousWorkout | null> {
     meta: `${performedAt} · ${formatSessionDuration(session.durationSeconds)} · ${sessionLoadLabel(session)}`,
     chips: sessionExerciseChips(session, (id) => resolved.get(id)?.name ?? null),
     resolved,
+    units,
   };
 }
 
@@ -241,7 +247,7 @@ export default function TrainScreen() {
 
   const onSummary = () => {
     if (!previous) return;
-    const { session } = previous;
+    const { session, resolved, units } = previous;
     setCompletedSummary({
       name: session.name,
       durationSeconds: session.durationSeconds,
@@ -251,6 +257,18 @@ export default function TrainScreen() {
         0,
       ),
       exerciseIds: session.exercises.map((exercise) => exercise.exerciseId),
+      // The session's sets are already here, so the summary counts real sets and lists the exercises (walk finding 13).
+      exercises: summaryExerciseLines(
+        [...session.exercises]
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+          .map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            name: resolved.get(exercise.exerciseId)?.name ?? 'Exercise',
+            measure: exercise.measure,
+            sets: exercise.sets,
+          })),
+        (exerciseId) => units[exerciseId],
+      ),
       // Already on the server: the summary screen must not claim it is waiting to sync.
       origin: 'history',
       performedAt: previous.performedAt,

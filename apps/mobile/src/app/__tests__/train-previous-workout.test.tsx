@@ -313,4 +313,16 @@ describe('Summary', () => {
     expect(getCompletedSummary()?.origin).toBe('history');
     expect(getCompletedSummary()?.performedAt).toBe('Yesterday');
   });
+
+  // Walk finding 13: the session's sets are already here, so the summary counts real sets and lists the exercises.
+  it("hands over each exercise's completed sets, so the summary counts real sets", async () => {
+    const { findByLabelText } = await render(<TrainScreen />);
+
+    await fireEvent.press(await findByLabelText('Summary of Upper Body Push'));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/workout-done'));
+    expect(getCompletedSummary()?.exercises).toEqual([
+      expect.objectContaining({ exerciseId: 'ex-bench', setCount: 2, detail: '80 kg' }),
+    ]);
+  });
 });
