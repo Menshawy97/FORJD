@@ -145,6 +145,19 @@ export function createRunNotifier(api: RunNotificationApi = defaultRunNotificati
 export const runNotifier = createRunNotifier();
 
 /**
+ * Takes down a run notice left over from an app that was closed mid-run (emulator walk finding 12). The notice is
+ * sticky, so Android kept it with Pause and Finish that no longer did anything. Called once at app start, when no run
+ * is live yet: a run picked back up posts its own. Leaves `runNotifier`'s own state alone, so it can still post.
+ */
+export async function dismissStaleRunNotice(api: RunNotificationApi = defaultRunNotificationApi): Promise<void> {
+  try {
+    await api.dismissNotificationAsync(RUN_NOTIFICATION_ID);
+  } catch {
+    // Nothing to take down.
+  }
+}
+
+/**
  * How a notification shows while the app is open. The ongoing run notice is updated every few seconds,
  * so it must stay silent and out of the banner; everything else (rest complete) shows and sounds.
  */
