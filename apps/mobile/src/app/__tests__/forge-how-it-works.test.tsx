@@ -16,7 +16,9 @@ jest.mock('expo-router', () => ({
 jest.mock('@/features/forge/use-forge-week', () => ({
   useForgeWeek: () => ({ isVisible: true, forge: mockForge }),
 }));
+jest.mock('@/store/forge-how-it-works-shown', () => ({ markForgeHowItWorksSeen: jest.fn() }));
 
+import { markForgeHowItWorksSeen } from '@/store/forge-how-it-works-shown';
 import HowItWorksScreen from '../forge/how-it-works';
 
 const METRICS = {
@@ -113,5 +115,11 @@ describe('HowItWorksScreen', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('notes that it was seen, so Home does not open it by itself later', async () => {
+    await render(<HowItWorksScreen />);
+
+    expect(markForgeHowItWorksSeen).toHaveBeenCalledTimes(1);
   });
 });

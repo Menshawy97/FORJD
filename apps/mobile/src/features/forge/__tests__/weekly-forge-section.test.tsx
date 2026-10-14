@@ -17,6 +17,14 @@ jest.mock('expo-router', () => {
 jest.mock('@/auth/apiClient', () => ({ getForge: jest.fn() }));
 jest.mock('@/auth/secureStorage', () => ({ getAccountId: jest.fn() }));
 jest.mock('@/features/flags/feature-flags', () => ({ useFeatureFlag: jest.fn() }));
+// Opening How it works once has its own test (weekly-forge-how-it-works-once.test.tsx).
+jest.mock('../open-how-it-works-once', () => ({ openForgeHowItWorksOnce: jest.fn() }));
+
+// The section registers two focus effects each render: the week's load, then the once-opener.
+// Refocusing Home runs both from the latest render.
+function refocus() {
+  mockFocusCallbacks.slice(-2).forEach((callback) => callback());
+}
 
 import { getForge } from '@/auth/apiClient';
 import { getAccountId } from '@/auth/secureStorage';
@@ -99,7 +107,7 @@ describe('WeeklyForgeSection', () => {
 
     fetchForge.mockRejectedValue(new Error('offline'));
     await act(async () => {
-      mockFocusCallbacks.at(-1)?.();
+      refocus();
     });
 
     expect(screen.getByText('3 days left')).toBeTruthy();
@@ -112,7 +120,7 @@ describe('WeeklyForgeSection', () => {
 
     await render(<WeeklyForgeSection />);
     await act(async () => {
-      mockFocusCallbacks.at(-1)?.();
+      refocus();
     });
     await waitFor(() => expect(screen.getByText('2 days left')).toBeTruthy());
 

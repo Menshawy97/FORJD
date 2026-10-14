@@ -1,5 +1,6 @@
 import { FORGE_BAND_NAMES, FORGE_BANDS, FORGE_LADDER_NAMES, FORGE_LADDERS, type ForgeBand, type ForgeLadder } from '@forjd/domain';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Header } from '@/components/header';
@@ -12,11 +13,13 @@ import { FORGE_LADDER_COUNTS } from '@/features/forge/forge-guide';
 import { ForgeMark } from '@/features/forge/forge-mark';
 import { useForgeWeek } from '@/features/forge/use-forge-week';
 import { CHIP_CLASS } from '@/features/forge/week-summary-sheet';
+import { markForgeHowItWorksSeen } from '@/store/forge-how-it-works-shown';
 import { colors } from '@/theme/tokens';
 
 /**
  * Weekly Forge → How it works (weekly-forge-explainer-plan.md D4, mock-up C, approved 2026-09-27).
- * Opened from the info icon on the Home card; it does not open by itself (docs/product/onboarding.md).
+ * Opened from the info icon on the Home card, and by itself once, the first time Home shows the card
+ * with a week (docs/product/forge-how-it-works-once-plan.md).
  *
  * The rules are written into the app, so the screen reads fine offline. Only the badge and level on
  * each ladder row come from the week, and until it loads they show the Ore badge and a dash.
@@ -53,6 +56,11 @@ function SectionLabel({ children }: { children: string }) {
 
 export default function HowItWorksScreen() {
   const { forge } = useForgeWeek();
+
+  // Opened from the info icon counts too: Home will not open it by itself afterwards.
+  useEffect(() => {
+    void markForgeHowItWorksSeen();
+  }, []);
   const byLadder = new Map(forge?.ladders.map((progress) => [progress.ladder, progress]));
 
   return (
