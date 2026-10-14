@@ -5,6 +5,7 @@ import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 
 import { belongsToAccount } from './account-scope';
 import type { SqliteConnection } from './exercise-catalogue';
+import { PREVIOUS_SETS_MIGRATION } from './previous-sets';
 import { RUN_SESSION_MIGRATION } from './run-session';
 import { sharedConnection } from './shared-connection';
 import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
@@ -140,6 +141,8 @@ const MIGRATIONS: SqliteMigration[] = [
       await db.execAsync('DROP TABLE IF EXISTS run_points;');
     },
   },
+  // Last time's sets per exercise, for the live workout's PREV column (docs/product/live-prev-column-plan.md).
+  PREVIOUS_SETS_MIGRATION,
 ];
 
 /** Idempotent, run before every use -- see `exercise-catalogue.ts`'s own note on why (cheap, no init step for a caller to forget). Applies every migration a given database is missing; see `MIGRATIONS` above and `sqlite-migrations.ts` for the mechanism. */

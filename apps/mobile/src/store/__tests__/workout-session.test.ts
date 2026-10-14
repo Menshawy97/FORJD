@@ -545,19 +545,19 @@ describe('workout-session store', () => {
       // 4: this one shared list also carries run-session.ts's RUN_SESSION_MIGRATION step (ADR-049)
       // at 3 -- one database, one PRAGMA user_version, one list, whichever caller runs first -- and
       // v4 stamps the queue and snapshots with the account that created them (review 8.5 S1), and
-      // v5 drops the never-used run_points table (G6).
-      expect(versionOneDb.userVersion).toBe(5);
+      // v5 drops the never-used run_points table (G6), and v6 adds previous_sets (the live PREV column).
+      expect(versionOneDb.userVersion).toBe(6);
       const events = await getSessionEvents(versionOneDb, 'session-1');
       expect(events).toHaveLength(1);
       expect(events[0]?.type).toBe('workout_finished');
     });
 
     it('is a no-op on a database already at the latest version', async () => {
-      const upToDateDb = new FakeSqliteConnection(5);
+      const upToDateDb = new FakeSqliteConnection(6);
 
       await expect(ensureWorkoutSessionSchema(upToDateDb)).resolves.toBeUndefined();
 
-      expect(upToDateDb.userVersion).toBe(5);
+      expect(upToDateDb.userVersion).toBe(6);
       expect(upToDateDb.executed.filter((sql) => sql.includes('DROP'))).toEqual([]);
     });
 
@@ -566,7 +566,7 @@ describe('workout-session store', () => {
 
       await ensureWorkoutSessionSchema(versionThreeDb);
 
-      expect(versionThreeDb.userVersion).toBe(5);
+      expect(versionThreeDb.userVersion).toBe(6);
     });
 
     it('drops the unused run_points table and its index at version 5, leaving the run snapshot', async () => {
@@ -574,7 +574,7 @@ describe('workout-session store', () => {
 
       await ensureWorkoutSessionSchema(versionFourDb);
 
-      expect(versionFourDb.userVersion).toBe(5);
+      expect(versionFourDb.userVersion).toBe(6);
       const drops = versionFourDb.executed.filter((sql) => sql.includes('DROP'));
       expect(drops.join('\n')).toMatch(/DROP INDEX IF EXISTS idx_run_points_session_id/);
       expect(drops.join('\n')).toMatch(/DROP TABLE IF EXISTS run_points/);

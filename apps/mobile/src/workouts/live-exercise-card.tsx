@@ -15,6 +15,7 @@ import {
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme/tokens';
 import { setDurationMinutes, setDurationSeconds, type LiveExercise, type LiveSet } from '@/workouts/live-session';
+import { previousLabel, type PreviousSet } from '@/workouts/previous-sets';
 
 const MEASURE_SUBTITLE: Record<string, string> = {
   weight: 'Weight',
@@ -48,6 +49,8 @@ interface LiveExerciseCardProps {
   onCompleteSet: (setIndex: number) => void;
   onRemoveSet: (setIndex: number) => void;
   onAddSet: () => void;
+  /** Last time's completed sets for this exercise, for PREV; absent until known (docs/product/live-prev-column-plan.md). */
+  previous?: readonly PreviousSet[];
 }
 
 export function LiveExerciseCard({
@@ -63,6 +66,7 @@ export function LiveExerciseCard({
   onCompleteSet,
   onRemoveSet,
   onAddSet,
+  previous,
 }: LiveExerciseCardProps) {
   return (
     <View
@@ -195,15 +199,12 @@ export function LiveExerciseCard({
                 {setIndex + 1}
               </Text>
               {/*
-                PREV stays blank until local history exists -- same principle as the Watch card.
-                A first-ever session has nothing to compare against, and inventing a previous
+                Last time's same set (docs/product/live-prev-column-plan.md), or "—" when there is none:
+                a first-ever session has nothing to compare against, and inventing a previous
                 performance would be inventing the athlete's own past.
               */}
-              <Text
-                numberOfLines={1}
-                className="w-[66px] text-center font-archivo text-[10.5px] font-medium"
-                style={{ color: '#5C5C55' }}>
-                —
+              <Text numberOfLines={1} className="w-[66px] text-center font-archivo text-[10.5px] font-medium text-dimmer">
+                {previousLabel(previous?.[setIndex], exercise.measure, weightUnit, distanceUnit)}
               </Text>
 
               <View className="flex-1 flex-row items-center justify-center" style={{ gap: exercise.measure === 'time' ? 4 : 6 }}>
