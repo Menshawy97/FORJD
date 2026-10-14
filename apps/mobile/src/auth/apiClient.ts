@@ -710,12 +710,12 @@ export async function createManualBodyScan(body: CreateManualBodyScanRequest): P
 }
 
 /**
- * `GET /users/me/notifications` -- the list behind the Home bell (walk finding 17): the server's own pushes to this
+ * `GET /users/me/notifications/feed` -- the list behind the Home bell (walk finding 17): the server's own pushes to this
  * account from the last 30 days, newest first. The response is checked against the contract, because its `data`
  * becomes a route when a row is tapped.
  */
 export async function listNotifications(): Promise<NotificationListResponse> {
-  const response = await apiClient.get<unknown>('/users/me/notifications');
+  const response = await apiClient.get<unknown>('/users/me/notifications/feed');
   return notificationListResponseSchema.parse(response.data);
 }
 

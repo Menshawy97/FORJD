@@ -20,7 +20,7 @@ const tokenA = 'feed-token-a';
 const tokenB = 'feed-token-b';
 
 /**
- * `GET /api/v1/users/me/notifications` over real HTTP and real Postgres (walk finding 17, slice B of
+ * `GET /api/v1/users/me/notifications/feed` over real HTTP and real Postgres (walk finding 17, slice B of
  * docs/product/notifications-list-and-profile-counts-plan.md). The rules are unit-tested; this shows the guard runs, the
  * answer matches the contract, and one account never sees another's pushes (CLAUDE.md rule 12).
  */
@@ -29,7 +29,7 @@ describe('Notifications list (e2e)', () => {
   let db: Database;
 
   const get = (token: string) =>
-    request(app.getHttpServer()).get('/api/v1/users/me/notifications').set('Authorization', `Bearer ${token}`);
+    request(app.getHttpServer()).get('/api/v1/users/me/notifications/feed').set('Authorization', `Bearer ${token}`);
   const idOf = async (email: string): Promise<string> => {
     const [row] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
     return row!.id;
@@ -91,7 +91,7 @@ describe('Notifications list (e2e)', () => {
   });
 
   it('requires authentication', async () => {
-    await request(app.getHttpServer()).get('/api/v1/users/me/notifications').expect(401);
+    await request(app.getHttpServer()).get('/api/v1/users/me/notifications/feed').expect(401);
   });
 
   it("answers the caller's own sent pushes from the last 30 days, newest first, in the contract's shape", async () => {

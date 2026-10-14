@@ -1,7 +1,7 @@
 import { notificationListResponseSchema } from "./notifications-feed";
 
 // Emulator walk finding 17 (docs/product/notifications-list-and-profile-counts-plan.md, slice B): the Home bell opens
-// a list of the server's own pushes from the last 30 days. `GET /api/v1/users/me/notifications`.
+// a list of the server's own pushes from the last 30 days. `GET /api/v1/users/me/notifications/feed`.
 const ITEM = {
   id: "5b0e6f4e-8f7a-4d7e-9c1a-2f4b8f6c1d2e",
   kind: "pr",

@@ -28,7 +28,8 @@ nothing, as today.
 rows), contract `notifications-feed.ts`. App: `app/notifications.tsx`, `features/notifications/notification-feed.ts`
 (groups, times, icons: the `rank` trophy glyph for a lift PR, `runner` for a run PR, `progress` chart for a rank move),
 `push-tap.ts`'s `routeForPushData` shared with the push tap. A failure that is not offline reads "Could not load your
-notifications. Please try again."
+notifications. Please try again." The path is `/users/me/notifications/feed`, not the planned `/users/me/notifications`:
+that one already serves the notification switches (12D), and CI's e2e test caught the clash.
 
 Approved: the Home bell opens a new **Notifications** screen.
 
@@ -44,7 +45,7 @@ Approved: the Home bell opens a new **Notifications** screen.
   `features/notifications/push-tap`).
 - **Empty:** bell tile, "Nothing yet", "Your PR celebrations and leaderboard moves show here for 30 days.",
   and the settings link. **Offline:** "You're offline. Notifications will show when you're back online."
-- **API:** `GET /api/v1/users/me/notifications`. It reads `push_outbox` rows for the user, `status = 'sent'`,
+- **API:** `GET /api/v1/users/me/notifications/feed`. It reads `push_outbox` rows for the user, `status = 'sent'`,
   `sent_at` within 30 days, newest first. It returns `{ items: [{ id, kind, title, body, data, sentAt }] }`.
   The authorization guard scopes it to the caller (rule 12). Add the contract in `@forjd/contracts`, and
   repository and service unit tests. The 30-day deletion already exists, so no new retention rule.

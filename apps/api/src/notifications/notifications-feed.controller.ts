@@ -5,10 +5,11 @@ import { AuthenticatedRequest, JwtAuthGuard } from '../auth/guards/jwt-auth.guar
 import { NotificationsFeedService } from './notifications-feed.service';
 
 /**
- * `GET /api/v1/users/me/notifications` (walk finding 17): the list behind the Home bell. Additive to `/api/v1` (rule 7).
+ * `GET /api/v1/users/me/notifications/feed` (walk finding 17): the list behind the Home bell. Its own path, because
+ * `GET /users/me/notifications` is already the notification switches. Additive to `/api/v1` (rule 7).
  * The `JwtAuthGuard` default (age gate included) applies, like the push tokens; the caller is the only user it reads.
  */
-@Controller('users/me/notifications')
+@Controller('users/me/notifications/feed')
 @UseGuards(JwtAuthGuard)
 export class NotificationsFeedController {
   constructor(private readonly service: NotificationsFeedService) {}

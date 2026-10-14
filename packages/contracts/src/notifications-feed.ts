@@ -19,7 +19,7 @@ export const notificationItemSchema = z.object({
 });
 export type NotificationItem = z.infer<typeof notificationItemSchema>;
 
-/** `GET /api/v1/users/me/notifications`. The user is the caller, never a parameter. */
+/** `GET /api/v1/users/me/notifications/feed`. The user is the caller, never a parameter. */
 export const notificationListResponseSchema = z.object({
   items: z.array(notificationItemSchema),
 });
