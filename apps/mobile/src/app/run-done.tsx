@@ -6,7 +6,6 @@ import { Icon } from '@/components/icon';
 import { pressGhost } from '@/components/press-feedback';
 import { ScreenBackground } from '@/components/screen-background';
 import { TabBar } from '@/components/tab-bar';
-import { Toast, useToast } from '@/components/toast';
 import { HealthAccessNote } from '@/features/run/health-access-note';
 import {
   formatDuration,
@@ -31,8 +30,7 @@ import { clearCompletedRun, getCompletedRun } from '@/workouts/run-handoff';
  * three stat tiles (gap 8, rows 12 and 8 apart); the splits; a ghost "View Progress" 22px below; and
  * the tab bar with Train active.
  *
- * Deviations, recorded in `docs/product/live-run-plan.md`: the share tile says sharing is coming soon
- * (the run share card is not part of this work); calories say "estimated" when they are the app's
+ * Deviations, recorded in `docs/product/live-run-plan.md`: calories say "estimated" when they are the app's
  * arithmetic and not a watch reading; and a figure that was never measured reads a dash, where the
  * prototype hard-codes 150 bpm, 298 kcal and 24 m.
  */
@@ -41,7 +39,6 @@ const DASH = '—';
 
 export default function RunDoneScreen() {
   const run = getCompletedRun();
-  const toast = useToast();
 
   // However the person leaves (Done, View Progress, a tab, back), a finished run is not shown twice.
   useEffect(() => clearCompletedRun, []);
@@ -80,7 +77,8 @@ export default function RunDoneScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Share run"
-            onPress={() => toast.show('Sharing a run is coming soon')}
+            // The run share card (docs/product/run-share-card-plan.md). Pushed, so this summary and its run stay underneath.
+            onPress={() => router.push('/run-share')}
             className="h-[44px] w-[44px] items-center justify-center rounded-[13px]"
             style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <Icon name="share" size={19} color="#C8C8C0" />
@@ -158,7 +156,6 @@ export default function RunDoneScreen() {
         <View style={{ height: 26 }} />
       </ScrollView>
 
-      <Toast message={toast.message} />
       <TabBar active="train" />
     </ScreenBackground>
   );

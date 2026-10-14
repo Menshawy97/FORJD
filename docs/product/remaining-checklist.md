@@ -78,7 +78,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] Route array rebuilt every second (G6, #314)
 - [x] Unused `run_points` table removed (G6, #314)
 - [x] Miles option on the run screens (2026-10-14, [plan](run-miles-plan.md)): runs follow the Units setting (miles, /mi, mph, feet, mile splits, the notice and the Train card); runs are still saved in kilometres
-- [ ] Run share card ("Route & Splits", currently "coming soon"): owner decision 2026-10-14, build before the beta (replica first)
+- [x] Run share card (2026-10-15, [plan](run-share-card-plan.md)): Share on the run summary opens Share Run, with Route & Splits (route line, no map) and Stats Card; never heart rate or calories
 - [x] Discarding a run whose snapshot clear fails was silent: fixed 2026-10-09. Discard tries the clear twice; if both fail the person still leaves the run but sees "Run not fully deleted ... may be offered back the next time you open Run". No design change beyond a system alert
 
 ### Speed and CI (low)
