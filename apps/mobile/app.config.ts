@@ -1,5 +1,14 @@
 import type { ExpoConfig } from 'expo/config';
 
+import { checkApiBaseUrl } from './config/api-base-url';
+
+// docs/product/beta-readiness-plan.md, part 1: a production build that would reach a placeholder,
+// this computer or staging fails here, before anything is built or shipped.
+const apiBaseUrlProblem = checkApiBaseUrl(process.env.EAS_BUILD_PROFILE, process.env.API_BASE_URL);
+if (apiBaseUrlProblem) {
+  throw new Error(`Production build refused: ${apiBaseUrlProblem}. Set it in eas.json's production profile.`);
+}
+
 // Fresh bundle identifier / package name (CLAUDE.md pivot notes, ADR-013): no existing App
 // Store / Play Store registration to preserve, so these are placeholders, not a migration
 // from a real listing.
