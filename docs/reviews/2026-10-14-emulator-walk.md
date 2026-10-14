@@ -26,8 +26,10 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 | 8 | Low | The welcome screen says "AI Insights"; check whether FORJD Insight is rules-based before keeping the word "AI" | Open, check |
 | 9 | **Critical** | No run recorded by the app could ever upload. `syncPendingSessions` handed the Outdoor Run lookup the **workout log** connection, but the lookup searches `exercises_fts` in the **catalogue** database; the search threw, the run read as "not synced yet" and stayed queued forever (queue row: "Outdoor Run exercise has not synced to this device yet"). Staging had never received a run; production has no sessions at all. `sync-sessions-run.test.ts` asserted the wrong connection | Fixed: the lookup opens the catalogue. Re-walked: the queued run uploaded to staging (11:34 UTC) |
 | 10 | Watch | One native crash (SIGSEGV in React Native's `MountingCoordinator::pullTransaction`) while the dev client reloaded a new bundle. Not FORJD code, and in a dev-mode reload; watch for it on a real phone | Watch |
-| 11 | Watch | After a dev reload, putting the app in the background and back did not trigger the queued upload; a full restart did. May be the reload, not the app; check on a real phone that returning to the app uploads a queued run | Watch |
+| 11 | Closed | After a dev reload, backgrounding did not trigger the queued upload; retested without a reload, returning to the app from the launcher uploaded the offline workout at once. It was the dev reload | Closed |
 | 12 | Low | After the app was force-stopped mid-run, its run notification stayed in the status bar beside the next run's | Open |
+| 13 | Low | Workout summary "Muscles worked" showed Chest 2 sets and Triceps 1 set after a single completed set of bench press. Check whether a muscle listed twice for an exercise is counted twice | Open, check |
+| 14 | Low | No "back online" trigger: after a workout finished offline, staying in the app once the network returned uploaded nothing (the triggers are launch, return to the app, the finish itself and the OS background task). Returning to the app uploaded it | Open, decide |
 
 ## Walked and passed
 
@@ -46,8 +48,10 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 - A run finished and saved: "Run complete", 0.35 km, 4:22, route map. Calories show "—" because the account has no weight.
 - That run uploaded to staging once finding 9 was fixed.
 
+- Offline finish (airplane mode): "Session complete" offline; the workout uploaded when the app came back to the front (12C).
+
 ## Not yet walked
 
-Offline finish then upload (12C), local reminders firing (12E), quiet
+local reminders firing (12E), quiet
 hours, push token and a test push (12F), Health Connect permissions and the refusal note, Rank
 location, large system text, Weekly Forge share, and the real map.
