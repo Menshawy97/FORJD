@@ -86,7 +86,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] Batch `GET /nutrition/foods?ids=` (G5, #315)
 - [x] R28 wall-clock timing tests deleted (G4, #311)
 - [x] `ci.yml` least-privilege token (G2, #311)
-- [ ] Re-measure cold start in europe-west1
+- [x] Re-measure cold start in europe-west1 (2026-10-15, staging, from Egypt): the first request after 20+ minutes idle took 6.3 s, 5.7 s and 5.7 s (was 14.6 s in `us-central1`, ADR-055); warm requests 0.3-1.0 s. Recorded in ADR-055. No change made: an always-on instance is billed
 - [x] `pg` pool settings and pooler port on `DATABASE_URL` (2026-10-13): confirmed the session pooler (port 5432), and the API used pg's defaults (10 connections per instance, no connect timeout) with no Cloud Run instance cap. Now 5 per instance, 10 s idle and connect timeouts (`apps/api/src/database/pool-options.ts`), and `--max-instances 3` in `deploy-api.yml`; a spec keeps pool times instances within 15 connections. Live on staging 2026-10-13; **production deploy owed (owner)**: `gh workflow run deploy-api.yml --ref main -f target=production`
 
 ### Product and architecture
