@@ -24,6 +24,10 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 | 6 | Low | Bench Day's preset shows "3×—": its exercises have a set count but no reps, time or distance target | Open, check the preset seed |
 | 7 | Low | Workout summary says "logged offline, will sync when you are back online" while online (it uploaded 15 s later) | Open, copy |
 | 8 | Low | The welcome screen says "AI Insights"; check whether FORJD Insight is rules-based before keeping the word "AI" | Open, check |
+| 9 | **Critical** | No run recorded by the app could ever upload. `syncPendingSessions` handed the Outdoor Run lookup the **workout log** connection, but the lookup searches `exercises_fts` in the **catalogue** database; the search threw, the run read as "not synced yet" and stayed queued forever (queue row: "Outdoor Run exercise has not synced to this device yet"). Staging had never received a run; production has no sessions at all. `sync-sessions-run.test.ts` asserted the wrong connection | Fixed: the lookup opens the catalogue. Re-walked: the queued run uploaded to staging (11:34 UTC) |
+| 10 | Watch | One native crash (SIGSEGV in React Native's `MountingCoordinator::pullTransaction`) while the dev client reloaded a new bundle. Not FORJD code, and in a dev-mode reload; watch for it on a real phone | Watch |
+| 11 | Watch | After a dev reload, putting the app in the background and back did not trigger the queued upload; a full restart did. May be the reload, not the app; check on a real phone that returning to the app uploads a queued run | Watch |
+| 12 | Low | After the app was force-stopped mid-run, its run notification stayed in the status bar beside the next run's | Open |
 
 ## Walked and passed
 
@@ -36,8 +40,14 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
   (`forjd-workout-live`, Done action).
 - Finish double tap (#391): the saving state shows, one summary opens, one upload.
 
+## Walked after the fixes (2026-10-14 afternoon)
+
+- The real Google map on the run screen (Metro started with the Maps flag), with the route drawn through downtown Cairo.
+- A run finished and saved: "Run complete", 0.35 km, 4:22, route map. Calories show "—" because the account has no weight.
+- That run uploaded to staging once finding 9 was fixed.
+
 ## Not yet walked
 
-Run finish with the fix, offline finish then upload (12C), local reminders firing (12E), quiet
+Offline finish then upload (12C), local reminders firing (12E), quiet
 hours, push token and a test push (12F), Health Connect permissions and the refusal note, Rank
 location, large system text, Weekly Forge share, and the real map.

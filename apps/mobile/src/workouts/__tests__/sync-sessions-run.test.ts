@@ -20,6 +20,13 @@ jest.mock('@/store/workout-session', () => ({
   drainSyncQueue: (...args: unknown[]) => mockDrain(...args),
 }));
 
+// The Outdoor Run lookup searches the exercise catalogue, which is its own database. It used to be
+// handed the workout log's connection, where `exercises_fts` does not exist, so the search threw, the
+// run read as "not synced yet", and no run ever uploaded (emulator walk 2026-10-14).
+const catalogueDb = { id: 'catalogue-db' };
+const mockOpenCatalogue = jest.fn();
+jest.mock('@/store/exercise-catalogue', () => ({ openExerciseCatalogueDb: () => mockOpenCatalogue() }));
+
 import { syncPendingSessions } from '../sync-sessions';
 import { RUN_EXERCISE_PLACEHOLDER_ID } from '../live-run';
 
@@ -41,6 +48,7 @@ describe('syncPendingSessions: resolving the run exercise placeholder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockOpen.mockResolvedValue(fakeDb);
+    mockOpenCatalogue.mockResolvedValue(catalogueDb);
     mockDrain.mockImplementation(async (_db: unknown, _accountId: unknown, upload: (body: WorkoutSessionUploadRequest) => Promise<void>) => {
       uploadBody = upload;
       return { uploaded: [], failed: [] };
@@ -53,7 +61,8 @@ describe('syncPendingSessions: resolving the run exercise placeholder', () => {
 
     await uploadBody(runBody());
 
-    expect(mockResolve).toHaveBeenCalledWith(fakeDb);
+    // The catalogue's connection, never the workout log's.
+    expect(mockResolve).toHaveBeenCalledWith(catalogueDb);
     expect(mockUpload).toHaveBeenCalledWith(
       expect.objectContaining({
         exercises: [expect.objectContaining({ exerciseId: 'real-outdoor-run-id' })],
