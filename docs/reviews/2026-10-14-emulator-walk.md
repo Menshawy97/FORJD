@@ -30,6 +30,7 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 | 12 | Low | After the app was force-stopped mid-run, its run notification stayed in the status bar beside the next run's | Open |
 | 13 | Low | Workout summary "Muscles worked" showed Chest 2 sets and Triceps 1 set after a single completed set of bench press. Check whether a muscle listed twice for an exercise is counted twice | Open, check |
 | 14 | Low | No "back online" trigger: after a workout finished offline, staying in the app once the network returned uploaded nothing (the triggers are launch, return to the app, the finish itself and the OS background task). Returning to the app uploaded it | Open, decide |
+| 15 | **High** | Profile shows invented numbers as the person's own data: "InBody History: Last scan 8 days ago" and "Workout History: 147 sessions logged" are hard-coded (`app/(tabs)/profile.tsx:176-177`), and both rows do nothing when tapped. Staging has 0 scans and 3 sessions in total. Phase J ruled out invented numbers shown as a user's data | Open: needs the owner's decision (real counts, or hide the rows) and a replica |
 
 ## Walked and passed
 
@@ -50,8 +51,10 @@ of the map (`extra.hasMapsKey` is read when Metro starts; the key itself is in t
 
 - Offline finish (airplane mode): "Session complete" offline; the workout uploaded when the app came back to the front (12C).
 
+- Weekly Forge share (Profile): the card is captured as an image and the Android share sheet opens with its preview.
+- Rank tab: the opt-in card shows ("approximate location ... exact location is never stored"). Not opted in, to leave the staging account's privacy settings as they were; "coarse only, asked once" stays for the real phone, since this emulator had already granted precise location for the run.
+
 ## Not yet walked
 
 local reminders firing (12E), quiet
-hours, push token and a test push (12F), Health Connect permissions and the refusal note, Rank
-location, large system text, Weekly Forge share, and the real map.
+hours, push token and a test push (12F), Health Connect permissions and the refusal note, large system text.
