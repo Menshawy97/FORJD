@@ -99,3 +99,21 @@ Failures get fixed test-first, each in its own PR, and UI changes get a replica 
   [2026-10-14-emulator-walk.md](../reviews/2026-10-14-emulator-walk.md). It found a critical bug:
   runs and workouts could not be saved once a dropped SQLite handle was garbage collected. Fixed in
   the shared-connection PR, and re-walked. The rest of the walk list continues after that merges.
+- [x] Part 2, second pass (2026-10-14 afternoon). Three critical bugs found and fixed, each re-walked:
+  saving (#393, one SQLite connection per database), run upload (#393, the Outdoor Run lookup searched
+  the wrong database), and push registration (#394, the account came from a `userId` no sign-in saves).
+  Passed: real Google map, run save and upload, offline finish then upload, lock-screen workout notice,
+  Weekly Forge share, push token and a test push, Rank opt-in card, large system text (1.3).
+
+## Next (for whoever resumes)
+
+1. Walk the rest on the emulator: Health Connect permissions (grant and refuse heart rate and calories
+   alone; the refusal note and "Open Health Connect" link), local reminders firing (12E), and the
+   quiet-hours editor. The report's "How to repeat it" section has the setup.
+2. Fix the open walk findings test-first, in this order: 4 (rest alerts silent: the channel's
+   `sound: 'default'` needs to go, with a new channel id), 13 (muscles counted twice), 5, 6, 7, 12.
+3. Owner decisions needed first: 15 (invented Profile numbers: real counts or hide the rows, with a
+   replica), 3 (download the exercise catalogue at sign-in/launch, not only from the Library),
+   14 (upload on "back online"), 17 (what the Home bell opens), 8 (the word "AI").
+4. Owner: run the production deploy for #390 (`gh workflow run deploy-api.yml --ref main -f
+   target=production`), and a new dev-client build is not needed for any of these fixes (JS only).
