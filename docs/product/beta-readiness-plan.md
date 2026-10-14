@@ -95,3 +95,7 @@ Failures get fixed test-first, each in its own PR, and UI changes get a replica 
   loader with `npx expo config --type public`: production with the real URL loads; production with
   staging, localhost or nothing is refused; development with localhost loads.
 - [ ] Part 2, the emulator walk
+- [x] Part 2, emulator walk, first pass (2026-10-14): see
+  [2026-10-14-emulator-walk.md](../reviews/2026-10-14-emulator-walk.md). It found a critical bug:
+  runs and workouts could not be saved once a dropped SQLite handle was garbage collected. Fixed in
+  the shared-connection PR, and re-walked. The rest of the walk list continues after that merges.

@@ -2,7 +2,7 @@ import type { AxiosError } from 'axios';
 
 import { uploadWorkoutSession } from '@/auth/apiClient';
 import { getAccountId } from '@/auth/secureStorage';
-import type { SqliteConnection } from '@/store/exercise-catalogue';
+import { openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 import { sanitizeUploadRequest } from './live-session';
 import { RUN_EXERCISE_PLACEHOLDER_ID } from './live-run';
@@ -18,10 +18,7 @@ import { drainSyncQueue, ensureWorkoutSessionSchema, openWorkoutSessionDb, Uploa
  * `uploadSession` below treat it as transient, so `drainSyncQueue`'s own backoff tries again later
  * rather than dropping a run whose catalogue entry has not synced in yet.
  */
-async function resolveRunExercise(
-  db: SqliteConnection,
-  body: WorkoutSessionUploadRequest,
-): Promise<WorkoutSessionUploadRequest> {
+async function resolveRunExercise(body: WorkoutSessionUploadRequest): Promise<WorkoutSessionUploadRequest> {
   if (body.activity !== 'running') {
     return body;
   }
@@ -30,7 +27,10 @@ async function resolveRunExercise(
       if (exercise.exerciseId !== RUN_EXERCISE_PLACEHOLDER_ID) {
         return exercise;
       }
-      const realId = await resolveRunExerciseId(db);
+      // The catalogue is its own database. The workout log's connection used to be passed here, where
+      // `exercises_fts` does not exist, so every run read as unresolved and none ever uploaded
+      // (emulator walk 2026-10-14).
+      const realId = await resolveRunExerciseId(await openExerciseCatalogueDb());
       if (!realId) {
         throw new Error('Outdoor Run exercise has not synced to this device yet');
       }
@@ -46,10 +46,10 @@ async function resolveRunExercise(
  * `workout-session.ts` never has to import axios or the API client to tell a deterministic
  * 4xx apart from a transient network failure.
  */
-function makeUploadSession(db: SqliteConnection) {
+function makeUploadSession() {
   return async function uploadSession(body: WorkoutSessionUploadRequest): Promise<void> {
     try {
-      const resolved = await resolveRunExercise(db, body);
+      const resolved = await resolveRunExercise(body);
       // Sanitised here, not only when the session is built, because the queue holds payloads built
       // by earlier versions: a workout stuck behind a 400 for one out-of-range value saves on retry.
       await uploadWorkoutSession(sanitizeUploadRequest(resolved));
@@ -89,7 +89,7 @@ export async function syncPendingSessions(): Promise<{ uploaded: string[]; faile
     await ensureWorkoutSessionSchema(db);
     // Only the signed-in account's sessions: the upload is filed under whoever's token carries
     // it, so another account's queued work waits for its owner (whole-app review 8.5, L3-1).
-    return await drainSyncQueue(db, await getAccountId(), makeUploadSession(db));
+    return await drainSyncQueue(db, await getAccountId(), makeUploadSession());
   } catch {
     // Nothing to surface: the queue is durable, and the next trigger tries again.
     return { uploaded: [], failed: [] };

@@ -6,6 +6,7 @@ import type { WorkoutSessionUploadRequest } from '@forjd/contracts';
 import { belongsToAccount } from './account-scope';
 import type { SqliteConnection } from './exercise-catalogue';
 import { RUN_SESSION_MIGRATION } from './run-session';
+import { sharedConnection } from './shared-connection';
 import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
 
 /**
@@ -33,14 +34,22 @@ import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
 
 const DATABASE_NAME = 'forjd-workout-sessions.db';
 
+/**
+ * The one connection to the workout log, kept for the life of the app. Opening a fresh handle per call
+ * let a garbage-collected handle close the shared native connection under a live run or workout, and
+ * Finish then failed with "Run not saved" (`shared-connection.ts`, emulator walk 2026-10-14).
+ */
+const connection = sharedConnection(() => SQLite.openDatabaseAsync(DATABASE_NAME));
+
 /** Removes the whole database file -- used when the account is deleted (see `local-data.ts`). */
 export async function deleteWorkoutSessionDb(): Promise<void> {
+  await connection.release();
   await SQLite.deleteDatabaseAsync(DATABASE_NAME);
 }
 
 /** The only call in this module that reaches the real native module -- see ADR-022's own precedent for why that line is left for a device walk, not Jest, to prove. */
-export async function openWorkoutSessionDb(): Promise<SqliteConnection> {
-  return SQLite.openDatabaseAsync(DATABASE_NAME);
+export function openWorkoutSessionDb(): Promise<SqliteConnection> {
+  return connection.get();
 }
 
 /**

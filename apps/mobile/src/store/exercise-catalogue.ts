@@ -3,6 +3,7 @@ import type { SQLiteBindValue } from 'expo-sqlite';
 
 import type { ExerciseCatalogueResponse, ExerciseResponse } from '@forjd/contracts';
 
+import { sharedConnection } from './shared-connection';
 import { runSqliteMigrations, type SqliteMigration } from './sqlite-migrations';
 
 /**
@@ -38,14 +39,30 @@ export interface SqliteConnection {
 const DATABASE_NAME = 'forjd-exercise-catalogue.db';
 const VERSION_KEY = 'catalogueVersion';
 
+/**
+ * The one connection to the catalogue, kept for the life of the app (`shared-connection.ts` says why a
+ * dropped handle closed the database for every screen). Its tables are created as it opens, so no
+ * reader can meet a fresh install's empty file: the Train tab, a workout and the workout summary
+ * used to fail with "no such table: exercises_cache" until the Library had been visited.
+ */
+const connection = sharedConnection(() => SQLite.openDatabaseAsync(DATABASE_NAME));
+
 /** Removes the whole database file -- used when the account is deleted (see `local-data.ts`). */
 export async function deleteExerciseCatalogueDb(): Promise<void> {
+  await connection.release();
   await SQLite.deleteDatabaseAsync(DATABASE_NAME);
 }
 
-/** The only call in this module that reaches the real native module. */
+/**
+ * The only call in this module that reaches the real native module. The tables are made sure of on
+ * every call (the migrations are a no-op once applied), on the kept connection: if they fail, the
+ * next call retries them without opening a second handle, which a garbage collection could otherwise
+ * use to close the connection for everyone.
+ */
 export async function openExerciseCatalogueDb(): Promise<SqliteConnection> {
-  return SQLite.openDatabaseAsync(DATABASE_NAME);
+  const db = await connection.get();
+  await ensureExerciseCatalogueSchema(db);
+  return db;
 }
 
 /**
