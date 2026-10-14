@@ -1075,6 +1075,29 @@ describe('finishing when the session cannot be handed to the sync queue (C3 / H6
   });
 });
 
+describe('when the workout is queued but moving to the summary fails (checklist item, "Workout not saved" after a save)', () => {
+  /**
+   * Once the workout is in the upload queue it is saved, whatever happens next. A navigation that throws afterwards
+   * used to land in the same catch as a failed save: "Workout not saved", Finish given back, and a retry queuing it
+   * again. It must not claim a saved workout was lost, nor offer to save it twice.
+   */
+  it('does not say "not saved", does not queue it twice, and lets the workout go', async () => {
+    mockReplace.mockImplementationOnce(() => {
+      throw new Error('navigation not ready');
+    });
+    stageSession();
+    const { findByLabelText, findByText, queryByText } = await render(<LiveScreen />);
+
+    await fireEvent.press(await findByLabelText('Finish workout'));
+
+    await waitFor(() => expect(enqueueSessionUpload).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(activeWorkout.getState().session).toBeNull());
+    expect(queryByText(/not saved/i)).toBeNull();
+    expect(await findByText('No workout in progress.')).toBeTruthy();
+    expect(enqueueSessionUpload).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('while Finish is saving (checklist-cleanup-oct-plan.md, F1; replica approved 2026-10-13)', () => {
   /** An enqueue the test releases by hand, so the screen can be inspected mid-save. */
   function holdTheSave() {

@@ -398,11 +398,15 @@ export default function LiveScreen() {
     const { endedAt, finished, summary } = begun;
 
     void (async () => {
+      // Set once the workout is in the upload queue: from then on it is saved, whatever fails after (checklist item:
+      // a navigation that threw used to say "Workout not saved" and offer to queue it again).
+      let queued = false;
       try {
         // Hand the session to the sync queue and clear the snapshot that would offer it back. The store
         // does both behind every log write, and rejects when the workout could not be queued.
         const request = toUploadRequest(finished, endedAt, elapsedSeconds);
         await activeWorkout.queueForUpload(request);
+        queued = true;
         // Its sets become last time's on this phone at once, for the next workout's PREV. Never throws.
         void rememberFinishedWorkout(request);
 
@@ -421,6 +425,12 @@ export default function LiveScreen() {
         // Queued for upload: the workout is over, so the bar and the notice have nothing left to show.
         activeWorkout.clear();
       } catch {
+        if (queued) {
+          // Saved and queued; only moving to the summary failed. Let the workout go (its bar and notice with it) rather
+          // than claim it was lost or hand Finish back to queue it twice. The screen then reads "No workout in progress."
+          activeWorkout.clear();
+          return;
+        }
         // The most safety-critical message in the app: the session is finished in
         // memory but not yet durable anywhere else. Staying on this screen keeps the
         // in-memory state (and the athlete's option to retry Finish) alive rather
