@@ -31,7 +31,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Supabase: enable leaked-password protection (dashboard) and move `pg_trgm` out of `public` (advisor warnings, separate from RLS; `pg_trgm` still flagged on 2026-10-13)
 - [ ] Custom SMTP on the production Supabase project
 - [ ] Fix exercise-media mirroring on production (wrong key in the service-role secret, or a Storage RLS difference)
-- [ ] Real `API_BASE_URL` for the production profile in `apps/mobile/eas.json`
+- [x] Real `API_BASE_URL` for the production profile in `apps/mobile/eas.json` (2026-10-14): the production Cloud Run URL, plus the Google web client (owner decision). `app.config.ts` now refuses a production build whose address is missing, a placeholder, this computer, staging, or not https (`apps/mobile/config/api-base-url.js`). See [beta-readiness-plan.md](beta-readiness-plan.md). The Google button shows on production builds but works only once the production Supabase Google provider is set up (the Google OAuth item below)
 - [x] Google Maps key restricted to `com.forjd.app` + signing SHA-1, as EAS variable `GOOGLE_MAPS_ANDROID_API_KEY`
 
 ### Accounts and legal
