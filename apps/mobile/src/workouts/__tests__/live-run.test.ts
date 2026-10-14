@@ -151,6 +151,16 @@ describe('runStats', () => {
     expect(stats.splits[0]?.durationSeconds).toBeCloseTo(250, 1);
   });
 
+  // Runs in miles (docs/product/run-miles-plan.md): mile splits for the display, alongside the kilometre ones that are saved.
+  it('works out mile splits too, without changing the kilometre splits', () => {
+    const state = runSteadily(4, 410);
+    const stats = runStats(state, T0 + 410_000);
+
+    expect(stats.splits).toHaveLength(1);
+    expect(stats.mileSplits).toHaveLength(1);
+    expect(stats.mileSplits[0]?.durationSeconds).toBeCloseTo(1609.344 / 4, 0);
+  });
+
   it('drops a GPS jump and keeps counting from the real position', () => {
     let state = runSteadily(3, 5);
     state = addFix(state, at(90_000, 6)); // a wild reading

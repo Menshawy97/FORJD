@@ -64,6 +64,21 @@ describe('RunDoneScreen', () => {
     expect(screen.getByText('Outdoor run · logged offline, will sync when you are back online.')).toBeTruthy();
   });
 
+  // Runs in miles (docs/product/run-miles-plan.md, replica approved 2026-10-14): the run carries the unit it was shown in.
+  it('reads in miles when the run was shown in miles', async () => {
+    setCompletedRun({ ...SCREENSHOT_RUN, distanceMeters: 4828.032, averagePaceSecondsPerKm: 305, elevationGainMeters: 42, unit: 'mi' });
+    await render(<RunDoneScreen />);
+
+    expect(screen.getByText('3.00')).toBeTruthy();
+    expect(screen.getByText('mi')).toBeTruthy();
+    expect(screen.getByText('8:11')).toBeTruthy();
+    expect(screen.getByText('/mi')).toBeTruthy();
+    expect(screen.getByText('138')).toBeTruthy();
+    expect(screen.getByText('ft')).toBeTruthy();
+    expect(screen.getByText('1 mi')).toBeTruthy();
+    expect(screen.queryByText('/km')).toBeNull();
+  });
+
   it('shows the six stat tiles with the screenshot values', async () => {
     setCompletedRun(SCREENSHOT_RUN);
     await render(<RunDoneScreen />);

@@ -5,7 +5,12 @@ import {
   formatDistanceKm,
   formatDuration,
   formatPace,
+  formatRunDistance,
+  formatRunElevation,
+  formatRunPace,
+  formatRunSpeed,
   formatSpeedKmh,
+  RUN_UNIT_LABELS,
   splitBarPercent,
 } from '../run-format';
 
@@ -101,5 +106,36 @@ describe('splitBarPercent', () => {
   it('draws an empty bar for a split with no time', () => {
     expect(splitBarPercent(0, 304)).toBe(0);
     expect(splitBarPercent(NaN, 304)).toBe(0);
+  });
+});
+
+// Runs in miles (docs/product/run-miles-plan.md, replica approved 2026-10-14): the same numbers in the Units choice.
+// Kilometres read exactly as before.
+describe('run numbers in the Units choice', () => {
+  it('writes distance in km or miles to two decimals', () => {
+    expect(formatRunDistance(4820, 'km')).toBe('4.82');
+    expect(formatRunDistance(4828.032, 'mi')).toBe('3.00');
+    expect(formatRunDistance(Number.NaN, 'mi')).toBe('0.00');
+  });
+
+  it('writes pace per km or per mile', () => {
+    expect(formatRunPace(305, 'km')).toBe('5:05');
+    // 305 s/km is 490.8 s/mi.
+    expect(formatRunPace(305, 'mi')).toBe('8:11');
+    expect(formatRunPace(null, 'mi')).toBe('—');
+    expect(formatRunPace(4000, 'mi')).toBe('—');
+  });
+
+  it('writes speed in km/h or mph, and elevation in metres or feet', () => {
+    expect(formatRunSpeed(3.28, 'km')).toBe('11.8');
+    expect(formatRunSpeed(3.28, 'mi')).toBe('7.3');
+    expect(formatRunSpeed(null, 'mi')).toBe('—');
+    expect(formatRunElevation(42, 'km')).toBe('42');
+    expect(formatRunElevation(42, 'mi')).toBe('138');
+  });
+
+  it('names each unit as the tiles, splits and notice show it', () => {
+    expect(RUN_UNIT_LABELS.km).toEqual({ distance: 'km', pace: '/km', speed: 'km/h', elevation: 'm' });
+    expect(RUN_UNIT_LABELS.mi).toEqual({ distance: 'mi', pace: '/mi', speed: 'mph', elevation: 'ft' });
   });
 });

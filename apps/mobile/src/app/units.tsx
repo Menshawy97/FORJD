@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { DistanceUnit, EnergyUnit, UnitSystem, WeightUnit } from '@forjd/domain';
 
 import { getMe, updateProfile } from '@/auth/apiClient';
+import { saveRunDistanceUnit } from '@/store/run-distance-unit';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
 import { Header } from '@/components/header';
 import { pressScale } from '@/components/press-feedback';
@@ -109,6 +110,8 @@ export default function UnitsScreen() {
     setSaving(true);
     try {
       await updateProfile({ unitSystem, weightUnit, distanceUnit, energyUnit });
+      // Runs read the distance choice from the phone, so they show it offline (run-miles-plan.md).
+      void saveRunDistanceUnit(distanceUnit === 'mi' ? 'mi' : 'km');
       toast.show('Preferences updated');
       goBack();
     } catch (error: unknown) {

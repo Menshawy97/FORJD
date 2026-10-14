@@ -22,7 +22,8 @@ export interface RunSplitRow {
 
 const MONO_NUMS = { fontVariant: ['tabular-nums' as const] };
 
-export function RunSplits({ splits }: { splits: readonly RunSplitRow[] }) {
+/** `unit`: kilometre or mile splits, as the Units choice shows them (docs/product/run-miles-plan.md). */
+export function RunSplits({ splits, unit = 'km' }: { splits: readonly RunSplitRow[]; unit?: 'km' | 'mi' }) {
   const fastest = splits.reduce((least, s) => Math.min(least, s.durationSeconds), Infinity);
 
   return (
@@ -38,7 +39,7 @@ export function RunSplits({ splits }: { splits: readonly RunSplitRow[] }) {
           className="flex-row items-center py-[12px]"
           style={{ gap: 12, borderBottomWidth: 1, borderBottomColor: colors.borderFaint }}>
           <Text className="w-[44px] font-archivo text-[12.5px] font-semibold" style={[{ color: '#B4B4AC' }, MONO_NUMS]}>
-            {`${split.index} km`}
+            {`${split.index} ${unit}`}
           </Text>
           <View className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ backgroundColor: colors.barTrack }}>
             <View

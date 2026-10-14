@@ -22,7 +22,8 @@ import { colors } from '@/theme/tokens';
 // Structure is hdr → scroll → **pinned CTA bar** → tabbar (§6.1), so Save stays visible above
 // the tab bar rather than scrolling away with the content.
 //
-// Copy is verbatim from §6.2, including the British "Analyse" (the `goals` subtitle uses US
+// Copy is verbatim from §6.2, except the AI switch, renamed for what it does (walk finding 8), and keeps the
+// prototype's spelling quirks (the `goals` subtitle uses US
 // "programs" — inconsistent in the prototype, copied as-is pending a ruling) and the em dashes.
 
 /** The five writable flags. `aiFeaturesConsentAt` is server-derived and never sent. */

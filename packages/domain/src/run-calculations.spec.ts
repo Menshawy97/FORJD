@@ -15,6 +15,7 @@ import {
   splitsFromTrack,
   trackDistanceMeters,
 } from './run-calculations';
+import { METERS_PER_MILE } from './unit-conversion';
 
 // One degree of latitude on the mean-radius sphere (R = 6,371,000 m): 111,194.93 m, computed exactly
 // so a test that says "1,000 m" really is 1,000 m to the haversine.
@@ -184,6 +185,15 @@ describe('trackDistanceMeters', () => {
 });
 
 describe('splitsFromTrack', () => {
+  // Runs in miles (docs/product/run-miles-plan.md): the same splitter, one split per mile, for display only.
+  it('finds each full mile when given the mile as the split length', () => {
+    const splits = splitsFromTrack(steadyRun(4, 900), METERS_PER_MILE);
+    expect(splits).toHaveLength(2);
+    expect(splits[0]).toMatchObject({ index: 1, distanceMeters: METERS_PER_MILE });
+    expect(splits[0]?.durationSeconds).toBeCloseTo(METERS_PER_MILE / 4, 3);
+    expect(splits[1]?.durationSeconds).toBeCloseTo(METERS_PER_MILE / 4, 3);
+  });
+
   it('finds each full kilometre at a steady 4 m/s', () => {
     const splits = splitsFromTrack(steadyRun(4, 625));
     expect(splits).toHaveLength(2);

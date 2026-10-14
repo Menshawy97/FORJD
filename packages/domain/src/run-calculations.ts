@@ -182,13 +182,17 @@ export function trackDistanceMeters(track: readonly RunFix[]): number {
  * The time for each full kilometre, found by interpolating where the boundary falls inside the
  * step that crosses it. A long step can cross several. A partial last kilometre is not a split.
  */
-export function splitsFromTrack(track: readonly RunFix[]): RunSplit[] {
+/**
+ * `splitMeters` is the split length: a kilometre by default (what is saved and uploaded), or a mile for the
+ * runs-in-miles display (docs/product/run-miles-plan.md).
+ */
+export function splitsFromTrack(track: readonly RunFix[], splitMeters: number = SPLIT_DISTANCE_METERS): RunSplit[] {
   const splits: RunSplit[] = [];
   const first = track[0];
   if (first === undefined) return splits;
 
   let cumulative = 0;
-  let nextBoundary = SPLIT_DISTANCE_METERS;
+  let nextBoundary = splitMeters;
   let splitStartMoving = first.movingMs;
   let splitStartWall = first.timestampMs;
 
@@ -201,14 +205,14 @@ export function splitsFromTrack(track: readonly RunFix[]): RunSplit[] {
       const wallAt = from.timestampMs + fraction * (to.timestampMs - from.timestampMs);
       splits.push({
         index: splits.length + 1,
-        distanceMeters: SPLIT_DISTANCE_METERS,
+        distanceMeters: splitMeters,
         durationSeconds: (movingAt - splitStartMoving) / 1000,
         startTimestampMs: splitStartWall,
         endTimestampMs: wallAt,
       });
       splitStartMoving = movingAt;
       splitStartWall = wallAt;
-      nextBoundary += SPLIT_DISTANCE_METERS;
+      nextBoundary += splitMeters;
     }
   }
   return splits;

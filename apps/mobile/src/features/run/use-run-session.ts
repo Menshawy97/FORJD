@@ -15,6 +15,7 @@ import type { SqliteConnection } from '@/store/exercise-catalogue';
 import { getDeviceHealthProvider } from '@/integrations/health/device-health-provider';
 import { readHealthConsent } from '@/store/health-consent-local';
 import { readLocationConsent } from '@/store/leaderboard-consent';
+import { loadRunDistanceUnit, type RunDistanceUnit } from '@/store/run-distance-unit';
 import { hasAskedRunHealthAccess, markRunHealthAccessAsked } from '@/store/run-health-access';
 import { clearRunSnapshot, ensureRunSessionSchema, getUnfinishedRunSnapshot, saveRunSnapshot } from '@/store/run-session';
 import { enqueueSessionUpload, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
@@ -100,6 +101,8 @@ export interface RunSession {
   isFinishing: boolean;
   stats: ReturnType<typeof runStats> | null;
   splits: RunSplitView[];
+  /** The Units distance choice the run is shown in (docs/product/run-miles-plan.md). */
+  unit: RunDistanceUnit;
   heartRate: { currentBpm: number | null; averageBpm: number | null; series: number[] };
   /**
    * Metrics Health Connect refused (access turned off), as opposed to a watch that has not synced.
@@ -122,6 +125,20 @@ export function useRunSession(): RunSession {
   const [lastAccuracy, setLastAccuracy] = useState<{ meters: number | null } | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
   const [healthBlocked, setHealthBlocked] = useState<readonly RunMetric[]>([]);
+  // Kilometres until the phone's copy of the Units choice is read (a local read: no network, rule 6).
+  const [unit, setUnit] = useState<RunDistanceUnit>('km');
+  const unitRef = useRef<RunDistanceUnit>('km');
+  useEffect(() => {
+    let cancelled = false;
+    void loadRunDistanceUnit().then((stored) => {
+      if (cancelled) return;
+      unitRef.current = stored;
+      setUnit(stored);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const toast = useToast();
   // `toast` is a new object each render; only its `show` is stable, so that is what callbacks depend on.
   const showToast = toast.show;
@@ -509,8 +526,23 @@ export function useRunSession(): RunSession {
         // From here the run is safely queued: nothing below may report it as "not saved".
         stopWatching();
         try {
+          const summary = toRunSummary(request, stats.route);
+          // With miles, the summary shows the mile splits worked out on the phone; the queued run keeps its km splits.
+          const shownUnit = unitRef.current;
+          const shownSplits =
+            shownUnit === 'mi'
+              ? stats.mileSplits.map((split) => ({
+                  index: split.index,
+                  durationSeconds: split.durationSeconds,
+                  avgHeartRateBpm: healthAllowed
+                    ? averageHeartRate(withHeartRate.heartRate, split.startTimestampMs, split.endTimestampMs)
+                    : null,
+                }))
+              : summary.splits;
           setCompletedRun({
-            ...toRunSummary(request, stats.route),
+            ...summary,
+            splits: shownSplits,
+            unit: shownUnit,
             healthBlocked: healthAllowed ? finalHealth.blocked : [],
           });
         } catch {
@@ -538,12 +570,12 @@ export function useRunSession(): RunSession {
 
   const splits = useMemo<RunSplitView[]>(
     () =>
-      (stats?.splits ?? []).map((split) => ({
+      ((unit === 'mi' ? stats?.mileSplits : stats?.splits) ?? []).map((split) => ({
         index: split.index,
         durationSeconds: split.durationSeconds,
         avgHeartRateBpm: run ? averageHeartRate(run.heartRate, split.startTimestampMs, split.endTimestampMs) : null,
       })),
-    [run, stats],
+    [run, stats, unit],
   );
 
   // 12A-3: the live notice. Ready (channel, buttons, permission asked only while undecided) once the
@@ -568,8 +600,8 @@ export function useRunSession(): RunSession {
     const now = Date.now();
     if (shown && shown.status === run.status && now - shown.atMs < NOTICE_UPDATE_MS) return;
     noticeShownRef.current = { atMs: now, status: run.status };
-    void runNotifier.show(runNotificationContent(stats, run.status));
-  }, [run, stats, noticeReady]);
+    void runNotifier.show(runNotificationContent(stats, run.status, unit));
+  }, [run, stats, noticeReady, unit]);
 
   // The notice's buttons: Pause and Resume act in place; Finish has opened the app and finishes here.
   useEffect(
@@ -601,6 +633,7 @@ export function useRunSession(): RunSession {
     isFinishing,
     stats,
     splits,
+    unit,
     heartRate,
     healthBlocked,
     toast,

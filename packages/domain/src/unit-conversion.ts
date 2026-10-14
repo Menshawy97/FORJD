@@ -21,7 +21,8 @@ export const KG_PER_LB = 0.45359237;
  *  InBody sheet prints in feet and inches (scan-height-age-plan.md §2.3). */
 export const CM_PER_INCH = 2.54;
 const LB_PER_KG = 1 / KG_PER_LB;
-const METRES_PER_MILE = 1609.344;
+/** The international mile, exactly. Exported for the runs-in-miles display (docs/product/run-miles-plan.md). */
+export const METERS_PER_MILE = 1609.344;
 
 /** How a weight is displayed. Storage is always `kg`. */
 export const WEIGHT_DISPLAY_UNITS = ['kg', 'lb'] as const;
@@ -57,7 +58,7 @@ export function distanceForDisplay(metres: number, unit: DistanceDisplayUnit): n
   if (unit === 'm') {
     return Math.round(metres);
   }
-  return Math.round((metres / METRES_PER_MILE) * 100) / 100;
+  return Math.round((metres / METERS_PER_MILE) * 100) / 100;
 }
 
 /** What the athlete typed, back to the metres that get stored. */
@@ -65,7 +66,7 @@ export function distanceFromDisplay(value: number, unit: DistanceDisplayUnit): n
   if (unit === 'm') {
     return Math.round(value);
   }
-  return Math.round(value * METRES_PER_MILE);
+  return Math.round(value * METERS_PER_MILE);
 }
 
 /** The other one. The chip is a toggle, not a menu — there are only ever two. */

@@ -1,3 +1,4 @@
+import { METERS_PER_MILE } from '@forjd/domain';
 import type { WorkoutSessionResponse } from '@forjd/contracts';
 import type { ExerciseGoal } from '@forjd/domain';
 
@@ -125,7 +126,12 @@ export function sessionVolumeKg(session: WorkoutSessionResponse): number {
  * A run has no external load, so showing its volume would read "0 kg". Counts completed sets only,
  * for the same reason `sessionVolumeKg` does.
  */
-export function sessionLoadLabel(session: WorkoutSessionResponse): string {
+/** A distance on the Train card, in the Units choice (docs/product/run-miles-plan.md): "3.56 km" or "3.00 mi". */
+function cardDistance(meters: number, unit: 'km' | 'mi'): string {
+  return unit === 'mi' ? `${(meters / METERS_PER_MILE).toFixed(2)} mi` : `${(meters / 1000).toFixed(2)} km`;
+}
+
+export function sessionLoadLabel(session: WorkoutSessionResponse, unit: 'km' | 'mi' = 'km'): string {
   if (session.activity === 'running') {
     let meters = 0;
     for (const exercise of session.exercises) {
@@ -133,7 +139,7 @@ export function sessionLoadLabel(session: WorkoutSessionResponse): string {
         if (set.isCompleted && set.distanceMeters !== null) meters += set.distanceMeters;
       }
     }
-    return `${(meters / 1000).toFixed(2)} km`;
+    return cardDistance(meters, unit);
   }
   return `${sessionVolumeKg(session).toLocaleString()} kg`;
 }
@@ -150,13 +156,13 @@ function bestCompletedSet(exercise: SessionExercise): SessionSet | null {
   return best;
 }
 
-function chipLabel(name: string, exercise: SessionExercise, set: SessionSet): string | null {
+function chipLabel(name: string, exercise: SessionExercise, set: SessionSet, unit: 'km' | 'mi'): string | null {
   if (exercise.measure === 'time' && set.durationSeconds !== null) {
     return `${name} ${set.durationSeconds}s`;
   }
   if (exercise.measure === 'distance' && set.distanceMeters !== null) {
     // Walk finding 18: the card's own style ("0.19 km"), not raw metres with decimals ("193.56m").
-    return `${name} ${(set.distanceMeters / 1000).toFixed(2)} km`;
+    return `${name} ${cardDistance(set.distanceMeters, unit)}`;
   }
   if (set.reps === null) return null;
   // The prototype's fourth chip is `Dips BW×12`: a set logged without a weight is bodyweight,
@@ -176,13 +182,14 @@ function chipLabel(name: string, exercise: SessionExercise, set: SessionSet): st
 export function sessionExerciseChips(
   session: WorkoutSessionResponse,
   resolveName: (exerciseId: string) => string | null,
+  unit: 'km' | 'mi' = 'km',
 ): string[] {
   return [...session.exercises]
     .sort((a, b) => a.orderIndex - b.orderIndex)
     .flatMap((exercise) => {
       const set = bestCompletedSet(exercise);
       if (set === null) return [];
-      const label = chipLabel(resolveName(exercise.exerciseId) ?? 'Exercise', exercise, set);
+      const label = chipLabel(resolveName(exercise.exerciseId) ?? 'Exercise', exercise, set, unit);
       return label === null ? [] : [label];
     });
 }

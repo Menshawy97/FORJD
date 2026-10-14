@@ -7,7 +7,7 @@ import { Toast } from '@/components/toast';
 import { GpsPill } from '@/features/run/gps-pill';
 import { RunHeartRateCard } from '@/features/run/run-heart-rate-card';
 import { RunMetricTile } from '@/features/run/run-metric-tile';
-import { formatDistanceKm, formatDuration, formatPace, formatSpeedKmh } from '@/features/run/run-format';
+import { formatDuration, formatRunDistance, formatRunPace, formatRunSpeed, RUN_UNIT_LABELS } from '@/features/run/run-format';
 import { RunSplits } from '@/features/run/run-splits';
 import { useRunSession, type RunPermission } from '@/features/run/use-run-session';
 import { RouteMap } from '@/integrations/maps/route-map';
@@ -114,7 +114,7 @@ export default function RunScreen() {
             <RouteMap
               points={stats?.route ?? []}
               height={MAP_HEIGHT}
-              caption="live map · route + km markers"
+              caption={`live map · route + ${session.unit === 'mi' ? 'mile' : 'km'} markers`}
               accessibilityLabel="Map of your run so far"
             />
             <GpsPill quality={session.quality} />
@@ -139,19 +139,23 @@ export default function RunScreen() {
 
         <View className="mt-[16px]" style={{ gap: 8 }}>
           <View className="flex-row" style={{ gap: 8 }}>
-            <RunMetricTile label="Distance" value={formatDistanceKm(stats?.distanceMeters ?? 0)} unit="km" />
+            <RunMetricTile
+              label="Distance"
+              value={formatRunDistance(stats?.distanceMeters ?? 0, session.unit)}
+              unit={RUN_UNIT_LABELS[session.unit].distance}
+            />
             <RunMetricTile
               label="Avg pace"
-              value={formatPace(stats?.averagePaceSecondsPerKm ?? null)}
-              unit="/km"
+              value={formatRunPace(stats?.averagePaceSecondsPerKm ?? null, session.unit)}
+              unit={RUN_UNIT_LABELS[session.unit].pace}
               color={colors.accent}
             />
           </View>
           <View className="flex-row" style={{ gap: 8 }}>
             <RunMetricTile
               label="Current speed"
-              value={formatSpeedKmh(stats?.currentSpeedMetersPerSecond ?? null)}
-              unit="km/h"
+              value={formatRunSpeed(stats?.currentSpeedMetersPerSecond ?? null, session.unit)}
+              unit={RUN_UNIT_LABELS[session.unit].speed}
             />
             <RunMetricTile
               label="Avg HR"
@@ -167,7 +171,7 @@ export default function RunScreen() {
           series={session.heartRate.series}
           isBlocked={session.healthBlocked.includes('heart_rate')}
         />
-        <RunSplits splits={session.splits} />
+        <RunSplits splits={session.splits} unit={session.unit} />
       </ScrollView>
 
       <View

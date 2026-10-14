@@ -43,6 +43,45 @@ export function formatSpeedKmh(metersPerSecond: number | null): string {
   return (Math.max(0, metersPerSecond) * 3.6).toFixed(1);
 }
 
+/** The Units distance choice a run is shown in (docs/product/run-miles-plan.md). Storage is always metres. */
+export type RunUnit = 'km' | 'mi';
+
+const METERS_PER_MILE = 1609.344;
+const MPS_TO_MPH = 3600 / METERS_PER_MILE;
+const FEET_PER_METER = 1 / 0.3048;
+
+/** The unit labels the tiles, the notice and the splits show. */
+export const RUN_UNIT_LABELS: Record<RunUnit, { distance: string; pace: string; speed: string; elevation: string }> = {
+  km: { distance: 'km', pace: '/km', speed: 'km/h', elevation: 'm' },
+  mi: { distance: 'mi', pace: '/mi', speed: 'mph', elevation: 'ft' },
+};
+
+/** Distance to two decimals, in km or miles. */
+export function formatRunDistance(meters: number, unit: RunUnit): string {
+  if (unit === 'km') return formatDistanceKm(meters);
+  const safe = Number.isFinite(meters) ? Math.max(0, meters) : 0;
+  return (safe / METERS_PER_MILE).toFixed(2);
+}
+
+/** Pace per km or per mile. The standing-still limit is judged per kilometre, whichever is shown. */
+export function formatRunPace(secondsPerKm: number | null, unit: RunUnit): string {
+  if (unit === 'km' || secondsPerKm === null) return formatPace(secondsPerKm);
+  if (formatPace(secondsPerKm) === DASH) return DASH;
+  const rounded = Math.round((secondsPerKm * METERS_PER_MILE) / 1000);
+  return `${Math.floor(rounded / 60)}:${pad2(rounded % 60)}`;
+}
+
+/** Speed in km/h or mph to one decimal, or a dash before there is a reading. */
+export function formatRunSpeed(metersPerSecond: number | null, unit: RunUnit): string {
+  if (unit === 'km' || metersPerSecond === null || !Number.isFinite(metersPerSecond)) return formatSpeedKmh(metersPerSecond);
+  return (Math.max(0, metersPerSecond) * MPS_TO_MPH).toFixed(1);
+}
+
+/** Elevation gain, whole metres or feet. */
+export function formatRunElevation(meters: number, unit: RunUnit): string {
+  return String(Math.round(unit === 'mi' ? meters * FEET_PER_METER : meters));
+}
+
 /**
  * A split's bar as a percentage of the track: the fastest split is the longest, the rest shorter in
  * proportion to their time, so a slower kilometre reads as a shorter bar, as in the design.

@@ -1,6 +1,6 @@
 import type { RunState, RunStats } from '@/workouts/live-run';
 
-import { formatDistanceKm, formatDuration, formatPace } from './run-format';
+import { formatDuration, formatRunDistance, formatRunPace, RUN_UNIT_LABELS, type RunUnit } from './run-format';
 
 /** The action set the notice offers: Pause and Finish while running, Resume and Finish while paused. */
 export type RunNotificationCategory = 'run-running' | 'run-paused';
@@ -22,12 +22,15 @@ export interface RunNotificationContent {
 export function runNotificationContent(
   stats: Pick<RunStats, 'movingSeconds' | 'distanceMeters' | 'averagePaceSecondsPerKm'>,
   status: RunState['status'],
+  /** The Units distance choice (docs/product/run-miles-plan.md); kilometres by default. */
+  unit: RunUnit = 'km',
 ): RunNotificationContent {
   const paused = status === 'paused';
+  const labels = RUN_UNIT_LABELS[unit];
   return {
     header: paused ? 'Run paused' : 'Run',
-    title: `${formatDuration(stats.movingSeconds)} · ${formatDistanceKm(stats.distanceMeters)} km`,
-    body: `Avg pace ${formatPace(stats.averagePaceSecondsPerKm)} /km`,
+    title: `${formatDuration(stats.movingSeconds)} · ${formatRunDistance(stats.distanceMeters, unit)} ${labels.distance}`,
+    body: `Avg pace ${formatRunPace(stats.averagePaceSecondsPerKm, unit)} ${labels.pace}`,
     category: paused ? 'run-paused' : 'run-running',
   };
 }
