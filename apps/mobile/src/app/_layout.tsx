@@ -22,6 +22,7 @@ import {
 import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secureStorage';
 import { markIntroShown, shouldShowIntro } from '@/components/brand/intro-gate';
 import { IntroSplash } from '@/components/brand/intro-splash';
+import { refreshExerciseCatalogue } from '@/features/exercises/refresh-catalogue';
 import { syncTimeZone } from '@/features/forge/time-zone-sync';
 import {
   requestLocalNotificationReconcile,
@@ -35,6 +36,7 @@ import { activeWorkout } from '@/workouts/active-workout';
 import { ActiveWorkoutBar, WORKOUT_BAR_STACK_CLEARANCE } from '@/workouts/active-workout-bar';
 import { useHasActiveWorkout } from '@/workouts/use-active-workout';
 import { syncPendingSessions } from '@/workouts/sync-sessions';
+import { useBackOnlineRetry } from '@/workouts/use-back-online-retry';
 import { workoutNotice } from '@/workouts/workout-notice';
 
 import { TAB_BAR_HEIGHT } from './(tabs)/_layout';
@@ -155,6 +157,9 @@ export default function RootLayout() {
     };
     uploadAndReplan();
     void syncTimeZone();
+    // Once per launch and per sign-in, not on every return: the exercise names a workout shows come from this
+    // catalogue, and it used to download only when the Library was opened (walk finding 3).
+    void refreshExerciseCatalogue();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       uploadAndReplan();
@@ -181,6 +186,8 @@ export default function RootLayout() {
   useLocalNotifications(authChecked, authenticated);
   // Server push (12F): this install's token is registered when the person wants a push and the phone allows it.
   usePushRegistration(authChecked, authenticated);
+  // While the app is open, a workout waiting to upload goes as soon as the server answers again (walk finding 14).
+  useBackOnlineRetry(authChecked, authenticated);
 
   /**
    * The workout in progress outlives any screen (12B-2b): the lock-screen notice follows it from the moment the
