@@ -73,6 +73,7 @@ import type {
   ProgramListResponse,
   ProgramResponse,
   BodyScanListResponse,
+  NotificationListResponse,
   BodyScanResponse,
   BodyScanSeriesResponse,
   ConfirmBodyScanRequest,
@@ -87,7 +88,7 @@ import type {
   WhoopStatusResponse,
 } from '@forjd/contracts';
 
-import { MAX_FOOD_IDS_PER_REQUEST } from '@forjd/contracts';
+import { MAX_FOOD_IDS_PER_REQUEST, notificationListResponseSchema } from '@forjd/contracts';
 import type { CatalogueFetchResult } from '@/store/exercise-catalogue';
 
 import { requireDateOfBirth } from './date-of-birth-gate';
@@ -706,6 +707,16 @@ export async function confirmBodyScan(
 export async function createManualBodyScan(body: CreateManualBodyScanRequest): Promise<BodyScanResponse> {
   const response = await apiClient.post<BodyScanResponse>('/body-scans/manual', body);
   return response.data;
+}
+
+/**
+ * `GET /users/me/notifications` -- the list behind the Home bell (walk finding 17): the server's own pushes to this
+ * account from the last 30 days, newest first. The response is checked against the contract, because its `data`
+ * becomes a route when a row is tapped.
+ */
+export async function listNotifications(): Promise<NotificationListResponse> {
+  const response = await apiClient.get<unknown>('/users/me/notifications');
+  return notificationListResponseSchema.parse(response.data);
 }
 
 export async function listBodyScans(): Promise<BodyScanListResponse> {

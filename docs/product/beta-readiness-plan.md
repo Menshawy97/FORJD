@@ -132,4 +132,5 @@ Failures get fixed test-first, each in its own PR, and UI changes get a replica 
   ping the API (`GET /health`); if it answers, upload at once, past the queue's backoff (drain with a
   far-future `now`). A tick while offline uses no upload attempts (`workouts/back-online-retry.ts`).
 - **17, Home bell:** the owner wants it to show their notifications: a notifications list screen. Design
-  it from the app's patterns and show a replica before building.
+  it from the app's patterns and show a replica before building. Replica approved; built (slice B of
+  `notifications-list-and-profile-counts-plan.md`).

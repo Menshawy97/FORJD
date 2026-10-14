@@ -24,6 +24,12 @@ nothing, as today.
 
 ## Slice B: Notifications list (finding 17)
 
+**Built.** API: `notifications-feed.controller.ts` / `.service.ts`, `PushOutboxRepository.listSentForUser` (at most 100
+rows), contract `notifications-feed.ts`. App: `app/notifications.tsx`, `features/notifications/notification-feed.ts`
+(groups, times, icons: the `rank` trophy glyph for a lift PR, `runner` for a run PR, `progress` chart for a rank move),
+`push-tap.ts`'s `routeForPushData` shared with the push tap. A failure that is not offline reads "Could not load your
+notifications. Please try again."
+
 Approved: the Home bell opens a new **Notifications** screen.
 
 - **Shows:** the server's push notifications for the signed-in person from the last 30 days, PR celebrations

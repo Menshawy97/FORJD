@@ -6,6 +6,8 @@ import { UsersModule } from '../users/users.module';
 import { NotificationPreferencesController } from './notification-preferences.controller';
 import { NotificationPreferencesRepository } from './notification-preferences.repository';
 import { NotificationPreferencesService } from './notification-preferences.service';
+import { NotificationsFeedController } from './notifications-feed.controller';
+import { NotificationsFeedService } from './notifications-feed.service';
 import { PushNotificationService } from './push-notification.service';
 import { PushOutboxRepository } from './push-outbox.repository';
 import { PushTokensController } from './push-tokens.controller';
@@ -18,8 +20,9 @@ import { PushTokensService } from './push-tokens.service';
  */
 @Module({
   imports: [AuthProviderModule, UsersModule, PushModule],
-  controllers: [NotificationPreferencesController, PushTokensController],
+  controllers: [NotificationPreferencesController, PushTokensController, NotificationsFeedController],
   providers: [
+    NotificationsFeedService,
     NotificationPreferencesRepository,
     NotificationPreferencesService,
     PushTokensRepository,

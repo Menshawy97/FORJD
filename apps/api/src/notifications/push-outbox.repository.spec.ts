@@ -317,6 +317,48 @@ describe('PushOutboxRepository (Phase 12F)', () => {
     });
   });
 
+  // The notifications list behind the Home bell (walk finding 17, slice B): only this person's pushes that were
+  // actually sent, since the cut-off, newest first. Pending, dropped and failed rows never reached the phone.
+  describe('listSentForUser', () => {
+    const days = (n: number): Date => new Date(T0.getTime() + n * 86_400_000);
+
+    async function queueAndSend(userId: string, sentAt: Date, title: string): Promise<void> {
+      const e = entry(userId, { title });
+      await repository.enqueue(e);
+      const row = (await repository.listForUser(userId)).find((r) => r.dedupeKey === e.dedupeKey)!;
+      await repository.markSent(row.id, sentAt);
+    }
+
+    it("lists the person's sent pushes since the cut-off, newest first, and nobody else's", async () => {
+      const user = await newUser('feed');
+      const other = await newUser('feed-other');
+      await queueAndSend(user.id, days(-2), 'older');
+      await queueAndSend(user.id, days(-1), 'newer');
+      await queueAndSend(user.id, days(-40), 'too old');
+      await queueAndSend(other.id, days(-1), 'not theirs');
+      await repository.enqueue(entry(user.id, { title: 'still pending' }));
+      const dropped = entry(user.id, { title: 'dropped' });
+      await repository.enqueue(dropped);
+      const droppedRow = (await repository.listForUser(user.id)).find((r) => r.dedupeKey === dropped.dedupeKey)!;
+      await repository.markDropped(droppedRow.id, 'quiet');
+
+      const rows = await repository.listSentForUser(user.id, days(-30), 100);
+
+      expect(rows.map((r) => r.title)).toEqual(['newer', 'older']);
+      expect(rows[0]).toMatchObject({ kind: 'pr', body: 'Open FORJD to see it.', data: { type: 'pr', sessionId: 's1' } });
+      expect(rows[0]!.sentAt!.getTime()).toBe(days(-1).getTime());
+    });
+
+    it('stops at the limit', async () => {
+      const user = await newUser('feed-limit');
+      await queueAndSend(user.id, days(-3), 'a');
+      await queueAndSend(user.id, days(-2), 'b');
+      await queueAndSend(user.id, days(-1), 'c');
+
+      expect((await repository.listSentForUser(user.id, days(-30), 2)).map((r) => r.title)).toEqual(['c', 'b']);
+    });
+  });
+
   describe('timeZoneOf', () => {
     it('answers the time zone the person has stored, or null', async () => {
       const user = await newUser('tz');

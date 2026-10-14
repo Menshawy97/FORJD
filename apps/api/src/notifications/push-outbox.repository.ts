@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
 
 import { Database, DRIZZLE } from '../database/database.module';
 import { preferences } from '../database/schema/preferences.schema';
@@ -174,6 +174,19 @@ export class PushOutboxRepository {
       .from(pushOutbox)
       .where(eq(pushOutbox.userId, userId))
       .orderBy(asc(pushOutbox.createdAt), asc(pushOutbox.id));
+  }
+
+  /**
+   * The person's pushes that were sent at or after `since`, newest first, at most `limit` (the notifications list behind
+   * the Home bell, walk finding 17). Pending, dropped and failed rows never reached the phone, so they are not listed.
+   */
+  async listSentForUser(userId: string, since: Date, limit: number): Promise<OutboxRow[]> {
+    return this.db
+      .select()
+      .from(pushOutbox)
+      .where(and(eq(pushOutbox.userId, userId), eq(pushOutbox.status, 'sent'), gte(pushOutbox.sentAt, since)))
+      .orderBy(desc(pushOutbox.sentAt), desc(pushOutbox.id))
+      .limit(limit);
   }
 
   async addTickets(rows: readonly NewTicket[]): Promise<void> {
