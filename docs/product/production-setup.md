@@ -3,7 +3,7 @@
 Status: **provisioned, migrated and deployed.** Last production deploy 2026-10-08 (`5f26c4d`, migration
 `0037`, the newest on `main`). Checked 2026-10-15: `/api/v1/health` answers `database: up`. The API code
 on `main` has moved on since then (#390 database connection limits, #401 the Home bell's notifications
-list, #407), so the next production deploy (owner) brings those over; no new migration is waiting. The steps below are kept as the record of how it was done. Production is the second of the two
+list), so the next production deploy (owner) brings those over; no new migration is waiting. The steps below are kept as the record of how it was done. Production is the second of the two
 free Supabase projects (the free tier allows two; `forjd-dev` serves staging). Everything below is the
 user's to do: each step creates or restores infrastructure or handles a credential, which the assistant is
 not permitted to do here (the roadmap's Phase 6 close says the same about Secret Manager writes).
@@ -23,6 +23,9 @@ not permitted to do here (the roadmap's Phase 6 close says the same about Secret
   to `0037`, deny-all row-level security on every table (ADR-066, #386).
 
 ## Known gap: exercise-media mirroring fails on production
+
+*Last observed on the 2026-09-22 deploy; not re-checked since the 2026-10-08 one (row-level security
+changed in between).*
 
 The same run's **"Mirror exercise media"** step failed (job still reports success — that step's failure is
 not fatal to the deploy):

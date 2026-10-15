@@ -31,8 +31,8 @@ nothing**.
 | Does your app collect or share any of the required user data types? | **Yes** | Account, profile, workouts, health data and more are sent to our API |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** | The API is HTTPS only (a production build refuses a non-https address, `apps/mobile/config/api-base-url.js`); Supabase, Expo push, Firebase and the Maps SDK all use HTTPS |
 | Account creation methods | **Username and password** (email and password) and **OAuth** (Google sign-in) | Apple sign-in is built but off until the Apple account exists |
-| Delete account URL | `https://getforjd.com/privacy#control` | The "Ask us" line offers deletion by email without the app. See the checklist note about a clearer "Delete your account" line |
-| Can users ask to delete some of their data without deleting their account? | **Yes** | In the app: nutrition log entries, custom foods, saved meals, custom exercises and favourites, templates, and the WHOOP connection. Anything else (for example a body scan or a logged workout, which the app cannot delete yet) by the email on the privacy page |
+| Delete account URL | `https://getforjd.com/privacy#control` | The "Ask us" line offers deletion by email without the app. The app also deletes the account itself (Profile, Account, Delete account: `delete-account.tsx`, `DELETE /api/v1/users/me`). See the checklist note about a clearer "Delete your account" line |
+| Can users ask to delete some of their data without deleting their account? | **Yes** | In the app: nutrition log entries, saved meals, custom exercises, favourites, leaving a program, and disconnecting WHOOP. Anything else by the email on the privacy page: body scans and logged workouts (no delete route), custom foods and workout templates (the API can delete them but no screen offers it yet) |
 | Play Families policy / independent security review | **No** / **No** | FORJD is for ages 16+; no MASA review |
 
 ## Section 2: Data types
@@ -55,13 +55,15 @@ the purposes. "Shared" is **No** for every row (see above).
 Not collected: the run route. GPS points stay on the phone (ADR-049) and are never uploaded, even with
 the screen off (ADR-059). Play still needs the separate foreground-service declaration (checklist).
 
-**Decision 1.** Play's line between approximate and precise is an area of 3 square kilometres. The phone
-reads the start position at low accuracy, but sends it rounded to 3 decimal places, a square of about
-110 m, which is on the precise side. Either:
+**Decision 1.** Play's line between approximate and precise is an area of 3 square kilometres. A gym
+workout's start position is read at low accuracy (`location-provider.ts`); a run's is its first GPS fix
+(`live-run.ts`). Both are sent rounded to 3 decimal places, a square of about 110 m, which is on the
+precise side. The rounding happens on the phone only. Either:
 - **declare Precise location** as above (collected, ephemeral, optional). True today, no code change,
   but the store listing's data section will mention precise location; or
-- **coarsen the position in code first** (round to about 0.03 degrees, a square of 3 km or more), then
-  declare only Approximate location. The cost: a workout started near a city border may count for the
+- **coarsen the position in code first** (round to about 0.03 degrees, a square of 3 km or more, in both
+  `location-provider.ts` and `live-run.ts`, ideally checked by the server too), then declare only
+  Approximate location. The cost: a workout started near a city border may count for the
   neighbouring city. A small mobile slice with tests.
 
 ### Personal info
@@ -71,7 +73,7 @@ reads the start position at low accuracy, but sends it rounded to 3 decimal plac
 | Name | Yes | No | Required | App functionality, Account management | Display name on the profile, shown on leaderboards and the athlete profile |
 | Email address | Yes | No | Required | Account management, App functionality | Sign-in and password reset |
 | User IDs | Yes | No | Required | Account management, App functionality | Account ID and username |
-| Other info | Yes | No | Required | App functionality, Account management | Date of birth (required, age 16+) and sex |
+| Other info | Yes | No | Required | App functionality, Account management | Date of birth (required, age 16+), and sex, which is optional (it can be left empty or set to "Rather not say"). Play takes one answer per type, and date of birth makes it required |
 
 ### Health and fitness
 
