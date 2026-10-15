@@ -46,6 +46,11 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Live WHOOP OAuth round trip (ADR-037)
 - [ ] Lawyer: privacy policy, terms, consent wording, wger CC-BY-SA question
 - [ ] Play Data safety form (precise location during runs; heart rate and calories from Health Connect)
+- [ ] Play Console **App content** forms, found missing 2026-10-15 (checked against Google's Play help pages that day):
+  - [ ] **Foreground service: location.** The run keeps tracking with the screen off (ADR-059), so Play asks for a description, what breaks if Android stops it, and a link to a video of a user starting a run. Google's preset reasons are location sharing, navigation and geofencing, none of them fitness, so type your own (for example "GPS tracking of a run the user starts and stops; stopping it loses the route"). The video can be an emulator screen recording; the OPPO A37f cannot run the app
+  - [ ] **Health Connect permissions.** A clear, specific reason for each one requested: heart rate and active calories, read during a run (R8, ADR-034). Google refuses vague reasons like "needed for app functionality". Needs the privacy-link fix below first
+  - [ ] **Account deletion web link** (Data safety section). It must let people ask for deletion without the app. Use https://getforjd.com/privacy#control (the "Ask us" email line covers deletion); a clearer "Delete your account" line there would lower the risk
+- [ ] Health Connect **privacy policy** link opens FORJD's policy (found 2026-10-15; today it opens the app's last screen, which Google's Health Connect guide does not allow). Engineering, [plan](health-connect-privacy-link-plan.md); merging needs a physical-phone run or an owner ADR exception (rule 16)
 - [x] Profile Support group (2026-10-08, from the approved design): **Privacy Policy** opens https://getforjd.com/privacy in the phone browser and **Contact Us** opens an email to support@getforjd.com; the sign-up line's "Privacy Policy" opens the same page. **About App** (in the design) is not built: it needs its content decided. The same URL and address go on the store listings (still to enter)
 - [ ] Business entity and D-U-N-S number
 
