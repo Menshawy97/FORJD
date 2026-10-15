@@ -147,7 +147,10 @@ const config: ExpoConfig = {
     'expo-sharing',
     // Phase 6F / ADR-034: the Android Health Connect adapter. `expo-build-properties`'
     // Android SDK levels are the versions the library's own install instructions call for.
-    'react-native-health-connect',
+    // The library's own config plugin is deliberately not listed: it only adds the "privacy policy"
+    // intent filter and alias, pointed at MainActivity. modules/forjd-health-rationale declares
+    // both instead, on an activity that opens the policy (health-connect-privacy-link-plan.md).
+    // The library's native code still links through its expo-module.config.json.
     [
       'expo-build-properties',
       {

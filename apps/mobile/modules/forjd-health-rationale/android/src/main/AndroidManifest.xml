@@ -1,0 +1,29 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- docs/product/health-connect-privacy-link-plan.md. Health Connect's "privacy policy" link must show
+         the policy given to Play Console. Up to Android 13 it sends this intent; the activity opens the
+         website policy in the browser and closes. -->
+    <activity
+      android:name="expo.modules.forjdhealthrationale.HealthPermissionsRationaleActivity"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:noHistory="true"
+      android:theme="@android:style/Theme.Translucent.NoTitleBar">
+      <intent-filter>
+        <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+      </intent-filter>
+    </activity>
+    <!-- Android 14 and later reach the same activity through this alias. Only the system (which holds
+         START_VIEW_PERMISSION_USAGE) can start it. -->
+    <activity-alias
+      android:name="expo.modules.forjdhealthrationale.ViewPermissionUsageActivity"
+      android:exported="true"
+      android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+      android:targetActivity="expo.modules.forjdhealthrationale.HealthPermissionsRationaleActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+        <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+      </intent-filter>
+    </activity-alias>
+  </application>
+</manifest>
