@@ -25,7 +25,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Weekly Forge share capture (Expo Go cannot do it)
 - [ ] Leaderboard snapshot on a Monday on production (re-run replaces, not duplicates)
 - [ ] Pixel check of Rank tab and athlete profile against their screenshots
-- [ ] `docker build` check that the city snapshot is in the image. **Partly done 2026-10-15:** `docker build -f apps/api/Dockerfile .` finished (about 90 minutes on this machine), and `nest build` puts `dist/cities/ingest/data/normalized-cities.json` in its output (2.5 MB, 34,124 rows, count matches), which the image copies whole. Not yet looked at inside the image: Docker Desktop's engine stopped answering right after the build. To finish: `docker run --rm --entrypoint ls forjd-api:check -la dist/cities/ingest/data`
+- [x] `docker build` check that the city snapshot is in the image (2026-10-15): `docker build -f apps/api/Dockerfile .` finished (about 90 minutes on this machine), and inside the image `dist/cities/ingest/data/normalized-cities.json` is present, 2,559,357 bytes (same as the local `nest build`, 34,124 rows), owned by `node`, the user the server runs as
 - [ ] Decide whether owed device tests are carried into the beta (this keeps Phase 8.5 open)
 
 ### Cloud and production
