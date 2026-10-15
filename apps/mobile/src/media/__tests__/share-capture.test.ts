@@ -58,6 +58,18 @@ describe('saveShareCardToPhotos', () => {
     expect(MediaLibrary.saveToLibraryAsync).toHaveBeenCalledWith('file:///tmp/card.jpg');
   });
 
+  it('asks only to add to the library, never to read it', async () => {
+    // The manifest no longer declares READ_MEDIA_* (Play's photo and video policy), and on
+    // Android 13+ a read request for an undeclared permission throws. Write-only asks for nothing
+    // there, and on iPhone it is the add-only prompt.
+    const capture = jest.fn().mockResolvedValue('file:///tmp/card.jpg');
+    (MediaLibrary.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+
+    await saveShareCardToPhotos(refWithCapture(capture));
+
+    expect(MediaLibrary.requestPermissionsAsync).toHaveBeenCalledWith(true);
+  });
+
   it('throws SharePermissionDeniedError and never captures when permission is refused', async () => {
     const capture = jest.fn();
     (MediaLibrary.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });

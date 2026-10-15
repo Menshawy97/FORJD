@@ -61,7 +61,18 @@ const config: ExpoConfig = {
     // plugin declares background location by default, so it is blocked. Fine location is allowed
     // (it was blocked before runs): the run screen needs a precise position while a run is open,
     // and the leaderboard path still asks for a coarse one.
-    blockedPermissions: ['android.permission.ACCESS_BACKGROUND_LOCATION'],
+    // FORJD never records audio and never reads the photo library (photos come through the system
+    // picker; share cards are only saved). expo-image-picker and expo-media-library add these by
+    // default, and Play's Photo and Video Permissions policy allows READ_MEDIA_IMAGES/VIDEO only when
+    // the picker cannot do the job, so they are removed however they arrive (ios-settings-gaps.md).
+    blockedPermissions: [
+      'android.permission.ACCESS_BACKGROUND_LOCATION',
+      'android.permission.RECORD_AUDIO',
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+      'android.permission.READ_MEDIA_AUDIO',
+      'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+    ],
     // R8 / ADR-034 / ADR-050: a run reads the watch's heart rate and active energy through Health
     // Connect, read-only, once the person allows it. Nothing else is declared and nothing is written.
     // Unverified on a physical phone (ADR-035), like the rest of the Health Connect adapter.
@@ -142,8 +153,14 @@ const config: ExpoConfig = {
       {
         savePhotosPermission: 'FORJD saves your share card to Photos when you tap Save Image.',
         isAccessMediaLocationEnabled: false,
+        // Saving needs no read permission (share-capture.ts asks write-only).
+        granularPermissions: [],
       },
     ],
+    // Applied automatically by prebuild even when unlisted, and by default it adds a microphone
+    // permission (Android RECORD_AUDIO, an iPhone prompt) for video FORJD never records. Listed here
+    // only to turn that off; the camera and photo strings stay in `ios.infoPlist` above.
+    ['expo-image-picker', { microphonePermission: false }],
     'expo-sharing',
     // Phase 6F / ADR-034: the Android Health Connect adapter. `expo-build-properties`'
     // Android SDK levels are the versions the library's own install instructions call for.

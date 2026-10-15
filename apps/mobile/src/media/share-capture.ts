@@ -48,7 +48,10 @@ async function capture(ref: RefObject<ViewShotRef | null>): Promise<string> {
 
 /** Save Image. Captures the card, then writes it to the device's photo library. */
 export async function saveShareCardToPhotos(ref: RefObject<ViewShotRef | null>): Promise<void> {
-  const permission = await MediaLibrary.requestPermissionsAsync();
+  // Write-only: saving needs no read access. On Android 13+ this asks for nothing (the manifest
+  // declares no READ_MEDIA_* permission, Play's photo and video policy); on iPhone it is the
+  // add-only prompt.
+  const permission = await MediaLibrary.requestPermissionsAsync(true);
   if (!permission.granted) {
     throw new SharePermissionDeniedError();
   }
