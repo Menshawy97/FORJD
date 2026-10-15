@@ -45,7 +45,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] Google OAuth consent screen and Supabase Google provider; live Google round trip
 - [ ] Live WHOOP OAuth round trip (ADR-037)
 - [ ] Lawyer: privacy policy, terms, consent wording, wger CC-BY-SA question
-- [ ] Play Data safety form (precise location during runs; heart rate and calories from Health Connect)
+- [ ] Play Data safety form: copy the answers from [play-data-safety-answers.md](play-data-safety-answers.md) (2026-10-15, checked against the code, Google Maps SDK included). Two decisions first: whether the workout start position (sent rounded to about 110 m) is declared as precise location or coarsened in code; and whether the lawyer treats OpenAI reading scan photos as sharing
 - [ ] Play Console **App content** forms, found missing 2026-10-15 (checked against Google's Play help pages that day):
   - [ ] **Foreground service: location.** The run keeps tracking with the screen off (ADR-059), so Play asks for a description, what breaks if Android stops it, and a link to a video of a user starting a run. Google's preset reasons are location sharing, navigation and geofencing, none of them fitness, so type your own (for example "GPS tracking of a run the user starts and stops; stopping it loses the route"). The video can be an emulator screen recording; the OPPO A37f cannot run the app
   - [ ] **Health Connect permissions.** A clear, specific reason for each one requested: heart rate and active calories, read during a run (R8, ADR-034). Google refuses vague reasons like "needed for app functionality". Needs the privacy-link fix below first
