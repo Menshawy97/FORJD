@@ -5,8 +5,8 @@ under **Policy and programs, App content, Data safety**. The definitions below a
 Play's help page "Provide information for Google Play's Data safety section".
 
 The facts behind each answer are in [data-inventory.md](../architecture/data-inventory.md). If a
-feature changes what leaves the phone, update both files in the same PR. Two answers need a decision
-first (marked **Decision**), and the lawyer review should see this sheet with the privacy policy.
+feature changes what leaves the phone, update both files in the same PR. Decision 1 is settled (owner, 2026-10-15);
+Decision 2 waits for the lawyer, who should see this sheet with the privacy policy.
 
 ## Words Play uses
 
@@ -50,12 +50,13 @@ the purposes. "Shared" is **No** for every row (see above).
 | Type | Collected | Ephemeral | Required | Purposes | What it is |
 |---|---|---|---|---|---|
 | Approximate location | Yes | No | Optional | App functionality | The city on the profile and on each workout, for city leaderboards. Only if the person turns on location for leaderboards |
-| Precise location | **Decision 1** | Yes | Optional | App functionality | The workout start position the phone sends to find the city (rounded to about 110 m, `COARSE_DECIMALS` in `integrations/location/location-provider.ts`; the server resolves it to a city and never stores it) |
+| Precise location | Yes | Yes | Optional | App functionality | The workout start position the phone sends to find the city (rounded to about 110 m, `COARSE_DECIMALS` in `integrations/location/location-provider.ts`; the server resolves it to a city and never stores it) |
 
 Not collected: the run route. GPS points stay on the phone (ADR-049) and are never uploaded, even with
 the screen off (ADR-059). Play still needs the separate foreground-service declaration (checklist).
 
-**Decision 1.** Play's line between approximate and precise is an area of 3 square kilometres. A gym
+**Decision 1, settled 2026-10-15 (owner): leave the code as it is and declare Precise location,
+processed ephemerally, optional.** The reasoning, kept for the record: Play's line between approximate and precise is an area of 3 square kilometres. A gym
 workout's start position is read at low accuracy (`location-provider.ts`); a run's is its first GPS fix
 (`live-run.ts`). Both are sent rounded to 3 decimal places, a square of about 110 m, which is on the
 precise side. The rounding happens on the phone only. Either:
@@ -132,7 +133,9 @@ is drawn on the phone and not sent.
 
 ## Before you submit
 
-- Settle Decision 1 and Decision 2.
+- Settle Decision 2 with the lawyer (Decision 1 is settled: precise location, ephemeral, optional).
+- If the workout start position is ever rounded more coarsely (3 km or more), change the Precise
+  location row to **No**.
 - The Health Connect permission reasons and the foreground-service (location) declaration are separate
   App content forms; see [remaining-checklist.md](remaining-checklist.md).
 - Phase 10 (RevenueCat subscriptions) will add **Financial info: purchase history** and a new SDK.
