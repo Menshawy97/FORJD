@@ -1,7 +1,36 @@
 # Health Connect privacy link opens the privacy policy (plan)
 
-**Status:** planned 2026-10-15, not started. Owner approved the approach ("open the website policy
-in the browser") on 2026-10-15.
+**Status:** built 2026-10-15 and checked on the emulator; the physical-phone run is owed (ADR-067).
+Owner approved the approach ("open the website policy in the browser") on 2026-10-15.
+
+**Result (2026-10-15):**
+- Tests: `config/__tests__/health-rationale-manifest.test.ts`, 5 tests, failed first (module
+  missing, then the plugin still listed), then passed. Whole mobile suite, typecheck, lint and the
+  conformance check pass (10 screen tests timed out while a Gradle build and an EAS upload loaded
+  the laptop; all passed on a re-run, the last 4 with `--runInBand`).
+- Step one: `expo-modules-autolinking resolve` lists `forjd-health-rationale` with no Expo module
+  class, so the empty `modules` list works.
+- A local `gradlew :app:processDebugMainManifest` fails here while configuring `:expo`
+  ("SoftwareComponent with name 'release' not found"), on top of the known local build problems
+  (phase-12b-plan.md), so the check used EAS dev build `001a2aac`. It was started from a clean
+  clone, because uploading from the repo failed reading a `.claude/worktrees` folder.
+- Emulator (`forjd_pixel7_api34`, Android 14), installed over the old build:
+  - Before, on the old build, `dumpsys package` sent both intents to `MainActivity` and
+    `.ViewPermissionUsageActivity`, which pointed at it. After, both go to
+    `expo.modules.forjdhealthrationale.HealthPermissionsRationaleActivity` and its alias, and none to
+    `MainActivity`.
+  - Android 14 route: in Health Connect, FORJD's permissions screen, **Read privacy policy** started
+    the alias (from Health Connect), which sent `VIEW https://getforjd.com/...` to Chrome. Only Chrome's
+    task stayed open.
+  - Android 13 route: the same, with the intent sent by `adb shell am start`.
+  - No crash in the log. Chrome showed its own first-run screen (it was never set up on this
+    emulator, and setting it up means accepting Google's terms), so the page itself was not looked
+    at; the log shows the address.
+- Not walked here: asking for the permissions from inside the app (needs Metro and a sign-in). The
+  library's permission code is untouched (the reviewer checked it links through its own
+  `expo-module.config.json`, not the removed plugin). It is part of the owed phone walk.
+- Code review: approved, no CRITICAL, HIGH or MEDIUM findings. Two LOW notes taken (the test now pins
+  the no-flash settings, `finish()`, and the alias coming after its target).
 
 ## The problem
 
