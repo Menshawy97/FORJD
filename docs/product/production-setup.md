@@ -1,8 +1,9 @@
 # Setting up production
 
-Status: **provisioned, migrated and deployed** (2026-09-22): production is on migration `0022` (the run
-tables), `/api/v1/health` answers `database: up`, and the exercise/nutrition catalogues and programs are
-seeded. The steps below are kept as the record of how it was done. Production is the second of the two
+Status: **provisioned, migrated and deployed.** Last production deploy 2026-10-08 (`5f26c4d`, migration
+`0037`, the newest on `main`). Checked 2026-10-15: `/api/v1/health` answers `database: up`. The API code
+on `main` has moved on since then (#390 database connection limits, #401 the Home bell's notifications
+list), so the next production deploy (owner) brings those over; no new migration is waiting. The steps below are kept as the record of how it was done. Production is the second of the two
 free Supabase projects (the free tier allows two; `forjd-dev` serves staging). Everything below is the
 user's to do: each step creates or restores infrastructure or handles a credential, which the assistant is
 not permitted to do here (the roadmap's Phase 6 close says the same about Secret Manager writes).
@@ -17,8 +18,14 @@ not permitted to do here (the roadmap's Phase 6 close says the same about Secret
   loaders and program seed ran, and `/api/v1/health` confirmed `database: up` immediately after. Future
   sessions: production tracks whatever migration `main` is on; check `apps/api/drizzle/meta/_journal.json`'s
   latest entry against the deploy's `db:migrate` output before assuming it's current.
+- **2026-10-08:** `deploy-api.yml -f target=production` (run
+  [37860930248](https://github.com/Menshawy97/FORJD/actions/runs/37860930248), `5f26c4d`) brought production
+  to `0037`, deny-all row-level security on every table (ADR-066, #386).
 
 ## Known gap: exercise-media mirroring fails on production
+
+*Last observed on the 2026-09-22 deploy; not re-checked since the 2026-10-08 one (row-level security
+changed in between).*
 
 The same run's **"Mirror exercise media"** step failed (job still reports success — that step's failure is
 not fatal to the deploy):
@@ -40,14 +47,13 @@ or just re-check which key was pasted into the secret in step 3 below.
 images/animations are missing on production until this is fixed. Loader idempotency means a re-run of this
 step later will fill in only what's still missing, once the RLS or key issue is resolved.
 
-## What is wrong today
+## Past problem, now fixed
 
-- The Supabase project `forjd-prod` (ref `lzhwyvrtkmgtjruvjins`, eu-west-1) exists but is **paused**
-  (`INACTIVE`). Free projects pause after a week of inactivity, and can only be restored for a limited
-  window after that.
-- The secret `forjd-production-database-url` does not resolve to a host (`getaddrinfo EAI_AGAIN base`),
-  so both `deploy-api.yml -f target=production` (fails at `drizzle-kit migrate`) and the production job of
-  `leaderboard-snapshot.yml` fail.
+An earlier note here said the `forjd-prod` Supabase project was **paused** and that the secret
+`forjd-production-database-url` did not resolve (`getaddrinfo EAI_AGAIN base`), so production deploys
+failed at `drizzle-kit migrate`. That is no longer true: the 2026-10-08 production deploy migrated
+successfully, and on 2026-10-15 `/api/v1/health` answered `database: up`. If it happens again (free
+projects pause after a week without use), the steps below are how to recover.
 
 ## Steps, in order
 

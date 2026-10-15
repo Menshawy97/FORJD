@@ -16,6 +16,8 @@ feature changes what is collected, update this file in the same PR.
 | Sentry (server only) | Error type and stack frames only, no text; not sent at all for a user with crash diagnostics off; user ID kept only when it is on | The mobile app has no Sentry SDK. |
 | NVIDIA | Nothing. A provider class exists but is not wired up. | Development only. |
 | Expo push service, then Google (Android) or Apple (iPhone) push | The device push token, the phone's platform, and the text of each PR or leaderboard notification (an exercise name or a city, a kind and an id; never a health value) | Only when a PR or leaderboard switch is on and the phone allowed notifications (Phase 12F, ADR-060, ADR-061). |
+| Google Maps SDK for Android (the run map, ADR-050) | Its own request metadata (device model, OS, SDK version), crash data, the IP address and a pseudonymous SDK identifier, and map tile requests for the area on screen; map panning and zooming depending on use (Google's "Play data disclosure" page for the SDK). Never the route: it is drawn on the phone | Whenever a map is shown. Added 2026-10-15 with [play-data-safety-answers.md](../product/play-data-safety-answers.md) |
+| Google Cloud (Cloud Run request log) | Every request's address, including food search words (`GET /api/v1/nutrition/foods`, logged by pino in `app.module.ts`); never the authorization header | Always. Kept for Cloud Logging's retention period |
 | Analytics and ad services | Nothing. None are integrated. | The phone's own reminders and notices (`expo-notifications` and the small local Android notice module, ADR-063: the rest-complete alert, the run notice, the workout notice, the workout reminders and weekly recap from 12E) are scheduled and shown on the phone and are never sent. |
 
 Health data is never sent to analytics or advertising services (CLAUDE.md rule 15).
@@ -28,7 +30,7 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Session tokens | Sign-in | Device SecureStore (Keychain/Keystore) | Yes (OS) | n/a | Cleared on device |
 | Name, username, date of birth (required, age 16+), sex, height, units, goals | Onboarding, edit profile | `profiles` | No | Yes | Yes (cascade) |
 | City (coarse text only, no coordinates) | Location screen | `profiles.city`, `workout_sessions.city`, `workout_sessions.city_slug` | No | Yes | Yes |
-| Approximate start position of a workout (about 110 m), only if location for leaderboards is on | Workout start (coarse, foreground) | **Not stored on the server.** Sent to our API, resolved to a city, discarded. On the device only, in the recovery snapshot and upload queue until the workout uploads | n/a | No | Cleared on device with local data |
+| Start position of a workout, rounded to about 110 m (finer than Play's 3 km² "approximate" line, see Decision 1 in [play-data-safety-answers.md](../product/play-data-safety-answers.md)), only if location for leaderboards is on | Workout start (coarse, foreground) | **Not stored on the server.** Sent to our API, resolved to a city, discarded. On the device only, in the recovery snapshot and upload queue until the workout uploads | n/a | No | Cleared on device with local data |
 | Run route (precise GPS points), only while a run is open (ADR-049, ADR-059) | Run screen, through a location foreground service that keeps reading with the screen off; never background location (ADR-059) | **Device only**, in the local SQLite database until the run is discarded or the app data is cleared. Never uploaded | n/a | No | Cleared on device with local data |
 | Run summary: distance, moving time, elevation gain, splits (ADR-050) | Run screen | `workout_run_summaries`, `workout_run_splits` | No | Yes (added with R2) | Yes (cascade) |
 | Run heart rate and calories, from a watch or estimated (ADR-050) | Run screen, Health Connect | Same tables, **only with health-data consent**; dropped by the server otherwise | No | Yes (added with R2) | Yes (cascade) |
@@ -57,7 +59,10 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 
 ## Draft Play "Data safety" answers
 
-Derived from the table. Confirm against the final build and the lawyer's privacy policy.
+**Superseded 2026-10-15 by the form-ready sheet, [play-data-safety-answers.md](../product/play-data-safety-answers.md),**
+which follows Play Console's questions one by one and adds what this summary missed: the Google Maps
+SDK, food search words in the server log, and the start position's precision. The notes below are kept
+as the history of that summary.
 
 - **Data collected:** personal info (name, email, date of birth), health and fitness info (health
   metrics, workouts, nutrition, body composition), photos (InBody scans, avatar), approximate
