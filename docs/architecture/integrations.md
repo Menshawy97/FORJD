@@ -35,6 +35,13 @@ React Native screen → HealthProvider interface → HealthConnectProvider →
 react-native-health-connect → Android Health Connect
 ```
 
+The **privacy policy** link on Health Connect's permission screen goes the other way: Health Connect
+starts an app activity (`androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE` up to Android 13, the
+`VIEW_PERMISSION_USAGE` alias from 14). Both are declared in `apps/mobile/modules/forjd-health-rationale`,
+on an activity that opens getforjd.com/privacy in the browser and closes. The library's own config
+plugin is not used, because it pointed both at `MainActivity`
+([plan](../product/health-connect-privacy-link-plan.md), ADR-067).
+
 Apple HealthKit (iOS) is a **separate system with a separate library**, decided in a
 separate ADR when Phase 11 (the iOS track, ADR-007) starts — ADR-034 is Android-only and
 does not presume that choice.
