@@ -35,6 +35,14 @@ describe('Health Connect privacy link', () => {
     expect(attr(activity, 'name')).toBe(ACTIVITY_NAME);
     expect(attr(activity, 'exported')).toBe('true');
     expect(activity).toContain('android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"');
+    // What keeps FORJD from flashing on screen or staying in the back stack behind the browser.
+    expect(attr(activity, 'noHistory')).toBe('true');
+    expect(attr(activity, 'theme')).toBe('@android:style/Theme.Translucent.NoTitleBar');
+    expect(kotlin).toMatch(/finish\(\)/);
+  });
+
+  it('declares the alias after its target activity, as Android requires', () => {
+    expect(manifest.indexOf('<activity-alias')).toBeGreaterThan(manifest.search(/<activity\s/));
   });
 
   it('declares the Android 14 alias, guarded and pointing at that activity', () => {
