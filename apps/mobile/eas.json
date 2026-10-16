@@ -20,6 +20,12 @@
         "GOOGLE_WEB_CLIENT_ID": "772363715082-v5gvnt94vc2t9948aq6m0aesmppe8qs0.apps.googleusercontent.com"
       }
     },
+    "simulator": {
+      "extends": "staging",
+      "ios": {
+        "simulator": true
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",
