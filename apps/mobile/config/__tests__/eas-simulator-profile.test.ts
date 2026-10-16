@@ -37,6 +37,29 @@ describe('EAS build hook', () => {
   });
 });
 
+// The third simulator build failed bundling: babel.config.js names babel-preset-expo, which only
+// reached the app through pnpm's hoisting of expo's own copy. Babel looks for presets next to the
+// config, so each one it names must be the app's own dependency.
+describe('Babel presets', () => {
+  const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  const babelConfig = readFileSync(join(__dirname, '../../babel.config.js'), 'utf8');
+  const presetPackages = ['babel-preset-expo', 'nativewind'];
+
+  it('names only the presets this test knows about', () => {
+    const named = [...babelConfig.matchAll(/['"]([a-z@][\w@/.-]*)['"]/g)]
+      .map(([, name]) => name.split('/')[0])
+      .filter((name) => name !== 'nativewind' || babelConfig.includes(`'${name}/babel'`));
+    expect([...new Set(named)].sort()).toEqual([...presetPackages].sort());
+  });
+
+  it.each(presetPackages)('lists %s as a dependency of the app', (name) => {
+    expect({ ...pkg.dependencies, ...pkg.devDependencies }).toHaveProperty([name]);
+  });
+});
+
 describe('EAS simulator profile', () => {
   const simulator = eas.build.simulator;
 
