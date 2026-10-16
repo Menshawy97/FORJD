@@ -25,9 +25,11 @@ describe('bottom-sheet keyboard avoidance', () => {
   it('every KeyboardAvoidingView uses the shared behaviour, none is iPhone-only', () => {
     const offenders = sourceFiles(SRC).filter((file) => {
       const text = readFileSync(file, 'utf8');
-      if (!text.includes('<KeyboardAvoidingView')) return false;
-      const behaviors = text.match(/behavior=\{[^}]*\}/g) ?? [];
-      return behaviors.some((b) => b !== 'behavior={SHEET_KEYBOARD_BEHAVIOR}');
+      const views = text.match(/<KeyboardAvoidingView\b/g)?.length ?? 0;
+      if (views === 0) return false;
+      // Counted, so a view with no `behavior` at all (the original Android bug) is caught too.
+      const shared = text.match(/behavior=\{SHEET_KEYBOARD_BEHAVIOR\}/g)?.length ?? 0;
+      return shared !== views;
     });
     expect(offenders).toEqual([]);
   });

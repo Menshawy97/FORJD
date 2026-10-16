@@ -13,6 +13,7 @@ import { act, cleanup, fireEvent, render as rtlRender, waitFor, within } from '@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 import type { ReactElement } from 'react';
+import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const mockPush = jest.fn();
@@ -135,6 +136,24 @@ describe('Food search', () => {
     await render(<FoodSearchScreen />);
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/nutrition'));
+  });
+
+  it('keeps the custom-food sheet on screen above the keyboard: capped height, scrolling fields', async () => {
+    // Seen on the emulator 2026-10-16: with the keyboard open the uncapped sheet pushed its title
+    // under the status bar. Same pattern as the goals sheet (approved 2026-09-25): the card is capped
+    // at 85% of the screen, the title and buttons stay put, and the fields scroll in between.
+    (searchFoods as jest.Mock).mockResolvedValue({ items: [] });
+    const { getByLabelText, findByText, getByTestId } = await render(<FoodSearchScreen />);
+
+    fireEvent.press(getByLabelText('Add custom food'));
+    await findByText('Add custom food');
+
+    expect(StyleSheet.flatten(getByTestId('custom-food-card').props.style)).toMatchObject({ maxHeight: '85%' });
+    const fields = getByTestId('custom-food-fields');
+    expect(fields.props.keyboardShouldPersistTaps).toBe('handled');
+    expect(within(fields).getByPlaceholderText('Food name')).toBeTruthy();
+    expect(within(fields).queryByText('Add custom food')).toBeNull();
+    expect(within(fields).queryByText('Add Food')).toBeNull();
   });
 
   it('opens the custom-food sheet, requires name and category, and saves it', async () => {
