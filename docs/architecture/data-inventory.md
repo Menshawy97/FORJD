@@ -57,6 +57,12 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Audit trail | Auth and consent events | `audit_logs` | No | No | Rows kept with the user ID nulled; reset-request rows holding an email are scrubbed from 8B onward |
 | On-device preferences and catalogue cache | Settings, library | AsyncStorage `forjd.*`, SQLite `forjd-exercise-catalogue.db` | No | n/a | Cleared on device from 8B onward |
 
+## App Store privacy labels
+
+The iPhone equivalent, mapped from the Play sheet onto Apple's categories, is
+[app-store-privacy-labels.md](../product/app-store-privacy-labels.md) (2026-10-16). A change to what leaves the
+phone updates this file and both store sheets together.
+
 ## Draft Play "Data safety" answers
 
 **Superseded 2026-10-15 by the form-ready sheet, [play-data-safety-answers.md](../product/play-data-safety-answers.md),**
