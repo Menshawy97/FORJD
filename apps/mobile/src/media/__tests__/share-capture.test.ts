@@ -2,7 +2,15 @@
 // `expo-media-library`/`expo-sharing` crash outright under Jest), this file is the seam itself,
 // so it mocks the two native packages directly -- the same split ADR-022's SQLite seam and
 // ADR-026's notification seam already established.
+// From Expo SDK 57 the package's main entry keeps `saveToLibraryAsync` and friends only as stubs
+// that throw ("This method will throw in runtime"); the working functions live in
+// `expo-media-library/legacy`. The main entry is mocked as those stubs, so a regression to it fails
+// here instead of silently on a phone (found on the emulator, 2026-10-16).
 jest.mock('expo-media-library', () => ({
+  requestPermissionsAsync: jest.fn(),
+  saveToLibraryAsync: jest.fn(() => Promise.reject(new Error('legacy stub: use expo-media-library/legacy'))),
+}));
+jest.mock('expo-media-library/legacy', () => ({
   requestPermissionsAsync: jest.fn(),
   saveToLibraryAsync: jest.fn(),
 }));
@@ -19,7 +27,7 @@ jest.mock('expo-constants', () => ({
 }));
 
 import Constants, { AppOwnership } from 'expo-constants';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import type { RefObject } from 'react';
 import type { ViewShotRef } from 'react-native-view-shot';

@@ -1,5 +1,7 @@
 import Constants, { AppOwnership } from 'expo-constants';
-import * as MediaLibrary from 'expo-media-library';
+// The legacy entry: from Expo SDK 57 the main entry keeps these functions only as stubs that throw,
+// which broke Save Image on every share card (found on the emulator, 2026-10-16).
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import type { RefObject } from 'react';
 import type { ViewShotRef } from 'react-native-view-shot';
