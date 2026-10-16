@@ -4,9 +4,10 @@ import {
   type MealSlot,
 } from '@forjd/domain';
 import type { MacroGoalSuggestionResponse, SavedMealResponse, SetMacroGoalsRequest } from '@forjd/contracts';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { MealSlotChip } from '@/components/meal-slot-chip';
+import { SHEET_KEYBOARD_BEHAVIOR } from '@/components/sheet-keyboard';
 import { colors } from '@/theme/tokens';
 
 import { SuggestionCard } from './suggestion-card';
@@ -76,7 +77,7 @@ export function NutritionSheets({
     <>
       {saveMealSlot ? (
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={SHEET_KEYBOARD_BEHAVIOR}
           className="absolute inset-0 z-20 items-end justify-end"
           style={{ backgroundColor: colors.scrim }}>
           <View
@@ -162,7 +163,7 @@ export function NutritionSheets({
 
       {editGoalsOpen ? (
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={SHEET_KEYBOARD_BEHAVIOR}
           className="absolute inset-0 z-20 items-end justify-end"
           style={{ backgroundColor: colors.scrim }}>
           {/* Capped at 85% of the screen with a fixed title and buttons, so the card's (i) details

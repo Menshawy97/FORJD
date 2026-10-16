@@ -8,7 +8,7 @@ import {
 import { mealSlotSchema, type FoodResponse } from '@forjd/contracts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { createCustomFood, searchFoods } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
@@ -16,6 +16,7 @@ import { FilterChip } from '@/components/filter-chip';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
+import { SHEET_KEYBOARD_BEHAVIOR } from '@/components/sheet-keyboard';
 import { Toast, useToast } from '@/components/toast';
 import { colors } from '@/theme/tokens';
 
@@ -262,13 +263,23 @@ export default function FoodSearchScreen() {
       {customFoodOpen ? (
         <KeyboardAvoidingView
           testID="custom-food-sheet"
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={SHEET_KEYBOARD_BEHAVIOR}
           className="absolute inset-0 z-20 items-end justify-end"
           style={{ backgroundColor: colors.scrim }}>
+          {/* Capped at 85% of the screen with a fixed title and buttons, so the fields scroll in the
+              middle instead of pushing the title off the top above the keyboard (the goals sheet's
+              approved pattern; seen on the emulator 2026-10-16). */}
           <View
+            testID="custom-food-card"
             className="w-full rounded-t-[18px] border-t border-border bg-surface px-[22px] pb-[24px] pt-[20px]"
-            style={{ gap: 12 }}>
+            style={{ gap: 12, maxHeight: '85%' }}>
             <Text className="font-archivo text-[18px] font-bold text-text">Add custom food</Text>
+            <ScrollView
+              testID="custom-food-fields"
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ gap: 12, paddingBottom: 4 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled">
             <TextInput
               value={customFood.name}
               onChangeText={(value) => setCustomFood((current) => ({ ...current, name: value }))}
@@ -312,6 +323,7 @@ export default function FoodSearchScreen() {
                 </View>
               </View>
             ))}
+            </ScrollView>
             <View className="flex-row" style={{ gap: 9, marginTop: 6 }}>
               <Pressable
                 accessibilityRole="button"
