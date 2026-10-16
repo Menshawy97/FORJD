@@ -217,6 +217,17 @@ if [ -d apps/mobile/src ]; then
   fi
 fi
 
+# ADR-068 / ADR-069 / CLAUDE.md rule 17: Apple Health's library and its Nitro peer are the iPhone
+# counterpart of react-native-health-connect, owned by the same folder for the same reasons; the
+# provider is loaded lazily there so a build without HealthKit (switched off, Expo Go) never loads it.
+if [ -d apps/mobile/src ]; then
+  hits=$(grep -rln --include='*.ts' --include='*.tsx' -E "['\"](@kingstinct/react-native-healthkit|@react-native-healthkit/core|react-native-nitro-modules)['\"/]" apps/mobile/src \
+    | grep -v '^apps/mobile/src/integrations/health/' || true)
+  if [ -n "$hits" ]; then
+    report "the Apple Health library (or its Nitro peer) imported outside apps/mobile/src/integrations/health/" "$hits"
+  fi
+fi
+
 # ADR-041 / CLAUDE.md rule 4: the native Google and Apple sign-in SDKs are implementation details
 # behind the adapters in apps/mobile/src/integrations/auth/. Same directory-prefix shape as the
 # react-native-health-connect rule above, and no test exemption for the same reason: the adapters

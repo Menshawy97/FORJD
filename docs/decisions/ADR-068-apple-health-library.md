@@ -63,7 +63,9 @@ Expo SDK 57 specifically, so compatibility is a check to do (below), not a fact 
 
 1. **Pin the versions.** Its release notes show breaks tied to `react-native-nitro-modules` versions
    (a fix for 0.33+, and a release that capped the peer below 33). Install the pair it names as
-   supported at that time, and record both versions here.
+   supported at that time, and record both versions here. **Installed 2026-10-17:**
+   `@kingstinct/react-native-healthkit` 16.2.0 (peer `react-native-nitro-modules >= 0.35`) with
+   `react-native-nitro-modules` 0.37.1, both pinned exactly.
 2. **Compile check before the Apple account exists.** An EAS **iOS simulator** build needs no Apple
    signing, so it shows whether the library compiles with Expo SDK 57 and React Native 0.86. The
    simulator itself cannot run on Windows, so this proves the build, not the behaviour.

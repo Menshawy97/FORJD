@@ -9,6 +9,10 @@ if (apiBaseUrlProblem) {
   throw new Error(`Production build refused: ${apiBaseUrlProblem}. Set it in eas.json's production profile.`);
 }
 
+// ADR-069: Apple Health is merged switched off. Only a build with APPLE_HEALTH_ENABLED=true (none in
+// eas.json until the iPhone walk) declares HealthKit, so a build that does not use it never asks for it.
+const appleHealthEnabled = process.env.APPLE_HEALTH_ENABLED === 'true';
+
 // Fresh bundle identifier / package name (CLAUDE.md pivot notes, ADR-013): no existing App
 // Store / Play Store registration to preserve, so these are placeholders, not a migration
 // from a real listing.
@@ -167,6 +171,22 @@ const config: ExpoConfig = {
     // automatically: without it the iPhone build lacks the `processing` background mode and the task
     // identifier iOS requires before it schedules the task. It edits only the iPhone Info.plist.
     'expo-background-task',
+    // ADR-068 / ADR-069: Apple Health, read only, and only when switched on. The share text is what the
+    // iPhone permission sheet shows; no update (write) text and no background delivery, since FORJD
+    // reads only, while the app is open. Draft wording, for the owner to approve before the switch.
+    ...(appleHealthEnabled
+      ? [
+          [
+            '@kingstinct/react-native-healthkit',
+            {
+              NSHealthShareUsageDescription:
+                'FORJD reads your heart rate and active energy during a run, and your resting heart rate, heart rate variability, sleep, respiratory rate, steps, weight and VO2 max for your readiness and progress. FORJD never writes to Apple Health.',
+              NSHealthUpdateUsageDescription: false,
+              background: false,
+            },
+          ] as [string, Record<string, unknown>],
+        ]
+      : []),
     // Phase 6F / ADR-034: the Android Health Connect adapter. `expo-build-properties`'
     // Android SDK levels are the versions the library's own install instructions call for.
     // The library's own config plugin is deliberately not listed: it only adds the "privacy policy"
@@ -201,6 +221,8 @@ const config: ExpoConfig = {
     // Sign in with Apple is built but stays off until a paid Apple Developer account exists;
     // flipping this to true (plus adding the entitlement plugin) turns it on with no code change.
     appleSignInEnabled: process.env.APPLE_SIGN_IN_ENABLED === 'true',
+    // ADR-069. Whether this build may use Apple Health; getDeviceHealthProvider() reads it on iPhone.
+    appleHealthEnabled,
     // ADR-050. Only whether a Google Maps key was configured, never the key: `extra` ships as
     // readable JSON, and the key already lives in the Android manifest via the plugin above.
     hasMapsKey: Boolean(process.env.GOOGLE_MAPS_ANDROID_API_KEY),

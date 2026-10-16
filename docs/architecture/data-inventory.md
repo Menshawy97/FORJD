@@ -42,7 +42,7 @@ Health data is never sent to analytics or advertising services (CLAUDE.md rule 1
 | Weekly Forge summaries seen | Week-close summary screen | `forge_week_acks` | No | Yes (`weeklyForge.acknowledgedWeeks`) | Yes (cascade) |
 | Avatar image | Profile photo | Storage bucket `avatars` (public URL) | Storage default | URL only | Yes (explicit delete) |
 | InBody photo and body composition, plus the height and age on each scan | InBody scan, manual entry | Bucket `inbody` (private), `body_scans` (with `height_cm`, `age_years`), `body_measurements` | Storage default | Measurements, height and age yes; photo file no | Yes |
-| Health metrics (heart rate, HRV, sleep, steps, active energy, weight, VO2 max, respiratory rate and others), only after health-data consent | Health Connect, WHOOP | `health_observations`, `health_connections` | No | Observations yes; connection rows added in 8C | Yes |
+| Health metrics (heart rate, HRV, sleep, steps, active energy, weight, VO2 max, respiratory rate and others), only after health-data consent | Health Connect, WHOOP; Apple Health on iPhone once switched on (ADR-069; off in every build today) | `health_observations`, `health_connections` | No | Observations yes; connection rows added in 8C | Yes |
 | WHOOP tokens | WHOOP connect | `external_connections` | Yes, AES-256-GCM (ADR-036) | Status only | Revoked at WHOOP, then deleted |
 | Workouts (templates, sessions, sets) | Train, live session | `workout_*` tables | No | Yes | Yes |
 | Offline workout log and queue | Live session | Device SQLite `forjd-workout-sessions.db` | No | n/a | Cleared on device from 8B onward |
