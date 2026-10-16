@@ -228,6 +228,14 @@ describe('RouteMap', () => {
       );
     });
 
+    it('gets none of the Apple-only props', async () => {
+      await render(<RouteMap points={route} height={206} caption="route" />);
+
+      const props = mockMapView.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(props).not.toHaveProperty('userInterfaceStyle');
+      expect(props).not.toHaveProperty('showsPointsOfInterests');
+    });
+
     it('passes a dark style so the map sits in the app, not on top of it', async () => {
       await render(<RouteMap points={route} height={206} caption="route" />);
 

@@ -84,11 +84,14 @@ The owner chose Apple Maps for the iPhone run map over an iOS Google Maps key
 - **Apple's dark appearance** (`userInterfaceStyle: 'dark'`), not `DARK_MAP_STYLE`, which is Google-only.
   Points of interest are hidden; gestures, compass, traffic and the user dot are off, as on Android.
 - **Apple's Maps logo and Legal link stay visible** (Apple's terms); nothing pads or moves them.
-- **The same privacy trade-off as Google:** the route is drawn on the phone, so Apple learns only the
-  area on screen through its tile requests, never the route. Apple Maps is an Apple framework, not a
+- **The same privacy trade-off as Google:** the route is drawn on the phone, so Apple's tile requests
+  carry the area on screen, the phone's IP address and Apple's own request metadata, never the route. Apple Maps is an Apple framework, not a
   third-party SDK, so it adds no row to the App Store privacy labels.
 - **Same fallback:** without the native module the striped background is drawn; a run never depends
   on the map (rule 6). Android is unchanged: Google with a key, stripes without.
+
+To check on the first iPhone walk: the map's region follows every GPS fix (as on Android); watch for
+flicker or a CPU rise on MapKit, and if so, follow the route less often.
 
 Proven by `route-map.test.tsx` (iPhone tests) and an EAS iOS simulator build; not yet seen drawing on
 an iPhone, which needs the Apple Developer account.

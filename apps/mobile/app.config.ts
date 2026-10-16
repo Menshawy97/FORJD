@@ -131,7 +131,8 @@ const config: ExpoConfig = {
     // (restricted to this app's package and signing SHA-1 in the Google Cloud console, so it is
     // not a secret), supplied as the EAS environment variable GOOGLE_MAPS_ANDROID_API_KEY and
     // never committed. Without one the plugin is left out and the route map falls back to the
-    // striped background, so the app builds either way. No iOS key: iOS ships later (ADR-007).
+    // striped background, so the app builds either way. No iOS key is needed: iPhone draws Apple Maps
+    // (MapKit), which takes none (ADR-050 amendment).
     ...(process.env.GOOGLE_MAPS_ANDROID_API_KEY
       ? [['react-native-maps', { androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY }] as [string, Record<string, unknown>]]
       : []),
