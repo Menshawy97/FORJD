@@ -50,6 +50,12 @@ before anyone can use it.
 
 - The provider can drift from HealthKit's real behaviour until the iPhone run; the contract tests and
   the "only read what was asked for" test (ADR-068, check 4) limit how far.
+- Two mapping differences from Health Connect, documented in `apple-health-sample-mapping.ts`: HRV is
+  SDNN (Health Connect: RMSSD), and `sleep_duration` is time asleep per segment (Health Connect: the whole
+  session). Each reading keeps its source (rule 10), so readiness baselines must not mix sources.
+- HealthKit hides read refusals, so `requestPermissions` reports every supported metric as granted once
+  the sheet has been shown; a refusal shows up as no data. The iPhone walk checks that a run copes.
+- The permission text in `app.config.ts` is a draft until the owner approves it, before the switch.
 - The library is installed for both platforms; on Android only its JavaScript is bundled, unused.
 - Owed before the flag is turned on: the iPhone walk above, tracked in
   [remaining-checklist.md](../product/remaining-checklist.md).

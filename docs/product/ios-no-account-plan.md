@@ -28,8 +28,8 @@ clean clone, so the template is what ships.
 | 1 | iPhone settings: full camera and photo-library purpose strings, no Face ID prompt, `expo-background-task` plugin (`processing` mode and task identifier), `usesNonExemptEncryption: false` | Merged (#423) |
 | 2 | A `simulator` build profile in `eas.json` and one EAS iOS simulator build, the compile check of today's app before any Apple Health code (uses one of the free plan's monthly iOS builds) | Merged (#424): builds (f3a08ef2) |
 | 3 | App Store privacy labels, mapped from [play-data-safety-answers.md](play-data-safety-answers.md) (documents only) | Merged (#425): [app-store-privacy-labels.md](app-store-privacy-labels.md) |
-| 4 | Apple Maps under a run's route on iPhone: mock-up first, then the change in `integrations/maps/route-map.tsx`. A simulator build proves it compiles, not that it draws | This PR (mock-up approved) |
-| 5 | Apple Health: the rule 16 exception ADR, then `AppleHealthProvider` behind the unchanged `HealthProvider`, the shared contract tests with a mocked native module, the conformance rule, off by default; a simulator build as the compile check | Planned |
+| 4 | Apple Maps under a run's route on iPhone: mock-up first, then the change in `integrations/maps/route-map.tsx`. A simulator build proves it compiles, not that it draws | Merged (#426) |
+| 5 | Apple Health: the rule 16 exception ADR, then `AppleHealthProvider` behind the unchanged `HealthProvider`, the shared contract tests with a mocked native module, the conformance rule, off by default; a simulator build as the compile check | This PR (ADR-069) |
 
 Blocked on the Apple account: Sign in with Apple switched on, iPhone push (APNs key), TestFlight,
 the privacy-manifest warnings Apple emails after the first upload, and every check on a real iPhone,
@@ -88,3 +88,25 @@ markers and GPS pill, Apple's Maps logo and Legal link left visible). Test first
 key, Apple (MapKit, no provider) on iOS, stripes otherwise. Android's props are unchanged and its tests
 still pass; the existing no-key tests now name Android, and the missing-module test covers both
 platforms. ADR-050 amended; the data inventory gains an Apple Maps row. Not yet seen on an iPhone.
+
+## Slice 5 (2026-10-17)
+
+ADR-069 written first: the rule 16 exception covers merging switched off, not switching on. Then,
+test-first:
+
+- **Library** `@kingstinct/react-native-healthkit` 16.2.0 and `react-native-nitro-modules` 0.37.1, pinned.
+  `react-native.config.js` keeps both out of Android autolinking; before and after, Android links the
+  same 14 React Native packages and 44 Expo modules.
+- **Switch** `APPLE_HEALTH_ENABLED` (no `eas.json` profile sets it). Off: no HealthKit entitlement, no
+  health permission text, `extra.appleHealthEnabled: false`. On: the entitlement and a read-only text,
+  no write text, no background delivery. `config/__tests__/apple-health-config.test.ts`.
+- **`AppleHealthProvider`** behind the unchanged `HealthProvider`, with the pure
+  `apple-health-sample-mapping.ts`; the shared contract suite, a mocked native module, and a test that it
+  never reads a type it has not asked for. `getDeviceHealthProvider()` returns it on iPhone only when
+  switched on.
+- **Conformance rule:** the library and its Nitro peer only in `integrations/health/` (proved by a
+  planted import). CLAUDE.md rule 17 and `integrations.md` name the library.
+
+**Owed before the switch:** the owner approves the permission text; a TestFlight build on a physical
+iPhone (Apple account) reads heart rate and active energy during a run, refuses each alone, and keeps
+whichever was granted; then the App Store privacy labels' Health row is confirmed.

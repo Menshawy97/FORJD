@@ -54,7 +54,8 @@ Everything else can evolve around these. See `docs/architecture/system.md`.
     `HealthProvider` for Android Health Connect. No feature code imports it directly,
     only `apps/mobile/src/integrations/health/`, and every `HealthObservation` records
     its originating provider explicitly — never inferred from which API returned it.
-    iOS's equivalent library is a separate decision, for whichever ADR Phase 11 writes.
+    iOS's equivalent is `@kingstinct/react-native-healthkit` (ADR-068), under the same
+    rule and folder; it is merged switched off until it runs on an iPhone (ADR-069).
 
 ## Merging
 
@@ -84,7 +85,8 @@ From Phase 1, CI includes a grep-based conformance check,
 `scripts/ci/check-architecture-conformance.sh`, which fails the build on about twenty rules.
 **The script is the full, current list**; the headline ones are that it fails if:
 - the Supabase SDK is imported outside the provider adapter directories,
-- `react-native-health-connect` is imported outside `apps/mobile/src/integrations/health/`,
+- `react-native-health-connect` or the Apple Health library (`@kingstinct/react-native-healthkit`,
+  its Nitro peer) is imported outside `apps/mobile/src/integrations/health/`,
 - `react-native-maps` is imported outside `apps/mobile/src/integrations/maps/` (ADR-050),
 - domain packages (`packages/domain/**`) import anything from UI or provider SDKs,
 - an analytics, advertising or session-replay SDK appears in the mobile app (rule 15),
@@ -111,9 +113,9 @@ a new provider or modality is an adapter, not a rewrite.
 Development happens on Windows. Android is the primary dev/test platform. iOS ships
 without owning or renting a Mac — see ADR-007 for the full strategy (Codemagic automatic
 signing, TestFlight validation on a physical iPhone). Android's health library is
-`react-native-health-connect` (ADR-034); iOS's equivalent is a separate, not-yet-made
-decision for whichever ADR Phase 11 writes. Do not write Xcode-project-level native
-Swift unless that future library genuinely cannot express what's needed; when that
+`react-native-health-connect` (ADR-034); iOS's is `@kingstinct/react-native-healthkit`
+(ADR-068), merged switched off behind `APPLE_HEALTH_ENABLED` (ADR-069). Do not write
+Xcode-project-level native Swift unless that library genuinely cannot express what's needed; when that
 happens, keep the native code behind the unchanged `HealthProvider` interface (rule 3).
 
 ## Docs are memory

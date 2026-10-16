@@ -146,7 +146,8 @@ $&
   - [x] Slice 2 (2026-10-16): EAS iOS simulator build passes (f3a08ef2). It found and fixed three build breaks: xmldom 0.9 broke iPhone prebuild, workspace packages were never compiled on EAS, `babel-preset-expo` was not the app's own dependency. The last two would likely also have stopped the first Android staging or production build
   - [x] Slice 3 (2026-10-16): App Store privacy labels written, ready to copy once App Store Connect exists: [app-store-privacy-labels.md](app-store-privacy-labels.md). Not used for tracking anywhere, so no App Tracking Transparency prompt; precise location is not "collected" under Apple's definition
   - [x] Slice 4 (2026-10-16): Apple Maps under a run on iPhone (mock-up approved, ADR-050 amended). Still to see on a real iPhone once the Apple account exists
-  - [ ] Slice 5: Apple Health (ADR-068 accepted), merged switched off under a rule 16 exception ADR
+  - [x] Slice 5 (2026-10-17): Apple Health merged switched off (ADR-069): `AppleHealthProvider`, library pinned, Android linking unchanged, conformance rule
+  - [ ] Turn Apple Health on (owner + Apple account): approve the permission text in `app.config.ts`; TestFlight on a physical iPhone reads heart rate and active energy during a run, refuses each alone, keeps whichever was granted (ADR-068 check 3); then set `APPLE_HEALTH_ENABLED` and confirm the App Store Health label
 - [ ] Dual-platform public launch
 
 ## 4. Stale doc statements to correct
