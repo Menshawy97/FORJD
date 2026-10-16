@@ -20,7 +20,8 @@ quoted by number.
    - `NSPhotoLibraryUsageDescription` mentions only InBody scans, but the profile photo
      (`edit-profile.tsx`, `pick-username.tsx`) and the nutrition share background (`nutrition-share.tsx`)
      also pick from the library.
-3. **A microphone prompt for a microphone FORJD never uses.** Expo applies `expo-image-picker`'s
+3. **A microphone prompt for a microphone FORJD never uses.** *(Fixed 2026-10-16 with the Android
+   permission change.)* Expo applies `expo-image-picker`'s
    config plugin automatically (it is on prebuild's legacy auto-plugin list), and with no options it adds
    a generic `NSMicrophoneUsageDescription` ("Allow $(PRODUCT_NAME) to access your microphone"). FORJD
    picks and takes photos only. Fix: list the plugin with `microphonePermission: false`. (On Android the
@@ -64,7 +65,11 @@ Already right: in-app account deletion exists (guideline 5.1.1(v)); the location
 When In Use (the Always and motion strings are deleted on purpose); health data never reaches an
 analytics or advertising service (rule 15, guideline 5.1.3); nothing is stored in iCloud.
 
-## Android note found on the way (more urgent than iOS)
+## Android note found on the way (fixed 2026-10-16)
+
+Fixed: the five permissions are now in `blockedPermissions`, `expo-image-picker` is listed with
+`microphonePermission: false` (which also removes item 3's iPhone microphone prompt), and Save Image asks
+write-only. Checked on the emulator; see the checklist. The original finding:
 
 The installed Android build (EAS dev build `001a2aac`, `dumpsys package`) declares `RECORD_AUDIO`
 (from the same `expo-image-picker` default) and `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` and
