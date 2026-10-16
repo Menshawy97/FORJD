@@ -173,7 +173,7 @@ const config: ExpoConfig = {
     'expo-background-task',
     // ADR-068 / ADR-069: Apple Health, read only, and only when switched on. The share text is what the
     // iPhone permission sheet shows; no update (write) text and no background delivery, since FORJD
-    // reads only, while the app is open. Draft wording, for the owner to approve before the switch.
+    // reads only, while the app is open. Wording approved by the owner 2026-10-17 (ADR-069).
     ...(appleHealthEnabled
       ? [
           [
