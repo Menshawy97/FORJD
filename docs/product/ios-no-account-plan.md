@@ -71,7 +71,7 @@ problem, fixed test-first in this PR:
 2. **Bundling could not find `@forjd/contracts`** (build 49c22e4e). Metro resolves the workspace
    packages through their compiled `dist/`, which git does not hold; `eas-build-post-install` now
    builds them. Every earlier EAS build was a development build, which never bundles, so this would
-   also have stopped the first Android staging or production build.
+   likely also have stopped the first Android staging or production build.
 3. **Babel could not find `babel-preset-expo`** in Xcode's bundling step (build fdff57b2). It reached
    the app only through pnpm hoisting; it is now the app's own dev dependency (the version expo
    already uses). Same Android note as 2.

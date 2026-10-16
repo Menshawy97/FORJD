@@ -45,17 +45,24 @@ describe('Babel presets', () => {
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
   };
-  const babelConfig = readFileSync(join(__dirname, '../../babel.config.js'), 'utf8');
-  const presetPackages = ['babel-preset-expo', 'nativewind'];
+  type PresetEntry = string | [string, unknown];
+  const babelConfig = require('../../babel.config.js')({ cache: () => undefined }) as {
+    presets?: PresetEntry[];
+    plugins?: PresetEntry[];
+  };
+  /** 'nativewind/babel' -> 'nativewind'; '@scope/name/sub' -> '@scope/name'. */
+  const packageOf = (entry: PresetEntry): string => {
+    const name = Array.isArray(entry) ? entry[0] : entry;
+    const parts = name.split('/');
+    return name.startsWith('@') ? parts.slice(0, 2).join('/') : (parts[0] ?? name);
+  };
+  const named = [...(babelConfig.presets ?? []), ...(babelConfig.plugins ?? [])].map(packageOf);
 
-  it('names only the presets this test knows about', () => {
-    const named = [...babelConfig.matchAll(/['"]([a-z@][\w@/.-]*)['"]/g)]
-      .map(([, name]) => name.split('/')[0])
-      .filter((name) => name !== 'nativewind' || babelConfig.includes(`'${name}/babel'`));
-    expect([...new Set(named)].sort()).toEqual([...presetPackages].sort());
+  it('names at least the Expo preset', () => {
+    expect(named).toContain('babel-preset-expo');
   });
 
-  it.each(presetPackages)('lists %s as a dependency of the app', (name) => {
+  it.each(named)('lists %s as a dependency of the app', (name) => {
     expect({ ...pkg.dependencies, ...pkg.devDependencies }).toHaveProperty([name]);
   });
 });

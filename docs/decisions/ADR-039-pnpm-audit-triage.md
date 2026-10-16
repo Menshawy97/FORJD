@@ -97,6 +97,11 @@ The `>=0.9.12` override broke every iPhone prebuild: all three users (`@expo/pli
 throws without a mime type, so prebuild could not read any Info.plist. Android never reads a plist, so
 the first EAS iOS simulator build was the first thing to notice ([ios-no-account-plan.md](../product/ios-no-account-plan.md), slice 2).
 The override is now `>=0.8.15 <0.9.0`: 0.8.15 is the patched release for every advisory that affects
-the 0.8 line (GitHub advisories checked 2026-10-16), and `pnpm audit` reports the same totals as before,
+the 0.8 line (GitHub advisories checked 2026-10-16: GHSA-c7q8-3ch8-vqpv, GHSA-27p8-2357-5qqv,
+GHSA-6h8r-xr42-gp59, GHSA-8344-3jmq-59r6, GHSA-x4fp-j954-r2f4, GHSA-965w-775f-mr7g, GHSA-93r5-fhx6-vmg9 and
+GHSA-6gmq-8vp8-gcm6 affect up to 0.8.14, patched in 0.8.15; GHSA-w2rr-34g9-rvrj and GHSA-4w3w-2rp5-g8jm up to
+0.8.13, patched in 0.8.14; GHSA-2v35-w6hq-6mfw, GHSA-f6ww-3ggp-fr8h, GHSA-x6wf-f3px-wcqx and GHSA-j759-j44w-7fr8
+below 0.8.13; GHSA-wh4c-j3r5-mjhp below 0.8.12; the rest affect only 0.9), and `pnpm audit` reports the same totals as before,
 with no `@xmldom/xmldom` entry. `apps/mobile/config/__tests__/ios-plist-parse.test.ts` fails if a 0.9 copy
-comes back.
+comes back. Revisit when `@expo/plist` supports xmldom 0.9 (lift the `<0.9.0` cap), or when an advisory
+lands that 0.8 does not patch (then `pnpm audit` flags it).
