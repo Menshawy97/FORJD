@@ -1,6 +1,8 @@
 # ADR-068: The Apple Health (HealthKit) library
 
-**Status:** Proposed (2026-10-15). Needs the owner's choice; nothing is installed.
+**Status:** Accepted (2026-10-16, owner). Proposed 2026-10-15. Nothing is installed yet: the provider is
+slice 5 of [ios-no-account-plan.md](../product/ios-no-account-plan.md), which merges it switched off under a
+rule 16 exception ADR written first. CLAUDE.md rule 17 and `integrations.md` name the library in that slice.
 **Scope:** iOS only. The Android counterpart is ADR-034 (`react-native-health-connect`). CLAUDE.md
 rule 17 and ADR-034 both reserved this choice for its own ADR when Phase 11 (the iOS track) starts.
 

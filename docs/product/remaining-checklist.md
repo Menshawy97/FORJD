@@ -141,7 +141,12 @@ $&
 - [ ] 12H Android widgets
 - [ ] 12I iPhone widgets
 - [ ] Phase 10 subscriptions (RevenueCat); Strength/Running/HYROX leaderboard scores
-- [ ] Phase 11 iOS track
+- [ ] Phase 11 iOS track. The parts that need no Apple account: [ios-no-account-plan.md](ios-no-account-plan.md)
+  - [x] Slice 1 (2026-10-16): iPhone purpose strings name every camera and photo use, no Face ID prompt, background-task plugin (`processing` mode), `usesNonExemptEncryption: false`; `ios-settings.test.ts` also proves the Android manifest is unchanged
+  - [ ] Slice 2: EAS iOS simulator build (compile check)
+  - [ ] Slice 3: App Store privacy labels
+  - [ ] Slice 4: Apple Maps under a run on iPhone (mock-up first)
+  - [ ] Slice 5: Apple Health (ADR-068 accepted), merged switched off under a rule 16 exception ADR
 - [ ] Dual-platform public launch
 
 ## 4. Stale doc statements to correct

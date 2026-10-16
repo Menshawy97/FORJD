@@ -29,19 +29,17 @@ const config: ExpoConfig = {
     // ADR-052: the same DARK-tile PNG as every other platform (this used to point at the Expo
     // template's untouched Icon Composer bundle, which still drew the Expo logo).
     icon: './assets/images/icon.png',
-    // The nutrition share-card's background-photo picker is the first feature to call
-    // `expo-image-picker`'s `launchCameraAsync` -- the existing gallery-only usages
-    // (edit-profile.tsx, pick-username.tsx) never needed this string. iOS refuses camera
-    // access outright with no system prompt at all if this is missing.
+    // FORJD uses only HTTPS (exempt encryption), so App Store Connect stops asking on every upload.
+    config: { usesNonExemptEncryption: false },
+    // Each purpose string names every use (App Review 5.1.1(ii)); iOS refuses access with no prompt
+    // when one is missing. Camera: inbody.tsx and nutrition-share.tsx. Photo library: inbody.tsx,
+    // edit-profile.tsx, pick-username.tsx and nutrition-share.tsx. Wording approved by the owner
+    // 2026-10-16 (ios-no-account-plan.md); config/__tests__/ios-settings.test.ts checks each use.
     infoPlist: {
-      NSCameraUsageDescription: 'FORJD uses your camera to let you take a photo for your nutrition share card background.',
-      // R29 audit remediation (ADR-038): missing on Apple's checklist was a genuine App Store
-      // submission rejection risk, since inbody.tsx's `pickFromLibrary` already calls
-      // `ImagePicker.launchImageLibraryAsync` to attach an InBody scan photo -- iOS refuses
-      // library access outright with no system prompt at all if this key is missing, the same
-      // failure mode NSCameraUsageDescription above already documents for the camera.
+      NSCameraUsageDescription:
+        'FORJD uses your camera to take a photo of your InBody scan result, or a photo for your nutrition share card background.',
       NSPhotoLibraryUsageDescription:
-        'FORJD needs access to your photo library so you can attach a photo of your InBody scan.',
+        'FORJD opens your photo library so you can choose a photo of your InBody scan, your profile photo, or a background for your nutrition share card.',
     },
   },
   android: {
@@ -84,7 +82,9 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    'expo-secure-store',
+    // FORJD never asks for Face ID; by default the plugin adds a generic iPhone Face ID prompt.
+    // `false` deletes it. iPhone only: the plugin's Android backup rules are unchanged.
+    ['expo-secure-store', { faceIDPermission: false }],
     'expo-font',
     'expo-sqlite',
     // Local notifications only: the rest timer's "rest complete" alert (ADR-026) and the live run
@@ -162,6 +162,10 @@ const config: ExpoConfig = {
     // only to turn that off; the camera and photo strings stay in `ios.infoPlist` above.
     ['expo-image-picker', { microphonePermission: false }],
     'expo-sharing',
+    // 12C's background upload (src/integrations/background/background-upload.ts). Not applied
+    // automatically: without it the iPhone build lacks the `processing` background mode and the task
+    // identifier iOS requires before it schedules the task. It edits only the iPhone Info.plist.
+    'expo-background-task',
     // Phase 6F / ADR-034: the Android Health Connect adapter. `expo-build-properties`'
     // Android SDK levels are the versions the library's own install instructions call for.
     // The library's own config plugin is deliberately not listed: it only adds the "privacy policy"
