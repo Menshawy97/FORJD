@@ -1,5 +1,6 @@
-// ADR-050. The route map: Google's street map under the route when a key is configured and the
-// native module is present, otherwise the designed striped background with the same route drawn
+// ADR-050. The route map: on Android, Google's street map under the route when a key is configured
+// and the native module is present; on iPhone, Apple Maps (no key needed, owner decision 2026-10-16,
+// ios-no-account-plan.md slice 4); otherwise the designed striped background with the same route drawn
 // over it. The native module is mocked at its boundary; what is proven is which of the two
 // renders, that the route reaches the map, and that a missing module never crashes a run.
 import { render } from '@testing-library/react-native';
@@ -53,7 +54,15 @@ describe('RouteMap', () => {
     mockExtra.hasMapsKey = false;
   });
 
-  describe('without a Maps key', () => {
+  describe('without a Maps key, on Android', () => {
+    beforeEach(() => {
+      jest.replaceProperty(Platform, 'OS', 'android');
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it('draws the striped background and the route, not a Google map', async () => {
       const screen = await render(<RouteMap points={route} height={206} caption="live map · route + km markers" />);
 
@@ -108,14 +117,73 @@ describe('RouteMap', () => {
     });
   });
 
-  describe('with a Maps key on iOS', () => {
-    it('still draws the striped background: there is no iOS Google key until Phase 11 decides one', async () => {
-      mockExtra.hasMapsKey = true;
+  describe('on iPhone: Apple Maps', () => {
+    beforeEach(() => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([false, true])('renders Apple Maps, not Google, whether or not a Maps key exists (key: %s)', async (key) => {
+      mockExtra.hasMapsKey = key;
 
       const screen = await render(<RouteMap points={route} height={206} caption="route" />);
 
-      expect(screen.getByTestId('route-map-fallback')).toBeTruthy();
-      expect(mockMapView).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('route-map-fallback')).toBeNull();
+      expect(mockMapView).toHaveBeenCalledTimes(1);
+      const props = mockMapView.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(props.provider).toBeUndefined();
+    });
+
+    it("uses Apple's dark map, not Google's custom style", async () => {
+      await render(<RouteMap points={route} height={206} caption="route" />);
+
+      const props = mockMapView.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(props.userInterfaceStyle).toBe('dark');
+      expect(props).not.toHaveProperty('customMapStyle');
+    });
+
+    it('draws the same route and markers as Android, in the design colour', async () => {
+      await render(<RouteMap points={route} height={180} caption="route" />);
+
+      expect(mockPolyline).toHaveBeenCalledWith(
+        expect.objectContaining({ coordinates: route, strokeColor: '#E9712F', strokeWidth: 4 }),
+      );
+      expect(mockMarker).toHaveBeenCalledTimes(2);
+    });
+
+    it('turns off gestures, compass, traffic, points of interest and the user dot', async () => {
+      await render(<RouteMap points={route} height={206} caption="route" />);
+
+      expect(mockMapView).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scrollEnabled: false,
+          zoomEnabled: false,
+          pitchEnabled: false,
+          rotateEnabled: false,
+          showsCompass: false,
+          showsTraffic: false,
+          showsUserLocation: false,
+          showsPointsOfInterests: false,
+        }),
+      );
+    });
+
+    it('fits the map to the route', async () => {
+      await render(<RouteMap points={route} height={206} caption="route" />);
+
+      const props = mockMapView.mock.calls[0]?.[0] as { region?: Record<string, number> };
+      expect(props.region?.latitude).toBeCloseTo(31.2015, 4);
+    });
+
+    it("leaves Apple's Maps logo and Legal link where Apple puts them (they must stay visible)", async () => {
+      await render(<RouteMap points={route} height={206} caption="route" />);
+
+      const props = mockMapView.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(props).not.toHaveProperty('mapPadding');
+      expect(props).not.toHaveProperty('legalLabelInsets');
     });
   });
 

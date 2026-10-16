@@ -25,9 +25,14 @@ import { projectRoute, type RoutePoint } from './project-route';
  *    the phone's IP address and the SDK's own telemetry, so Google learns roughly where a run
  *    started. ADR-050 states that trade-off. Without a connection the tiles do not load and the
  *    route is still drawn on the dark base. A wrong SHA-1 on the key also gives a blank map.
- * 2. **The designed striped background** with the route drawn over it, everywhere else: no key, no
- *    native module, or iOS (which has no key until Phase 11 decides one). This is what a run looks
- *    like in Expo Go, in tests, and before the Google Cloud account exists.
+ * 2. **Apple Maps** on iPhone (owner decision 2026-10-16, ios-no-account-plan.md slice 4): the same
+ *    `react-native-maps` component with no provider draws MapKit, which needs no key. Its dark style
+ *    is Apple's own (`userInterfaceStyle`), since Google's custom style does not apply. The route is
+ *    drawn the same way, so Apple likewise learns only the area on screen, never the route. Apple's
+ *    Maps logo and Legal link must stay visible, so nothing pads or moves them.
+ * 3. **The designed striped background** with the route drawn over it, everywhere else: Android with
+ *    no key, a missing native module, or the web. This is what an Android run looks like before the
+ *    Google Cloud account exists, and what tests see by default.
  *
  * Nothing here throws into a run: a run must work with the map broken (CLAUDE.md rule 6).
  */
@@ -62,6 +67,15 @@ function loadSdk(): MapsSdk | null {
 
 function hasMapsKey(): boolean {
   return Constants.expoConfig?.extra?.hasMapsKey === true;
+}
+
+/** Which native map this build can draw, before the module is loaded: Google, Apple, or none. */
+type NativeMap = 'google' | 'apple';
+
+function nativeMapFor(os: typeof Platform.OS): NativeMap | null {
+  if (os === 'android') return hasMapsKey() ? 'google' : null;
+  if (os === 'ios') return 'apple';
+  return null;
 }
 
 // The prototype's map box (FORJD Mobile.dc.html s_run): radius 16, a 1px hairline, the stripes
@@ -110,7 +124,8 @@ function regionFor(points: readonly RoutePoint[]) {
 }
 
 export function RouteMap({ points, height, caption, accessibilityLabel }: RouteMapProps) {
-  const maps = Platform.OS === 'android' && hasMapsKey() ? loadSdk() : null;
+  const kind = nativeMapFor(Platform.OS);
+  const maps = kind ? loadSdk() : null;
 
   return (
     <View
@@ -118,8 +133,8 @@ export function RouteMap({ points, height, caption, accessibilityLabel }: RouteM
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel ?? 'Map of your run route'}
       style={[styles.frame, { height }]}>
-      {maps ? (
-        <GoogleRoute maps={maps} points={points} />
+      {maps && kind ? (
+        <NativeRoute maps={maps} kind={kind} points={points} />
       ) : (
         <StripedRoute points={points} height={height} caption={caption} />
       )}
@@ -127,7 +142,20 @@ export function RouteMap({ points, height, caption, accessibilityLabel }: RouteM
   );
 }
 
-const GoogleRoute = memo(function GoogleRoute({ maps, points }: { maps: MapsSdk; points: readonly RoutePoint[] }) {
+// What differs between the two native maps; everything else (no gestures, no compass, the route and
+// markers) is shared. Google takes the app's dark style; Apple only has its own dark appearance.
+const GOOGLE_PROPS = { customMapStyle: DARK_MAP_STYLE, toolbarEnabled: false } as const;
+const APPLE_PROPS = { userInterfaceStyle: 'dark', showsPointsOfInterests: false } as const;
+
+const NativeRoute = memo(function NativeRoute({
+  maps,
+  kind,
+  points,
+}: {
+  maps: MapsSdk;
+  kind: NativeMap;
+  points: readonly RoutePoint[];
+}) {
   const { default: MapView, Polyline, Marker, PROVIDER_GOOGLE } = maps;
   // Recomputed only when the route changes, not on every render of a screen with a 1 s timer.
   const region = useMemo(() => regionFor(points), [points]);
@@ -137,15 +165,13 @@ const GoogleRoute = memo(function GoogleRoute({ maps, points }: { maps: MapsSdk;
 
   return (
     <MapView
-      provider={PROVIDER_GOOGLE}
+      {...(kind === 'google' ? { provider: PROVIDER_GOOGLE, ...GOOGLE_PROPS } : APPLE_PROPS)}
       style={StyleSheet.absoluteFill}
-      customMapStyle={DARK_MAP_STYLE}
       region={region}
       scrollEnabled={false}
       zoomEnabled={false}
       pitchEnabled={false}
       rotateEnabled={false}
-      toolbarEnabled={false}
       showsCompass={false}
       showsTraffic={false}
       showsUserLocation={false}>

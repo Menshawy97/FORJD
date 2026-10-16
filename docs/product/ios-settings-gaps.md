@@ -64,7 +64,7 @@ quoted by number.
    Apple's email for any "ITMS-91053" warning and add the missing reasons under `ios.privacyManifests`.
 10. **No map on iPhone.** The run screen's Google map is Android-only (`route-map.tsx` loads it only on
     Android with a key); iPhone shows the striped fallback. Either an iOS Google Maps key, or Apple Maps
-    on iPhone. A product choice, not a review risk. Owner chose Apple Maps (2026-10-16), slice 4.
+    on iPhone. A product choice, not a review risk. *(Fixed 2026-10-16, slice 4: Apple Maps on iPhone, ADR-050 amendment; not yet seen on an iPhone.)*
 11. **App Store privacy labels.** Apple's equivalent of Play's Data safety form; the answers in
     [play-data-safety-answers.md](play-data-safety-answers.md) carry over, with Apple's own category names.
 12. **Background location review note.** The `location` background mode is on (runs keep tracking with

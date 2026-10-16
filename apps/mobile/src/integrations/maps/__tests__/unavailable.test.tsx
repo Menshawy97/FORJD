@@ -16,15 +16,21 @@ jest.mock('react-native-maps', () => {
 import { RouteMap } from '../route-map';
 
 describe('RouteMap when the native module is missing', () => {
-  beforeEach(() => {
-    jest.replaceProperty(Platform, 'OS', 'android');
-  });
-
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
+  it.each(['android', 'ios'] as const)('falls back to the striped background on %s instead of crashing', async (os) => {
+    jest.replaceProperty(Platform, 'OS', os);
+    const screen = await render(
+      <RouteMap points={[{ latitude: 31.2, longitude: 29.9 }, { latitude: 31.201, longitude: 29.902 }]} height={206} caption="route" />,
+    );
+
+    expect(screen.getByTestId('route-map-fallback')).toBeTruthy();
+  });
+
   it('falls back to the striped background even with a key on Android, instead of crashing', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
     const screen = await render(
       <RouteMap points={[{ latitude: 31.2, longitude: 29.9 }, { latitude: 31.201, longitude: 29.902 }]} height={206} caption="route" />,
     );
