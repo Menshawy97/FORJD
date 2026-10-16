@@ -2,9 +2,49 @@
   "manifest": {
     "$": {
       "xmlns:android": "http://schemas.android.com/apk/res/android",
-      "xmlns:tools": "http://schemas.android.com/tools"
+      "xmlns:tools": "http://schemas.android.com/tools",
+      "package": "com.forjd.app"
     },
     "uses-permission": [
+      {
+        "$": {
+          "android:name": "android.permission.INTERNET"
+        }
+      },
+      {
+        "$": {
+          "android:name": "android.permission.SYSTEM_ALERT_WINDOW"
+        }
+      },
+      {
+        "$": {
+          "android:name": "android.permission.VIBRATE"
+        }
+      },
+      {
+        "$": {
+          "android:name": "android.permission.READ_EXTERNAL_STORAGE",
+          "android:maxSdkVersion": "32",
+          "tools:replace": "android:maxSdkVersion"
+        }
+      },
+      {
+        "$": {
+          "android:name": "android.permission.WRITE_EXTERNAL_STORAGE",
+          "android:maxSdkVersion": "32",
+          "tools:replace": "android:maxSdkVersion"
+        }
+      },
+      {
+        "$": {
+          "android:name": "android.permission.health.READ_HEART_RATE"
+        }
+      },
+      {
+        "$": {
+          "android:name": "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+        }
+      },
       {
         "$": {
           "android:name": "android.permission.ACCESS_COARSE_LOCATION"
@@ -23,45 +63,6 @@
       {
         "$": {
           "android:name": "android.permission.FOREGROUND_SERVICE_LOCATION"
-        }
-      },
-      {
-        "$": {
-          "android:name": "android.permission.INTERNET"
-        }
-      },
-      {
-        "$": {
-          "android:name": "android.permission.READ_EXTERNAL_STORAGE",
-          "android:maxSdkVersion": "32",
-          "tools:replace": "android:maxSdkVersion"
-        }
-      },
-      {
-        "$": {
-          "android:name": "android.permission.SYSTEM_ALERT_WINDOW"
-        }
-      },
-      {
-        "$": {
-          "android:name": "android.permission.VIBRATE"
-        }
-      },
-      {
-        "$": {
-          "android:name": "android.permission.WRITE_EXTERNAL_STORAGE",
-          "android:maxSdkVersion": "32",
-          "tools:replace": "android:maxSdkVersion"
-        }
-      },
-      {
-        "$": {
-          "android:name": "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
-        }
-      },
-      {
-        "$": {
-          "android:name": "android.permission.health.READ_HEART_RATE"
         }
       },
       {
@@ -145,67 +146,11 @@
           "android:fullBackupContent": "@xml/secure_store_backup_rules",
           "android:dataExtractionRules": "@xml/secure_store_data_extraction_rules"
         },
-        "meta-data": [
-          {
-            "$": {
-              "android:name": "com.google.firebase.messaging.default_notification_color",
-              "android:resource": "@color/notification_icon_color"
-            }
-          },
-          {
-            "$": {
-              "android:name": "com.google.firebase.messaging.default_notification_icon",
-              "android:resource": "@drawable/notification_icon"
-            }
-          },
-          {
-            "$": {
-              "android:name": "expo.modules.location.foreground_service_icon",
-              "android:resource": "@drawable/location_foreground_service_icon"
-            }
-          },
-          {
-            "$": {
-              "android:name": "expo.modules.notifications.default_notification_color",
-              "android:resource": "@color/notification_icon_color"
-            }
-          },
-          {
-            "$": {
-              "android:name": "expo.modules.notifications.default_notification_icon",
-              "android:resource": "@drawable/notification_icon"
-            }
-          },
-          {
-            "$": {
-              "android:name": "expo.modules.updates.ENABLED",
-              "android:value": "false"
-            }
-          },
-          {
-            "$": {
-              "android:name": "expo.modules.updates.ENABLE_BSDIFF_PATCH_SUPPORT",
-              "android:value": "true"
-            }
-          },
-          {
-            "$": {
-              "android:name": "expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH",
-              "android:value": "ALWAYS"
-            }
-          },
-          {
-            "$": {
-              "android:name": "expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS",
-              "android:value": "0"
-            }
-          }
-        ],
         "activity": [
           {
             "$": {
               "android:name": ".MainActivity",
-              "android:configChanges": "keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|assetsPaths",
+              "android:configChanges": "keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize",
               "android:launchMode": "singleTask",
               "android:windowSoftInputMode": "adjustResize",
               "android:theme": "@style/Theme.App.SplashScreen",
@@ -263,6 +208,62 @@
                 ]
               }
             ]
+          }
+        ],
+        "meta-data": [
+          {
+            "$": {
+              "android:name": "expo.modules.updates.ENABLED",
+              "android:value": "false"
+            }
+          },
+          {
+            "$": {
+              "android:name": "expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH",
+              "android:value": "ALWAYS"
+            }
+          },
+          {
+            "$": {
+              "android:name": "expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS",
+              "android:value": "0"
+            }
+          },
+          {
+            "$": {
+              "android:name": "expo.modules.updates.ENABLE_BSDIFF_PATCH_SUPPORT",
+              "android:value": "true"
+            }
+          },
+          {
+            "$": {
+              "android:name": "expo.modules.location.foreground_service_icon",
+              "android:resource": "@drawable/location_foreground_service_icon"
+            }
+          },
+          {
+            "$": {
+              "android:name": "com.google.firebase.messaging.default_notification_icon",
+              "android:resource": "@drawable/notification_icon"
+            }
+          },
+          {
+            "$": {
+              "android:name": "expo.modules.notifications.default_notification_icon",
+              "android:resource": "@drawable/notification_icon"
+            }
+          },
+          {
+            "$": {
+              "android:name": "com.google.firebase.messaging.default_notification_color",
+              "android:resource": "@color/notification_icon_color"
+            }
+          },
+          {
+            "$": {
+              "android:name": "expo.modules.notifications.default_notification_color",
+              "android:resource": "@color/notification_icon_color"
+            }
           }
         ]
       }
