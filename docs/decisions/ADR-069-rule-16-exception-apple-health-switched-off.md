@@ -1,0 +1,55 @@
+# ADR-069: Exception to rule 16 for Apple Health, merged switched off
+
+**Status:** Accepted
+**Date:** 2026-10-17
+**Scope:** `AppleHealthProvider` and its library setup (slice 5 of
+[ios-no-account-plan.md](../product/ios-no-account-plan.md)), merged **switched off**. It does not change
+CLAUDE.md rule 16 for turning Apple Health on, or for any other Health Connect or HealthKit code, the
+same way ADR-035 and ADR-067 did not.
+
+## Context
+
+CLAUDE.md rule 16: HealthKit code does not merge until it has run on a physical device (an iPhone
+through TestFlight, ADR-007). There is no Apple Developer account yet, so there is no TestFlight and no
+signed build, and the earliest an iPhone run can happen is after the account exists. ADR-068 chose the
+library, `@kingstinct/react-native-healthkit`. On 2026-10-16 the owner chose to merge the provider into
+`main` **switched off**, rather than keep it on a long-lived branch, so it stays current with the code
+around it.
+
+## Decision
+
+Merge `AppleHealthProvider`, its tests and the library behind one build flag,
+`APPLE_HEALTH_ENABLED` (read in `app.config.ts`, the same pattern as `APPLE_SIGN_IN_ENABLED`), which is
+**off** in every `eas.json` profile. With the flag off:
+
+1. **No iPhone code path reaches HealthKit.** `getDeviceHealthProvider()` returns `null` on iOS, as it
+   does today, so no screen can call `connect()`, `requestPermissions()` or `sync()`.
+2. **The iPhone build declares no HealthKit.** The library's config plugin, which adds the HealthKit
+   entitlement and the permission text, is listed only when the flag is on. Apple can reject an app
+   that declares HealthKit without using it visibly (guideline 2.5.1), and the App Store privacy labels
+   would otherwise have to describe a feature that is off.
+3. **Android is unchanged.** HealthKit is Swift only, and the native code of its peer,
+   `react-native-nitro-modules`, is excluded from Android autolinking, so the Android app links the same
+   native modules as before. `config/__tests__/apple-health-config.test.ts` and the Android manifest test
+   prove both.
+
+Switching the flag on is **not** covered by this exception. It needs the rule 16 run: a TestFlight build
+on a physical iPhone that reads heart rate and active energy during a run, refuses each one alone, and
+keeps whichever was granted (ADR-068, check 3), then the owner's go-ahead, a note in this ADR, and the
+App Store privacy labels' Health row confirmed.
+
+## Rationale
+
+Rule 16 guards against health platforms behaving differently on real devices. While the flag is off,
+none of that behaviour can happen: nothing reads HealthKit and the shipped app does not ask for it.
+What merges is code that is compiled and unit tested (contract tests with a mocked native module) and
+an iPhone simulator build that proves it compiles. What stays owed is exactly what rule 16 asks for,
+before anyone can use it.
+
+## Consequences
+
+- The provider can drift from HealthKit's real behaviour until the iPhone run; the contract tests and
+  the "only read what was asked for" test (ADR-068, check 4) limit how far.
+- The library is installed for both platforms; on Android only its JavaScript is bundled, unused.
+- Owed before the flag is turned on: the iPhone walk above, tracked in
+  [remaining-checklist.md](../product/remaining-checklist.md).
