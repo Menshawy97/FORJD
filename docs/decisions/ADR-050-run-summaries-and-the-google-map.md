@@ -73,3 +73,25 @@ tiles come from.
   is missing.
 - The Health Connect part (watch heart rate and calories during a run) reuses the unverified
   `HealthConnectProvider` and cannot merge until run on a physical Android phone (rule 16, ADR-035).
+
+## Amendment (2026-10-16): Apple Maps on iPhone
+
+The owner chose Apple Maps for the iPhone run map over an iOS Google Maps key
+([ios-no-account-plan.md](../product/ios-no-account-plan.md), slice 4; mock-up approved the same day).
+`route-map.tsx` renders the same `react-native-maps` `MapView` with no provider on iOS, which is MapKit:
+
+- **No key and no cost.** MapKit needs neither, so the iPhone map does not wait for a Google Cloud key.
+- **Apple's dark appearance** (`userInterfaceStyle: 'dark'`), not `DARK_MAP_STYLE`, which is Google-only.
+  Points of interest are hidden; gestures, compass, traffic and the user dot are off, as on Android.
+- **Apple's Maps logo and Legal link stay visible** (Apple's terms); nothing pads or moves them.
+- **The same privacy trade-off as Google:** the route is drawn on the phone, so Apple's tile requests
+  carry the area on screen, the phone's IP address and Apple's own request metadata, never the route. Apple Maps is an Apple framework, not a
+  third-party SDK, so it adds no row to the App Store privacy labels.
+- **Same fallback:** without the native module the striped background is drawn; a run never depends
+  on the map (rule 6). Android is unchanged: Google with a key, stripes without.
+
+To check on the first iPhone walk: the map's region follows every GPS fix (as on Android); watch for
+flicker or a CPU rise on MapKit, and if so, follow the route less often.
+
+Proven by `route-map.test.tsx` (iPhone tests) and an EAS iOS simulator build; not yet seen drawing on
+an iPhone, which needs the Apple Developer account.

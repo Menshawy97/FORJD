@@ -27,8 +27,8 @@ clean clone, so the template is what ships.
 |---|---|---|
 | 1 | iPhone settings: full camera and photo-library purpose strings, no Face ID prompt, `expo-background-task` plugin (`processing` mode and task identifier), `usesNonExemptEncryption: false` | Merged (#423) |
 | 2 | A `simulator` build profile in `eas.json` and one EAS iOS simulator build, the compile check of today's app before any Apple Health code (uses one of the free plan's monthly iOS builds) | Merged (#424): builds (f3a08ef2) |
-| 3 | App Store privacy labels, mapped from [play-data-safety-answers.md](play-data-safety-answers.md) (documents only) | Written: [app-store-privacy-labels.md](app-store-privacy-labels.md) |
-| 4 | Apple Maps under a run's route on iPhone: mock-up first, then the change in `integrations/maps/route-map.tsx`. A simulator build proves it compiles, not that it draws | Planned |
+| 3 | App Store privacy labels, mapped from [play-data-safety-answers.md](play-data-safety-answers.md) (documents only) | Merged (#425): [app-store-privacy-labels.md](app-store-privacy-labels.md) |
+| 4 | Apple Maps under a run's route on iPhone: mock-up first, then the change in `integrations/maps/route-map.tsx`. A simulator build proves it compiles, not that it draws | This PR (mock-up approved) |
 | 5 | Apple Health: the rule 16 exception ADR, then `AppleHealthProvider` behind the unchanged `HealthProvider`, the shared contract tests with a mocked native module, the conformance rule, off by default; a simulator build as the compile check | Planned |
 
 Blocked on the Apple account: Sign in with Apple switched on, iPhone push (APNs key), TestFlight,
@@ -79,3 +79,12 @@ problem, fixed test-first in this PR:
 What this proves: the iPhone app compiles and bundles with Expo SDK 57 and React Native 0.86, with
 slice 1's settings. What it does not: that it runs (the simulator cannot run on Windows) or that a
 signed device build works (Apple account). Builds used: 4 of the free plan's monthly iOS builds.
+
+## Slice 4 (2026-10-16)
+
+The owner approved the mock-up (live run and run complete, Apple's dark map under the same ember route,
+markers and GPS pill, Apple's Maps logo and Legal link left visible). Test first: seven iPhone tests in
+`route-map.test.tsx` failed, then `route-map.tsx` gained a native-map choice: Google on Android with a
+key, Apple (MapKit, no provider) on iOS, stripes otherwise. Android's props are unchanged and its tests
+still pass; the existing no-key tests now name Android, and the missing-module test covers both
+platforms. ADR-050 amended; the data inventory gains an Apple Maps row. Not yet seen on an iPhone.
