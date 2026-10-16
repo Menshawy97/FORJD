@@ -75,6 +75,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "eas-build-post-install": "pnpm --filter \"@forjd/mobile^...\" run build",
     "test": "jest",
     "test:cov": "jest --coverage",
     "typecheck": "tsc --noEmit",

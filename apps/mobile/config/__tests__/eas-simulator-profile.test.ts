@@ -18,6 +18,25 @@ const eas = JSON.parse(readFileSync(join(__dirname, '../../eas.json'), 'utf8')) 
   build: Record<string, Profile>;
 };
 
+// A release build (simulator, staging, production) bundles the JavaScript on EAS, and Metro resolves
+// @forjd/domain and @forjd/contracts through their compiled dist/, which git does not hold. The first
+// simulator build failed there; development builds never bundle, so none had shown it. EAS runs this
+// script after installing dependencies, on both platforms.
+describe('EAS build hook', () => {
+  const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8')) as {
+    scripts?: Record<string, string>;
+    dependencies?: Record<string, string>;
+  };
+
+  it('compiles every workspace package the app depends on, after EAS installs dependencies', () => {
+    const hook = pkg.scripts?.['eas-build-post-install'] ?? '';
+    const workspaceDeps = Object.entries(pkg.dependencies ?? {}).filter(([, range]) => range.startsWith('workspace:'));
+    expect(workspaceDeps.map(([name]) => name).sort()).toEqual(['@forjd/contracts', '@forjd/domain']);
+    // `^...` is the app's workspace dependencies (not the app itself), built in dependency order.
+    expect(hook).toBe('pnpm --filter "@forjd/mobile^..." run build');
+  });
+});
+
 describe('EAS simulator profile', () => {
   const simulator = eas.build.simulator;
 
