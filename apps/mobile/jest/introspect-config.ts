@@ -13,6 +13,8 @@ type ModResults = {
 
 export type IntrospectedConfig = {
   ios?: { config?: Record<string, unknown> };
+  plugins?: (string | [string, unknown])[];
+  extra?: Record<string, unknown>;
   _internal: { modResults: ModResults };
 };
 
@@ -26,14 +28,17 @@ const BUILD_ENV = new Set([
   'GOOGLE_SERVICES_JSON',
   'GOOGLE_IOS_URL_SCHEME',
   'APPLE_SIGN_IN_ENABLED',
+  'APPLE_HEALTH_ENABLED',
 ]);
 
 const SCRIPT = join(__dirname, 'introspect-config-cli.js');
 const MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 
-export async function introspectConfig(): Promise<IntrospectedConfig> {
+/** `buildEnv` sets build variables for this run only (e.g. `{ APPLE_HEALTH_ENABLED: 'true' }`). */
+export async function introspectConfig(buildEnv: Record<string, string> = {}): Promise<IntrospectedConfig> {
   const env = { ...process.env };
   BUILD_ENV.forEach((name) => delete env[name]);
+  Object.assign(env, buildEnv);
   const { stdout } = await promisify(execFile)(process.execPath, [SCRIPT], { env, maxBuffer: MAX_OUTPUT_BYTES });
   return JSON.parse(stdout) as IntrospectedConfig;
 }
