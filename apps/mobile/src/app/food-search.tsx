@@ -8,7 +8,7 @@ import {
 import { mealSlotSchema, type FoodResponse } from '@forjd/contracts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { createCustomFood, searchFoods } from '@/auth/apiClient';
 import { classifyRequestFailure, OFFLINE_MESSAGE } from '@/auth/failure';
@@ -16,6 +16,7 @@ import { FilterChip } from '@/components/filter-chip';
 import { Header } from '@/components/header';
 import { Icon } from '@/components/icon';
 import { ScreenBackground } from '@/components/screen-background';
+import { SHEET_KEYBOARD_BEHAVIOR } from '@/components/sheet-keyboard';
 import { Toast, useToast } from '@/components/toast';
 import { colors } from '@/theme/tokens';
 
@@ -262,7 +263,7 @@ export default function FoodSearchScreen() {
       {customFoodOpen ? (
         <KeyboardAvoidingView
           testID="custom-food-sheet"
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={SHEET_KEYBOARD_BEHAVIOR}
           className="absolute inset-0 z-20 items-end justify-end"
           style={{ backgroundColor: colors.scrim }}>
           <View
