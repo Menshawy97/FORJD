@@ -1,8 +1,9 @@
 # iPhone settings the app still lacks (Phase 11 prep)
 
 Read from `apps/mobile/app.config.ts`, the config plugins in `node_modules` and the screens, on
-2026-10-15 (`main` at 3d214c9). Nothing here is fixed yet: iOS starts with Phase 11 (ADR-007), and each
-fix should land, test-first, before the first TestFlight build. Apple's App Review Guidelines are
+2026-10-15 (`main` at 3d214c9). iOS starts with Phase 11 (ADR-007), and each fix should land, test-first,
+before the first TestFlight build; the ones that need no Apple account are tracked in
+[ios-no-account-plan.md](ios-no-account-plan.md), and items marked *Fixed* are done. Apple's App Review Guidelines are
 quoted by number.
 
 ## Would get the first submission rejected
@@ -10,10 +11,12 @@ quoted by number.
 1. **Sign in with Apple must be on for iPhone** (guideline 4.8, Login Services). An app that offers a
    third-party login such as Google must also offer a login that limits data to name and email, lets the
    person hide their email, and does no ad tracking. Sign in with Apple is that option. It is built but
-   off: `extra.appleSignInEnabled` reads `APPLE_SIGN_IN_ENABLED`, and the entitlement plugin is not added
-   yet (the comment in `app.config.ts` says so). Needs the Apple Developer account. FORJD's own email
+   off: `extra.appleSignInEnabled` reads `APPLE_SIGN_IN_ENABLED`. The entitlement is already in the
+   iPhone build (checked 2026-10-16 with `npx expo config --type introspect`: Expo applies
+   `expo-apple-authentication`'s plugin by itself), so only the Apple Developer account is missing. FORJD's own email
    sign-in does not exempt it, since Google is offered too.
-2. **Purpose strings that do not cover every use** (guideline 5.1.1(ii): "clearly and completely
+2. **Purpose strings that do not cover every use.** *(Fixed 2026-10-16, [slice 1](ios-no-account-plan.md);
+   both strings now name every use.)* (Guideline 5.1.1(ii): "clearly and completely
    describe your use of the data"):
    - `NSCameraUsageDescription` mentions only the nutrition share card, but the InBody screen also opens
      the camera (`inbody.tsx`, `launchCameraAsync`).
@@ -27,7 +30,7 @@ quoted by number.
    picks and takes photos only. Fix: list the plugin with `microphonePermission: false`. (On Android the
    same default adds `RECORD_AUDIO`, see the Android note at the end.)
 
-3a. **A Face ID prompt FORJD never uses, with generic text.** Checked 2026-10-16 with
+3a. **A Face ID prompt FORJD never uses, with generic text.** *(Fixed 2026-10-16, slice 1.)* Checked 2026-10-16 with
    `npx expo config --type introspect`: the final Info.plist has `NSFaceIDUsageDescription` = "Allow
    $(PRODUCT_NAME) to access your Face ID biometric data", added by `expo-secure-store`'s default plugin
    settings. FORJD never asks for Face ID. Fix: list `expo-secure-store` with `faceIDPermission: false`
@@ -35,14 +38,16 @@ quoted by number.
 
 ## Would break on iPhone
 
-4. **Background upload would not be allowed.** 12C's background upload uses `expo-background-task`,
+4. **Background upload would not be allowed.** *(Fixed 2026-10-16, slice 1: the plugin is listed, and the
+   final Info.plist has `processing` and `com.expo.modules.backgroundtask.processing`.)* 12C's background upload uses `expo-background-task`,
    whose config plugin adds the `processing` background mode and the
    `BGTaskSchedulerPermittedIdentifiers` entry iOS requires. It is not in the plugins list and not on
    Expo's auto-plugin list, so the iPhone build lacks both. iOS refuses to schedule the task, or stops
    the app, when an identifier is missing from Info.plist. Fix: add `'expo-background-task'` to plugins.
    Android is unaffected, which is why it has not shown up. Confirmed 2026-10-16 by
    `npx expo config --type introspect`: `UIBackgroundModes` is `["fetch", "location"]`, no `processing`.
-5. **Apple Health is not wired.** The HealthKit entitlement and `NSHealthShareUsageDescription` come
+5. **Apple Health is not wired.** ADR-068 accepted 2026-10-16; the provider is slice 5 of
+   [ios-no-account-plan.md](ios-no-account-plan.md). The HealthKit entitlement and `NSHealthShareUsageDescription` come
    with the library [ADR-068](../decisions/ADR-068-apple-health-library.md) proposes. Read only, so no
    update (write) string.
 6. **Google sign-in on iPhone** needs an iOS OAuth client and its reversed client ID as a URL scheme.
@@ -52,14 +57,14 @@ quoted by number.
 
 ## Worth settling, not blocking
 
-8. **Export compliance.** Set `ios.config.usesNonExemptEncryption: false` (FORJD uses only HTTPS), so
+8. **Export compliance.** *(Fixed 2026-10-16, slice 1.)* Set `ios.config.usesNonExemptEncryption: false` (FORJD uses only HTTPS), so
    App Store Connect does not ask about encryption on every upload.
 9. **Privacy manifest.** Apple requires reasons for some system APIs (for example user defaults and
    file timestamps). Expo's modules ship their own manifests; after the first TestFlight upload, read
    Apple's email for any "ITMS-91053" warning and add the missing reasons under `ios.privacyManifests`.
 10. **No map on iPhone.** The run screen's Google map is Android-only (`route-map.tsx` loads it only on
     Android with a key); iPhone shows the striped fallback. Either an iOS Google Maps key, or Apple Maps
-    on iPhone. A product choice, not a review risk.
+    on iPhone. A product choice, not a review risk. Owner chose Apple Maps (2026-10-16), slice 4.
 11. **App Store privacy labels.** Apple's equivalent of Play's Data safety form; the answers in
     [play-data-safety-answers.md](play-data-safety-answers.md) carry over, with Apple's own category names.
 12. **Background location review note.** The `location` background mode is on (runs keep tracking with
