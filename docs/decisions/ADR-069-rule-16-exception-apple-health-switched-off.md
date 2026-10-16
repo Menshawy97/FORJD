@@ -66,7 +66,7 @@ before anyone can use it.
   (rule 10's read-time source priority). Owed before switch-on.
 - A full sync (`since: null`) reads all history at once; the run flow always passes `since`. Read in
   chunks before any backfill uses it.
-- The permission text in `app.config.ts` is a draft until the owner approves it, before the switch.
+- The permission text in `app.config.ts` was approved by the owner on 2026-10-17, as written.
 - The library is installed for both platforms; on Android only its JavaScript is bundled, unused.
 - Owed before the flag is turned on: the iPhone walk above, tracked in
   [remaining-checklist.md](../product/remaining-checklist.md).

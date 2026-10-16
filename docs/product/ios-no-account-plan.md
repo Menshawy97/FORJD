@@ -107,7 +107,7 @@ test-first:
 - **Conformance rule:** the library and its Nitro peer only in `integrations/health/` (proved by a
   planted import). CLAUDE.md rule 17 and `integrations.md` name the library.
 
-**Owed before the switch:** the owner approves the permission text; a TestFlight build on a physical
+**Owed before the switch:** (permission text approved 2026-10-17) a TestFlight build on a physical
 iPhone (Apple account) reads heart rate and active energy during a run, refuses each alone, and keeps
 whichever was granted, and a second run still reads both; the readiness read side picks one sleep source
 per night; then the App Store privacy labels' Health row is confirmed. Compiled for iPhone by EAS
