@@ -29,4 +29,7 @@ overrides:
   decode-uri-component: ">=0.4.3"
   "js-yaml@<3.15.2": ">=3.15.2"
   "js-yaml@>=4.0.0 <4.3.2": ">=4.3.2"
-  "@xmldom/xmldom": ">=0.9.12"
+  # Every user (@expo/plist, plist) is written for the 0.8 line; 0.9 breaks iPhone prebuild
+  # (parseFromString needs a mime type). 0.8.15 is patched for every advisory that affects 0.8
+  # (ADR-039 amendment, 2026-10-16; ios-no-account-plan.md slice 2).
+  "@xmldom/xmldom": ">=0.8.15 <0.9.0"

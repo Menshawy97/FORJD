@@ -89,3 +89,14 @@ but which pnpm's workspace hoisting still installs because `apps/mobile` depends
   `apps/mobile` Jest run, not just `pnpm audit`'s finding count, since a version floor that
   "resolves cleanly" in the dependency graph can still break the one consumer that needs the
   older, CJS-only major.
+
+## Amendment (2026-10-16): `@xmldom/xmldom` stays on the 0.8 line
+
+The `>=0.9.12` override broke every iPhone prebuild: all three users (`@expo/plist` 0.8.1 and 0.2.0,
+`plist` 3.1.1, even the newest `@expo/plist`) are written for `^0.8.8`, and 0.9's `parseFromString`
+throws without a mime type, so prebuild could not read any Info.plist. Android never reads a plist, so
+the first EAS iOS simulator build was the first thing to notice ([ios-no-account-plan.md](../product/ios-no-account-plan.md), slice 2).
+The override is now `>=0.8.15 <0.9.0`: 0.8.15 is the patched release for every advisory that affects
+the 0.8 line (GitHub advisories checked 2026-10-16), and `pnpm audit` reports the same totals as before,
+with no `@xmldom/xmldom` entry. `apps/mobile/config/__tests__/ios-plist-parse.test.ts` fails if a 0.9 copy
+comes back.
