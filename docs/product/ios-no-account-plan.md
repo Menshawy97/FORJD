@@ -6,6 +6,9 @@ anyway, one PR per slice, without changing Android's behaviour. Every config cha
 `config/__tests__/ios-settings.test.ts`, which runs the real config plugins (what
 `npx expo config --type introspect` prints) and compares the Android manifest with the copy saved in
 `config/__fixtures__/android-manifest.json`. That copy changes only when an Android change is meant.
+The plugins run against an empty folder, so a gitignored `android/` left by a local prebuild is not
+read in place of Expo's template (it was, at first, and CI caught the difference); EAS builds from a
+clean clone, so the template is what ships.
 
 ## Owner decisions (2026-10-16)
 
@@ -22,8 +25,8 @@ anyway, one PR per slice, without changing Android's behaviour. Every config cha
 
 | # | Slice | State |
 |---|---|---|
-| 1 | iPhone settings: full camera and photo-library purpose strings, no Face ID prompt, `expo-background-task` plugin (`processing` mode and task identifier), `usesNonExemptEncryption: false` | This PR |
-| 2 | A `simulator` build profile in `eas.json` and one EAS iOS simulator build, the compile check of today's app before any Apple Health code (uses one of the free plan's monthly iOS builds) | Next |
+| 1 | iPhone settings: full camera and photo-library purpose strings, no Face ID prompt, `expo-background-task` plugin (`processing` mode and task identifier), `usesNonExemptEncryption: false` | Merged (#423) |
+| 2 | A `simulator` build profile in `eas.json` and one EAS iOS simulator build, the compile check of today's app before any Apple Health code (uses one of the free plan's monthly iOS builds) | This PR: builds (f3a08ef2) |
 | 3 | App Store privacy labels, mapped from [play-data-safety-answers.md](play-data-safety-answers.md) (documents only) | Planned |
 | 4 | Apple Maps under a run's route on iPhone: mock-up first, then the change in `integrations/maps/route-map.tsx`. A simulator build proves it compiles, not that it draws | Planned |
 | 5 | Apple Health: the rule 16 exception ADR, then `AppleHealthProvider` behind the unchanged `HealthProvider`, the shared contract tests with a mocked native module, the conformance rule, off by default; a simulator build as the compile check | Planned |
@@ -48,3 +51,31 @@ then `app.config.ts` changed:
 
 Found on the way: the Sign in with Apple entitlement is already in the iPhone build, because Expo
 applies `expo-apple-authentication`'s plugin by itself. Only the account is missing for it.
+
+## Slice 2 (2026-10-16)
+
+Test first: `config/__tests__/eas-simulator-profile.test.ts` failed, then `eas.json` gained a
+`simulator` profile: `extends: staging` with `ios.simulator: true`. It is the staging app (same API and
+settings), not a development client, sets nothing for Android, and leaves the other profiles as they
+were. Run it with `eas build --platform ios --profile simulator`, from a clean clone of the branch.
+
+**Result: the iPhone app builds.** Four EAS simulator builds on 2026-10-16; the fourth,
+[f3a08ef2](https://expo.dev/accounts/forjd/projects/forjd-mobile/builds/f3a08ef2-8217-4549-9ffd-f085ddca37e4),
+finished in about 10 minutes (compiled, bundled, `.app` archive produced). The first three each found a
+problem, fixed test-first in this PR:
+
+1. **Prebuild could not read any Info.plist** (build 86751d84). The ADR-039 override forced
+   `@xmldom/xmldom` 0.9, and `@expo/plist` is written for 0.8. Now `>=0.8.15 <0.9.0`, patched for every
+   advisory that affects 0.8; `pnpm audit` totals unchanged, no xmldom entry (ADR-039 amendment,
+   `ios-plist-parse.test.ts`).
+2. **Bundling could not find `@forjd/contracts`** (build 49c22e4e). Metro resolves the workspace
+   packages through their compiled `dist/`, which git does not hold; `eas-build-post-install` now
+   builds them. Every earlier EAS build was a development build, which never bundles, so this would
+   also have stopped the first Android staging or production build.
+3. **Babel could not find `babel-preset-expo`** in Xcode's bundling step (build fdff57b2). It reached
+   the app only through pnpm hoisting; it is now the app's own dev dependency (the version expo
+   already uses). Same Android note as 2.
+
+What this proves: the iPhone app compiles and bundles with Expo SDK 57 and React Native 0.86, with
+slice 1's settings. What it does not: that it runs (the simulator cannot run on Windows) or that a
+signed device build works (Apple account). Builds used: 4 of the free plan's monthly iOS builds.
