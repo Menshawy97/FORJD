@@ -1,5 +1,7 @@
 import Constants, { AppOwnership } from 'expo-constants';
-import * as MediaLibrary from 'expo-media-library';
+// The legacy entry: from Expo SDK 57 the main entry keeps these functions only as stubs that throw,
+// which broke Save Image on every share card (found on the emulator, 2026-10-16).
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import type { RefObject } from 'react';
 import type { ViewShotRef } from 'react-native-view-shot';
@@ -48,7 +50,10 @@ async function capture(ref: RefObject<ViewShotRef | null>): Promise<string> {
 
 /** Save Image. Captures the card, then writes it to the device's photo library. */
 export async function saveShareCardToPhotos(ref: RefObject<ViewShotRef | null>): Promise<void> {
-  const permission = await MediaLibrary.requestPermissionsAsync();
+  // Write-only: saving needs no read access. On Android 13+ this asks for nothing (the manifest
+  // declares no READ_MEDIA_* permission, Play's photo and video policy); on iPhone it is the
+  // add-only prompt.
+  const permission = await MediaLibrary.requestPermissionsAsync(true);
   if (!permission.granted) {
     throw new SharePermissionDeniedError();
   }

@@ -20,11 +20,18 @@ quoted by number.
    - `NSPhotoLibraryUsageDescription` mentions only InBody scans, but the profile photo
      (`edit-profile.tsx`, `pick-username.tsx`) and the nutrition share background (`nutrition-share.tsx`)
      also pick from the library.
-3. **A microphone prompt for a microphone FORJD never uses.** Expo applies `expo-image-picker`'s
+3. **A microphone prompt for a microphone FORJD never uses.** *(Fixed 2026-10-16 with the Android
+   permission change.)* Expo applies `expo-image-picker`'s
    config plugin automatically (it is on prebuild's legacy auto-plugin list), and with no options it adds
    a generic `NSMicrophoneUsageDescription` ("Allow $(PRODUCT_NAME) to access your microphone"). FORJD
    picks and takes photos only. Fix: list the plugin with `microphonePermission: false`. (On Android the
    same default adds `RECORD_AUDIO`, see the Android note at the end.)
+
+3a. **A Face ID prompt FORJD never uses, with generic text.** Checked 2026-10-16 with
+   `npx expo config --type introspect`: the final Info.plist has `NSFaceIDUsageDescription` = "Allow
+   $(PRODUCT_NAME) to access your Face ID biometric data", added by `expo-secure-store`'s default plugin
+   settings. FORJD never asks for Face ID. Fix: list `expo-secure-store` with `faceIDPermission: false`
+   (check the option name against its plugin), the same way as the image picker's microphone.
 
 ## Would break on iPhone
 
@@ -33,7 +40,8 @@ quoted by number.
    `BGTaskSchedulerPermittedIdentifiers` entry iOS requires. It is not in the plugins list and not on
    Expo's auto-plugin list, so the iPhone build lacks both. iOS refuses to schedule the task, or stops
    the app, when an identifier is missing from Info.plist. Fix: add `'expo-background-task'` to plugins.
-   Android is unaffected, which is why it has not shown up.
+   Android is unaffected, which is why it has not shown up. Confirmed 2026-10-16 by
+   `npx expo config --type introspect`: `UIBackgroundModes` is `["fetch", "location"]`, no `processing`.
 5. **Apple Health is not wired.** The HealthKit entitlement and `NSHealthShareUsageDescription` come
    with the library [ADR-068](../decisions/ADR-068-apple-health-library.md) proposes. Read only, so no
    update (write) string.
@@ -64,7 +72,11 @@ Already right: in-app account deletion exists (guideline 5.1.1(v)); the location
 When In Use (the Always and motion strings are deleted on purpose); health data never reaches an
 analytics or advertising service (rule 15, guideline 5.1.3); nothing is stored in iCloud.
 
-## Android note found on the way (more urgent than iOS)
+## Android note found on the way (fixed 2026-10-16)
+
+Fixed: the five permissions are now in `blockedPermissions`, `expo-image-picker` is listed with
+`microphonePermission: false` (which also removes item 3's iPhone microphone prompt), and Save Image asks
+write-only. Checked on the emulator; see the checklist. The original finding:
 
 The installed Android build (EAS dev build `001a2aac`, `dumpsys package`) declares `RECORD_AUDIO`
 (from the same `expo-image-picker` default) and `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` and
