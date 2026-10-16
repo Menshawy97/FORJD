@@ -64,17 +64,24 @@ Surroundings, Body.
 
 ## Notes
 
-1. **Precise location is not collected under Apple's definition.** The workout start position (rounded
-   on the phone to about 110 m, `COARSE_DECIMALS`) travels in the body of the workout upload, the server
-   turns it into a city and does not store it or log it. That is "only to answer the request", so it is
-   not collected; the resulting city is (Coarse Location). The run route never leaves the phone
-   (ADR-049, ADR-059). Play still declares it (precise, processed ephemerally), because Play has a
-   separate "ephemeral" answer. If the position is ever stored or logged, add Precise Location here.
-2. **Device ID is declared to be safe.** Apple describes Device ID as an advertising identifier or another
-   device-level ID. A push token identifies an app install for delivery, not the device for tracking,
-   and many apps leave it out; declaring it costs nothing on the listing and cannot be wrong. Remove it
-   only if the lawyer prefers.
-3. **Phase 10 (RevenueCat subscriptions)** will add Purchases (purchase history) and a new SDK. Update
+1. **Precise location is not collected, only because it is not kept.** The workout start position is
+   precise by Apple's own measure (three decimal places, `COARSE_DECIMALS` in
+   `integrations/location/location-provider.ts`; about 110 m). The only reason it is not declared is
+   Apple's real-time exception: it travels in the body of the workout upload, the server turns it into a
+   city and keeps nothing (`workout-sessions.service.ts`, no latitude or longitude column; request bodies
+   are not logged and Sentry captures no request data). The resulting city is declared (Coarse Location).
+   **Any of these flips it to Precise Location, collected:** storing the position, logging request
+   bodies, or a monitoring tool that captures request bodies. The run route never leaves the phone
+   (ADR-049, ADR-059). Play declares the position (precise, processed ephemerally), because Play has a
+   separate "ephemeral" answer.
+2. **Device ID is a deliberate over-declaration, for the lawyer to confirm.** Apple describes Device ID as
+   an advertising identifier or another device-level ID; a push token identifies an app install for
+   delivery, which fits that only loosely, and many apps leave it out. It is kept until the lawyer
+   decides, because declaring it does not mislead anyone and leaving out something that counts would.
+3. **Crash Data's purpose differs from Play's on purpose.** Play's sheet says Analytics; Apple's
+   definition of App functionality names keeping the app from crashing, so App functionality is the
+   right Apple answer. Do not "fix" the two sheets to match.
+4. **Phase 10 (RevenueCat subscriptions)** will add Purchases (purchase history) and a new SDK. Update
    this sheet, the Play sheet and the data inventory then.
 
 ## Also asked in App Store Connect
@@ -84,4 +91,4 @@ Surroundings, Body.
 - **App Review notes:** the background location mode tracks a run the person starts and stops, When In
   Use only ([ios-settings-gaps.md](ios-settings-gaps.md) item 12).
 
-These answers can be entered only once the Apple Developer account and the App Store Connect record exist.
+Check the category grouping (for example Surroundings and Body) against the live form. These answers can be entered only once the Apple Developer account and the App Store Connect record exist.
