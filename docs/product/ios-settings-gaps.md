@@ -27,6 +27,12 @@ quoted by number.
    picks and takes photos only. Fix: list the plugin with `microphonePermission: false`. (On Android the
    same default adds `RECORD_AUDIO`, see the Android note at the end.)
 
+3a. **A Face ID prompt FORJD never uses, with generic text.** Checked 2026-10-16 with
+   `npx expo config --type introspect`: the final Info.plist has `NSFaceIDUsageDescription` = "Allow
+   $(PRODUCT_NAME) to access your Face ID biometric data", added by `expo-secure-store`'s default plugin
+   settings. FORJD never asks for Face ID. Fix: list `expo-secure-store` with `faceIDPermission: false`
+   (check the option name against its plugin), the same way as the image picker's microphone.
+
 ## Would break on iPhone
 
 4. **Background upload would not be allowed.** 12C's background upload uses `expo-background-task`,
@@ -34,7 +40,8 @@ quoted by number.
    `BGTaskSchedulerPermittedIdentifiers` entry iOS requires. It is not in the plugins list and not on
    Expo's auto-plugin list, so the iPhone build lacks both. iOS refuses to schedule the task, or stops
    the app, when an identifier is missing from Info.plist. Fix: add `'expo-background-task'` to plugins.
-   Android is unaffected, which is why it has not shown up.
+   Android is unaffected, which is why it has not shown up. Confirmed 2026-10-16 by
+   `npx expo config --type introspect`: `UIBackgroundModes` is `["fetch", "location"]`, no `processing`.
 5. **Apple Health is not wired.** The HealthKit entitlement and `NSHealthShareUsageDescription` come
    with the library [ADR-068](../decisions/ADR-068-apple-health-library.md) proposes. Read only, so no
    update (write) string.
