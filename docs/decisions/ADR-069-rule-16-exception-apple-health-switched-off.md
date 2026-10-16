@@ -24,8 +24,10 @@ Merge `AppleHealthProvider`, its tests and the library behind one build flag,
 
 1. **No iPhone code path reaches HealthKit.** `getDeviceHealthProvider()` returns `null` on iOS, as it
    does today, so no screen can call `connect()`, `requestPermissions()` or `sync()`.
-2. **The iPhone build declares no HealthKit.** The library's config plugin, which adds the HealthKit
-   entitlement and the permission text, is listed only when the flag is on. Apple can reject an app
+2. **The iPhone build holds and declares no HealthKit.** The library's config plugin, which adds the
+   HealthKit entitlement and the permission text, is listed only when the flag is on, and the library
+   and its Nitro peer are autolinked into iOS only then (`apps/mobile/react-native.config.js`), so a
+   switched-off binary has no HealthKit code for App Store checks to find undeclared. Apple can reject an app
    that declares HealthKit without using it visibly (guideline 2.5.1), and the App Store privacy labels
    would otherwise have to describe a feature that is off.
 3. **Android is unchanged.** HealthKit is Swift only, and the native code of its peer,
@@ -42,8 +44,9 @@ App Store privacy labels' Health row confirmed.
 
 Rule 16 guards against health platforms behaving differently on real devices. While the flag is off,
 none of that behaviour can happen: nothing reads HealthKit and the shipped app does not ask for it.
-What merges is code that is compiled and unit tested (contract tests with a mocked native module) and
-an iPhone simulator build that proves it compiles. What stays owed is exactly what rule 16 asks for,
+What merges is code that is unit tested (contract tests with a mocked native module) and was compiled
+for iPhone by the EAS simulator build 3ceba342 (2026-10-17, library linked; ADR-068 check 2). Switched
+off, later builds no longer compile it; the first switched-on TestFlight build does again. What stays owed is exactly what rule 16 asks for,
 before anyone can use it.
 
 ## Consequences
@@ -54,7 +57,15 @@ before anyone can use it.
   SDNN (Health Connect: RMSSD), and `sleep_duration` is time asleep per segment (Health Connect: the whole
   session). Each reading keeps its source (rule 10), so readiness baselines must not mix sources.
 - HealthKit hides read refusals, so `requestPermissions` reports every supported metric as granted once
-  the sheet has been shown; a refusal shows up as no data. The iPhone walk checks that a run copes.
+  the sheet has been shown; a refusal shows up as no data. "Already asked" comes from HealthKit's own
+  record (`getRequestStatusForAuthorization`), not the provider instance, because the run screen asks
+  only on the first run and builds a new provider each run. The iPhone walk checks a first and a second
+  run.
+- Overlapping sleep from several sources (watch, phone, other apps) arrives as separate segments; each
+  keeps its source, and the read side must pick one source per night before readiness uses sleep
+  (rule 10's read-time source priority). Owed before switch-on.
+- A full sync (`since: null`) reads all history at once; the run flow always passes `since`. Read in
+  chunks before any backfill uses it.
 - The permission text in `app.config.ts` is a draft until the owner approves it, before the switch.
 - The library is installed for both platforms; on Android only its JavaScript is bundled, unused.
 - Owed before the flag is turned on: the iPhone walk above, tracked in

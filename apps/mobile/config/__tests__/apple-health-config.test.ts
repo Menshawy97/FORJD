@@ -19,13 +19,16 @@ const HEALTHKIT_ENTITLEMENT = 'com.apple.developer.healthkit';
 const ANDROID_MANIFEST_FIXTURE = join(__dirname, '../__fixtures__/android-manifest.json');
 
 /** What React Native autolinking links for one platform, as the native build would see it. */
-async function autolinkedFor(platform: 'android' | 'ios'): Promise<string[]> {
+async function autolinkedFor(platform: 'android' | 'ios', healthOn = false): Promise<string[]> {
+  const env = { ...process.env };
+  delete env.APPLE_HEALTH_ENABLED;
+  if (healthOn) env.APPLE_HEALTH_ENABLED = 'true';
   const expoPackage = require.resolve('expo/package.json', { paths: [PROJECT_ROOT] });
   const bin = require.resolve('expo-modules-autolinking/bin/expo-modules-autolinking.js', { paths: [expoPackage] });
   const { stdout } = await promisify(execFile)(
     process.execPath,
     [bin, 'react-native-config', '--platform', platform, '--json'],
-    { cwd: PROJECT_ROOT, maxBuffer: 32 * 1024 * 1024 },
+    { cwd: PROJECT_ROOT, env, maxBuffer: 32 * 1024 * 1024 },
   );
   return Object.keys((JSON.parse(stdout) as { dependencies: Record<string, unknown> }).dependencies);
 }
@@ -86,15 +89,22 @@ describe('Apple Health switched on (only after the iPhone walk, ADR-069)', () =>
 });
 
 describe('native linking', () => {
-  it('links neither HealthKit nor its Nitro peer into the Android app', async () => {
-    const android = await autolinkedFor('android');
+  it.each([false, true])('links neither HealthKit nor its Nitro peer into the Android app (switch on: %s)', async (on) => {
+    const android = await autolinkedFor('android', on);
     for (const name of HEALTHKIT_PACKAGES) {
       expect(android).not.toContain(name);
     }
   }, 120_000);
 
-  it('links both into the iPhone app, so the simulator build compiles them', async () => {
+  it('links neither into the iPhone app while switched off, so the binary holds no HealthKit code', async () => {
     const ios = await autolinkedFor('ios');
+    for (const name of HEALTHKIT_PACKAGES) {
+      expect(ios).not.toContain(name);
+    }
+  }, 120_000);
+
+  it('links both into the iPhone app when switched on', async () => {
+    const ios = await autolinkedFor('ios', true);
     for (const name of HEALTHKIT_PACKAGES) {
       expect(ios).toContain(name);
     }

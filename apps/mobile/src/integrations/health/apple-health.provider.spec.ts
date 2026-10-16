@@ -13,11 +13,13 @@ import { SLEEP_ANALYSIS, SleepValue } from "./apple-health-sample-mapping";
 jest.mock("@kingstinct/react-native-healthkit", () => ({
   isHealthDataAvailable: jest.fn(),
   requestAuthorization: jest.fn(),
+  getRequestStatusForAuthorization: jest.fn(),
   queryQuantitySamples: jest.fn(),
   queryCategorySamples: jest.fn(),
 }));
 
 import {
+  getRequestStatusForAuthorization,
   isHealthDataAvailable,
   queryCategorySamples,
   queryQuantitySamples,
@@ -28,6 +30,11 @@ const mockAvailable = isHealthDataAvailable as jest.Mock;
 const mockRequestAuthorization = requestAuthorization as jest.Mock;
 const mockQueryQuantity = queryQuantitySamples as jest.Mock;
 const mockQueryCategory = queryCategorySamples as jest.Mock;
+const mockRequestStatus = getRequestStatusForAuthorization as jest.Mock;
+
+/** `AuthorizationRequestStatus`: HealthKit remembers, across launches, whether a type was asked for. */
+const SHOULD_REQUEST = 1;
+const ALREADY_REQUESTED = 2;
 
 const at = new Date("2026-10-16T06:00:00.000Z");
 const source = { source: { name: "Apple Watch", bundleIdentifier: "com.apple.health.ABC" }, operatingSystemVersion: "26.0" };
@@ -47,6 +54,7 @@ describe("AppleHealthProvider", () => {
     jest.clearAllMocks();
     mockAvailable.mockReturnValue(true);
     mockRequestAuthorization.mockResolvedValue(true);
+    mockRequestStatus.mockResolvedValue(SHOULD_REQUEST);
     mockQueryQuantity.mockResolvedValue([]);
     mockQueryCategory.mockResolvedValue([]);
   });
@@ -82,6 +90,13 @@ describe("AppleHealthProvider", () => {
       expect(result).toEqual({ granted: ["heart_rate", "active_energy"], denied: [] });
     });
 
+    it("shows no sheet when there is nothing HealthKit can be asked for", async () => {
+      const result = await new AppleHealthProvider().requestPermissions([]);
+
+      expect(mockRequestAuthorization).not.toHaveBeenCalled();
+      expect(result).toEqual({ granted: [], denied: [] });
+    });
+
     it("reports everything as denied when the request itself fails", async () => {
       mockRequestAuthorization.mockRejectedValue(new Error("Missing NSHealthShareUsageDescription"));
 
@@ -100,6 +115,37 @@ describe("AppleHealthProvider", () => {
       expect(mockQueryQuantity).toHaveBeenCalledTimes(1);
       expect(mockQueryQuantity.mock.calls[0]?.[0]).toBe("HKQuantityTypeIdentifierHeartRate");
       expect(result.failedMetricTypes).toEqual(["hrv"]);
+    });
+
+    it("on a later run, a new provider reads what HealthKit says was already asked for", async () => {
+      // The run screen asks only on the first run and builds a new provider each time
+      // (run-health.ts); HealthKit, not this instance, remembers the earlier request.
+      mockRequestStatus.mockResolvedValue(ALREADY_REQUESTED);
+      mockQueryQuantity.mockResolvedValue([heartRateSample(150)]);
+
+      const result = await new AppleHealthProvider().sync({ metricTypes: ["heart_rate"], since: null });
+
+      expect(mockRequestStatus).toHaveBeenCalledWith({ toRead: ["HKQuantityTypeIdentifierHeartRate"] });
+      expect(result.observations.map((o) => o.value)).toEqual([150]);
+      expect(result.failedMetricTypes).toBeUndefined();
+    });
+
+    it("still reads nothing when HealthKit says the type has not been asked for", async () => {
+      mockRequestStatus.mockResolvedValue(SHOULD_REQUEST);
+
+      const result = await new AppleHealthProvider().sync({ metricTypes: ["heart_rate"], since: null });
+
+      expect(mockQueryQuantity).not.toHaveBeenCalled();
+      expect(result.failedMetricTypes).toEqual(["heart_rate"]);
+    });
+
+    it("treats a failed status check as not asked, and reads nothing", async () => {
+      mockRequestStatus.mockRejectedValue(new Error("status unavailable"));
+
+      const result = await new AppleHealthProvider().sync({ metricTypes: ["heart_rate"], since: null });
+
+      expect(mockQueryQuantity).not.toHaveBeenCalled();
+      expect(result.failedMetricTypes).toEqual(["heart_rate"]);
     });
 
     it("reads nothing at all before any permission request", async () => {

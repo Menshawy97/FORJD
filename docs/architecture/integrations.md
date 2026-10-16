@@ -46,8 +46,8 @@ Apple HealthKit (iOS) is a **separate system with a separate library**:
 `@kingstinct/react-native-healthkit` 16.2.0 with `react-native-nitro-modules` 0.37.1 (ADR-068),
 behind `AppleHealthProvider` in the same folder, read only, and **merged switched off** (ADR-069): only a
 build with `APPLE_HEALTH_ENABLED=true` declares HealthKit or returns the provider, and none does until
-it has run on a physical iPhone. Its Nitro peer is kept out of Android autolinking
-(`apps/mobile/react-native.config.js`). Two differences from Health Connect matter to readiness: HRV
+it has run on a physical iPhone. The library and its Nitro peer are autolinked into iOS only when switched on, and never into
+Android (`apps/mobile/react-native.config.js`). Two differences from Health Connect matter to readiness: HRV
 is SDNN on Apple and RMSSD on Health Connect, and Apple's `sleep_duration` is time asleep rather than
 the whole session; each reading keeps its source, so baselines must not mix the two.
 

@@ -109,4 +109,6 @@ test-first:
 
 **Owed before the switch:** the owner approves the permission text; a TestFlight build on a physical
 iPhone (Apple account) reads heart rate and active energy during a run, refuses each alone, and keeps
-whichever was granted; then the App Store privacy labels' Health row is confirmed.
+whichever was granted, and a second run still reads both; the readiness read side picks one sleep source
+per night; then the App Store privacy labels' Health row is confirmed. Compiled for iPhone by EAS
+simulator build 3ceba342 (library linked); switched-off builds no longer link it (review finding).

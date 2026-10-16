@@ -10,6 +10,7 @@ import type {
   SyncResult,
 } from "@forjd/domain";
 import {
+  getRequestStatusForAuthorization,
   isHealthDataAvailable,
   queryCategorySamples,
   queryQuantitySamples,
@@ -33,6 +34,10 @@ import {
 type QueryQuantity = (identifier: string, options: object) => Promise<readonly AppleQuantitySample[]>;
 type QueryCategory = (identifier: string, options: object) => Promise<readonly AppleCategorySample[]>;
 type RequestRead = (request: { toRead: readonly string[] }) => Promise<boolean>;
+type RequestStatus = (request: { toRead: readonly string[] }) => Promise<number>;
+
+/** `AuthorizationRequestStatus.unnecessary`: HealthKit has already shown the sheet for these types. */
+const ALREADY_REQUESTED = 2;
 
 /** HealthKit's "no limit": every sample in the window (the library's documented meaning of 0). */
 const ALL_SAMPLES = 0;
@@ -49,7 +54,9 @@ const ALL_SAMPLES = 0;
  * HealthKit never says whether a read was refused (Apple hides it, so an app cannot infer what a
  * person has), so once the permission sheet has been shown every requested metric counts as granted,
  * and a refusal reads as no data. A type is only ever read after it has been requested: reading an
- * unrequested type crashes the app (the library's README; ADR-068, check 4).
+ * unrequested type crashes the app (the library's README; ADR-068, check 4). "Requested" is what
+ * HealthKit itself remembers across launches, not only this instance: the run screen asks once, on
+ * the first run, and builds a new provider for every run (run-health.ts).
  */
 export class AppleHealthProvider implements HealthProvider {
   readonly source: HealthSource = "apple_health";
@@ -73,6 +80,7 @@ export class AppleHealthProvider implements HealthProvider {
   async requestPermissions(permissions: readonly HealthPermission[]): Promise<PermissionResult> {
     const supported = permissions.filter((permission) => readTypeFor(permission) !== undefined);
     const unsupported = permissions.filter((permission) => readTypeFor(permission) === undefined);
+    if (supported.length === 0) return { granted: [], denied: unsupported };
     try {
       await (requestAuthorization as unknown as RequestRead)({ toRead: readTypesFor(supported) });
     } catch {
@@ -83,8 +91,9 @@ export class AppleHealthProvider implements HealthProvider {
   }
 
   async sync(request: SyncRequest): Promise<SyncResult> {
-    const readable = request.metricTypes.filter((metric) => this.requested.has(metric));
-    const failedMetricTypes = request.metricTypes.filter((metric) => !this.requested.has(metric));
+    const asked = await this.alreadyRequested(request.metricTypes);
+    const readable = request.metricTypes.filter((metric) => asked.has(metric));
+    const failedMetricTypes = request.metricTypes.filter((metric) => !asked.has(metric));
     const date = { ...(request.since ? { startDate: request.since } : {}), endDate: new Date() };
     const observations: SyncedObservation[] = [];
 
@@ -112,6 +121,25 @@ export class AppleHealthProvider implements HealthProvider {
       syncedAt: new Date(),
       ...(failedMetricTypes.length > 0 ? { failedMetricTypes } : {}),
     };
+  }
+
+  /**
+   * The metrics HealthKit has already been asked about: those requested by this instance, plus those
+   * whose type HealthKit reports as requested before (an earlier run or launch). Checked per type, so
+   * one unasked type never blocks the others; a failed check counts as not asked, never as a read.
+   */
+  private async alreadyRequested(metrics: readonly HealthMetricType[]): Promise<ReadonlySet<HealthMetricType>> {
+    const asked = new Set(metrics.filter((metric) => this.requested.has(metric)));
+    const unknownTypes = readTypesFor(metrics.filter((metric) => !asked.has(metric)));
+    for (const type of unknownTypes) {
+      const status = await (getRequestStatusForAuthorization as unknown as RequestStatus)({ toRead: [type] }).catch(
+        () => null,
+      );
+      if (status !== ALREADY_REQUESTED) continue;
+      metrics.filter((metric) => readTypeFor(metric) === type).forEach((metric) => asked.add(metric));
+    }
+    this.requested = new Set([...this.requested, ...asked]);
+    return asked;
   }
 
   private async readQuantity(metric: HealthMetricType, date: object): Promise<SyncedObservation[]> {
