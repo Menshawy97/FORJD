@@ -26,6 +26,13 @@ describe('checkApiBaseUrl', () => {
     expect(checkApiBaseUrl('production', url)).toMatch(reason);
   });
 
+  it('checks the production-apk build (an installable copy of production) the same way', () => {
+    expect(checkApiBaseUrl('production-apk', PRODUCTION_URL)).toBeNull();
+    expect(checkApiBaseUrl('production-apk', 'https://forjd-api-staging-772363715082.europe-west1.run.app')).toMatch(
+      /staging/,
+    );
+  });
+
   it('leaves development and staging builds alone', () => {
     expect(checkApiBaseUrl('development', 'http://localhost:3000')).toBeNull();
     expect(checkApiBaseUrl('staging', 'https://forjd-api-staging-772363715082.europe-west1.run.app')).toBeNull();
@@ -35,7 +42,7 @@ describe('checkApiBaseUrl', () => {
 
 describe('eas.json', () => {
   const eas = JSON.parse(readFileSync(join(__dirname, '../../eas.json'), 'utf8')) as {
-    build: Record<string, { env?: Record<string, string> }>;
+    build: Record<string, { env?: Record<string, string>; extends?: string; android?: { buildType?: string } }>;
   };
   const production = eas.build.production?.env ?? {};
   const staging = eas.build.staging?.env ?? {};
@@ -47,5 +54,12 @@ describe('eas.json', () => {
 
   it('gives the production profile the Google web client (owner decision 2026-10-14)', () => {
     expect(production.GOOGLE_WEB_CLIENT_ID).toBe(staging.GOOGLE_WEB_CLIENT_ID);
+  });
+
+  it('makes production-apk an installable APK of production, with nothing of its own to drift', () => {
+    const apk = eas.build['production-apk'];
+    expect(apk?.extends).toBe('production');
+    expect(apk?.android?.buildType).toBe('apk');
+    expect(apk?.env).toBeUndefined();
   });
 });
