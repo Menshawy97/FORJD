@@ -93,14 +93,16 @@ const ME = {
 };
 
 /**
- * Production smoke test 2026-10-20: on the device the camera badge sat as a bare icon at the avatar's top-left. A
- * Pressable given both `className` and a style function keeps only the `className` on device (NativeWind), so the
- * badge's size, colour and corner were lost; Jest does not run NativeWind, so this pins the cause instead: the badge
- * carries no `className`, and its own style places it.
+ * Production smoke test 2026-10-20: on the device the camera badge was a bare icon, with no size, colour or corner.
+ * A `Pressable`'s style function is not applied on device (NativeWind wraps `Pressable`), with or without a
+ * `className`. Jest does not run NativeWind, so this pins the cause instead: the badge's `Pressable` is given a plain
+ * style, not a function, and no `className`, and that style places it.
  */
 function expectAvatarBadgePlaced(badge: { props: { className?: unknown; style?: unknown } }) {
+  // A style function's result (an array here) reaches the host view as an array; a plain style arrives as one object.
   const style = badge.props.style;
-  const flat = Array.isArray(style) ? Object.assign({}, ...style.flat(Infinity)) : (style ?? {});
+  expect(Array.isArray(style)).toBe(false);
+  const flat = (style ?? {}) as Record<string, unknown>;
   expect(badge.props.className).toBeUndefined();
   expect(flat).toMatchObject({ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30 });
 }

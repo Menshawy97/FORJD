@@ -103,15 +103,17 @@ describe('PickUsernameScreen', () => {
     });
   });
 
-  // Production smoke test 2026-10-20 (the same badge on Edit Profile): a Pressable given both `className` and a style
-  // function keeps only the `className` on device, so the badge lost its size, colour and corner. Jest does not run
-  // NativeWind, so this pins the cause: no `className`, and the badge's own style places it.
+  // Production smoke test 2026-10-20 (the same badge on Edit Profile): a Pressable's style function is not applied on
+  // device, so the badge lost its size, colour and corner. Jest does not run NativeWind, so this pins the cause: the
+  // Pressable gets a plain style, not a function, and no `className`, and that style places it.
   it('places the camera badge on the avatar with its own style, not a class the device drops', async () => {
     const { findByLabelText } = await render(<PickUsernameScreen />);
 
+    // A style function's result (an array here) reaches the host view as an array; a plain style arrives as one object.
     const badge = await findByLabelText('Add photo');
     const style = badge.props.style;
-    const flat = Array.isArray(style) ? Object.assign({}, ...style.flat(Infinity)) : (style ?? {});
+    expect(Array.isArray(style)).toBe(false);
+    const flat = (style ?? {}) as Record<string, unknown>;
     expect(badge.props.className).toBeUndefined();
     expect(flat).toMatchObject({ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30 });
   });
