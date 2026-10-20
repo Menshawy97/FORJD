@@ -108,3 +108,20 @@ to prefer a battle-tested library over hand-rolled code.
 
 **Leaving it alone until measured latency justified a change.** The measurement above is
 that justification, and it was taken before the change rather than argued from intuition.
+
+## Amendment (2026-10-21): a deleted account's token must not recreate it
+
+The revocation window above has a consequence this ADR did not spell out: a token keeps
+verifying after its account is **deleted**, not only after it is revoked. The guard used to
+create a `users` row for any verified login it had not seen, so a request sent with a deleted
+account's leftover token brought the account back, with the deleted email in it. The production
+smoke test on 2026-10-20 caught exactly that: the app sent a request five seconds after the
+deletion, before it had cleared its own session.
+
+`JwtAuthGuard` now asks `AuthProvider.userExists` before creating a row for a login it sees for
+the first time, and refuses the request (401) when the provider no longer has it. The provider is
+asked only on that first-sight path, never for a login that already has a row, so the per-request
+cost this ADR removed stays removed. A provider outage on that path fails the request rather than
+guessing. The app also clears its session before anything else after a deletion.
+
+Revocation of a *live* account's token is unchanged: it still lasts until the token expires.

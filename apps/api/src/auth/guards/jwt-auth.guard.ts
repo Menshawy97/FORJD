@@ -91,8 +91,20 @@ export class JwtAuthGuard implements CanActivate {
     this.identities.markDateOfBirthSet(identity.externalId, identity.email);
   }
 
+  /**
+   * A login with no row yet gets one, but only if the provider still has that login. Tokens are
+   * verified locally (ADR-012), so a deleted account's token still verifies until it expires; a
+   * request sent with it right after deletion used to recreate the account, deleted email and all
+   * (production smoke test, 2026-10-20). The provider is asked only on this first-sight path, so an
+   * ordinary request costs no extra call.
+   */
   private async resolveAndCache(externalId: string, email: string): Promise<User> {
-    const user = await this.usersRepository.upsertFromIdentity(externalId, email);
+    const existing = await this.usersRepository.findByExternalId(externalId);
+    if (!existing && !(await this.authProvider.userExists(externalId))) {
+      throw new UnauthorizedException('This account no longer exists');
+    }
+
+    const user = existing ?? (await this.usersRepository.upsertFromIdentity(externalId, email));
     this.identities.set(externalId, email, user);
 
     return user;

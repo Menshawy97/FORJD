@@ -151,6 +151,11 @@ export class FakeAuthProvider implements AuthProvider {
     this.deletedExternalIds.push(externalId);
   }
 
+  /** A deleted login is gone; its tokens still verify, as the real adapter's local check lets them (ADR-012). */
+  async userExists(externalId: string): Promise<boolean> {
+    return !this.deletedExternalIds.includes(externalId);
+  }
+
   async verifyAccessToken(accessToken: string): Promise<AuthIdentity> {
     const email = this.tokenOwners.get(accessToken);
 

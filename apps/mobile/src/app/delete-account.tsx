@@ -31,11 +31,13 @@ export default function DeleteAccountScreen() {
     setIsDeleting(true);
     try {
       await deleteAccount();
-      await clearLocalUserData();
-      // Same seam `profile.tsx`'s logout uses: clearing the session notifies the root
-      // layout's session listener, which redirects out of the app on its own. No parallel
-      // navigation call here for the same reason that screen gives (ADR-011).
+      // The session goes first: until it is cleared the app is still signed in with the deleted
+      // account's token, and a request sent in that gap recreated the account on the server
+      // (production smoke test 2026-10-20). Same seam `profile.tsx`'s logout uses: clearing it
+      // notifies the root layout's session listener, which redirects out of the app on its own.
+      // No parallel navigation call here for the same reason that screen gives (ADR-011).
       await clearSession();
+      await clearLocalUserData();
     } catch {
       setError(DELETE_ERROR);
       setIsDeleting(false);

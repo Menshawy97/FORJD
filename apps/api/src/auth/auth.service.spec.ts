@@ -37,6 +37,7 @@ describe('AuthService', () => {
       resendConfirmation: jest.fn(),
       verifyAccessToken: jest.fn(),
       deleteUser: jest.fn(),
+      userExists: jest.fn().mockResolvedValue(true),
       signInWithIdToken: jest.fn(),
     };
     usersRepository = {

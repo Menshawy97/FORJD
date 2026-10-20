@@ -40,13 +40,19 @@ function contextWith(authorization?: string, open = false): ExecutionContext {
 }
 
 describe('JwtAuthGuard', () => {
-  let authProvider: jest.Mocked<Pick<AuthProvider, 'verifyAccessToken'>>;
-  let usersRepository: jest.Mocked<Pick<UsersRepository, 'upsertFromIdentity' | 'hasDateOfBirth'>>;
+  let authProvider: jest.Mocked<Pick<AuthProvider, 'verifyAccessToken' | 'userExists'>>;
+  let usersRepository: jest.Mocked<
+    Pick<UsersRepository, 'findByExternalId' | 'upsertFromIdentity' | 'hasDateOfBirth'>
+  >;
   let guard: JwtAuthGuard;
 
   beforeEach(() => {
-    authProvider = { verifyAccessToken: jest.fn() };
-    usersRepository = { upsertFromIdentity: jest.fn(), hasDateOfBirth: jest.fn().mockResolvedValue(true) };
+    authProvider = { verifyAccessToken: jest.fn(), userExists: jest.fn().mockResolvedValue(true) };
+    usersRepository = {
+      findByExternalId: jest.fn().mockResolvedValue(null),
+      upsertFromIdentity: jest.fn(),
+      hasDateOfBirth: jest.fn().mockResolvedValue(true),
+    };
     guard = new JwtAuthGuard(
       authProvider as unknown as AuthProvider,
       usersRepository as unknown as UsersRepository,
@@ -90,6 +96,41 @@ describe('JwtAuthGuard', () => {
     expect(authProvider.verifyAccessToken).toHaveBeenCalledWith('good-token');
     expect(usersRepository.upsertFromIdentity).toHaveBeenCalledWith('ext-1', 'a@example.com');
     expect(context.switchToHttp().getRequest<{ user: User }>().user).toEqual(internalUser);
+  });
+
+  // Production smoke test 2026-10-20: tokens are checked locally (ADR-012), so a deleted account's access token still
+  // verifies until it expires. A request the phone sent with it five seconds after the deletion created a fresh users
+  // row, holding the deleted account's email. A row is now created only for a login the provider still has.
+  describe('a token whose account has no row yet', () => {
+    const identity: AuthIdentity = { externalId: 'ext-1', email: 'a@example.com', emailVerified: true };
+
+    it('is refused, and no row is created, when the provider no longer has the login', async () => {
+      authProvider.verifyAccessToken.mockResolvedValue(identity);
+      authProvider.userExists.mockResolvedValue(false);
+
+      await expect(guard.canActivate(contextWith('Bearer deleted-account-token'))).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(authProvider.userExists).toHaveBeenCalledWith('ext-1');
+      expect(usersRepository.upsertFromIdentity).not.toHaveBeenCalled();
+    });
+
+    it('gets its row when the provider has the login (a new account)', async () => {
+      authProvider.verifyAccessToken.mockResolvedValue(identity);
+      usersRepository.upsertFromIdentity.mockResolvedValue(internalUser);
+
+      await expect(guard.canActivate(contextWith('Bearer good-token'))).resolves.toBe(true);
+      expect(usersRepository.upsertFromIdentity).toHaveBeenCalledWith('ext-1', 'a@example.com');
+    });
+
+    it('is not asked about for an account that already has a row, so a normal request costs no provider call', async () => {
+      authProvider.verifyAccessToken.mockResolvedValue(identity);
+      usersRepository.findByExternalId.mockResolvedValue(internalUser);
+
+      await expect(guard.canActivate(contextWith('Bearer good-token'))).resolves.toBe(true);
+      expect(authProvider.userExists).not.toHaveBeenCalled();
+      expect(usersRepository.upsertFromIdentity).not.toHaveBeenCalled();
+    });
   });
 
   it('tells the crash reporter whose request this is, so a crash honours their diagnostics choice', async () => {
