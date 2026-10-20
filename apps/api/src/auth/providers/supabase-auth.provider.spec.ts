@@ -28,7 +28,7 @@ interface AuthStub {
   resetPasswordForEmail: jest.Mock;
   resend: jest.Mock;
   getUser: jest.Mock;
-  admin: { signOut: jest.Mock; deleteUser: jest.Mock };
+  admin: { signOut: jest.Mock; deleteUser: jest.Mock; getUserById: jest.Mock };
   signInWithIdToken: jest.Mock;
 }
 
@@ -44,7 +44,7 @@ describe('SupabaseAuthProvider', () => {
       resetPasswordForEmail: jest.fn(),
       resend: jest.fn(),
       getUser: jest.fn(),
-      admin: { signOut: jest.fn(), deleteUser: jest.fn() },
+      admin: { signOut: jest.fn(), deleteUser: jest.fn(), getUserById: jest.fn() },
       signInWithIdToken: jest.fn(),
     };
 
@@ -248,6 +248,33 @@ describe('SupabaseAuthProvider', () => {
       });
 
       await expect(provider.deleteUser('ext-1')).rejects.toThrow('boom');
+    });
+  });
+
+  describe('userExists', () => {
+    it('is true when Supabase still has the user', async () => {
+      auth.admin.getUserById.mockResolvedValue({ data: { user: { id: 'ext-1' } }, error: null });
+
+      await expect(provider.userExists('ext-1')).resolves.toBe(true);
+      expect(auth.admin.getUserById).toHaveBeenCalledWith('ext-1');
+    });
+
+    it('is false for a deleted user', async () => {
+      auth.admin.getUserById.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'User not found', status: 404, code: 'user_not_found' },
+      });
+
+      await expect(provider.userExists('ext-1')).resolves.toBe(false);
+    });
+
+    it('throws on any other failure, so an outage is not read as a deleted account (or a live one)', async () => {
+      auth.admin.getUserById.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'boom', status: 500, code: 'unexpected_failure' },
+      });
+
+      await expect(provider.userExists('ext-1')).rejects.toThrow('boom');
     });
   });
 

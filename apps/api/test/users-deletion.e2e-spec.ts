@@ -297,6 +297,15 @@ describe("Account deletion (e2e)", () => {
     expect(blocking).toEqual([]);
   });
 
+  // Production smoke test 2026-10-20: the owner's token still verifies after deletion (ADR-012 checks it locally), and
+  // a request the phone sent with it recreated a users row holding the deleted email. It must be refused instead.
+  it("a deleted account's leftover token cannot bring the account back", async () => {
+    await request(app.getHttpServer()).get("/api/v1/users/me").set("Authorization", "Bearer owner-token").expect(401);
+
+    const recreated = await db.select().from(users).where(eq(users.email, ownerEmail));
+    expect(recreated).toEqual([]);
+  });
+
   it("is idempotent -- deleting an already-deleted account does not 500", async () => {
     // The owner token still authenticates (JwtAuthGuard checks the JWT's own signature/claims,
     // not that the row still exists) but the row is already gone; the guard's own lookup will

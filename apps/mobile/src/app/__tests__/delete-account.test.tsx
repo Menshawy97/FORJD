@@ -82,6 +82,24 @@ describe('DeleteAccountScreen', () => {
     await waitFor(() => expect(clearLocalUserData).toHaveBeenCalledTimes(1));
   });
 
+  // Production smoke test 2026-10-20: the session used to be cleared after the on-device wipe, and in that gap a
+  // request went out with the deleted account's token and recreated it on the server. The session goes first now.
+  it('forgets the session before wiping the phone, so no request carries the deleted account', async () => {
+    const order: string[] = [];
+    (clearSession as jest.Mock).mockImplementation(async () => {
+      order.push('session');
+    });
+    (clearLocalUserData as jest.Mock).mockImplementation(async () => {
+      order.push('local data');
+    });
+    const { getByLabelText, getByText } = await render(<DeleteAccountScreen />);
+
+    await fireEvent.changeText(getByLabelText('Type DELETE to confirm'), 'DELETE');
+    await fireEvent.press(getByText('Delete my account'));
+
+    await waitFor(() => expect(order).toEqual(['session', 'local data']));
+  });
+
   it('shows an error and does not clear the session when deletion fails', async () => {
     (deleteAccount as jest.Mock).mockRejectedValue(new Error('network error'));
     const { getByLabelText, getByText, findByText } = await render(<DeleteAccountScreen />);

@@ -191,6 +191,20 @@ export class SupabaseAuthProvider implements AuthProvider {
     }
   }
 
+  async userExists(externalId: string): Promise<boolean> {
+    const { data, error } = await this.client.auth.admin.getUserById(externalId);
+
+    if (error) {
+      if (error.status === 404 || error.code === 'user_not_found') {
+        return false;
+      }
+      this.logger.error(`userExists failed: ${error.message}`);
+      throw new Error(error.message);
+    }
+
+    return data.user !== null;
+  }
+
   /**
    * Deliberately does not go through `reject()`. GoTrue reports "user not found" and its own
    * per-address rate-limit errors here; turning either into a non-2xx would tell a caller

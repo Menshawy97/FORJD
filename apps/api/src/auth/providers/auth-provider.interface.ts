@@ -74,4 +74,11 @@ export interface AuthProvider {
    * lazily recreate an empty user. An already-absent user is success, so a retry can finish.
    */
   deleteUser(externalId: string): Promise<void>;
+  /**
+   * Whether the upstream login still exists. Asked only before creating a local row for a login
+   * seen for the first time: a token is verified locally (ADR-012), so a deleted account's token
+   * still verifies until it expires, and without this check it would recreate the account. Throws
+   * on any failure other than "not found", so an outage is never read as either answer.
+   */
+  userExists(externalId: string): Promise<boolean>;
 }
