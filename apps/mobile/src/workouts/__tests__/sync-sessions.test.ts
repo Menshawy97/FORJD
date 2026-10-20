@@ -7,7 +7,7 @@
 import { uploadWorkoutSession } from '@/auth/apiClient';
 import { drainSyncQueue, ensureWorkoutSessionSchema, getQueuedSessions, openWorkoutSessionDb } from '@/store/workout-session';
 
-import { hasPendingUploads, syncPendingSessions } from '../sync-sessions';
+import { hasPendingUploads, isSessionQueued, syncPendingSessions } from '../sync-sessions';
 
 jest.mock('@/store/workout-session', () => ({
   openWorkoutSessionDb: jest.fn(),
@@ -129,4 +129,23 @@ it('reports whether a workout is waiting to upload', async () => {
 
   await expect(hasPendingUploads()).resolves.toBe(false);
   await expect(hasPendingUploads()).resolves.toBe(true);
+});
+
+// Production smoke test 2026-10-20: the summaries said "logged offline" for a session already on the server. An
+// uploaded session leaves the queue, so whether it is still there is what the summary says.
+it('reports whether one session is still in the queue, waiting or given up on', async () => {
+  (getQueuedSessions as jest.Mock).mockResolvedValue([
+    { sessionId: 'waiting', status: 'pending' },
+    { sessionId: 'given-up', status: 'failed' },
+  ]);
+
+  await expect(isSessionQueued('waiting')).resolves.toBe(true);
+  await expect(isSessionQueued('given-up')).resolves.toBe(true);
+  await expect(isSessionQueued('uploaded')).resolves.toBe(false);
+});
+
+it('never claims a session uploaded when the queue cannot be read', async () => {
+  (openWorkoutSessionDb as jest.Mock).mockRejectedValue(new Error('no file'));
+
+  await expect(isSessionQueued('session-1')).resolves.toBe(true);
 });

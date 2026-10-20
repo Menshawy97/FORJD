@@ -103,6 +103,19 @@ describe('PickUsernameScreen', () => {
     });
   });
 
+  // Production smoke test 2026-10-20 (the same badge on Edit Profile): a Pressable given both `className` and a style
+  // function keeps only the `className` on device, so the badge lost its size, colour and corner. Jest does not run
+  // NativeWind, so this pins the cause: no `className`, and the badge's own style places it.
+  it('places the camera badge on the avatar with its own style, not a class the device drops', async () => {
+    const { findByLabelText } = await render(<PickUsernameScreen />);
+
+    const badge = await findByLabelText('Add photo');
+    const style = badge.props.style;
+    const flat = Array.isArray(style) ? Object.assign({}, ...style.flat(Infinity)) : (style ?? {});
+    expect(badge.props.className).toBeUndefined();
+    expect(flat).toMatchObject({ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30 });
+  });
+
   it('renders the design copy and controls', async () => {
     const { findByText, findByLabelText, findByPlaceholderText } = await render(
       <PickUsernameScreen />,

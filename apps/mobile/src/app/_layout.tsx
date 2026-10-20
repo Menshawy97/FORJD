@@ -22,7 +22,7 @@ import {
 import { getCachedHasSession, hasSession, subscribeToSession } from '@/auth/secureStorage';
 import { markIntroShown, shouldShowIntro } from '@/components/brand/intro-gate';
 import { IntroSplash } from '@/components/brand/intro-splash';
-import { refreshExerciseCatalogue } from '@/features/exercises/refresh-catalogue';
+import { refreshCatalogueOnceDateOfBirthGiven, refreshExerciseCatalogue } from '@/features/exercises/refresh-catalogue';
 import { syncTimeZone } from '@/features/forge/time-zone-sync';
 import {
   requestLocalNotificationReconcile,
@@ -168,6 +168,8 @@ export default function RootLayout() {
     // Once per launch and per sign-in, not on every return: the exercise names a workout shows come from this
     // catalogue, and it used to download only when the Library was opened (walk finding 3).
     void refreshExerciseCatalogue();
+    // A new account is refused that download until it gives a date of birth, so it is tried again then.
+    const stopCatalogueRetry = refreshCatalogueOnceDateOfBirthGiven();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       uploadAndReplan();
@@ -176,7 +178,10 @@ export default function RootLayout() {
       // background, so the clock is checked whenever the app is looked at again.
       workoutNotice.checkAway();
     });
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      stopCatalogueRetry();
+    };
   }, [authChecked, authenticated]);
 
   /**

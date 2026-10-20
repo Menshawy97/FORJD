@@ -192,9 +192,10 @@ export default function PickUsernameScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add photo"
               onPress={handlePickAvatar}
-              className="absolute"
+              // No className here: beside a style function it is the only style the device keeps.
               style={({ pressed }) => [
                 {
+                  position: 'absolute',
                   right: -2,
                   bottom: -2,
                   width: 30,

@@ -12,6 +12,7 @@ type Listener = () => void;
 
 let needed = false;
 const listeners = new Set<Listener>();
+const providedListeners = new Set<Listener>();
 
 function set(next: boolean): void {
   if (needed === next) {
@@ -33,6 +34,18 @@ export function requireDateOfBirth(): void {
 /** The date has been accepted by the server. */
 export function dateOfBirthProvided(): void {
   set(false);
+  providedListeners.forEach((listener) => listener());
+}
+
+/**
+ * Called each time the server accepts a date of birth, and not on sign-out, which also clears the gate. Requests
+ * refused before then (`date_of_birth_required`) can be made again here.
+ */
+export function onDateOfBirthProvided(listener: Listener): () => void {
+  providedListeners.add(listener);
+  return () => {
+    providedListeners.delete(listener);
+  };
 }
 
 /** Sign-out: the next account must not inherit this one's state. */

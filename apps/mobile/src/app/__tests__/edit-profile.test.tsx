@@ -92,7 +92,28 @@ const ME = {
   },
 };
 
+/**
+ * Production smoke test 2026-10-20: on the device the camera badge sat as a bare icon at the avatar's top-left. A
+ * Pressable given both `className` and a style function keeps only the `className` on device (NativeWind), so the
+ * badge's size, colour and corner were lost; Jest does not run NativeWind, so this pins the cause instead: the badge
+ * carries no `className`, and its own style places it.
+ */
+function expectAvatarBadgePlaced(badge: { props: { className?: unknown; style?: unknown } }) {
+  const style = badge.props.style;
+  const flat = Array.isArray(style) ? Object.assign({}, ...style.flat(Infinity)) : (style ?? {});
+  expect(badge.props.className).toBeUndefined();
+  expect(flat).toMatchObject({ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30 });
+}
+
 describe('EditProfileScreen', () => {
+  it('places the camera badge on the avatar with its own style, not a class the device drops', async () => {
+    (getMe as jest.Mock).mockResolvedValue(ME);
+
+    const { findByLabelText } = await render(<EditProfileScreen />);
+
+    expectAvatarBadgePlaced(await findByLabelText('Add photo'));
+  });
+
   const mockSaveAsync = jest.fn();
   const mockRenderAsync = jest.fn();
   const mockResize = jest.fn();

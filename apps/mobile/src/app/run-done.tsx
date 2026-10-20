@@ -19,6 +19,7 @@ import { RunStatTile } from '@/features/run/run-stat-tile';
 import { RouteMap } from '@/integrations/maps/route-map';
 import { colors } from '@/theme/tokens';
 import { clearCompletedRun, getCompletedRun } from '@/workouts/run-handoff';
+import { uploadStatusLine, useUploadStatus } from '@/workouts/use-upload-status';
 
 /**
  * `s_runDone()`, matched against `screenshots/run done.png` (R7): the screen a run ends on.
@@ -39,6 +40,7 @@ const DASH = '—';
 
 export default function RunDoneScreen() {
   const run = getCompletedRun();
+  const uploadStatus = useUploadStatus(run?.sessionId, !!run);
 
   // However the person leaves (Done, View Progress, a tab, back), a finished run is not shown twice.
   useEffect(() => clearCompletedRun, []);
@@ -91,7 +93,7 @@ export default function RunDoneScreen() {
           Run complete
         </Text>
         <Text className="mb-[20px] mt-[10px] font-archivo text-[13.5px] leading-[19.575px]" style={{ color: colors.dim }}>
-          Outdoor run · logged offline, will sync when you are back online.
+          {uploadStatusLine('Outdoor run', uploadStatus)}
         </Text>
 
         <RouteMap

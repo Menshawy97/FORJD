@@ -1,4 +1,5 @@
 import { getExerciseCatalogue } from '@/auth/apiClient';
+import { onDateOfBirthProvided } from '@/auth/date-of-birth-gate';
 import { openExerciseCatalogueDb, syncExerciseCatalogue, type SqliteConnection } from '@/store/exercise-catalogue';
 
 /**
@@ -29,4 +30,15 @@ export async function refreshExerciseCatalogue(deps: RefreshCatalogueDeps = defa
   } catch {
     return false;
   }
+}
+
+/**
+ * A new account signs in before it has a date of birth, so the server refuses the sign-in download
+ * (`date_of_birth_required`, ADR-042) and the phone had no exercise names until the Library was opened (production
+ * smoke test, 2026-10-20). This downloads again as soon as the date is accepted. Returns the function that stops it.
+ */
+export function refreshCatalogueOnceDateOfBirthGiven(refresh: () => Promise<boolean> = refreshExerciseCatalogue): () => void {
+  return onDateOfBirthProvided(() => {
+    void refresh();
+  });
 }

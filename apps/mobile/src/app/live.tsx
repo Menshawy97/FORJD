@@ -420,6 +420,7 @@ export default function LiveScreen() {
           // record of what they did, not of what was prescribed.
           exercises: summaryExerciseLines(finished.exercises, (exerciseId) => unitByExercise[exerciseId]),
           origin: 'live',
+          sessionId: request.id,
         });
         router.replace('/workout-done');
         // Queued for upload: the workout is over, so the bar and the notice have nothing left to show.

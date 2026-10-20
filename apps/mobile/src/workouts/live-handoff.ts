@@ -76,6 +76,8 @@ export interface CompletedSummary {
    * those behaviours would be a false claim and a pointless upload attempt.
    */
   origin: 'live' | 'history';
+  /** A live summary's session, so the screen can tell when its upload has gone through. */
+  sessionId?: string;
   /** Only a history summary has one -- `Yesterday`, `Last week`. */
   performedAt?: string;
 }

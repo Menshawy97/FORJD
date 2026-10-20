@@ -23,6 +23,8 @@ export interface CompletedRun {
    * the mile splits worked out on the phone: the saved run keeps kilometre splits either way.
    */
   unit?: 'km' | 'mi';
+  /** The queued run's session, so the summary can tell when its upload has gone through. */
+  sessionId?: string;
 }
 
 /** The two watch readings a run asks Health Connect for; also what it can be refused. */

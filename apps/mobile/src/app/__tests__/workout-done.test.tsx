@@ -23,7 +23,10 @@ jest.mock('expo-router', () => ({
 }));
 
 // The sync trigger is covered on its own in workouts/__tests__/sync-sessions.test.ts.
-jest.mock('@/workouts/sync-sessions', () => ({ syncPendingSessions: jest.fn().mockResolvedValue({ uploaded: [], failed: [] }) }));
+jest.mock('@/workouts/sync-sessions', () => ({
+  syncPendingSessions: jest.fn().mockResolvedValue({ uploaded: [], failed: [] }),
+  isSessionQueued: jest.fn().mockResolvedValue(true),
+}));
 
 jest.mock('@/store/exercise-catalogue', () => ({
   openExerciseCatalogueDb: jest.fn(),
@@ -32,7 +35,7 @@ jest.mock('@/store/exercise-catalogue', () => ({
 
 import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-catalogue';
 import { clearCompletedSummary, setCompletedSummary } from '@/workouts/live-handoff';
-import { syncPendingSessions } from '@/workouts/sync-sessions';
+import { isSessionQueued, syncPendingSessions } from '@/workouts/sync-sessions';
 
 import WorkoutDoneScreen from '../workout-done';
 
@@ -62,16 +65,48 @@ beforeEach(() => {
   clearCompletedSummary();
   (openExerciseCatalogueDb as jest.Mock).mockResolvedValue({});
   (getCachedExercise as jest.Mock).mockResolvedValue(null);
+  (isSessionQueued as jest.Mock).mockResolvedValue(true);
 });
 
 describe('the report', () => {
-  it('names the session and says it will sync', async () => {
-    stageSummary();
+  it('names the session and says it will sync while it is still waiting to upload', async () => {
+    stageSummary({ sessionId: 'session-1' });
 
     const { findByText } = await render(<WorkoutDoneScreen />);
 
     expect(await findByText('Session complete')).toBeTruthy();
     expect(await findByText('Upper / Lower · logged offline, will sync when you are back online.')).toBeTruthy();
+    expect(isSessionQueued).toHaveBeenCalledWith('session-1');
+  });
+
+  // Production smoke test 2026-10-20: the workout reached the server two seconds after Finish, and the summary still
+  // said it was logged offline.
+  it('says saved once the upload went through', async () => {
+    (isSessionQueued as jest.Mock).mockResolvedValue(false);
+    stageSummary({ sessionId: 'session-1' });
+
+    const { findByText, queryByText } = await render(<WorkoutDoneScreen />);
+
+    expect(await findByText('Upper / Lower · saved.')).toBeTruthy();
+    expect(queryByText(/logged offline/)).toBeNull();
+  });
+
+  it('checks the queue only after trying the upload', async () => {
+    const order: string[] = [];
+    (syncPendingSessions as jest.Mock).mockImplementationOnce(async () => {
+      order.push('sync');
+      return { uploaded: [], failed: [] };
+    });
+    (isSessionQueued as jest.Mock).mockImplementationOnce(async () => {
+      order.push('check');
+      return false;
+    });
+    stageSummary({ sessionId: 'session-1' });
+
+    const { findByText } = await render(<WorkoutDoneScreen />);
+
+    expect(await findByText('Upper / Lower · saved.')).toBeTruthy();
+    expect(order).toEqual(['sync', 'check']);
   });
 
   it('reports the real duration, volume and set count', async () => {
