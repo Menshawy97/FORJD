@@ -544,6 +544,7 @@ export function useRunSession(): RunSession {
             splits: shownSplits,
             unit: shownUnit,
             healthBlocked: healthAllowed ? finalHealth.blocked : [],
+            sessionId: request.id,
           });
         } catch {
           // The summary is a convenience; the run is queued either way.

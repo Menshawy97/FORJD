@@ -134,6 +134,11 @@ function isUsable(fix: RunFix): boolean {
  * The accepted readings, in order. Each is judged against the last one accepted. After
  * `MAX_CONSECUTIVE_REJECTIONS` jumps in a row the next usable reading starts a new segment, so the
  * track recovers from a bad anchor instead of staying stuck on it.
+ *
+ * A segment the track moves on from is dropped when it never moved past `MAX_FIX_ACCURACY_METERS`: a
+ * stale or warming-up position, possibly reported several times, not running. It adds at most that
+ * much noise to the distance, but kept it was drawn on the route map and sent as the run's start
+ * position (production smoke test 2026-10-20). A segment that really moved stays.
  */
 export function buildTrack(fixes: readonly RunFix[]): RunFix[] {
   const track: RunFix[] = [];
@@ -148,11 +153,22 @@ export function buildTrack(fixes: readonly RunFix[]): RunFix[] {
     rejections += 1;
     const reanchored = { ...fix, segmentStart: true };
     if (rejections >= MAX_CONSECUTIVE_REJECTIONS && acceptFix(last, reanchored)) {
+      dropIfNeverMoved(track);
       track.push(reanchored);
       rejections = 0;
     }
   }
   return track;
+}
+
+/** Removes the track's last segment when no reading in it is further than the accuracy limit from its first. */
+function dropIfNeverMoved(track: RunFix[]): void {
+  let start = track.length - 1;
+  while (start > 0 && !track[start]?.segmentStart) start -= 1;
+  const anchor = track[start];
+  if (anchor === undefined) return;
+  const moved = track.slice(start).some((reading) => haversineMeters(anchor, reading) > MAX_FIX_ACCURACY_METERS);
+  if (!moved) track.splice(start);
 }
 
 interface Step {

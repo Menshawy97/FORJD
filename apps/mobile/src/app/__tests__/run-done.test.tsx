@@ -19,7 +19,13 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+jest.mock('@/workouts/sync-sessions', () => ({
+  syncPendingSessions: jest.fn().mockResolvedValue({ uploaded: [], failed: [] }),
+  isSessionQueued: jest.fn().mockResolvedValue(true),
+}));
+
 import { clearCompletedRun, getCompletedRun, setCompletedRun, type CompletedRun } from '@/workouts/run-handoff';
+import { isSessionQueued } from '@/workouts/sync-sessions';
 
 import RunDoneScreen from '../run-done';
 
@@ -54,14 +60,25 @@ const SCREENSHOT_RUN: CompletedRun = {
 beforeEach(() => {
   jest.clearAllMocks();
   clearCompletedRun();
+  (isSessionQueued as jest.Mock).mockResolvedValue(true);
 });
 
 describe('RunDoneScreen', () => {
-  it('shows the title and the offline-sync subtitle from the design', async () => {
-    setCompletedRun(SCREENSHOT_RUN);
+  it('shows the title and the offline-sync subtitle from the design while the run waits to upload', async () => {
+    setCompletedRun({ ...SCREENSHOT_RUN, sessionId: 'run-1' });
     await render(<RunDoneScreen />);
     expect(screen.getByText('Run complete')).toBeTruthy();
-    expect(screen.getByText('Outdoor run · logged offline, will sync when you are back online.')).toBeTruthy();
+    expect(await screen.findByText('Outdoor run · logged offline, will sync when you are back online.')).toBeTruthy();
+    expect(isSessionQueued).toHaveBeenCalledWith('run-1');
+  });
+
+  // Production smoke test 2026-10-20: the summary said "logged offline" for a session already on the server.
+  it('says saved once the run has uploaded', async () => {
+    (isSessionQueued as jest.Mock).mockResolvedValue(false);
+    setCompletedRun({ ...SCREENSHOT_RUN, sessionId: 'run-1' });
+    await render(<RunDoneScreen />);
+    expect(await screen.findByText('Outdoor run · saved.')).toBeTruthy();
+    expect(screen.queryByText(/logged offline/)).toBeNull();
   });
 
   // Runs in miles (docs/product/run-miles-plan.md, replica approved 2026-10-14): the run carries the unit it was shown in.

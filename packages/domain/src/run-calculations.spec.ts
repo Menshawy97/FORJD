@@ -155,10 +155,32 @@ describe('buildTrack', () => {
       fix(15, 30),
       fix(18, 35),
     ];
+    // The wrong first fix is dropped, not kept: kept, it drew a line to it on the route map and was sent as the run's
+    // start position (production smoke test 2026-10-20, an emulator whose first fix was in California and every later
+    // one in Cairo).
     const track = buildTrack(raw);
-    expect(track.map((f) => f.movingMs)).toEqual([0, 25000, 30000, 35000]);
-    expect(track[1]?.segmentStart).toBe(true);
+    expect(track.map((f) => f.movingMs)).toEqual([25000, 30000, 35000]);
+    expect(track[0]?.latitude).toBeCloseTo(12 / METERS_PER_DEGREE, 9);
     expect(trackDistanceMeters(track)).toBeCloseTo(6, 0);
+  });
+
+  it('drops a stale start reported several times, which never moved', () => {
+    // A cached position can arrive more than once before the real ones (the smoke test's emulator gave four). Readings
+    // that agree with each other but never move past the accuracy limit are a position, not running.
+    const stale = [0, 2, 4, 6].map((t) => fix(50_000, t));
+    const real = [1, 2, 3, 4, 5, 6, 7].map((t) => fix(t * 3, 6 + t * 5));
+    const track = buildTrack([...stale, ...real]);
+    expect(track.every((f) => f.latitude < 1_000 / METERS_PER_DEGREE)).toBe(true);
+    expect(track[0]?.movingMs).toBe(31000);
+  });
+
+  it('keeps a segment it re-anchors away from when that segment really moved', () => {
+    // 40 m in 5 s is a real step (8 m/s), past the accuracy limit, so the segment is running and stays.
+    const raw = [fix(0, 0), fix(40, 5), ...[1, 2, 3, 4, 5, 6].map((t) => fix(50_000 + t * 3, 5 + t * 5))];
+    const track = buildTrack(raw);
+    expect(track[0]?.movingMs).toBe(0);
+    expect(track[1]?.movingMs).toBe(5000);
+    expect(track[2]?.segmentStart).toBe(true);
   });
 
   it('does not re-anchor on readings that are individually unusable', () => {

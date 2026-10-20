@@ -10,7 +10,7 @@ import { getCachedExercise, openExerciseCatalogueDb } from '@/store/exercise-cat
 import { clearCompletedSummary, getCompletedSummary } from '@/workouts/live-handoff';
 import { tallyMuscleSets } from '@/workouts/muscle-tally';
 import { formatSessionDuration } from '@/workouts/previous-workout';
-import { syncPendingSessions } from '@/workouts/sync-sessions';
+import { uploadStatusLine, useUploadStatus } from '@/workouts/use-upload-status';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -76,17 +76,12 @@ export default function WorkoutDoneScreen() {
   const [muscles, setMuscles] = useState<MuscleRow[]>([]);
 
   /**
-   * Try to upload straight away, while the athlete is still looking at the summary — the most
-   * likely moment for the session to be online, and the point at which "will sync when you are
-   * back online" is most worth making true. Not awaited and not surfaced: the queue is durable
-   * and the app-foreground trigger picks up anything this misses.
+   * Try to upload straight away, while the athlete is still looking at the summary — the most likely moment for the
+   * session to be online — then say whether it is saved. The queue is durable and the app-foreground trigger picks
+   * up anything this misses. A history summary is already on the server: there is nothing of it in the queue to
+   * drain, and kicking the queue for it would be a request made on a false premise.
    */
-  useEffect(() => {
-    // A history summary is already on the server -- there is nothing of it in the queue to
-    // drain, and kicking the queue for it would be a request made on a false premise.
-    if (!summary || summary.origin === 'history') return;
-    void syncPendingSessions();
-  }, [summary]);
+  const uploadStatus = useUploadStatus(summary?.sessionId, !!summary && summary.origin !== 'history');
 
   useEffect(() => {
     if (!summary) return;
@@ -158,7 +153,7 @@ export default function WorkoutDoneScreen() {
         <Text className="mb-[20px] mt-[10px] font-archivo text-[13.5px]" style={{ color: '#9A9A92' }}>
           {summary.origin === 'history'
             ? `${summary.name}${summary.performedAt ? ` · ${summary.performedAt}` : ''}`
-            : `${summary.name} · logged offline, will sync when you are back online.`}
+            : uploadStatusLine(summary.name, uploadStatus)}
         </Text>
 
         <View className="flex-row" style={{ gap: 8 }}>

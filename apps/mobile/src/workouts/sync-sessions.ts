@@ -30,6 +30,21 @@ export async function hasPendingUploads(): Promise<boolean> {
 }
 
 /**
+ * Whether this session is still in the queue, waiting or given up on. An uploaded session is deleted from it, so
+ * `false` means it reached the server. Never throws: an unreadable queue reads as still queued, so a summary never
+ * claims a save it cannot see.
+ */
+export async function isSessionQueued(sessionId: string): Promise<boolean> {
+  try {
+    const db = await openWorkoutSessionDb();
+    await ensureWorkoutSessionSchema(db);
+    return (await getQueuedSessions(db)).some((row) => row.sessionId === sessionId);
+  } catch {
+    return true;
+  }
+}
+
+/**
  * A queued run still carries `RUN_EXERCISE_PLACEHOLDER_ID` (ADR-050) if it was recorded before the
  * catalogue synced the real "Outdoor Run" id in. Resolved from the on-device catalogue mirror, not
  * the network (rule 6), so this never blocks on connectivity by itself.

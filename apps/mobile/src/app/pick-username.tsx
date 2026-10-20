@@ -192,22 +192,21 @@ export default function PickUsernameScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add photo"
               onPress={handlePickAvatar}
-              className="absolute"
-              style={({ pressed }) => [
-                {
-                  right: -2,
-                  bottom: -2,
-                  width: 30,
-                  height: 30,
-                  borderWidth: 2,
-                  borderColor: '#0e0e0f',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 15,
-                  backgroundColor: colors.accent,
-                },
-                pressed && { transform: [{ scale: 0.985 }] },
-              ]}>
+              // A plain style, not a function, and no className: a Pressable's style function is not applied on device,
+              // which left the badge a bare icon (production smoke test 2026-10-20).
+              style={{
+                position: 'absolute',
+                right: -2,
+                bottom: -2,
+                width: 30,
+                height: 30,
+                borderWidth: 2,
+                borderColor: '#0e0e0f',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 15,
+                backgroundColor: colors.accent,
+              }}>
               <Icon name="camera" color="#0e0e0f" size={15} filled />
             </Pressable>
           </View>
