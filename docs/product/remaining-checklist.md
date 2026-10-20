@@ -32,7 +32,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] Delete old `us-central1` Cloud Run services `forjd-api-production` and `forjd-api-staging` (done by the owner; confirmed 2026-10-09: only the two `europe-west1` services remain)
 - [ ] Supabase access-token lifetime to 900 s (both projects)
 - [x] Merge RLS-everywhere PR (ADR-066): merged as #386 (migration `0037`) and deployed to production 2026-10-08. The `forjd-prod` security advisor re-run on 2026-10-13 no longer reports `rls_disabled_in_public`; it lists 43 "RLS enabled, no policy" notices, which is the intended deny-all
-- [ ] Smoke-test the app on production after the RLS change and the service-role fix (owner): sign in, log a workout, open the Home bell list, upload an avatar, see exercise images, and delete a throwaway account
+- [x] Smoke-test the app on production (2026-10-20/21, on the emulator with a production APK from the new `production-apk` profile, #432): sign-up, Home and the bell list, a workout, a run, food logging, an avatar upload and account deletion all work on production. It found five bugs, all fixed test-first and re-checked on the emulator: a new account's workouts showed "Exercise" instead of names, summaries always said "logged offline", the avatar camera badge was a bare icon, a stale first GPS position stayed in a run's route and start position (#433), and **a deleted account's leftover token recreated its users row, deleted email included** (#434; the one orphan row it made was removed by hand with the owner's approval). Production redeployed with both: revision `forjd-api-production-00008-28x` at `7d68824` (2026-10-21)
 - [ ] Supabase: enable leaked-password protection (dashboard) and move `pg_trgm` out of `public` (advisor warnings, separate from RLS; `pg_trgm` still flagged on 2026-10-13)
 - [ ] Custom SMTP on the production Supabase project
 - [x] Production deploy (2026-10-20): run 39412865660, revision `forjd-api-production-00006-w4g` at `d7df223`, health `{"status":"ok","database":"up"}`. Brings #390 (connection limits) and #401 (the Home bell's list) to production; migrations and seeds ran clean
@@ -99,6 +99,10 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] `pg` pool settings and pooler port on `DATABASE_URL` (2026-10-13): confirmed the session pooler (port 5432), and the API used pg's defaults (10 connections per instance, no connect timeout) with no Cloud Run instance cap. Now 5 per instance, 10 s idle and connect timeouts (`apps/api/src/database/pool-options.ts`), and `--max-instances 3` in `deploy-api.yml`; a spec keeps pool times instances within 15 connections. Live on staging 2026-10-13 and on production 2026-10-20
 
 ### Product and architecture
+- [ ] **Press feedback probably never shows on a phone** (found 2026-10-20, production smoke test): a `Pressable`'s style function is not applied on device (the avatar badge proved it, #433), and buttons get their press scale or highlight from `pressScale`/`pressGhost` style functions. They look right because their look comes from `className`, but likely never react to a touch. Check on the emulator, then move the pressed state somewhere that applies
+- [ ] Food search ranking (found 2026-10-20): searching "banana" lists baby foods first, alphabetically, before plain bananas. How results should rank is a product decision
+- [ ] Home shows real-looking zeros (0 workouts, 0 kcal) for a few seconds while it loads, instead of placeholders (found 2026-10-20)
+- [ ] `eas build` warns that the production profiles set the `production` update channel but `expo-updates` is not installed, so the channel does nothing. Decide whether over-the-air updates are wanted
 - [ ] Phase 7 decision E: readiness baseline crossover when WHOOP connects mid-baseline
 - [ ] Analytics rebuild tool for rule changes (deferred until rules first change)
 - [ ] Barcode scanning decision
