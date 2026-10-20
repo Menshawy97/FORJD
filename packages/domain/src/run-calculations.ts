@@ -134,6 +134,10 @@ function isUsable(fix: RunFix): boolean {
  * The accepted readings, in order. Each is judged against the last one accepted. After
  * `MAX_CONSECUTIVE_REJECTIONS` jumps in a row the next usable reading starts a new segment, so the
  * track recovers from a bad anchor instead of staying stuck on it.
+ *
+ * A bad anchor no later reading agreed with (a segment of that one reading) is dropped when the track
+ * moves on from it. It adds no distance, but kept it was drawn on the route map and sent as the run's
+ * start position (production smoke test 2026-10-20).
  */
 export function buildTrack(fixes: readonly RunFix[]): RunFix[] {
   const track: RunFix[] = [];
@@ -148,11 +152,18 @@ export function buildTrack(fixes: readonly RunFix[]): RunFix[] {
     rejections += 1;
     const reanchored = { ...fix, segmentStart: true };
     if (rejections >= MAX_CONSECUTIVE_REJECTIONS && acceptFix(last, reanchored)) {
+      if (last !== null && isLoneAnchor(track)) track.pop();
       track.push(reanchored);
       rejections = 0;
     }
   }
   return track;
+}
+
+/** Whether the track's last segment is its anchor alone. */
+function isLoneAnchor(track: readonly RunFix[]): boolean {
+  const last = track[track.length - 1];
+  return last !== undefined && (track.length === 1 || last.segmentStart);
 }
 
 interface Step {

@@ -155,10 +155,22 @@ describe('buildTrack', () => {
       fix(15, 30),
       fix(18, 35),
     ];
+    // The wrong first fix is dropped, not kept as a one-reading segment: no later reading agreed with it, and kept it
+    // drew a line to it on the route map and was sent as the run's start position (production smoke test 2026-10-20,
+    // an emulator whose first fix was in California and every later one in Cairo).
     const track = buildTrack(raw);
-    expect(track.map((f) => f.movingMs)).toEqual([0, 25000, 30000, 35000]);
-    expect(track[1]?.segmentStart).toBe(true);
+    expect(track.map((f) => f.movingMs)).toEqual([25000, 30000, 35000]);
+    expect(track[0]?.latitude).toBeCloseTo(12 / METERS_PER_DEGREE, 9);
     expect(trackDistanceMeters(track)).toBeCloseTo(6, 0);
+  });
+
+  it('keeps a real segment it re-anchors away from', () => {
+    // A segment two readings long was confirmed, so a later jump away from it starts a new segment but keeps it.
+    const raw = [fix(0, 0), fix(10, 5), ...[1, 2, 3, 4, 5, 6].map((t) => fix(50_000 + t * 3, 5 + t * 5))];
+    const track = buildTrack(raw);
+    expect(track[0]?.movingMs).toBe(0);
+    expect(track[1]?.movingMs).toBe(5000);
+    expect(track[2]?.segmentStart).toBe(true);
   });
 
   it('does not re-anchor on readings that are individually unusable', () => {
