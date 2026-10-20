@@ -10,6 +10,8 @@ the quick-reference for "what phase are we in and what's next."
 A tickable list of every remaining point (owed user steps, open engineering gaps, unstarted
 phases) is in [remaining-checklist.md](remaining-checklist.md).
 
+**2026-10-20 (owner decisions):** the owed device tests are carried into the beta, so Phase 8.5 is closed. The repository is now public, so GitHub Actions minutes are no longer capped (the push drain stays disabled until phones register).
+
 ## Session handoff (2026-10-03) — read this first
 
 **Shipped this session, each test-first, reviewed and merged with `main` green:**
@@ -2733,8 +2735,8 @@ failure).
 | Live run | — | GPS runs, route map, crash recovery, watch heart rate | **Complete** — [plan](live-run-plan.md); R1-R8 and F1 merged (ADR-049, ADR-050). Owed: Maps key, dev-client run walk, Health Connect test, Play Data safety form |
 | Website + brand | — | getforjd.com and waitlist; new logo and intro | **Live** — [website plan](website-plan.md) (ADR-051), [brand plan](brand-refresh-plan.md) (ADR-052). Owed: one real sign-up checked end to end, the terms of use, a privacy-page review |
 | InBody + nutrition accuracy | — | gpt-5.4-mini reading, manual entry, height and age, BMI/BMR/FFMI, run calories, suggested targets | **Complete** — ADR-053, [manual entry](manual-inbody-entry-plan.md), [height and age](scan-height-age-plan.md) slices A-G (#243-#260). Owed: the `inbody:eval` re-run (≥ 88%), a device check |
-| 8.5 — Whole-app agent review | 2-3 | Twelve parallel review lanes, verified findings, test-first fix slices | **Review, triage and all 13 fix slices done (#267-#287); 8.5E re-run clean (2026-09-26).** Closes when the owed device tests are done or carried into the beta with the user's agreement |
-| Limited Android beta | 35 | 12+ testers | Not started. Needs Phase 8.5 closed, 12A-12C (recommended), Play Console, and the owed device tests |
+| 8.5 — Whole-app agent review | 2-3 | Twelve parallel review lanes, verified findings, test-first fix slices | **Complete (2026-10-20).** Review, triage and all 13 fix slices done (#267-#287); 8.5E re-run clean (2026-09-26). The owner chose to carry the owed device tests into the beta |
+| Limited Android beta | 35 | 12+ testers | Not started. Needs Play Console; the owed device tests are carried into it (owner, 2026-10-20) |
 | 9 — Post-beta iteration | 36-39 | Fix what beta reveals | Not started |
 | 10 — Leaderboards + subscriptions | 40-46 | CityResolver, ScoringStrategy, RevenueCat | **Leaderboards complete** — [plan](phase-10-plan.md); 10A-10L and 10N merged, ADR-044 to ADR-048. **Subscriptions/RevenueCat deferred** (needs a Play Console account; ADR-021 stands). Owed: a device test of location, and the snapshot workflow run on a Monday |
 | 11 — iOS track (parallel with 10) | 40-46 | AppleHealthProvider, Codemagic, TestFlight → App Store | Not started |
