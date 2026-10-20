@@ -5,7 +5,8 @@
  *
  * `app.config.ts` calls this with `EAS_BUILD_PROFILE` and `API_BASE_URL` and fails the build when
  * it returns a reason. Only production builds are checked: development and staging point at a
- * computer or at staging on purpose.
+ * computer or at staging on purpose. `production-apk` is production built as an installable APK
+ * (an emulator or a phone outside Play), so it is checked the same way.
  *
  * Plain CommonJS on purpose: Expo's config loader compiles `app.config.ts` itself but not the
  * TypeScript files it imports, so anything the config imports has to be JavaScript. The types live
@@ -20,7 +21,7 @@ const THIS_COMPUTER_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2', '[::1
  * @returns {string | null}
  */
 function checkApiBaseUrl(profile, url) {
-  if (profile !== 'production') return null;
+  if (profile !== 'production' && profile !== 'production-apk') return null;
   if (!url) return 'API_BASE_URL is not set';
   if (url.startsWith('REPLACE_')) return 'API_BASE_URL is still the placeholder';
 
