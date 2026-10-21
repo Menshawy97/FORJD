@@ -17,7 +17,8 @@ custom SMTP, the production deploy of #390) stay in `remaining-checklist.md`.
 - EAS environment variables: `GOOGLE_SERVICES_JSON` and `GOOGLE_MAPS_ANDROID_API_KEY` are set in
   development, preview **and production** (checked with `eas env:list`).
 - No `expo-updates`, so no over-the-air update can carry a different address. A build-time check
-  covers every route.
+  covers every route. (Superseded 2026-10-21 by ADR-070: updates exist now, and
+  `scripts/publish-update.js` runs the same check before one is published.)
 - Emulator: the SDK is at `C:\Android\Sdk`, and AVD `forjd_pixel7_api34` exists (Android 14,
   `google_apis_playstore`, x86_64).
 - The newest Android dev-client build is EAS `cd2102a5` (8 Oct, commit `6eebbcf`, 289 MB APK).

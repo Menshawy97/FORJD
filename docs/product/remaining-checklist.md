@@ -102,7 +102,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [ ] **Press feedback probably never shows on a phone** (found 2026-10-20, production smoke test): a `Pressable`'s style function is not applied on device (the avatar badge proved it, #433), and buttons get their press scale or highlight from `pressScale`/`pressGhost` style functions. They look right because their look comes from `className`, but likely never react to a touch. Check on the emulator, then move the pressed state somewhere that applies
 - [ ] Food search ranking (found 2026-10-20): searching "banana" lists baby foods first, alphabetically, before plain bananas. How results should rank is a product decision
 - [ ] Home shows real-looking zeros (0 workouts, 0 kcal) for a few seconds while it loads, instead of placeholders (found 2026-10-20)
-- [ ] `eas build` warns that the production profiles set the `production` update channel but `expo-updates` is not installed, so the channel does nothing. Decide whether over-the-air updates are wanted
+- [x] `eas build` warns that the production profiles set the `production` update channel but `expo-updates` is not installed, so the channel does nothing. Decide whether over-the-air updates are wanted: yes, 2026-10-21 (ADR-070). Still to check: build staging, publish a test update with `pnpm update:staging`, and see the phone take it
 - [ ] Phase 7 decision E: readiness baseline crossover when WHOOP connects mid-baseline
 - [ ] Analytics rebuild tool for rule changes (deferred until rules first change)
 - [ ] Barcode scanning decision

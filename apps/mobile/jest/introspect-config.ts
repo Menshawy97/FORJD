@@ -15,6 +15,8 @@ export type IntrospectedConfig = {
   ios?: { config?: Record<string, unknown> };
   plugins?: (string | [string, unknown])[];
   extra?: Record<string, unknown>;
+  runtimeVersion?: unknown;
+  updates?: Record<string, unknown>;
   _internal: { modResults: ModResults };
 };
 
@@ -23,6 +25,7 @@ export type IntrospectedConfig = {
 // the same everywhere, as on CI.
 const BUILD_ENV = new Set([
   'EAS_BUILD_PROFILE',
+  'FORJD_UPDATE_PROFILE',
   'API_BASE_URL',
   'GOOGLE_MAPS_ANDROID_API_KEY',
   'GOOGLE_SERVICES_JSON',

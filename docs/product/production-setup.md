@@ -82,6 +82,25 @@ projects pause after a week without use), the steps below are how to recover.
    apply all migrations to the empty database, confirms `/api/v1/health` answers `database: up`, then runs
    the leaderboard snapshot for production twice to confirm a re-run replaces rather than duplicates.
 
+## Shipping an app change: store build or over-the-air update (ADR-070)
+
+A change to JavaScript only (screens, copy, styling, logic) can go out as an over-the-air update. Anything
+native (a library with native code, a config plugin, a permission, the icon, an SDK upgrade) needs a store
+build. You do not have to decide which: the script works it out.
+
+1. Commit the change.
+2. `pnpm --filter @forjd/mobile update:staging -m "what changed"`. It prints each platform's runtime
+   version and whether a staging build can take it. If none can, it stops: make a store build instead.
+3. On the staging phone, close the app fully and open it twice: the first launch downloads the update,
+   the second runs it.
+4. `pnpm --filter @forjd/mobile update:production -m "what changed"` from the same commit (it refuses
+   uncommitted changes).
+5. If it goes wrong: `pnpm --filter @forjd/mobile exec eas update:rollback --channel production`.
+
+Never run a bare `eas update`: it does not read the API address from eas.json, so it would ship the
+localhost default to every phone on the channel. The first builds with `expo-updates` (staging and
+production, after 2026-10-21) are the first that can take updates; phones on older builds never get one.
+
 ## Also before public launch (not needed for a first deploy)
 
 - Shorten the Supabase access-token lifetime to 900 seconds (`docs/architecture/security.md`).
