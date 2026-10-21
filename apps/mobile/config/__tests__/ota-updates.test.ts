@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-// ADR-070. Over-the-air updates for JavaScript-only changes: the runtime version is the native layer's
+// ADR-071. Over-the-air updates for JavaScript-only changes: the runtime version is the native layer's
 // fingerprint, launch never waits for the network (rule 6), and an update is published only through
 // scripts/publish-update.js, which gives it the channel's own API address and the production check.
 import { execFile } from 'node:child_process';

@@ -1,7 +1,7 @@
 // @ts-check
 /* global require, module, process, __dirname -- run by Node: `pnpm update:staging -m "..."`. */
 /**
- * Publishes an over-the-air update (ADR-070). Use this, never a bare `eas update`.
+ * Publishes an over-the-air update (ADR-071). Use this, never a bare `eas update`.
  *
  * `eas update` reads neither the build profile's `env` in eas.json nor `EAS_BUILD_PROFILE`, so a bare run
  * would bundle `extra.apiBaseUrl` as this computer's localhost default and skip the address check in

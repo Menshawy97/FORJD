@@ -1,4 +1,4 @@
-# ADR-070: Over-the-air updates for JavaScript-only changes
+# ADR-071: Over-the-air updates for JavaScript-only changes
 
 **Status:** Accepted
 **Date:** 2026-10-21

@@ -82,7 +82,7 @@ projects pause after a week without use), the steps below are how to recover.
    apply all migrations to the empty database, confirms `/api/v1/health` answers `database: up`, then runs
    the leaderboard snapshot for production twice to confirm a re-run replaces rather than duplicates.
 
-## Shipping an app change: store build or over-the-air update (ADR-070)
+## Shipping an app change: store build or over-the-air update (ADR-071)
 
 A change to JavaScript only (screens, copy, styling, logic) can go out as an over-the-air update. Anything
 native (a library with native code, a config plugin, a permission, the icon, an SDK upgrade) needs a store

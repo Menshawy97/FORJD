@@ -4,7 +4,7 @@ import { checkApiBaseUrl } from './config/api-base-url';
 
 // docs/product/beta-readiness-plan.md, part 1: a production build that would reach a placeholder,
 // this computer or staging fails here, before anything is built or shipped. An over-the-air update is
-// checked the same way: scripts/publish-update.js names its profile in FORJD_UPDATE_PROFILE (ADR-070).
+// checked the same way: scripts/publish-update.js names its profile in FORJD_UPDATE_PROFILE (ADR-071).
 const apiBaseUrlProblem = checkApiBaseUrl(
   process.env.EAS_BUILD_PROFILE ?? process.env.FORJD_UPDATE_PROFILE,
   process.env.API_BASE_URL,
@@ -208,7 +208,7 @@ const config: ExpoConfig = {
       },
     ],
   ],
-  // ADR-070: over-the-air updates for JavaScript-only changes. The runtime version is the fingerprint
+  // ADR-071: over-the-air updates for JavaScript-only changes. The runtime version is the fingerprint
   // of the native layer, so an update reaches only builds with exactly the same native code; anything
   // native still ships through the stores. `fallbackToCacheTimeout: 0`: launch never waits for the
   // network (rule 6). A new bundle downloads in the background and runs from the next cold start, so a

@@ -33,3 +33,6 @@ overrides:
   # (parseFromString needs a mime type). 0.8.15 is patched for every advisory that affects 0.8
   # (ADR-039 amendment, 2026-10-16; ios-no-account-plan.md slice 2).
   "@xmldom/xmldom": ">=0.8.15 <0.9.0"
+
+patchedDependencies:
+  react-native-css-interop@0.2.6: patches/react-native-css-interop@0.2.6.patch

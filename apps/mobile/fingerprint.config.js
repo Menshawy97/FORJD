@@ -1,7 +1,7 @@
 // @ts-check
 /* global module, require -- loaded by Node through @expo/fingerprint. */
 /**
- * What counts as "the native layer" for the runtime version (ADR-070). An over-the-air update reaches
+ * What counts as "the native layer" for the runtime version (ADR-071). An over-the-air update reaches
  * only a build whose fingerprint is identical, so this file decides when a change needs a store build.
  *
  * On top of Expo's default, four things are left out because none of them reaches native code:
