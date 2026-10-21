@@ -1,0 +1,41 @@
+diff --git a/dist/runtime/native/native-interop.js b/dist/runtime/native/native-interop.js
+index 254b7ba65bd7e77982db73d793b157b15272f434..a74478fcf5a2c5068f44b1aba716d6dd5a5469de 100644
+--- a/dist/runtime/native/native-interop.js
++++ b/dist/runtime/native/native-interop.js
+@@ -168,7 +168,24 @@ function interop(component, configs, originalProps, ref) {
+     }, []);
+     sharedState.originalProps = originalProps;
+     sharedState.initialRender = false;
+-    return (0, render_component_1.renderComponent)(component, sharedState, { ref, ...props, ...memoOutput.handlers }, memoOutput.possiblyAnimatedProps, variables, containers);
++    // FORJD patch (ADR-070): an inline style *function* (Pressable's `style={({ pressed }) => ...}`) used to be spread
++    // into the class styles as `{}` and lost. Keep it as a function the component calls itself, with the className
++    // styles underneath it, so `pressed` still reaches it. Skipped for Reanimated-upgraded components, whose style
++    // must be an object.
++    let possiblyAnimatedProps = memoOutput.possiblyAnimatedProps;
++    if (sharedState.animated === render_component_1.UpgradeState.NONE) {
++        for (const config of configs) {
++            const inline = config.inlineProp && originalProps?.[config.inlineProp];
++            if (typeof inline === "function") {
++                const fromClassName = possiblyAnimatedProps[config.inlineProp];
++                possiblyAnimatedProps = {
++                    ...possiblyAnimatedProps,
++                    [config.inlineProp]: (interactionState) => [fromClassName, inline(interactionState)],
++                };
++            }
++        }
++    }
++    return (0, render_component_1.renderComponent)(component, sharedState, { ref, ...props, ...memoOutput.handlers }, possiblyAnimatedProps, variables, containers);
+ }
+ function initReducer({ dispatch, config, reducer, className, }) {
+     return reducer({
+@@ -637,6 +654,10 @@ function collectInlineRules(state, refs, target, effect, normal, important) {
+             collectInlineRules(state, refs, t, effect, normal, important);
+         }
+     }
++    else if (typeof target === "function") {
++        // FORJD patch (ADR-070): a style function is composed at render instead (see interop()).
++        return;
++    }
+     else if (target) {
+         const styles = (0, styles_1.getOpaqueStyles)(target, effect);
+         for (const style of styles) {

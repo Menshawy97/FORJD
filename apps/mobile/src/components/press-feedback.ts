@@ -11,7 +11,8 @@ import { colors } from '@/theme/tokens';
  *
  * Written as `Pressable`'s `style` callback rather than as NativeWind classes: `pressed` is
  * runtime state that the className transform has no way to see, and the transform is a real
- * style value either way.
+ * style value either way. NativeWind used to drop a `Pressable`'s style function on device; a patch to
+ * react-native-css-interop keeps it (ADR-070), pinned by `__tests__/pressable-style-function.test.tsx`.
  *
  * `undefined` when idle, deliberately — returning `{ transform: [] }` would set an identity
  * transform on every button in the app for no reason.
