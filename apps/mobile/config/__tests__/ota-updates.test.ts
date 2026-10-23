@@ -11,15 +11,18 @@ import { promisify } from 'node:util';
 
 import { introspectConfig, type IntrospectedConfig } from '../../jest/introspect-config';
 
-const { CHANNELS, planUpdate, platformsToPublish } = require('../../scripts/publish-update.js') as {
+type Git = { dirty: boolean; pushed: boolean; onOriginMain: boolean };
+const { APP_CONFIG_ENV, CHANNELS, planUpdate, platformsToPublish, updateEnv } = require('../../scripts/publish-update.js') as {
+  APP_CONFIG_ENV: string[];
   CHANNELS: Record<string, { profile: string; environment: string }>;
   planUpdate: (input: {
     channel: string | undefined;
     message: string | undefined;
     easJson: unknown;
-    dirty: boolean;
+    git: Git;
   }) => { error: string } | { profile: string; environment: string; env: Record<string, string> };
   platformsToPublish: (compatible: { android: boolean; ios: boolean }) => string | null;
+  updateEnv: (processEnv: Record<string, string | undefined>, planEnv: Record<string, string>) => Record<string, string | undefined>;
 };
 
 const PROJECT_ROOT = join(__dirname, '../..');
@@ -90,7 +93,8 @@ describe('the production check while an update is published', () => {
 });
 
 describe('planUpdate', () => {
-  const base = { message: 'Fix the rest timer label', easJson, dirty: false };
+  const clean: Git = { dirty: false, pushed: true, onOriginMain: true };
+  const base = { message: 'Fix the rest timer label', easJson, git: clean };
 
   it.each(Object.entries(CHANNELS))('%s publishes with its own build profile and EAS environment', (channel, target) => {
     const plan = planUpdate({ ...base, channel });
@@ -136,11 +140,43 @@ describe('planUpdate', () => {
     });
   });
 
-  it('refuses a production update from uncommitted changes, but lets staging try them', () => {
-    expect(planUpdate({ ...base, channel: 'production', dirty: true })).toEqual({
+  it.each(Object.keys(CHANNELS))('refuses a %s update from uncommitted changes', (channel) => {
+    expect(planUpdate({ ...base, channel, git: { ...clean, dirty: true } })).toEqual({
       error: expect.stringMatching(/commit or stash/),
     });
-    expect(planUpdate({ ...base, channel: 'staging', dirty: true })).not.toHaveProperty('error');
+  });
+
+  it.each(Object.keys(CHANNELS))('refuses a %s update from a commit that is not on GitHub', (channel) => {
+    expect(planUpdate({ ...base, channel, git: { ...clean, pushed: false } })).toEqual({
+      error: expect.stringMatching(/push this commit/),
+    });
+  });
+
+  it('ships production from origin/main only, staging from any pushed branch', () => {
+    const branch = { ...clean, onOriginMain: false };
+    expect(planUpdate({ ...base, channel: 'production', git: branch })).toEqual({
+      error: expect.stringMatching(/origin\/main only/),
+    });
+    expect(planUpdate({ ...base, channel: 'staging', git: branch })).not.toHaveProperty('error');
+  });
+});
+
+describe('updateEnv: nothing from this computer reaches the update', () => {
+  it('names every variable app.config.ts reads', () => {
+    const source = readFileSync(join(PROJECT_ROOT, 'app.config.ts'), 'utf8');
+    const read = new Set([...source.matchAll(/process\.env\.([A-Z0-9_]+)/g)].map((m) => m[1]));
+    expect([...read].sort()).toEqual([...APP_CONFIG_ENV].sort());
+  });
+
+  it("drops this shell's values and keeps only the profile's", () => {
+    const shell = { PATH: '/bin', APPLE_HEALTH_ENABLED: 'true', API_BASE_URL: 'http://localhost:3000', GOOGLE_IOS_URL_SCHEME: 'x' };
+    const env = updateEnv(shell, { API_BASE_URL: 'https://api.example', FORJD_UPDATE_PROFILE: 'production' });
+    expect(env).toEqual({
+      PATH: '/bin',
+      API_BASE_URL: 'https://api.example',
+      FORJD_UPDATE_PROFILE: 'production',
+      EXPO_NO_DOTENV: '1',
+    });
   });
 });
 

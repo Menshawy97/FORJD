@@ -34,14 +34,23 @@ installed build does not have crashes on that phone.
    next cold start. Rule 6 holds: an offline launch is unchanged, and the app never calls
    `Updates.reloadAsync()`, so a live workout is never reloaded under the athlete. The cost is that most
    people see a fix on their second launch after it is published, not their first.
-4. **Publish only through `pnpm update:staging` / `pnpm update:production`**
-   (`apps/mobile/scripts/publish-update.js`), never a bare `eas update`. `eas update` reads neither the
+4. **Publish only through `apps/mobile/scripts/publish-update.js`**, never a bare `eas update`. The
+   normal way to run it is the **"Publish an over-the-air update" GitHub Actions workflow**
+   (`.github/workflows/publish-update.yml`, run by hand): a clean checkout on Linux, the same OS as EAS's
+   builders, so nothing on a developer's computer can reach the phones. `pnpm update:staging` /
+   `pnpm update:production` run the same script locally, with the same checks. `eas update` reads neither the
    build profile's `env` in eas.json nor `EAS_BUILD_PROFILE`, so a bare run would bundle
    `extra.apiBaseUrl` as the localhost default, skip the production address check, and cut every phone on
    the channel off from the server. The script:
    - takes `API_BASE_URL` and `GOOGLE_WEB_CLIENT_ID` from the channel's own profile in eas.json, and
      sets `FORJD_UPDATE_PROFILE` so `app.config.ts` runs the same address check a production build runs;
-   - refuses a production update from a working tree with uncommitted changes;
+   - ships only what is in git: it refuses uncommitted changes and a commit that is not pushed (a
+     production update ships `origin/main` only), reinstalls `node_modules` from the lockfile, and
+     rebuilds `@forjd/domain` and `@forjd/contracts`, whose `dist/` the app bundles but git does not hold;
+   - passes `eas update` only the profile's own variables: every variable `app.config.ts` reads is removed
+     from the shell first (a test keeps that list complete), and `.env` files are ignored
+     (`EXPO_NO_DOTENV`). EAS's own environment variables (the Maps key, the Firebase file) come from EAS,
+     as they do for a build;
    - works out each platform's runtime version with the EAS environment variables a build of that
      profile gets (`eas env:exec`; the Maps key and the Firebase file decide which plugins apply), and
      publishes only to platforms with a finished build on the channel that has that runtime version.

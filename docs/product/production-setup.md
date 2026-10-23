@@ -88,14 +88,19 @@ A change to JavaScript only (screens, copy, styling, logic) can go out as an ove
 native (a library with native code, a config plugin, a permission, the icon, an SDK upgrade) needs a store
 build. You do not have to decide which: the script works it out.
 
-1. Commit the change.
-2. `pnpm --filter @forjd/mobile update:staging -m "what changed"`. It prints each platform's runtime
-   version and whether a staging build can take it. If none can, it stops: make a store build instead.
+1. Commit and push the change (for production: merge it into `main`).
+2. GitHub, Actions, **Publish an over-the-air update**, Run workflow: pick the branch, channel `staging`
+   and a message. The log prints each platform's runtime version and whether a staging build can take
+   it. If none can, it stops: make a store build instead.
 3. On the staging phone, close the app fully and open it twice: the first launch downloads the update,
    the second runs it.
-4. `pnpm --filter @forjd/mobile update:production -m "what changed"` from the same commit (it refuses
-   uncommitted changes).
+4. Run the workflow again on `main` with channel `production`.
 5. If it goes wrong: `pnpm --filter @forjd/mobile exec eas update:rollback --channel production`.
+
+The workflow needs the repository secret `EXPO_TOKEN` (expo.dev, Account settings, Access tokens). The
+same script runs locally as `pnpm --filter @forjd/mobile update:staging -m "..."` (or `update:production`),
+with the same checks; the workflow is preferred because it builds on a clean Linux checkout, the same
+OS as EAS's builders, so nothing on this computer can reach the phones.
 
 Never run a bare `eas update`: it does not read the API address from eas.json, so it would ship the
 localhost default to every phone on the channel. The first builds with `expo-updates` (staging and
