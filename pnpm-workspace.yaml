@@ -36,3 +36,9 @@ overrides:
 
 patchedDependencies:
   react-native-css-interop@0.2.6: patches/react-native-css-interop@0.2.6.patch
+
+# ADR-071: the over-the-air runtime version is a fingerprint that includes the paths of native packages
+# under node_modules/.pnpm. pnpm shortens those folder names to 60 characters on Windows and 120 elsewhere,
+# so a fingerprint worked out on Windows never matched the one EAS's Linux builders work out (the first
+# staging build with expo-updates stopped on exactly that). One length everywhere makes them the same.
+virtualStoreDirMaxLength: 60
