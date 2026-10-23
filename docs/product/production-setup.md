@@ -97,14 +97,21 @@ build. You do not have to decide which: the script works it out.
 4. Run the workflow again on `main` with channel `production`.
 5. If it goes wrong: `pnpm --filter @forjd/mobile exec eas update:rollback --channel production`.
 
-The workflow needs the repository secret `EXPO_TOKEN` (expo.dev, Account settings, Access tokens). The
+The workflow needs the repository secret `EXPO_TOKEN`, set 2026-10-23: the token of the robot user `github-actions`
+(Developer role) on the **`forjd`** Expo account (expo.dev, `forjd`, Account settings, Access tokens, Robot users),
+which owns `forjd-mobile`. Not the `forjds-team` organization. To replace it, revoke the old token there, create a new
+one and save it again as `EXPO_TOKEN` in GitHub (Settings, Secrets and variables, Actions). The
 same script runs locally as `pnpm --filter @forjd/mobile update:staging -m "..."` (or `update:production`),
 with the same checks; the workflow is preferred because it builds on a clean Linux checkout, the same
 OS as EAS's builders, so nothing on this computer can reach the phones.
 
 Never run a bare `eas update`: it does not read the API address from eas.json, so it would ship the
 localhost default to every phone on the channel. The first builds with `expo-updates` (staging and
-production, after 2026-10-21) are the first that can take updates; phones on older builds never get one.
+production, after 2026-10-21; production build 8) are the first that can take updates; phones on older builds never
+get one.
+
+Until the app is live, nothing is published over the air: merging and CI never publish, only the workflow or the
+script does. Ship to testers with new builds, and start using updates with the first store release.
 
 ## Also before public launch (not needed for a first deploy)
 
