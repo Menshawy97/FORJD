@@ -2,6 +2,7 @@
 // it is the compile check of the iPhone app before the Apple Developer account exists (ADR-007,
 // ADR-068's check 2). It is the staging app, built for the simulator, and it must not change how the
 // existing profiles build Android.
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -64,6 +65,33 @@ describe('Babel presets', () => {
 
   it.each(named)('lists %s as a dependency of the app', (name) => {
     expect({ ...pkg.dependencies, ...pkg.devDependencies }).toHaveProperty([name]);
+  });
+
+  // The first staging build with expo-updates (ADR-071) failed in :app:createReleaseUpdatesResources:
+  // nativewind/babel names @babel/plugin-transform-react-jsx as a string, and Babel resolves the
+  // plugins a preset names from the config's folder, this app, where pnpm had not put it. Anything run
+  // through pnpm or npx (Metro's own bundling, Jest) got past it because pnpm's command wrappers set
+  // NODE_PATH to its hidden shared folder; Gradle runs expo-updates' script with plain node, and failed.
+  // So this runs in a separate process without NODE_PATH, as Gradle does.
+  it('compiles a screen with exactly this config, resolving every plugin a preset names', () => {
+    const projectRoot = join(__dirname, '../..');
+    const babelCore = require.resolve('@babel/core', { paths: [require.resolve('babel-preset-expo')] });
+    const script = `
+      const babel = require(${JSON.stringify(babelCore)});
+      const out = babel.transformSync('export const A = () => <View className="flex-1" />;', {
+        filename: ${JSON.stringify(join(projectRoot, 'src/app/example.tsx'))},
+        cwd: ${JSON.stringify(projectRoot)},
+        babelrc: false,
+        configFile: ${JSON.stringify(join(projectRoot, 'babel.config.js'))},
+        caller: { name: 'metro', bundler: 'metro', platform: 'android', isDev: false },
+      });
+      process.stdout.write(out.code);
+    `;
+    const env = { ...process.env };
+    delete env.NODE_PATH;
+    const result = spawnSync(process.execPath, ['-e', script], { cwd: projectRoot, env, encoding: 'utf8' });
+    expect(result.stderr).not.toMatch(/Cannot find module/);
+    expect(result.stdout).toContain('react-native-css-interop');
   });
 });
 
