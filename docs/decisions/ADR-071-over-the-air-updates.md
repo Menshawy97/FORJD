@@ -108,3 +108,16 @@ fix for each:
 
 Checked: after these, this machine and a Linux CI runner computed the same Android fingerprint
 (`d091ecb9`, with no EAS variables on either side). iOS was not compared; the same fixes apply to it.
+
+## Amendment, 2026-10-23: verified on the Android emulator
+
+Two more builds were needed. The second stopped in Gradle's `:app:createReleaseUpdatesResources`: `nativewind/babel`
+names `@babel/plugin-transform-react-jsx` as a string, Babel looks for it from the app's folder, and only pnpm's
+command wrappers (which set `NODE_PATH`) had been finding it. It is now a direct devDependency of the app, and a
+test compiles a screen without `NODE_PATH` (#441).
+
+Staging build `323d878d` (runtime `7d435e4a`) then ran on the emulator. A test update published with
+`pnpm update:staging` from a throwaway branch was downloaded on the first cold start and shown on the second,
+exactly as decision 3 says; publishing `main` over it brought the app back the same way. The Windows machine
+and EAS's Linux builder computed the same runtime version for it. Not yet done: a production build that can
+take updates, an iPhone build, and the `EXPO_TOKEN` secret that the publish workflow needs.
