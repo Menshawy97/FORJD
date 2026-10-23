@@ -13,7 +13,10 @@
 FROM node:22-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# pnpm 11, the major every workflow installs (`version: 11`). With nothing pinned, corepack fetched the
+# newest pnpm (12.x), which stops `pnpm deploy` on the css-interop patch the API does not use
+# (ERR_PNPM_UNUSED_PATCH) while pnpm 11 deploys the same tree.
+RUN corepack enable && corepack prepare pnpm@11.28.6 --activate
 
 FROM base AS fetch
 WORKDIR /workspace
