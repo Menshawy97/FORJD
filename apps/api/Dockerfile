@@ -18,6 +18,10 @@ RUN corepack enable
 FROM base AS fetch
 WORKDIR /workspace
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+# pnpm-workspace.yaml's `patchedDependencies` name files in patches/ (ADR-070's css-interop patch), and
+# `pnpm fetch` refuses to start without them (ERR_PNPM_PATCH_NOT_FOUND), even for a package the API
+# never installs.
+COPY patches ./patches
 RUN pnpm fetch
 
 FROM fetch AS build
