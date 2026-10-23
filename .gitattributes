@@ -1,3 +1,9 @@
 # Vendored data and generated snapshots are byte-compared in CI (git diff --exit-code), so
 # they must not pick up CRLF on a Windows checkout.
 apps/api/src/cities/ingest/data/* text eol=lf
+
+# ADR-071: the over-the-air runtime version hashes these files byte for byte, so a Windows checkout
+# (CRLF) and EAS's Linux builders (LF) would never agree on it. Everything under apps/mobile/modules is
+# the app's own native code; .gitignore decides whether android/ and ios/ count as native folders.
+apps/mobile/modules/** text=auto eol=lf
+apps/mobile/.gitignore text eol=lf
