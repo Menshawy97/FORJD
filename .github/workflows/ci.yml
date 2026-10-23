@@ -284,13 +284,6 @@ jobs:
       # depends on nothing else in the workspace.
       - run: pnpm --filter @forjd/domain --filter @forjd/contracts build
 
-      # TEMPORARY (ADR-071 check, removed before merge): the Android fingerprint on Linux.
-      - run: cd apps/mobile && npx expo-updates fingerprint:generate --platform android --debug > $RUNNER_TEMP/fp-android.json && node -e "console.log('FINGERPRINT ' + require(process.argv[1]).hash)" $RUNNER_TEMP/fp-android.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fp-android
-          path: ${{ runner.temp }}/fp-android.json
-
       - run: pnpm --filter @forjd/mobile typecheck
 
       - run: pnpm --filter @forjd/mobile lint
