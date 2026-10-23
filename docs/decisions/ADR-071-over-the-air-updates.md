@@ -88,24 +88,23 @@ to what the app is for goes through review.
 
 ## Amendment, 2026-10-23: the fingerprint did differ between Windows and Linux
 
-The first staging build with  (EAS ) stopped at "Configure expo-updates":
-the runtime version worked out on the Windows machine that started the build did not match EAS's. That
-is the safe failure this ADR expected (nothing incompatible was built or shipped). Four differences, and
-the fix for each:
+The first staging build with `expo-updates` (EAS `92858eea`) stopped at "Configure expo-updates": the
+runtime version worked out on the Windows machine that started the build did not match EAS's. That is
+the safe failure this ADR expected (nothing incompatible was built or shipped). Four differences, and the
+fix for each:
 
-1. **pnpm folder names.** pnpm shortens the folders in  to 60 characters on Windows
-   and 120 elsewhere, and the fingerprint includes those paths.  in
-    makes them the same everywhere.
-2. **Line endings.** With , Windows checks out  and the app's own
-   native modules () with CRLF, Linux with LF, and the fingerprint hashes them
-   byte for byte.  makes them LF everywhere.
-3. **The Firebase file.**  is an EAS secret file: the builders have it, but EAS does
-   not hand secret files to local commands ( loads only plain-text and sensitive values).
-    leaves it out by file name. It holds Firebase project IDs, not code, and every
+1. **pnpm folder names.** pnpm shortens the folders in `node_modules/.pnpm` to 60 characters on Windows
+   and 120 elsewhere, and the fingerprint includes those paths. `virtualStoreDirMaxLength: 60` in
+   `pnpm-workspace.yaml` makes them the same everywhere.
+2. **Line endings.** With `core.autocrlf`, Windows checks out `apps/mobile/.gitignore` and the app's own
+   native modules (`apps/mobile/modules/**`) with CRLF, Linux with LF, and the fingerprint hashes them
+   byte for byte. `.gitattributes` makes them LF everywhere.
+3. **The Firebase file.** `GOOGLE_SERVICES_JSON` is an EAS secret file: the builders have it, but EAS does
+   not hand secret files to local commands (`eas env:exec` loads only plain-text and sensitive values).
+   `fingerprint.config.js` leaves it out by file name. It holds Firebase project IDs, not code, and every
    profile sets it.
-4. **Entries with no hash** (config-plugin files, the generated  folder) also differed, but they
+4. **Entries with no hash** (config-plugin files, the generated `android/` folder) also differed, but they
    do not count toward the fingerprint.
 
 Checked: after these, this machine and a Linux CI runner computed the same Android fingerprint
-(, with no EAS variables on either side). iOS was not compared; the same fixes apply to it.
-
+(`d091ecb9`, with no EAS variables on either side). iOS was not compared; the same fixes apply to it.
