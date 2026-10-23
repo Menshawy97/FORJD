@@ -30,7 +30,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 
 ### Cloud and production
 
-- [ ] **Redeploy the production API** (found 2026-10-23): the deploys after #436 failed (the Docker image could not find `patches/`, then pnpm 12 rejected the patch); #438 and #439 fixed that, and staging deployed and is healthy at `36938b9`. Production deploys only when run by hand (Deploy API to Cloud Run, target production), and has not been run since, so it is still on the code from before #436
+- [x] **Redeploy the production API** (found 2026-10-23; done the same day: runs 40003365798 for production, revision `forjd-api-production-00009-tzd`, and 40003321961 for staging, revision `forjd-api-staging-00081-6rb`, both at `f87b08f` with health green): the deploys after #436 failed (the Docker image could not find `patches/`, then pnpm 12 rejected the patch); #438 and #439 fixed that, and staging deployed and is healthy at `36938b9`. Production deploys only when run by hand (Deploy API to Cloud Run, target production), and has not been run since, so it is still on the code from before #436
 - [x] Delete old `us-central1` Cloud Run services `forjd-api-production` and `forjd-api-staging` (done by the owner; confirmed 2026-10-09: only the two `europe-west1` services remain)
 - [ ] Supabase access-token lifetime to 900 s (both projects)
 - [x] Merge RLS-everywhere PR (ADR-066): merged as #386 (migration `0037`) and deployed to production 2026-10-08. The `forjd-prod` security advisor re-run on 2026-10-13 no longer reports `rls_disabled_in_public`; it lists 43 "RLS enabled, no policy" notices, which is the intended deny-all
