@@ -40,6 +40,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
     "expo-task-manager": "~57.0.21",
+    "expo-updates": "~57.0.26",
     "expo-web-browser": "~57.0.3",
     "nativewind": "^4.2.6",
     "react": "19.2.3",
@@ -84,7 +85,9 @@
     "typecheck": "tsc --noEmit",
     "build:development": "eas build --profile development",
     "build:staging": "eas build --profile staging",
-    "build:production": "eas build --profile production"
+    "build:production": "eas build --profile production",
+    "update:staging": "node ./scripts/publish-update.js staging",
+    "update:production": "node ./scripts/publish-update.js production"
   },
   "private": true
 }

@@ -3,8 +3,12 @@ import type { ExpoConfig } from 'expo/config';
 import { checkApiBaseUrl } from './config/api-base-url';
 
 // docs/product/beta-readiness-plan.md, part 1: a production build that would reach a placeholder,
-// this computer or staging fails here, before anything is built or shipped.
-const apiBaseUrlProblem = checkApiBaseUrl(process.env.EAS_BUILD_PROFILE, process.env.API_BASE_URL);
+// this computer or staging fails here, before anything is built or shipped. An over-the-air update is
+// checked the same way: scripts/publish-update.js names its profile in FORJD_UPDATE_PROFILE (ADR-071).
+const apiBaseUrlProblem = checkApiBaseUrl(
+  process.env.EAS_BUILD_PROFILE ?? process.env.FORJD_UPDATE_PROFILE,
+  process.env.API_BASE_URL,
+);
 if (apiBaseUrlProblem) {
   throw new Error(`Production build refused: ${apiBaseUrlProblem}. Set it in eas.json's production profile.`);
 }
@@ -204,6 +208,17 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  // ADR-071: over-the-air updates for JavaScript-only changes. The runtime version is the fingerprint
+  // of the native layer, so an update reaches only builds with exactly the same native code; anything
+  // native still ships through the stores. `fallbackToCacheTimeout: 0`: launch never waits for the
+  // network (rule 6). A new bundle downloads in the background and runs from the next cold start, so a
+  // live workout is never reloaded under the athlete.
+  runtimeVersion: { policy: 'fingerprint' },
+  updates: {
+    url: 'https://u.expo.dev/971ed96d-2f88-42e2-bcbf-1643ba5d8fa2',
+    checkAutomatically: 'ON_LOAD',
+    fallbackToCacheTimeout: 0,
+  },
   experiments: {
     typedRoutes: true,
     reactCompiler: true,

@@ -214,7 +214,7 @@
           {
             "$": {
               "android:name": "expo.modules.updates.ENABLED",
-              "android:value": "false"
+              "android:value": "true"
             }
           },
           {
@@ -231,8 +231,20 @@
           },
           {
             "$": {
+              "android:name": "expo.modules.updates.EXPO_UPDATE_URL",
+              "android:value": "https://u.expo.dev/971ed96d-2f88-42e2-bcbf-1643ba5d8fa2"
+            }
+          },
+          {
+            "$": {
               "android:name": "expo.modules.updates.ENABLE_BSDIFF_PATCH_SUPPORT",
               "android:value": "true"
+            }
+          },
+          {
+            "$": {
+              "android:name": "expo.modules.updates.EXPO_RUNTIME_VERSION",
+              "android:value": "@string/expo_runtime_version"
             }
           },
           {

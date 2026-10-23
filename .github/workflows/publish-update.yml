@@ -1,0 +1,57 @@
+name: Publish an over-the-air update
+
+# ADR-071. Publishes the JavaScript bundle of a commit to the staging or production update channel, from a clean
+# checkout on GitHub's Linux runners, so nothing on a developer's computer (a stale dist/, a local .env, a shell
+# variable, uncommitted work) can reach the phones. It runs the same script as `pnpm update:<channel>`
+# (apps/mobile/scripts/publish-update.js), which checks the API address, refuses anything not pushed (production:
+# anything but origin/main), and publishes only to platforms whose builds on the channel can take the update.
+#
+# Run it from the Actions tab: "Run workflow", pick the branch (main for production), the channel and a message.
+# Needs the repository secret EXPO_TOKEN: an Expo access token (expo.dev, Account settings, Access tokens).
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Update channel
+        type: choice
+        options: [staging, production]
+        required: true
+      message:
+        description: What the update changes
+        type: string
+        required: true
+
+concurrency:
+  group: publish-update-${{ inputs.channel }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to ${{ inputs.channel }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # The script checks the commit is on GitHub (and, for production, is origin/main) against the remote refs.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CHANNEL: ${{ inputs.channel }}
+          MESSAGE: ${{ inputs.message }}
+        run: pnpm --filter @forjd/mobile exec node ./scripts/publish-update.js "$CHANNEL" -m "$MESSAGE"
