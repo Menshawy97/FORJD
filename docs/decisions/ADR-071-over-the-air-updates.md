@@ -121,3 +121,22 @@ Staging build `323d878d` (runtime `7d435e4a`) then ran on the emulator. A test u
 exactly as decision 3 says; publishing `main` over it brought the app back the same way. The Windows machine
 and EAS's Linux builder computed the same runtime version for it. Not yet done: a production build that can
 take updates, an iPhone build, and the `EXPO_TOKEN` secret that the publish workflow needs.
+
+## Amendment, 2026-10-23: production, the GitHub workflow, and until launch
+
+- **Production build:** EAS `adc3bb02` (`production-apk`, version 1.0.0, build 8, runtime `7d435e4a`) is the first
+  production build that can take updates. Builds 7 and older never will.
+- **First production update:** `main` at `210bb2a` (Android update `01a169df`), the same code as build 8, so nothing
+  visible changed. On the emulator, build 8 downloaded it on the first cold start, and on the second the server
+  answered "no update available", which it does only once the phone reports that update as its current one.
+  No visible marker was used on production, since production ships `origin/main` only and a marker would reach
+  real users; the visible before-and-after check is the staging one above.
+- **`EXPO_TOKEN`:** a robot user, `github-actions` (Developer role), on the `forjd` Expo account, which owns
+  `forjd-mobile`. Not the `forjds-team` organization, whose separate empty project is unrelated. The workflow's
+  first run (GitHub Actions run 40002123367) published `main` to staging from a Linux runner and computed the same
+  runtime version as the staging build.
+- **Until launch:** nothing publishes on its own. Merging into `main` and CI never publish; an update goes out only
+  when someone runs the workflow or `pnpm update:<channel>`. Until the app is live, changes reach phones through
+  new builds only, and over-the-air updates start with the first store release. An update already on a channel never
+  holds back a newer build: each build carries its own, newer bundle, and expo-updates runs the newer one.
+- **Still open:** an iPhone build (none can take updates yet, so every publish skips iOS).

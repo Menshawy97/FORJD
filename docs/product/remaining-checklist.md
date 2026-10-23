@@ -29,6 +29,8 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] Decide whether owed device tests are carried into the beta: **yes** (owner, 2026-10-20). Phase 8.5 is closed; the device tests above stay owed and are done during the beta
 
 ### Cloud and production
+
+- [ ] **Redeploy the production API** (found 2026-10-23): the deploys after #436 failed (the Docker image could not find `patches/`, then pnpm 12 rejected the patch); #438 and #439 fixed that, and staging deployed and is healthy at `36938b9`. Production deploys only when run by hand (Deploy API to Cloud Run, target production), and has not been run since, so it is still on the code from before #436
 - [x] Delete old `us-central1` Cloud Run services `forjd-api-production` and `forjd-api-staging` (done by the owner; confirmed 2026-10-09: only the two `europe-west1` services remain)
 - [ ] Supabase access-token lifetime to 900 s (both projects)
 - [x] Merge RLS-everywhere PR (ADR-066): merged as #386 (migration `0037`) and deployed to production 2026-10-08. The `forjd-prod` security advisor re-run on 2026-10-13 no longer reports `rls_disabled_in_public`; it lists 43 "RLS enabled, no policy" notices, which is the intended deny-all
@@ -102,7 +104,7 @@ the same PR. Items marked *(unconfirmed)* were reported by a review but not repr
 - [x] **Press feedback never showed on a phone** (found 2026-10-20, production smoke test; fixed 2026-10-21): NativeWind's css-interop turned every `Pressable` style function into `{}`, so `pressScale`, `pressGhost` and every `style={({ pressed }) => ...}` did nothing. Confirmed on the emulator, then fixed with a pnpm patch to css-interop that covers iOS and Android (ADR-070). Still to do: hold a primary button on the TestFlight iPhone with the next iOS build
 - [ ] Food search ranking (found 2026-10-20): searching "banana" lists baby foods first, alphabetically, before plain bananas. How results should rank is a product decision
 - [ ] Home shows real-looking zeros (0 workouts, 0 kcal) for a few seconds while it loads, instead of placeholders (found 2026-10-20)
-- [x] `eas build` warns that the production profiles set the `production` update channel but `expo-updates` is not installed, so the channel does nothing. Decide whether over-the-air updates are wanted: yes, 2026-10-21 (ADR-071). Verified 2026-10-23 on the Android emulator: staging build 323d878d took a test update on its second cold start, then took main back the same way. Still to do: the first production build that can take updates, and the EXPO_TOKEN secret for the publish workflow
+- [x] `eas build` warns that the production profiles set the `production` update channel but `expo-updates` is not installed, so the channel does nothing. Decide whether over-the-air updates are wanted: yes, 2026-10-21 (ADR-071). Verified 2026-10-23 on the Android emulator: staging build 323d878d took a test update on its second cold start, then took main back the same way. Production done the same day: build 8 (EAS adc3bb02) took the first production update on the emulator, and the EXPO_TOKEN secret (a robot user on the forjd Expo account) is set; the publish workflow's first run passed. Until launch nothing is published over the air; it starts with the first store release. Still open: an iPhone build
 - [ ] Phase 7 decision E: readiness baseline crossover when WHOOP connects mid-baseline
 - [ ] Analytics rebuild tool for rule changes (deferred until rules first change)
 - [ ] Barcode scanning decision
